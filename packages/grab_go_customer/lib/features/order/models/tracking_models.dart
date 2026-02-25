@@ -29,16 +29,29 @@ class TrackingData {
   factory TrackingData.fromJson(Map<String, dynamic> json) {
     return TrackingData(
       orderId: json['orderId'] ?? '',
-      currentLocation: json['currentLocation'] != null ? LocationData.fromJson(json['currentLocation']) : null,
+      currentLocation: json['currentLocation'] != null
+          ? LocationData.fromJson(json['currentLocation'])
+          : null,
       destination: LocationData.fromJson(json['destination']),
-      pickupLocation: json['pickupLocation'] != null ? LocationData.fromJson(json['pickupLocation']) : null,
+      pickupLocation: json['pickupLocation'] != null
+          ? LocationData.fromJson(json['pickupLocation'])
+          : null,
       status: json['status'] ?? 'preparing',
       distanceRemaining: json['distanceRemaining'] ?? 0,
-      estimatedArrival: json['estimatedArrival'] != null ? DateTime.parse(json['estimatedArrival']) : null,
+      estimatedArrival: json['estimatedArrival'] != null
+          ? DateTime.parse(json['estimatedArrival'])
+          : null,
       route: json['route'] != null ? RouteData.fromJson(json['route']) : null,
-      rider: json['riderId'] != null ? RiderInfo.fromJson(json['riderId']) : null,
+      rider: json['rider'] is Map<String, dynamic>
+          ? RiderInfo.fromJson(json['rider'] as Map<String, dynamic>)
+          : (json['riderId'] is Map<String, dynamic>
+                ? RiderInfo.fromJson(json['riderId'] as Map<String, dynamic>)
+                : null),
       locationHistory:
-          (json['locationHistory'] as List<dynamic>?)?.map((e) => LocationHistory.fromJson(e)).toList() ?? [],
+          (json['locationHistory'] as List<dynamic>?)
+              ?.map((e) => LocationHistory.fromJson(e))
+              .toList() ??
+          [],
     );
   }
 
@@ -112,10 +125,16 @@ class LocationData {
     // Handle GeoJSON format from backend
     if (json['coordinates'] != null) {
       final coordinates = json['coordinates'] as List;
-      return LocationData(longitude: coordinates[0].toDouble(), latitude: coordinates[1].toDouble());
+      return LocationData(
+        longitude: coordinates[0].toDouble(),
+        latitude: coordinates[1].toDouble(),
+      );
     }
     // Handle direct lat/lng format
-    return LocationData(latitude: json['latitude']?.toDouble() ?? 0.0, longitude: json['longitude']?.toDouble() ?? 0.0);
+    return LocationData(
+      latitude: json['latitude']?.toDouble() ?? 0.0,
+      longitude: json['longitude']?.toDouble() ?? 0.0,
+    );
   }
 
   LatLng toLatLng() {
@@ -133,7 +152,11 @@ class RouteData {
   final int duration; // seconds
   final int distance; // meters
 
-  RouteData({required this.polyline, required this.duration, required this.distance});
+  RouteData({
+    required this.polyline,
+    required this.duration,
+    required this.distance,
+  });
 
   factory RouteData.fromJson(Map<String, dynamic> json) {
     return RouteData(
@@ -162,11 +185,17 @@ class RiderInfo {
   final String? profileImage;
   final double? rating;
 
-  RiderInfo({required this.id, required this.name, this.phone, this.profileImage, this.rating});
+  RiderInfo({
+    required this.id,
+    required this.name,
+    this.phone,
+    this.profileImage,
+    this.rating,
+  });
 
   factory RiderInfo.fromJson(Map<String, dynamic> json) {
     return RiderInfo(
-      id: json['_id'] ?? '',
+      id: json['id'] ?? json['_id'] ?? '',
       name: json['name'] ?? json['username'] ?? 'Rider',
       phone: json['phone'],
       profileImage: json['profileImage'] ?? json['profilePicture'],
@@ -187,7 +216,12 @@ class LocationHistory {
   final double? speed;
   final double? accuracy;
 
-  LocationHistory({required this.location, required this.timestamp, this.speed, this.accuracy});
+  LocationHistory({
+    required this.location,
+    required this.timestamp,
+    this.speed,
+    this.accuracy,
+  });
 
   factory LocationHistory.fromJson(Map<String, dynamic> json) {
     return LocationHistory(
@@ -224,7 +258,9 @@ class LocationUpdateEvent {
       parsedEta = DateTime.now().add(Duration(seconds: etaValue));
     } else if (etaValue is String) {
       // ETA is already a date string
-      parsedEta = DateTime.tryParse(etaValue) ?? DateTime.now().add(const Duration(minutes: 10));
+      parsedEta =
+          DateTime.tryParse(etaValue) ??
+          DateTime.now().add(const Duration(minutes: 10));
     } else {
       parsedEta = DateTime.now().add(const Duration(minutes: 10));
     }
@@ -233,13 +269,18 @@ class LocationUpdateEvent {
     final distanceValue = json['distance'];
     final int parsedDistance = distanceValue is int
         ? distanceValue
-        : (distanceValue is double ? distanceValue.toInt() : int.tryParse(distanceValue.toString()) ?? 0);
+        : (distanceValue is double
+              ? distanceValue.toInt()
+              : int.tryParse(distanceValue.toString()) ?? 0);
+    final locationMap = json['location'] is Map
+        ? Map<String, dynamic>.from(json['location'] as Map)
+        : const <String, dynamic>{};
 
     return LocationUpdateEvent(
       orderId: json['orderId']?.toString() ?? '',
       location: LocationData(
-        latitude: (json['location']['latitude'] as num).toDouble(),
-        longitude: (json['location']['longitude'] as num).toDouble(),
+        latitude: (locationMap['latitude'] as num?)?.toDouble() ?? 0,
+        longitude: (locationMap['longitude'] as num?)?.toDouble() ?? 0,
       ),
       distance: parsedDistance,
       eta: parsedEta,
@@ -254,7 +295,11 @@ class StatusUpdateEvent {
   final String status;
   final String? message;
 
-  StatusUpdateEvent({required this.orderId, required this.status, this.message});
+  StatusUpdateEvent({
+    required this.orderId,
+    required this.status,
+    this.message,
+  });
 
   factory StatusUpdateEvent.fromJson(Map<String, dynamic> json) {
     return StatusUpdateEvent(

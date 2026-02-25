@@ -51,12 +51,16 @@ class SocketService {
 
     // Emit to specific user
     emitToUser(userId, event, data) {
-        const socketId = this.userSockets.get(userId.toString());
-        if (socketId && this.io) {
-            this.io.to(socketId).emit(event, data);
-            console.log(`📡 Emitted '${event}' to user ${userId}`);
+        if (!this.io) return;
+
+        const userRoom = `user:${userId.toString()}`;
+        this.io.to(userRoom).emit(event, data);
+
+        const room = this.io.sockets?.adapter?.rooms?.get(userRoom);
+        if (room && room.size > 0) {
+            console.log(`📡 Emitted '${event}' to user room: ${userRoom} (${room.size} connections)`);
         } else {
-            console.warn(`⚠️  User ${userId} not connected via socket`);
+            console.warn(`⚠️  User ${userId} has no active socket room listeners for '${event}'`);
         }
     }
 

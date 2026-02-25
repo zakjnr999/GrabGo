@@ -44,6 +44,9 @@ class _MapTrackingState extends State<MapTracking> {
       throw Exception('Auth token not found');
     }
 
+    // Recreate tracking services for each page session to avoid stale/disposed singletons.
+    disposeTrackingServices();
+
     // Setup services first
     setupTrackingServices(baseUrl: AppConfig.apiBaseUrl, token: token);
 
@@ -60,7 +63,9 @@ class _MapTrackingState extends State<MapTracking> {
   void _checkDeliveryStatus(TrackingProvider provider) {
     final currentStatus = provider.trackingData?.status;
 
-    if (currentStatus == 'delivered' && _previousStatus != 'delivered' && !_hasShownSuccessScreen) {
+    if (currentStatus == 'delivered' &&
+        _previousStatus != 'delivered' &&
+        !_hasShownSuccessScreen) {
       _hasShownSuccessScreen = true;
 
       Navigator.of(context).push(
@@ -89,6 +94,7 @@ class _MapTrackingState extends State<MapTracking> {
   @override
   void dispose() {
     _trackingProvider?.dispose();
+    disposeTrackingServices();
     super.dispose();
   }
 
@@ -113,7 +119,10 @@ class _MapTrackingState extends State<MapTracking> {
                   SizedBox(height: 16.h),
                   Text(
                     'Connecting to tracking...',
-                    style: TextStyle(color: colors.textPrimary, fontSize: 16.sp),
+                    style: TextStyle(
+                      color: colors.textPrimary,
+                      fontSize: 16.sp,
+                    ),
                   ),
                 ],
               ),
@@ -142,12 +151,19 @@ class _MapTrackingState extends State<MapTracking> {
                     SizedBox(height: 16.h),
                     Text(
                       'Failed to initialize tracking',
-                      style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 18.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     SizedBox(height: 8.h),
                     Text(
                       snapshot.error.toString(),
-                      style: TextStyle(color: colors.textSecondary, fontSize: 14.sp),
+                      style: TextStyle(
+                        color: colors.textSecondary,
+                        fontSize: 14.sp,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     SizedBox(height: 24.h),
@@ -193,7 +209,11 @@ class _MapTrackingState extends State<MapTracking> {
                     ),
                     title: Text(
                       'Order Tracking',
-                      style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 18.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                   body: Center(
@@ -210,17 +230,28 @@ class _MapTrackingState extends State<MapTracking> {
                               color: colors.accentOrange.withValues(alpha: 0.1),
                               shape: BoxShape.circle,
                             ),
-                            child: Icon(Icons.delivery_dining_outlined, size: 50.sp, color: colors.accentOrange),
+                            child: Icon(
+                              Icons.delivery_dining_outlined,
+                              size: 50.sp,
+                              color: colors.accentOrange,
+                            ),
                           ),
                           SizedBox(height: 24.h),
                           Text(
                             'Looking for a rider',
-                            style: TextStyle(color: colors.textPrimary, fontSize: 22.sp, fontWeight: FontWeight.w700),
+                            style: TextStyle(
+                              color: colors.textPrimary,
+                              fontSize: 22.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                           SizedBox(height: 12.h),
                           Text(
                             'We\'re finding the best available rider for your order. This usually takes 1-3 minutes.',
-                            style: TextStyle(color: colors.textSecondary, fontSize: 14.sp),
+                            style: TextStyle(
+                              color: colors.textSecondary,
+                              fontSize: 14.sp,
+                            ),
                             textAlign: TextAlign.center,
                           ),
                           SizedBox(height: 32.h),
@@ -229,16 +260,24 @@ class _MapTrackingState extends State<MapTracking> {
                             width: 200.w,
                             child: LinearProgressIndicator(
                               backgroundColor: colors.border,
-                              valueColor: AlwaysStoppedAnimation<Color>(colors.accentOrange),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                colors.accentOrange,
+                              ),
                             ),
                           ),
                           SizedBox(height: 32.h),
                           TextButton.icon(
                             onPressed: () => provider.refreshTracking(),
-                            icon: Icon(Icons.refresh, color: colors.accentOrange),
+                            icon: Icon(
+                              Icons.refresh,
+                              color: colors.accentOrange,
+                            ),
                             label: Text(
                               'Refresh',
-                              style: TextStyle(color: colors.accentOrange, fontSize: 16.sp),
+                              style: TextStyle(
+                                color: colors.accentOrange,
+                                fontSize: 16.sp,
+                              ),
                             ),
                           ),
                         ],
@@ -265,16 +304,27 @@ class _MapTrackingState extends State<MapTracking> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.error_outline, size: 64.sp, color: colors.error),
+                          Icon(
+                            Icons.error_outline,
+                            size: 64.sp,
+                            color: colors.error,
+                          ),
                           SizedBox(height: 16.h),
                           Text(
                             'Failed to load tracking',
-                            style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w700),
+                            style: TextStyle(
+                              color: colors.textPrimary,
+                              fontSize: 18.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                           SizedBox(height: 8.h),
                           Text(
                             provider.error!,
-                            style: TextStyle(color: colors.textSecondary, fontSize: 14.sp),
+                            style: TextStyle(
+                              color: colors.textSecondary,
+                              fontSize: 14.sp,
+                            ),
                             textAlign: TextAlign.center,
                           ),
                           SizedBox(height: 24.h),
@@ -282,11 +332,17 @@ class _MapTrackingState extends State<MapTracking> {
                             onPressed: () => provider.refreshTracking(),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: colors.accentOrange,
-                              padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 12.h),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 32.w,
+                                vertical: 12.h,
+                              ),
                             ),
                             child: Text(
                               'Retry',
-                              style: TextStyle(color: Colors.white, fontSize: 16.sp),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16.sp,
+                              ),
                             ),
                           ),
                         ],
@@ -299,7 +355,14 @@ class _MapTrackingState extends State<MapTracking> {
               // Main tracking UI
               final activeStep = provider.trackingData?.activeStep ?? 0;
 
-              return _buildTrackingUI(context, provider, colors, size, isDark, activeStep);
+              return _buildTrackingUI(
+                context,
+                provider,
+                colors,
+                size,
+                isDark,
+                activeStep,
+              );
             },
           ),
         );
@@ -325,7 +388,9 @@ class _MapTrackingState extends State<MapTracking> {
           systemNavigationBarColor: Colors.transparent,
           statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
           statusBarBrightness: isDark ? Brightness.light : Brightness.dark,
-          systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+          systemNavigationBarIconBrightness: isDark
+              ? Brightness.light
+              : Brightness.dark,
         ),
         automaticallyImplyLeading: false,
         elevation: 0,
@@ -345,7 +410,9 @@ class _MapTrackingState extends State<MapTracking> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
+                      color: isDark
+                          ? Colors.black.withAlpha(20)
+                          : Colors.black.withAlpha(5),
                       spreadRadius: 0,
                       blurRadius: 8,
                       offset: const Offset(0, 2),
@@ -362,7 +429,10 @@ class _MapTrackingState extends State<MapTracking> {
                       child: SvgPicture.asset(
                         Assets.icons.navArrowLeft,
                         package: 'grab_go_shared',
-                        colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                        colorFilter: ColorFilter.mode(
+                          colors.textPrimary,
+                          BlendMode.srcIn,
+                        ),
                       ),
                     ),
                   ),
@@ -378,7 +448,9 @@ class _MapTrackingState extends State<MapTracking> {
           Positioned.fill(
             child: GoogleMap(
               initialCameraPosition: CameraPosition(
-                target: provider.trackingData?.currentLocation?.toLatLng() ?? const LatLng(5.6037, -0.1870),
+                target:
+                    provider.trackingData?.currentLocation?.toLatLng() ??
+                    const LatLng(5.6037, -0.1870),
                 zoom: 14,
               ),
               markers: provider.markers,
@@ -392,7 +464,9 @@ class _MapTrackingState extends State<MapTracking> {
               onMapCreated: (GoogleMapController controller) {
                 provider.setMapController(controller);
               },
-              style: GrabGoMapStyles.forBrightness(Theme.of(context).brightness),
+              style: GrabGoMapStyles.forBrightness(
+                Theme.of(context).brightness,
+              ),
             ),
           ),
 
@@ -430,7 +504,10 @@ class _MapTrackingState extends State<MapTracking> {
                           ),
                         ),
                         child: Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 20.w,
+                            vertical: 10.h,
+                          ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -438,26 +515,48 @@ class _MapTrackingState extends State<MapTracking> {
                                 child: Container(
                                   height: 50.h,
                                   width: 50.w,
-                                  decoration: BoxDecoration(shape: BoxShape.circle, color: colors.backgroundPrimary),
-                                  child: provider.trackingData?.rider?.profileImage != null
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: colors.backgroundPrimary,
+                                  ),
+                                  child:
+                                      provider
+                                              .trackingData
+                                              ?.rider
+                                              ?.profileImage !=
+                                          null
                                       ? Image.network(
-                                          provider.trackingData!.rider!.profileImage!,
+                                          provider
+                                              .trackingData!
+                                              .rider!
+                                              .profileImage!,
                                           fit: BoxFit.cover,
-                                          errorBuilder: (context, error, stackTrace) => Padding(
-                                            padding: EdgeInsets.all(12.r),
-                                            child: SvgPicture.asset(
-                                              Assets.icons.deliveryGuyIcon,
-                                              package: "grab_go_shared",
-                                              colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                                            ),
-                                          ),
+                                          errorBuilder:
+                                              (
+                                                context,
+                                                error,
+                                                stackTrace,
+                                              ) => Padding(
+                                                padding: EdgeInsets.all(12.r),
+                                                child: SvgPicture.asset(
+                                                  Assets.icons.deliveryGuyIcon,
+                                                  package: "grab_go_shared",
+                                                  colorFilter: ColorFilter.mode(
+                                                    colors.accentOrange,
+                                                    BlendMode.srcIn,
+                                                  ),
+                                                ),
+                                              ),
                                         )
                                       : Padding(
                                           padding: EdgeInsets.all(12.r),
                                           child: SvgPicture.asset(
                                             Assets.icons.deliveryGuyIcon,
                                             package: "grab_go_shared",
-                                            colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                            colorFilter: ColorFilter.mode(
+                                              colors.accentOrange,
+                                              BlendMode.srcIn,
+                                            ),
                                           ),
                                         ),
                                 ),
@@ -469,7 +568,8 @@ class _MapTrackingState extends State<MapTracking> {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Text(
-                                      provider.trackingData?.rider?.name ?? "Rider",
+                                      provider.trackingData?.rider?.name ??
+                                          "Rider",
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontSize: 16.sp,
@@ -485,7 +585,10 @@ class _MapTrackingState extends State<MapTracking> {
                                           package: "grab_go_shared",
                                           height: 14.h,
                                           width: 14.w,
-                                          colorFilter: const ColorFilter.mode(Colors.yellow, BlendMode.srcIn),
+                                          colorFilter: const ColorFilter.mode(
+                                            Colors.yellow,
+                                            BlendMode.srcIn,
+                                          ),
                                         ),
                                         SizedBox(width: 6.w),
                                         Text(
@@ -509,20 +612,31 @@ class _MapTrackingState extends State<MapTracking> {
                                     onTap: () {
                                       Navigator.of(context).push(
                                         MaterialPageRoute(
-                                          builder: (context) => DeliverySuccessScreen(
-                                            orderId: widget.orderId,
-                                            onComplete: () {
-                                              Navigator.of(context).pushReplacement(
-                                                MaterialPageRoute(
-                                                  builder: (context) => RatingOnboarding(
-                                                    orderId: widget.orderId,
-                                                    riderName: provider.trackingData?.rider?.name,
-                                                    riderImage: provider.trackingData?.rider?.profileImage,
-                                                  ),
-                                                ),
-                                              );
-                                            },
-                                          ),
+                                          builder: (context) =>
+                                              DeliverySuccessScreen(
+                                                orderId: widget.orderId,
+                                                onComplete: () {
+                                                  Navigator.of(
+                                                    context,
+                                                  ).pushReplacement(
+                                                    MaterialPageRoute(
+                                                      builder: (context) =>
+                                                          RatingOnboarding(
+                                                            orderId:
+                                                                widget.orderId,
+                                                            riderName: provider
+                                                                .trackingData
+                                                                ?.rider
+                                                                ?.name,
+                                                            riderImage: provider
+                                                                .trackingData
+                                                                ?.rider
+                                                                ?.profileImage,
+                                                          ),
+                                                    ),
+                                                  );
+                                                },
+                                              ),
                                         ),
                                       );
                                     },
@@ -532,11 +646,16 @@ class _MapTrackingState extends State<MapTracking> {
                                     icon: Assets.icons.phoneSolid,
                                     colors: colors,
                                     onTap: () async {
-                                      final riderId = provider.trackingData?.rider?.id;
+                                      final riderId =
+                                          provider.trackingData?.rider?.id;
                                       if (riderId == null || riderId.isEmpty) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
                                           SnackBar(
-                                            content: Text('Rider information not available'),
+                                            content: Text(
+                                              'Rider information not available',
+                                            ),
                                             backgroundColor: colors.error,
                                           ),
                                         );
@@ -548,8 +667,16 @@ class _MapTrackingState extends State<MapTracking> {
                                         MaterialPageRoute(
                                           builder: (context) => CallScreen(
                                             otherUserId: riderId,
-                                            otherUserName: provider.trackingData?.rider?.name ?? 'Rider',
-                                            otherUserAvatar: provider.trackingData?.rider?.profileImage,
+                                            otherUserName:
+                                                provider
+                                                    .trackingData
+                                                    ?.rider
+                                                    ?.name ??
+                                                'Rider',
+                                            otherUserAvatar: provider
+                                                .trackingData
+                                                ?.rider
+                                                ?.profileImage,
                                             orderId: widget.orderId,
                                             isIncoming: false,
                                           ),
@@ -594,22 +721,31 @@ class _MapTrackingState extends State<MapTracking> {
                                   child: Container(
                                     width: 40.w,
                                     height: 4.h,
-                                    margin: EdgeInsets.only(top: 12.h, bottom: 16.h),
+                                    margin: EdgeInsets.only(
+                                      top: 12.h,
+                                      bottom: 16.h,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: colors.textSecondary.withOpacity(0.3),
+                                      color: colors.textSecondary.withOpacity(
+                                        0.3,
+                                      ),
                                       borderRadius: BorderRadius.circular(2.r),
                                     ),
                                   ),
                                 ),
 
                                 Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 20.w),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 20.w,
+                                  ),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       // Status Text
                                       Text(
-                                        provider.trackingData?.statusText ?? "Preparing Order",
+                                        provider.trackingData?.statusText ??
+                                            "Preparing Order",
                                         style: TextStyle(
                                           color: colors.textPrimary,
                                           fontSize: 20.sp,
@@ -618,7 +754,9 @@ class _MapTrackingState extends State<MapTracking> {
                                       ),
                                       SizedBox(height: 4.h),
                                       Text(
-                                        _getStatusDescription(provider.trackingData?.status),
+                                        _getStatusDescription(
+                                          provider.trackingData?.status,
+                                        ),
                                         style: TextStyle(
                                           color: colors.textSecondary,
                                           fontSize: 12.sp,
@@ -640,12 +778,16 @@ class _MapTrackingState extends State<MapTracking> {
                                           lineThickness: 4,
                                           lineType: LineType.normal,
                                           defaultLineColor: colors.inputBorder,
-                                          finishedLineColor: colors.accentOrange,
+                                          finishedLineColor:
+                                              colors.accentOrange,
                                         ),
                                         showStepBorder: false,
-                                        unreachedStepBackgroundColor: colors.inputBorder,
-                                        activeStepBackgroundColor: colors.accentOrange,
-                                        finishedStepBackgroundColor: colors.accentOrange,
+                                        unreachedStepBackgroundColor:
+                                            colors.inputBorder,
+                                        activeStepBackgroundColor:
+                                            colors.accentOrange,
+                                        finishedStepBackgroundColor:
+                                            colors.accentOrange,
                                         stepShape: StepShape.circle,
                                         showLoadingAnimation: false,
                                         steps: [
@@ -662,7 +804,9 @@ class _MapTrackingState extends State<MapTracking> {
                                               width: 50.w,
                                               height: 50.h,
                                               decoration: BoxDecoration(
-                                                color: activeStep >= 0 ? colors.accentOrange : colors.inputBorder,
+                                                color: activeStep >= 0
+                                                    ? colors.accentOrange
+                                                    : colors.inputBorder,
                                                 shape: BoxShape.circle,
                                               ),
                                               child: Center(
@@ -672,7 +816,9 @@ class _MapTrackingState extends State<MapTracking> {
                                                   width: 24.w,
                                                   height: 24.h,
                                                   colorFilter: ColorFilter.mode(
-                                                    activeStep >= 0 ? Colors.white : colors.textSecondary,
+                                                    activeStep >= 0
+                                                        ? Colors.white
+                                                        : colors.textSecondary,
                                                     BlendMode.srcIn,
                                                   ),
                                                 ),
@@ -692,7 +838,9 @@ class _MapTrackingState extends State<MapTracking> {
                                               width: 50.w,
                                               height: 50.h,
                                               decoration: BoxDecoration(
-                                                color: activeStep >= 1 ? colors.accentOrange : colors.inputBorder,
+                                                color: activeStep >= 1
+                                                    ? colors.accentOrange
+                                                    : colors.inputBorder,
                                                 shape: BoxShape.circle,
                                               ),
                                               child: Center(
@@ -702,7 +850,9 @@ class _MapTrackingState extends State<MapTracking> {
                                                   width: 24.w,
                                                   height: 24.h,
                                                   colorFilter: ColorFilter.mode(
-                                                    activeStep >= 1 ? Colors.white : colors.textSecondary,
+                                                    activeStep >= 1
+                                                        ? Colors.white
+                                                        : colors.textSecondary,
                                                     BlendMode.srcIn,
                                                   ),
                                                 ),
@@ -722,7 +872,9 @@ class _MapTrackingState extends State<MapTracking> {
                                               width: 50.w,
                                               height: 50.h,
                                               decoration: BoxDecoration(
-                                                color: activeStep >= 2 ? colors.accentOrange : colors.inputBorder,
+                                                color: activeStep >= 2
+                                                    ? colors.accentOrange
+                                                    : colors.inputBorder,
                                                 shape: BoxShape.circle,
                                               ),
                                               child: Center(
@@ -732,7 +884,9 @@ class _MapTrackingState extends State<MapTracking> {
                                                   height: 24.h,
                                                   width: 24.w,
                                                   colorFilter: ColorFilter.mode(
-                                                    activeStep >= 2 ? Colors.white : colors.textSecondary,
+                                                    activeStep >= 2
+                                                        ? Colors.white
+                                                        : colors.textSecondary,
                                                     BlendMode.srcIn,
                                                   ),
                                                 ),
@@ -752,13 +906,17 @@ class _MapTrackingState extends State<MapTracking> {
                                               width: 50.w,
                                               height: 50.h,
                                               decoration: BoxDecoration(
-                                                color: activeStep >= 3 ? colors.accentOrange : colors.inputBorder,
+                                                color: activeStep >= 3
+                                                    ? colors.accentOrange
+                                                    : colors.inputBorder,
                                                 shape: BoxShape.circle,
                                               ),
                                               child: Center(
                                                 child: Icon(
                                                   Icons.handshake,
-                                                  color: activeStep >= 3 ? Colors.white : colors.textSecondary,
+                                                  color: activeStep >= 3
+                                                      ? Colors.white
+                                                      : colors.textSecondary,
                                                   size: 24.sp,
                                                 ),
                                               ),
@@ -779,7 +937,10 @@ class _MapTrackingState extends State<MapTracking> {
                                                   package: 'grab_go_shared',
                                                   width: 18.w,
                                                   height: 18.h,
-                                                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                                  colorFilter: ColorFilter.mode(
+                                                    colors.textSecondary,
+                                                    BlendMode.srcIn,
+                                                  ),
                                                 ),
                                                 SizedBox(width: 6.w),
                                                 Flexible(
@@ -788,18 +949,27 @@ class _MapTrackingState extends State<MapTracking> {
                                                       text: "Delivery:  ",
                                                       style: TextStyle(
                                                         fontFamily: "Lato",
-                                                        package: 'grab_go_shared',
-                                                        color: colors.textSecondary,
+                                                        package:
+                                                            'grab_go_shared',
+                                                        color: colors
+                                                            .textSecondary,
                                                         fontSize: 12.sp,
                                                       ),
                                                       children: [
                                                         TextSpan(
-                                                          text: provider.trackingData?.formattedEta ?? "Calculating...",
+                                                          text:
+                                                              provider
+                                                                  .trackingData
+                                                                  ?.formattedEta ??
+                                                              "Calculating...",
                                                           style: TextStyle(
                                                             fontFamily: "Lato",
-                                                            package: 'grab_go_shared',
-                                                            fontWeight: FontWeight.w800,
-                                                            color: colors.textPrimary,
+                                                            package:
+                                                                'grab_go_shared',
+                                                            fontWeight:
+                                                                FontWeight.w800,
+                                                            color: colors
+                                                                .textPrimary,
                                                             fontSize: 13.sp,
                                                           ),
                                                         ),
@@ -818,7 +988,10 @@ class _MapTrackingState extends State<MapTracking> {
                                                   package: 'grab_go_shared',
                                                   width: 18.w,
                                                   height: 18.h,
-                                                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                                  colorFilter: ColorFilter.mode(
+                                                    colors.textSecondary,
+                                                    BlendMode.srcIn,
+                                                  ),
                                                 ),
                                                 SizedBox(width: 6.w),
                                                 Flexible(
@@ -827,18 +1000,24 @@ class _MapTrackingState extends State<MapTracking> {
                                                       text: "Distance:  ",
                                                       style: TextStyle(
                                                         fontFamily: "Lato",
-                                                        package: 'grab_go_shared',
-                                                        color: colors.textSecondary,
+                                                        package:
+                                                            'grab_go_shared',
+                                                        color: colors
+                                                            .textSecondary,
                                                         fontSize: 12.sp,
                                                       ),
                                                       children: [
                                                         TextSpan(
-                                                          text: "${provider.trackingData?.distanceInKm ?? '0.0'} km",
+                                                          text:
+                                                              "${provider.trackingData?.distanceInKm ?? '0.0'} km",
                                                           style: TextStyle(
                                                             fontFamily: "Lato",
-                                                            package: 'grab_go_shared',
-                                                            fontWeight: FontWeight.w800,
-                                                            color: colors.textPrimary,
+                                                            package:
+                                                                'grab_go_shared',
+                                                            fontWeight:
+                                                                FontWeight.w800,
+                                                            color: colors
+                                                                .textPrimary,
                                                             fontSize: 13.sp,
                                                           ),
                                                         ),
@@ -857,13 +1036,15 @@ class _MapTrackingState extends State<MapTracking> {
                                         dashLength: 6,
                                         dashGapLength: 4,
                                         lineThickness: 1,
-                                        dashColor: colors.textSecondary.withAlpha(50),
+                                        dashColor: colors.textSecondary
+                                            .withAlpha(50),
                                       ),
                                       SizedBox(height: 20.h),
 
                                       // Order Details Section
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
                                         children: [
                                           Text(
                                             "Order Details",
@@ -884,13 +1065,18 @@ class _MapTrackingState extends State<MapTracking> {
                                               color: Colors.transparent,
                                               child: InkWell(
                                                 onTap: () {},
-                                                customBorder: const CircleBorder(),
+                                                customBorder:
+                                                    const CircleBorder(),
                                                 child: Padding(
                                                   padding: EdgeInsets.all(10.r),
                                                   child: SvgPicture.asset(
                                                     Assets.icons.headsetHelp,
                                                     package: 'grab_go_shared',
-                                                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                                                    colorFilter:
+                                                        ColorFilter.mode(
+                                                          colors.textPrimary,
+                                                          BlendMode.srcIn,
+                                                        ),
                                                   ),
                                                 ),
                                               ),
@@ -916,7 +1102,10 @@ class _MapTrackingState extends State<MapTracking> {
                                             package: 'grab_go_shared',
                                             height: 18.h,
                                             width: 18.w,
-                                            colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                            colorFilter: ColorFilter.mode(
+                                              colors.accentOrange,
+                                              BlendMode.srcIn,
+                                            ),
                                           ),
                                           SizedBox(width: 12.w),
                                           Text(
@@ -935,24 +1124,35 @@ class _MapTrackingState extends State<MapTracking> {
                                         padding: EdgeInsets.all(16.r),
                                         decoration: BoxDecoration(
                                           color: colors.backgroundSecondary,
-                                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                                          borderRadius: BorderRadius.circular(
+                                            KBorderSize.borderRadius15,
+                                          ),
                                         ),
                                         child: Column(
                                           children: [
                                             _buildOrderItem(
                                               colors: colors,
-                                              itemName: "Jollof Rice with Chicken",
+                                              itemName:
+                                                  "Jollof Rice with Chicken",
                                               quantity: 2,
                                               price: "GHS 45.00",
                                             ),
-                                            Divider(color: colors.inputBorder.withValues(alpha: 0.3), height: 24.h),
+                                            Divider(
+                                              color: colors.inputBorder
+                                                  .withValues(alpha: 0.3),
+                                              height: 24.h,
+                                            ),
                                             _buildOrderItem(
                                               colors: colors,
                                               itemName: "Fried Plantain",
                                               quantity: 1,
                                               price: "GHS 15.00",
                                             ),
-                                            Divider(color: colors.inputBorder.withValues(alpha: 0.3), height: 24.h),
+                                            Divider(
+                                              color: colors.inputBorder
+                                                  .withValues(alpha: 0.3),
+                                              height: 24.h,
+                                            ),
                                             _buildOrderItem(
                                               colors: colors,
                                               itemName: "Coca Cola (500ml)",
@@ -973,7 +1173,10 @@ class _MapTrackingState extends State<MapTracking> {
                                             package: 'grab_go_shared',
                                             height: 18.h,
                                             width: 18.w,
-                                            colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                            colorFilter: ColorFilter.mode(
+                                              colors.accentOrange,
+                                              BlendMode.srcIn,
+                                            ),
                                           ),
                                           SizedBox(width: 12.w),
                                           Text(
@@ -992,24 +1195,37 @@ class _MapTrackingState extends State<MapTracking> {
                                         padding: EdgeInsets.all(16.r),
                                         decoration: BoxDecoration(
                                           color: colors.backgroundSecondary,
-                                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                                          borderRadius: BorderRadius.circular(
+                                            KBorderSize.borderRadius15,
+                                          ),
                                         ),
                                         child: Column(
                                           children: [
                                             Row(
                                               children: [
                                                 Container(
-                                                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                                                  padding: EdgeInsets.symmetric(
+                                                    horizontal: 8.w,
+                                                    vertical: 4.h,
+                                                  ),
                                                   decoration: BoxDecoration(
-                                                    color: colors.accentOrange.withValues(alpha: 0.15),
-                                                    borderRadius: BorderRadius.circular(6.r),
+                                                    color: colors.accentOrange
+                                                        .withValues(
+                                                          alpha: 0.15,
+                                                        ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          6.r,
+                                                        ),
                                                   ),
                                                   child: Text(
                                                     "Home",
                                                     style: TextStyle(
                                                       fontSize: 12.sp,
-                                                      fontWeight: FontWeight.w700,
-                                                      color: colors.accentOrange,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color:
+                                                          colors.accentOrange,
                                                     ),
                                                   ),
                                                 ),
@@ -1023,7 +1239,10 @@ class _MapTrackingState extends State<MapTracking> {
                                                   package: 'grab_go_shared',
                                                   height: 12.h,
                                                   width: 12.w,
-                                                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                                  colorFilter: ColorFilter.mode(
+                                                    colors.textSecondary,
+                                                    BlendMode.srcIn,
+                                                  ),
                                                 ),
                                                 SizedBox(width: 6.w),
                                                 Text(
@@ -1044,7 +1263,10 @@ class _MapTrackingState extends State<MapTracking> {
                                                   package: 'grab_go_shared',
                                                   height: 12.h,
                                                   width: 12.w,
-                                                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                                  colorFilter: ColorFilter.mode(
+                                                    colors.textSecondary,
+                                                    BlendMode.srcIn,
+                                                  ),
                                                 ),
                                                 SizedBox(width: 6.w),
                                                 Expanded(
@@ -1053,7 +1275,8 @@ class _MapTrackingState extends State<MapTracking> {
                                                     style: TextStyle(
                                                       fontSize: 13.sp,
                                                       color: colors.textPrimary,
-                                                      fontWeight: FontWeight.w500,
+                                                      fontWeight:
+                                                          FontWeight.w500,
                                                     ),
                                                   ),
                                                 ),
@@ -1073,7 +1296,10 @@ class _MapTrackingState extends State<MapTracking> {
                                             package: 'grab_go_shared',
                                             height: 18.h,
                                             width: 18.w,
-                                            colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                            colorFilter: ColorFilter.mode(
+                                              colors.accentOrange,
+                                              BlendMode.srcIn,
+                                            ),
                                           ),
                                           SizedBox(width: 12.w),
                                           Text(
@@ -1093,7 +1319,9 @@ class _MapTrackingState extends State<MapTracking> {
                                         padding: EdgeInsets.all(16.r),
                                         decoration: BoxDecoration(
                                           color: colors.backgroundSecondary,
-                                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                                          borderRadius: BorderRadius.circular(
+                                            KBorderSize.borderRadius15,
+                                          ),
                                         ),
                                         child: Text(
                                           "Call me when you arrive.",
@@ -1135,7 +1363,9 @@ class _MapTrackingState extends State<MapTracking> {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
+                        color: isDark
+                            ? Colors.black.withAlpha(20)
+                            : Colors.black.withAlpha(5),
                         spreadRadius: 0,
                         blurRadius: 8,
                         offset: const Offset(0, 2),
@@ -1152,7 +1382,10 @@ class _MapTrackingState extends State<MapTracking> {
                         child: SvgPicture.asset(
                           Assets.icons.crosshair,
                           package: 'grab_go_shared',
-                          colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                          colorFilter: ColorFilter.mode(
+                            colors.textPrimary,
+                            BlendMode.srcIn,
+                          ),
                         ),
                       ),
                     ),
@@ -1184,11 +1417,18 @@ class _MapTrackingState extends State<MapTracking> {
     }
   }
 
-  Widget _buildActionButton({required String icon, required AppColorsExtension colors, required VoidCallback onTap}) {
+  Widget _buildActionButton({
+    required String icon,
+    required AppColorsExtension colors,
+    required VoidCallback onTap,
+  }) {
     return Container(
       height: 40.h,
       width: 40.w,
-      decoration: BoxDecoration(color: colors.backgroundPrimary.withValues(alpha: 0.2), shape: BoxShape.circle),
+      decoration: BoxDecoration(
+        color: colors.backgroundPrimary.withValues(alpha: 0.2),
+        shape: BoxShape.circle,
+      ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -1199,7 +1439,10 @@ class _MapTrackingState extends State<MapTracking> {
             child: SvgPicture.asset(
               icon,
               package: 'grab_go_shared',
-              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+              colorFilter: const ColorFilter.mode(
+                Colors.white,
+                BlendMode.srcIn,
+              ),
             ),
           ),
         ),
@@ -1224,19 +1467,31 @@ class _MapTrackingState extends State<MapTracking> {
           ),
           child: Text(
             "${quantity}x",
-            style: TextStyle(color: colors.accentOrange, fontSize: 12.sp, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              color: colors.accentOrange,
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
         SizedBox(width: 12.w),
         Expanded(
           child: Text(
             itemName,
-            style: TextStyle(color: colors.textPrimary, fontSize: 13.sp, fontWeight: FontWeight.w500),
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
         Text(
           price,
-          style: TextStyle(color: colors.textPrimary, fontSize: 13.sp, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontSize: 13.sp,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ],
     );

@@ -1435,17 +1435,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                 ),
               ),
               SizedBox(height: 14.h),
-              Row(
-                children: [
-                  Icon(Icons.info_outline_rounded, size: 20.r, color: colors.accentOrange),
-                  SizedBox(width: 8.w),
-                  Expanded(
-                    child: Text(
-                      content.title,
-                      style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w800),
-                    ),
-                  ),
-                ],
+              Text(
+                content.title,
+                style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w800),
               ),
               SizedBox(height: 8.h),
               Text(
@@ -1492,23 +1484,6 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                     ],
                   ),
                 ),
-              ),
-              SizedBox(height: 8.h),
-              AppButton(
-                width: double.infinity,
-                onPressed: () {
-                  Navigator.of(sheetContext).pop();
-                  if (_selectedPaymentMethod != _CheckoutPaymentMethod.card) {
-                    setState(() {
-                      _selectedPaymentMethod = _CheckoutPaymentMethod.card;
-                    });
-                  }
-                },
-                buttonText: "Use Pay Online",
-                textStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800),
-                textColor: Colors.white,
-                padding: EdgeInsets.symmetric(vertical: 14.h),
-                borderRadius: KBorderSize.borderMedium,
               ),
             ],
           ),
@@ -2611,50 +2586,43 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         ),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 20.w),
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
-            decoration: BoxDecoration(
-              color: colors.backgroundSecondary.withValues(alpha: 0.6),
-              borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(8.r),
-                  decoration: BoxDecoration(
-                    color: colors.accentOrange.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+          child: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(8.r),
+                decoration: BoxDecoration(
+                  color: colors.accentOrange.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                ),
+                child: Center(
+                  child: SvgPicture.asset(
+                    Assets.icons.gift,
+                    package: 'grab_go_shared',
+                    height: 20.h,
+                    width: 20.w,
+                    colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                   ),
-                  child: Center(
-                    child: SvgPicture.asset(
-                      Assets.icons.gift,
-                      package: 'grab_go_shared',
-                      height: 20.h,
-                      width: 20.w,
-                      colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                ),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "This order is a gift",
+                      style: TextStyle(color: colors.textPrimary, fontSize: 13.sp, fontWeight: FontWeight.w700),
                     ),
-                  ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      "Recipient will need a delivery code.",
+                      style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w500),
+                    ),
+                  ],
                 ),
-                SizedBox(width: 10.w),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "This order is a gift",
-                        style: TextStyle(color: colors.textPrimary, fontSize: 13.sp, fontWeight: FontWeight.w700),
-                      ),
-                      SizedBox(height: 2.h),
-                      Text(
-                        "Recipient will need a delivery code.",
-                        style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w500),
-                      ),
-                    ],
-                  ),
-                ),
-                CustomSwitch(value: _isGiftOrder, onChanged: _setGiftOrderEnabled, activeColor: colors.accentOrange),
-              ],
-            ),
+              ),
+              CustomSwitch(value: _isGiftOrder, onChanged: _setGiftOrderEnabled, activeColor: colors.accentOrange),
+            ],
           ),
         ),
         AnimatedSize(
@@ -2769,7 +2737,6 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
               _buildPaymentMethodTile(
                 title: "Pay Online",
                 subtitle: "Card, mobile money, or bank transfer",
-                icon: Icons.credit_card_rounded,
                 isSelected: _selectedPaymentMethod == _CheckoutPaymentMethod.card || isPickupMode,
                 colors: colors,
                 onTap: () {
@@ -2781,11 +2748,11 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                   });
                 },
               ),
-              SizedBox(height: 10.h),
+              Divider(height: 8.h, thickness: 0.8, color: colors.inputBorder.withValues(alpha: 0.35)),
+
               _buildPaymentMethodTile(
                 title: "Cash on Delivery",
                 subtitle: codSubtitle,
-                icon: Icons.payments_outlined,
                 isSelected: !isPickupMode && _selectedPaymentMethod == _CheckoutPaymentMethod.cash,
                 colors: colors,
                 isDisabled: isPickupMode,
@@ -2873,15 +2840,11 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
   Widget _buildPaymentMethodTile({
     required String title,
     required String subtitle,
-    required IconData icon,
     required bool isSelected,
     required AppColorsExtension colors,
     required VoidCallback onTap,
     bool isDisabled = false,
   }) {
-    final Color tileColor = isSelected
-        ? colors.accentOrange.withValues(alpha: 0.08)
-        : colors.backgroundSecondary.withValues(alpha: 0.0);
     final Color titleColor = isDisabled ? colors.textSecondary : colors.textPrimary;
     final Color subtitleColor = colors.textSecondary;
     return Material(
@@ -2892,7 +2855,6 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         child: Container(
           width: double.infinity,
           padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
-          decoration: BoxDecoration(color: tileColor, borderRadius: BorderRadius.circular(KBorderSize.borderMedium)),
           child: Row(
             children: [
               Expanded(

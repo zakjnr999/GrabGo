@@ -35,10 +35,15 @@ class LocationDto {
 
   LocationDto({required this.latitude, required this.longitude});
 
-  Map<String, dynamic> toJson() => {'latitude': latitude, 'longitude': longitude};
+  Map<String, dynamic> toJson() => {
+    'latitude': latitude,
+    'longitude': longitude,
+  };
 
-  factory LocationDto.fromJson(Map<String, dynamic> json) =>
-      LocationDto(latitude: (json['latitude'] as num).toDouble(), longitude: (json['longitude'] as num).toDouble());
+  factory LocationDto.fromJson(Map<String, dynamic> json) => LocationDto(
+    latitude: (json['latitude'] as num).toDouble(),
+    longitude: (json['longitude'] as num).toDouble(),
+  );
 }
 
 /// Response from location update API
@@ -92,6 +97,14 @@ class LocationUpdateResponse {
   double get distanceKm => distanceRemaining / 1000.0;
 }
 
+/// Response for authoritative order lifecycle status updates.
+class LifecycleStatusUpdateResult {
+  final bool success;
+  final String? message;
+
+  const LifecycleStatusUpdateResult({required this.success, this.message});
+}
+
 /// Tracking info response
 class TrackingInfo {
   final String orderId;
@@ -127,7 +140,10 @@ class TrackingInfo {
         if (loc['type'] == 'Point' && loc['coordinates'] is List) {
           final coords = loc['coordinates'] as List;
           if (coords.length >= 2) {
-            return LocationDto(longitude: (coords[0] as num).toDouble(), latitude: (coords[1] as num).toDouble());
+            return LocationDto(
+              longitude: (coords[0] as num).toDouble(),
+              latitude: (coords[1] as num).toDouble(),
+            );
           }
         }
         if (loc['latitude'] != null && loc['longitude'] != null) {
@@ -154,7 +170,9 @@ class TrackingInfo {
       destination: parseLocation(data['destination']),
       distanceRemaining: (data['distanceRemaining'] as num?)?.toDouble(),
       estimatedArrival: eta,
-      route: data['route'] != null ? RouteInfo.fromJson(data['route'] as Map<String, dynamic>) : null,
+      route: data['route'] != null
+          ? RouteInfo.fromJson(data['route'] as Map<String, dynamic>)
+          : null,
     );
   }
 }
@@ -216,7 +234,9 @@ enum TrackingStatus {
       case 'cancelled':
         return TrackingStatus.cancelled;
       default:
-        debugPrint('⚠️ Unknown tracking status: $value, defaulting to preparing');
+        debugPrint(
+          '⚠️ Unknown tracking status: $value, defaulting to preparing',
+        );
         return TrackingStatus.preparing;
     }
   }
@@ -261,7 +281,11 @@ class RiderTrackingService {
     try {
       debugPrint('🚀 Initializing tracking: ${dto.orderId}');
 
-      final response = await _client.post(uri, headers: await _buildHeaders(), body: jsonEncode(dto.toJson()));
+      final response = await _client.post(
+        uri,
+        headers: await _buildHeaders(),
+        body: jsonEncode(dto.toJson()),
+      );
 
       debugPrint('📍 Initialize tracking response: ${response.statusCode}');
 
@@ -318,7 +342,10 @@ class RiderTrackingService {
   }
 
   /// Update order status (preparing -> picked_up -> in_transit -> nearby -> delivered)
-  Future<bool> updateStatus({required String orderId, required TrackingStatus status}) async {
+  Future<bool> updateStatus({
+    required String orderId,
+    required TrackingStatus status,
+  }) async {
     final uri = Uri.parse('$_baseUrl/tracking/status');
     try {
       debugPrint('📦 Updating status to: ${status.toApiValue()}');
@@ -341,6 +368,61 @@ class RiderTrackingService {
     } catch (e) {
       debugPrint('❌ Error updating status: $e');
       return false;
+    }
+  }
+
+  /// Update the authoritative order lifecycle status in PostgreSQL.
+  Future<LifecycleStatusUpdateResult> updateLifecycleStatus({
+    required String orderId,
+    required String status,
+    Map<String, dynamic>? deliveryVerification,
+    String? cancellationReason,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/orders/$orderId/status');
+
+    try {
+      final body = <String, dynamic>{'status': status};
+      if (deliveryVerification != null) {
+        body['deliveryVerification'] = deliveryVerification;
+      }
+      if (cancellationReason != null && cancellationReason.isNotEmpty) {
+        body['cancellationReason'] = cancellationReason;
+      }
+
+      debugPrint('📦 Updating authoritative order status to: $status');
+      final response = await _client.put(
+        uri,
+        headers: await _buildHeaders(),
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+        final ok = decoded['success'] == true;
+        return LifecycleStatusUpdateResult(
+          success: ok,
+          message: decoded['message']?.toString(),
+        );
+      }
+
+      String? message;
+      try {
+        final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+        message = decoded['message']?.toString();
+      } catch (_) {
+        message = 'Failed to update order status';
+      }
+
+      debugPrint(
+        '❌ Authoritative order status update failed: ${response.statusCode} ${response.body}',
+      );
+      return LifecycleStatusUpdateResult(success: false, message: message);
+    } catch (e) {
+      debugPrint('❌ Error updating authoritative order status: $e');
+      return LifecycleStatusUpdateResult(
+        success: false,
+        message: 'Network error: $e',
+      );
     }
   }
 

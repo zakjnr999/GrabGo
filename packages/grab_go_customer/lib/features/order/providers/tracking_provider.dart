@@ -17,6 +17,7 @@ class TrackingProvider extends BaseTrackingProvider {
 
   // State
   TrackingData? _trackingData;
+  String? _activeOrderId;
   bool _isLoading = false;
   String? _error;
   bool _isWaitingForRider = false;
@@ -40,6 +41,7 @@ class TrackingProvider extends BaseTrackingProvider {
   StreamSubscription? _statusSubscription;
   StreamSubscription? _connectionSubscription;
   Timer? _animationTimer;
+  Timer? _waitingForRiderTimer;
   LatLng? _lastKnownPosition;
   double _currentBearing = 0;
   final Map<String, BitmapDescriptor> _markerIconCache = {};
@@ -61,9 +63,11 @@ class TrackingProvider extends BaseTrackingProvider {
   @override
   bool get isSocketConnected => _socketService.isConnected;
 
-  TrackingProvider({required TrackingApiService apiService, required TrackingSocketService socketService})
-    : _apiService = apiService,
-      _socketService = socketService {
+  TrackingProvider({
+    required TrackingApiService apiService,
+    required TrackingSocketService socketService,
+  }) : _apiService = apiService,
+       _socketService = socketService {
     _initializeSocketListeners();
   }
 
@@ -83,13 +87,12 @@ class TrackingProvider extends BaseTrackingProvider {
       },
     );
 
-    _connectionSubscription = _socketService.connectionStatus.listen((isConnected) {
+    _connectionSubscription = _socketService.connectionStatus.listen((
+      isConnected,
+    ) {
       print(isConnected ? '✅ Socket connected' : '❌ Socket disconnected');
-      if (!isConnected && _trackingData != null) {
-        // Try to reconnect
-        Future.delayed(const Duration(seconds: 2), () {
-          _socketService.reconnect();
-        });
+      if (isConnected && _activeOrderId != null) {
+        _socketService.joinOrderRoom(_activeOrderId!);
       }
     });
   }
@@ -97,6 +100,7 @@ class TrackingProvider extends BaseTrackingProvider {
   /// Initialize tracking for an order
   @override
   Future<void> initializeTracking(String orderId) async {
+    _activeOrderId = orderId;
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -105,7 +109,11 @@ class TrackingProvider extends BaseTrackingProvider {
       // 1. Get initial tracking data from API
       print('📡 Fetching tracking data for order: $orderId');
       _trackingData = await _apiService.getTrackingInfo(orderId);
-      print('✅ Got tracking data: status=${_trackingData?.status}, rider=${_trackingData?.rider?.name}');
+      print(
+        '✅ Got tracking data: status=${_trackingData?.status}, rider=${_trackingData?.rider?.name}',
+      );
+      _isWaitingForRider = false;
+      _stopWaitingForRiderPolling();
 
       // 2. Connect to socket for real-time updates
       print('🔌 Connecting to socket');
@@ -128,18 +136,64 @@ class TrackingProvider extends BaseTrackingProvider {
         // Tracking not initialized yet - rider hasn't accepted the order
         _error = 'Waiting for a rider to accept your order...';
         _isWaitingForRider = true;
+        _startWaitingForRiderPolling(orderId);
       } else {
         _error = e.message;
+        _isWaitingForRider = false;
+        _stopWaitingForRiderPolling();
       }
       _isLoading = false;
       notifyListeners();
       print('❌ Failed to initialize tracking: $e');
     } catch (e) {
       _error = e.toString();
+      _isWaitingForRider = false;
+      _stopWaitingForRiderPolling();
       _isLoading = false;
       notifyListeners();
       print('❌ Failed to initialize tracking: $e');
     }
+  }
+
+  void _startWaitingForRiderPolling(String orderId) {
+    _waitingForRiderTimer?.cancel();
+    _waitingForRiderTimer = Timer.periodic(const Duration(seconds: 8), (
+      _,
+    ) async {
+      if (!_isWaitingForRider || _trackingData != null) {
+        _stopWaitingForRiderPolling();
+        return;
+      }
+
+      try {
+        final data = await _apiService.getTrackingInfo(orderId);
+        _trackingData = data;
+        _isWaitingForRider = false;
+        _error = null;
+        _isLoading = false;
+        _stopWaitingForRiderPolling();
+
+        if (!_socketService.isConnected) {
+          _socketService.connect();
+        }
+        _waitForSocketAndJoinRoom(orderId);
+        await _setupMapElements();
+        notifyListeners();
+      } on TrackingException catch (e) {
+        // Keep polling while tracking is not available yet.
+        if (e.statusCode != 404) {
+          _error = e.message;
+          notifyListeners();
+        }
+      } catch (_) {
+        // Ignore transient polling errors and retry on next cycle.
+      }
+    });
+  }
+
+  void _stopWaitingForRiderPolling() {
+    _waitingForRiderTimer?.cancel();
+    _waitingForRiderTimer = null;
   }
 
   /// Wait for socket connection and then join the order room
@@ -176,7 +230,8 @@ class TrackingProvider extends BaseTrackingProvider {
 
     // Add rider marker if location available
     if (_trackingData!.currentLocation != null) {
-      final cacheKey = 'rider_${_trackingData!.rider?.id}_${_trackingData!.rider?.profileImage}';
+      final cacheKey =
+          'rider_${_trackingData!.rider?.id}_${_trackingData!.rider?.profileImage}';
       if (!_markerIconCache.containsKey(cacheKey)) {
         _markerIconCache[cacheKey] = await CustomMapMarkers.createRiderMarker(
           imageUrl: _trackingData!.rider?.profileImage,
@@ -189,7 +244,10 @@ class TrackingProvider extends BaseTrackingProvider {
         markerId: const MarkerId('rider'),
         position: _trackingData!.currentLocation!.toLatLng(),
         icon: _markerIconCache[cacheKey]!,
-        infoWindow: InfoWindow(title: _trackingData!.rider?.name ?? 'Your Rider', snippet: _trackingData!.statusText),
+        infoWindow: InfoWindow(
+          title: _trackingData!.rider?.name ?? 'Your Rider',
+          snippet: _trackingData!.statusText,
+        ),
         anchor: const Offset(0.5, 0.5),
         zIndexInt: 10, // Bring rider to the very top
       );
@@ -198,10 +256,11 @@ class TrackingProvider extends BaseTrackingProvider {
 
     // Add destination marker (customer's home) with home icon
     if (!_markerIconCache.containsKey('destination')) {
-      _markerIconCache['destination'] = await CustomMapMarkers.createDestinationMarker(
-        name: 'You',
-        primaryColor: AppColors.serviceGrocery,
-      );
+      _markerIconCache['destination'] =
+          await CustomMapMarkers.createDestinationMarker(
+            name: 'You',
+            primaryColor: AppColors.serviceGrocery,
+          );
     }
 
     markers.add(
@@ -229,7 +288,10 @@ class TrackingProvider extends BaseTrackingProvider {
           markerId: const MarkerId('pickup'),
           position: _trackingData!.pickupLocation!.toLatLng(),
           icon: _markerIconCache['vendor']!,
-          infoWindow: const InfoWindow(title: 'Restaurant', snippet: 'Pickup location'),
+          infoWindow: const InfoWindow(
+            title: 'Restaurant',
+            snippet: 'Pickup location',
+          ),
           anchor: const Offset(0.5, 0.5),
           zIndexInt: 1, // Bottom layer
         ),
@@ -242,7 +304,8 @@ class TrackingProvider extends BaseTrackingProvider {
     _setupGeofenceCircles();
 
     // Create polyline from route if available
-    if (_trackingData!.route != null && _trackingData!.route!.polyline.isNotEmpty) {
+    if (_trackingData!.route != null &&
+        _trackingData!.route!.polyline.isNotEmpty) {
       await _createPolyline(_trackingData!.route!.polyline);
     }
 
@@ -291,7 +354,8 @@ class TrackingProvider extends BaseTrackingProvider {
 
   /// Get custom rider marker icon with caching
   Future<BitmapDescriptor> _getRiderMarkerIcon() async {
-    final cacheKey = 'rider_${_trackingData?.rider?.id}_${_trackingData?.rider?.profileImage}';
+    final cacheKey =
+        'rider_${_trackingData?.rider?.id}_${_trackingData?.rider?.profileImage}';
     if (_markerIconCache.containsKey(cacheKey)) {
       return _markerIconCache[cacheKey]!;
     }
@@ -312,7 +376,9 @@ class TrackingProvider extends BaseTrackingProvider {
       final polylinePoints = PolylinePoints();
       final decoded = polylinePoints.decodePolyline(encodedPolyline);
 
-      final polylineCoordinates = decoded.map((point) => LatLng(point.latitude, point.longitude)).toList();
+      final polylineCoordinates = decoded
+          .map((point) => LatLng(point.latitude, point.longitude))
+          .toList();
 
       final routePolyline = Polyline(
         polylineId: const PolylineId('route'),
@@ -335,11 +401,17 @@ class TrackingProvider extends BaseTrackingProvider {
       return;
     }
 
-    print('📍 Updating rider location: ${event.location.latitude}, ${event.location.longitude}');
+    print(
+      '📍 Updating rider location: ${event.location.latitude}, ${event.location.longitude}',
+    );
 
     // Add current location to history for the trail
-    final updatedHistory = List<LocationHistory>.from(_trackingData!.locationHistory);
-    updatedHistory.add(LocationHistory(location: event.location, timestamp: DateTime.now()));
+    final updatedHistory = List<LocationHistory>.from(
+      _trackingData!.locationHistory,
+    );
+    updatedHistory.add(
+      LocationHistory(location: event.location, timestamp: DateTime.now()),
+    );
 
     // Update tracking data
     _trackingData = TrackingData(
@@ -364,7 +436,9 @@ class TrackingProvider extends BaseTrackingProvider {
 
       // If distance is too large (>500m), jump directly (could be GPS error or teleport)
       if (distance > 500) {
-        print('📍 Large position jump detected (${distance.toStringAsFixed(0)}m), jumping directly');
+        print(
+          '📍 Large position jump detected (${distance.toStringAsFixed(0)}m), jumping directly',
+        );
         _updateRiderMarker(newPosition, _currentBearing);
         _lastKnownPosition = newPosition;
         notifyListeners();
@@ -400,39 +474,43 @@ class TrackingProvider extends BaseTrackingProvider {
     if (bearingDiff > 180) bearingDiff -= 360;
     if (bearingDiff < -180) bearingDiff += 360;
 
-    _animationTimer = Timer.periodic(const Duration(milliseconds: _animationFrameMs), (timer) {
-      if (currentStep >= _animationSteps) {
-        timer.cancel();
-        // Ensure we end exactly at the target position
-        _updateRiderMarker(end, targetBearing);
-        _currentBearing = targetBearing;
-        // Smoothly move camera to final position
-        _animateCameraToRider(end);
-        notifyListeners();
-        return;
-      }
+    _animationTimer = Timer.periodic(
+      const Duration(milliseconds: _animationFrameMs),
+      (timer) {
+        if (currentStep >= _animationSteps) {
+          timer.cancel();
+          // Ensure we end exactly at the target position
+          _updateRiderMarker(end, targetBearing);
+          _currentBearing = targetBearing;
+          // Smoothly move camera to final position
+          _animateCameraToRider(end);
+          notifyListeners();
+          return;
+        }
 
-      currentStep++;
+        currentStep++;
 
-      // Use ease-out cubic for smooth deceleration: 1 - (1 - t)^3
-      double t = currentStep / _animationSteps;
-      double easedT = 1 - pow(1 - t, 3).toDouble();
+        // Use ease-out cubic for smooth deceleration: 1 - (1 - t)^3
+        double t = currentStep / _animationSteps;
+        double easedT = 1 - pow(1 - t, 3).toDouble();
 
-      // Interpolate position
-      double lat = start.latitude + (end.latitude - start.latitude) * easedT;
-      double lng = start.longitude + (end.longitude - start.longitude) * easedT;
+        // Interpolate position
+        double lat = start.latitude + (end.latitude - start.latitude) * easedT;
+        double lng =
+            start.longitude + (end.longitude - start.longitude) * easedT;
 
-      // Interpolate bearing smoothly
-      double currentBearingAnimated = startBearing + bearingDiff * easedT;
-      _currentBearing = currentBearingAnimated;
+        // Interpolate bearing smoothly
+        double currentBearingAnimated = startBearing + bearingDiff * easedT;
+        _currentBearing = currentBearingAnimated;
 
-      _updateRiderMarker(LatLng(lat, lng), currentBearingAnimated);
+        _updateRiderMarker(LatLng(lat, lng), currentBearingAnimated);
 
-      // Only notify every 3rd frame to reduce UI rebuilds while maintaining visual smoothness
-      if (currentStep % 3 == 0 || currentStep == _animationSteps) {
-        notifyListeners();
-      }
-    });
+        // Only notify every 3rd frame to reduce UI rebuilds while maintaining visual smoothness
+        if (currentStep % 3 == 0 || currentStep == _animationSteps) {
+          notifyListeners();
+        }
+      },
+    );
   }
 
   /// Calculate bearing between two points
@@ -459,7 +537,9 @@ class TrackingProvider extends BaseTrackingProvider {
     double dLat = (end.latitude - start.latitude) * pi / 180;
     double dLng = (end.longitude - start.longitude) * pi / 180;
 
-    double a = sin(dLat / 2) * sin(dLat / 2) + cos(lat1) * cos(lat2) * sin(dLng / 2) * sin(dLng / 2);
+    double a =
+        sin(dLat / 2) * sin(dLat / 2) +
+        cos(lat1) * cos(lat2) * sin(dLng / 2) * sin(dLng / 2);
     double c = 2 * atan2(sqrt(a), sqrt(1 - a));
 
     return earthRadius * c;
@@ -486,7 +566,12 @@ class TrackingProvider extends BaseTrackingProvider {
         .toSet();
 
     _polylines.add(
-      Polyline(polylineId: const PolylineId('trail'), points: points, color: AppColors.serviceFood, width: 5),
+      Polyline(
+        polylineId: const PolylineId('trail'),
+        points: points,
+        color: AppColors.serviceFood,
+        width: 5,
+      ),
     );
   }
 
@@ -518,7 +603,10 @@ class TrackingProvider extends BaseTrackingProvider {
   void _updateRiderMarker(LatLng newPosition, double rotation) {
     _markers = _markers.map((marker) {
       if (marker.markerId.value == 'rider') {
-        return marker.copyWith(positionParam: newPosition, rotationParam: rotation);
+        return marker.copyWith(
+          positionParam: newPosition,
+          rotationParam: rotation,
+        );
       }
       return marker;
     }).toSet();
@@ -548,7 +636,10 @@ class TrackingProvider extends BaseTrackingProvider {
       if (pos.longitude > maxLng) maxLng = pos.longitude;
     }
 
-    final bounds = LatLngBounds(southwest: LatLng(minLat, minLng), northeast: LatLng(maxLat, maxLng));
+    final bounds = LatLngBounds(
+      southwest: LatLng(minLat, minLng),
+      northeast: LatLng(maxLat, maxLng),
+    );
 
     _mapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 100));
   }
@@ -584,11 +675,15 @@ class TrackingProvider extends BaseTrackingProvider {
   /// Stop tracking and cleanup
   @override
   void stopTracking() {
-    if (_trackingData != null) {
-      _socketService.leaveOrderRoom(_trackingData!.orderId);
+    final orderId = _trackingData?.orderId ?? _activeOrderId;
+    if (orderId != null) {
+      _socketService.leaveOrderRoom(orderId);
     }
     _socketService.disconnect();
+    _activeOrderId = null;
     _trackingData = null;
+    _isWaitingForRider = false;
+    _stopWaitingForRiderPolling();
     _markers = {};
     _polylines = {};
     _markerIconCache.clear();
@@ -599,11 +694,12 @@ class TrackingProvider extends BaseTrackingProvider {
   @override
   void dispose() {
     _animationTimer?.cancel();
+    _stopWaitingForRiderPolling();
     _locationSubscription?.cancel();
     _statusSubscription?.cancel();
     _connectionSubscription?.cancel();
     _markerIconCache.clear();
-    _socketService.dispose();
+    _socketService.disconnect();
     _mapController?.dispose();
     super.dispose();
   }

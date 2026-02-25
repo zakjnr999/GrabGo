@@ -94,6 +94,7 @@ io.on("connection", (socket) => {
   const userId = socket.data.userId;
   if (userId) {
     socket.join(`user:${userId}`);
+    socketService.addUserSocket(userId, socket.id);
     console.log(`✅ User ${userId} joined notification room`);
   }
 
@@ -278,6 +279,11 @@ io.on("connection", (socket) => {
 
     // SECURITY: Clean up notification room
     if (userId) {
+      socketService.removeUserSocket(userId);
+      if (socket.data.userRole === 'rider') {
+        socketService.removeRiderSocket(userId, socket.id);
+      }
+
       const userRoom = `user:${userId}`;
       socket.leave(userRoom);
 
@@ -293,22 +299,51 @@ io.on("connection", (socket) => {
 
   // ==================== ORDER TRACKING SOCKET HANDLERS ====================
 
-  // Join order tracking room (for customers tracking their orders)
-  socket.on("join_order", ({ orderId }) => {
+  // Join order tracking room (only customer/rider/admin for that order)
+  socket.on("join_order", async ({ orderId }) => {
     if (!orderId) {
       console.warn("⚠️ join_order: No orderId provided");
       return;
     }
 
-    const roomName = `order:${orderId}`;
-    socket.join(roomName);
-    console.log(`📦 User ${socket.data.userId} joined order tracking room: ${roomName}`);
+    try {
+      const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        select: { id: true, customerId: true, riderId: true },
+      });
 
-    // Store the order room in socket data for cleanup
-    if (!socket.data.orderRooms) {
-      socket.data.orderRooms = new Set();
+      if (!order) {
+        socket.emit("tracking:error", { orderId, message: "Order not found" });
+        console.warn(`⚠️ join_order: Order ${orderId} not found`);
+        return;
+      }
+
+      const userId = socket.data.userId;
+      const userRole = socket.data.userRole;
+      const isAuthorized =
+        userRole === "admin" ||
+        order.customerId === userId ||
+        (order.riderId && order.riderId === userId);
+
+      if (!isAuthorized) {
+        socket.emit("tracking:error", { orderId, message: "Not authorized to track this order" });
+        console.warn(`⚠️ Unauthorized join_order attempt. userId=${userId}, orderId=${orderId}`);
+        return;
+      }
+
+      const roomName = `order:${orderId}`;
+      socket.join(roomName);
+      console.log(`📦 User ${socket.data.userId} joined order tracking room: ${roomName}`);
+
+      // Store the order room in socket data for cleanup
+      if (!socket.data.orderRooms) {
+        socket.data.orderRooms = new Set();
+      }
+      socket.data.orderRooms.add(roomName);
+    } catch (error) {
+      console.error(`join_order error for order ${orderId}:`, error.message);
+      socket.emit("tracking:error", { orderId, message: "Failed to join tracking room" });
     }
-    socket.data.orderRooms.add(roomName);
   });
 
   // Leave order tracking room

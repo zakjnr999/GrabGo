@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import '../models/tracking_models.dart';
 
@@ -9,12 +10,15 @@ class TrackingSocketService {
   final String token;
 
   // Stream controllers for different events
-  final _locationUpdateController = StreamController<LocationUpdateEvent>.broadcast();
-  final _statusUpdateController = StreamController<StatusUpdateEvent>.broadcast();
+  final _locationUpdateController =
+      StreamController<LocationUpdateEvent>.broadcast();
+  final _statusUpdateController =
+      StreamController<StatusUpdateEvent>.broadcast();
   final _connectionController = StreamController<bool>.broadcast();
 
   // Public streams
-  Stream<LocationUpdateEvent> get locationUpdates => _locationUpdateController.stream;
+  Stream<LocationUpdateEvent> get locationUpdates =>
+      _locationUpdateController.stream;
   Stream<StatusUpdateEvent> get statusUpdates => _statusUpdateController.stream;
   Stream<bool> get connectionStatus => _connectionController.stream;
 
@@ -25,17 +29,17 @@ class TrackingSocketService {
   /// Connect to Socket.IO server
   void connect() {
     if (_socket != null && _socket!.connected) {
-      print('✅ Socket already connected');
+      debugPrint('✅ Tracking socket already connected');
       return;
     }
 
-    print('🔌 Connecting to socket: $serverUrl');
+    debugPrint('🔌 Connecting tracking socket: $serverUrl');
 
     _socket = IO.io(
       serverUrl,
       IO.OptionBuilder()
           .setTransports(['websocket'])
-          .setAuth({'token': 'Bearer $token'})
+          .setAuth({'token': token})
           .enableAutoConnect()
           .enableReconnection()
           .setReconnectionAttempts(5)
@@ -51,79 +55,102 @@ class TrackingSocketService {
   void _setupEventListeners() {
     // Connection events
     _socket?.on('connect', (_) {
-      print('✅ Socket connected successfully');
-      _connectionController.add(true);
+      debugPrint('✅ Tracking socket connected');
+      if (!_connectionController.isClosed) {
+        _connectionController.add(true);
+      }
     });
 
     _socket?.on('disconnect', (_) {
-      print('❌ Socket disconnected');
-      _connectionController.add(false);
+      debugPrint('❌ Tracking socket disconnected');
+      if (!_connectionController.isClosed) {
+        _connectionController.add(false);
+      }
     });
 
     _socket?.on('connect_error', (error) {
-      print('❌ Socket connection error: $error');
-      _connectionController.add(false);
+      debugPrint('❌ Tracking socket connection error: $error');
+      if (!_connectionController.isClosed) {
+        _connectionController.add(false);
+      }
     });
 
     _socket?.on('reconnect', (attempt) {
-      print('🔄 Socket reconnected after $attempt attempts');
-      _connectionController.add(true);
+      debugPrint('🔄 Tracking socket reconnected after $attempt attempts');
+      if (!_connectionController.isClosed) {
+        _connectionController.add(true);
+      }
     });
 
     _socket?.on('reconnect_attempt', (attempt) {
-      print('🔄 Socket reconnection attempt $attempt');
+      debugPrint('🔄 Tracking socket reconnection attempt $attempt');
     });
 
     _socket?.on('reconnect_error', (error) {
-      print('❌ Socket reconnection error: $error');
+      debugPrint('❌ Tracking socket reconnection error: $error');
     });
 
     _socket?.on('reconnect_failed', (_) {
-      print('❌ Socket reconnection failed');
-      _connectionController.add(false);
+      debugPrint('❌ Tracking socket reconnection failed');
+      if (!_connectionController.isClosed) {
+        _connectionController.add(false);
+      }
     });
 
     // Tracking events
     _socket?.on('location_update', (data) {
-      print('📍 Location update received: $data');
+      debugPrint('📍 Tracking location update: $data');
       try {
-        final event = LocationUpdateEvent.fromJson(data as Map<String, dynamic>);
-        _locationUpdateController.add(event);
+        final payload = Map<String, dynamic>.from(data as Map);
+        final event = LocationUpdateEvent.fromJson(payload);
+        if (!_locationUpdateController.isClosed) {
+          _locationUpdateController.add(event);
+        }
       } catch (e) {
-        print('❌ Error parsing location update: $e');
+        debugPrint('❌ Error parsing location update: $e');
       }
     });
 
     _socket?.on('order_status_update', (data) {
-      print('📊 Status update received: $data');
+      debugPrint('📊 Tracking status update: $data');
       try {
-        final event = StatusUpdateEvent.fromJson(data as Map<String, dynamic>);
-        _statusUpdateController.add(event);
+        final payload = Map<String, dynamic>.from(data as Map);
+        final event = StatusUpdateEvent.fromJson(payload);
+        if (!_statusUpdateController.isClosed) {
+          _statusUpdateController.add(event);
+        }
       } catch (e) {
-        print('❌ Error parsing status update: $e');
+        debugPrint('❌ Error parsing status update: $e');
       }
     });
 
     // Geofence events
-    _socket?.on('geofence_entered', (data) {
-      print('🎯 Geofence entered: $data');
-      // Handle geofence events (e.g., rider arrived at restaurant)
-    });
-
-    _socket?.on('rider_nearby', (data) {
-      print('🚴 Rider nearby: $data');
-      // Handle rider nearby event
+    _socket?.on('geofence_event', (data) {
+      debugPrint('🎯 Tracking geofence event: $data');
+      try {
+        final payload = Map<String, dynamic>.from(data as Map);
+        final event = StatusUpdateEvent(
+          orderId: payload['orderId']?.toString() ?? '',
+          status: payload['status']?.toString() ?? 'unknown',
+          message: payload['eventType']?.toString(),
+        );
+        if (!_statusUpdateController.isClosed) {
+          _statusUpdateController.add(event);
+        }
+      } catch (e) {
+        debugPrint('❌ Error parsing geofence event: $e');
+      }
     });
   }
 
   /// Join a specific order room for updates
   void joinOrderRoom(String orderId) {
     if (_socket == null || !_socket!.connected) {
-      print('❌ Cannot join room: Socket not connected');
+      debugPrint('❌ Cannot join tracking room: socket not connected');
       return;
     }
 
-    print('🚪 Joining order room: $orderId');
+    debugPrint('🚪 Joining tracking room: $orderId');
     _socket?.emit('join_order', {'orderId': orderId});
   }
 
@@ -133,7 +160,7 @@ class TrackingSocketService {
       return;
     }
 
-    print('🚪 Leaving order room: $orderId');
+    debugPrint('🚪 Leaving tracking room: $orderId');
     _socket?.emit('leave_order', {'orderId': orderId});
   }
 
@@ -141,11 +168,13 @@ class TrackingSocketService {
   void disconnect() {
     if (_socket == null) return;
 
-    print('🔌 Disconnecting socket');
+    debugPrint('🔌 Disconnecting tracking socket');
     _socket?.disconnect();
     _socket?.dispose();
     _socket = null;
-    _connectionController.add(false);
+    if (!_connectionController.isClosed) {
+      _connectionController.add(false);
+    }
   }
 
   /// Dispose all resources

@@ -14,7 +14,7 @@ const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 const LOCATION_CACHE_TTL = 30;
 const MONGO_PERSIST_INTERVAL = 10000;
 const LOCATION_HISTORY_BATCH_SIZE = 5;
-const LIFECYCLE_STATUSES = new Set(['confirmed', 'preparing', 'ready', 'picked_up', 'on_the_way', 'delivered', 'cancelled']);
+const NON_AUTHORITATIVE_LIFECYCLE_STATUSES = new Set(['confirmed', 'ready', 'on_the_way']);
 
 class TrackingService {
     constructor() {
@@ -28,22 +28,33 @@ class TrackingService {
      */
     async initializeTracking(orderId, riderId, customerId, pickupLocation, destination) {
         try {
-            const tracking = new OrderTracking({
-                orderId: orderId.toString(),
-                riderId: riderId.toString(),
-                customerId: customerId.toString(),
-                pickupLocation: {
-                    type: 'Point',
-                    coordinates: [pickupLocation.longitude, pickupLocation.latitude]
-                },
-                destination: {
-                    type: 'Point',
-                    coordinates: [destination.longitude, destination.latitude]
-                },
-                status: 'preparing'
-            });
+            const orderIdStr = orderId.toString();
+            const riderIdStr = riderId.toString();
+            const customerIdStr = customerId.toString();
 
-            await tracking.save();
+            const tracking = await OrderTracking.findOneAndUpdate(
+                { orderId: orderIdStr },
+                {
+                    $set: {
+                        riderId: riderIdStr,
+                        customerId: customerIdStr,
+                        pickupLocation: {
+                            type: 'Point',
+                            coordinates: [pickupLocation.longitude, pickupLocation.latitude]
+                        },
+                        destination: {
+                            type: 'Point',
+                            coordinates: [destination.longitude, destination.latitude]
+                        },
+                        lastUpdated: new Date()
+                    },
+                    $setOnInsert: {
+                        status: 'preparing'
+                    }
+                },
+                { upsert: true, new: true, runValidators: true }
+            );
+
             console.log(`📍 Tracking initialized in MongoDB for order ${orderId}`);
             return tracking;
         } catch (error) {
@@ -84,7 +95,9 @@ class TrackingService {
                     destination: tracking.destination,
                     pickupLocation: tracking.pickupLocation,
                     status: tracking.status,
-                    route: tracking.route
+                    route: tracking.route,
+                    distanceRemaining: tracking.distanceRemaining,
+                    estimatedArrival: tracking.estimatedArrival
                 };
 
                 // Cache tracking metadata (longer TTL since it rarely changes)
@@ -136,12 +149,26 @@ class TrackingService {
                 }
             }
 
+            const etaSeconds = typeof eta.duration === 'number' ? eta.duration : null;
+            const estimatedArrival =
+                eta.arrivalTime ||
+                (etaSeconds !== null ? new Date(now + etaSeconds * 1000) : trackingMeta.estimatedArrival || null);
+
+            trackingMeta.distanceRemaining = distance;
+            trackingMeta.estimatedArrival = estimatedArrival;
+            trackingMeta.status = status;
+            trackingMeta.route = eta.route || trackingMeta.route || null;
+            await cache.set(cacheKey, trackingMeta, 300);
+
             // Prepare update data for real-time broadcast
             const updateData = {
                 orderId: orderIdStr,
                 location: { latitude, longitude },
+                distanceRemaining: distance,
+                estimatedArrival,
+                etaSeconds,
                 distance,
-                eta: eta.duration,
+                eta: etaSeconds,
                 status,
                 route: eta.route || trackingMeta.route
             };
@@ -156,14 +183,26 @@ class TrackingService {
                 timestamp: new Date(now),
                 speed,
                 accuracy
-            }, distance, status, eta);
+            }, distance, status, {
+                arrivalTime: estimatedArrival,
+                route: updateData.route
+            });
 
             // Check geofences (automated notifications)
             if (geofenceService && typeof geofenceService.checkGeofences === 'function') {
                 await geofenceService.checkGeofences(orderId, latitude, longitude);
             }
 
-            return { ...trackingMeta, currentLocation: locationData, distance, eta: eta.duration };
+            return {
+                ...trackingMeta,
+                currentLocation: locationData,
+                status,
+                distanceRemaining: distance,
+                estimatedArrival,
+                etaSeconds,
+                distance,
+                eta: etaSeconds
+            };
         } catch (error) {
             console.error('❌ Error updating rider location:', error);
             throw error;
@@ -301,6 +340,7 @@ class TrackingService {
         await this.flushPendingLocations(orderIdStr);
         await cache.del(cache.makeKey(cache.CACHE_KEYS.ORDER_TRACKING, orderIdStr));
         await cache.del(cache.makeKey(cache.CACHE_KEYS.RIDER_LOCATION, orderIdStr));
+        await cache.del(`${cache.makeKey(cache.CACHE_KEYS.ORDER_TRACKING, orderIdStr)}:lastEta`);
         console.log(`🗑️ Cleared tracking cache for order ${orderId}`);
     }
 
@@ -569,7 +609,7 @@ class TrackingService {
         try {
             const orderIdStr = orderId.toString();
 
-            if (LIFECYCLE_STATUSES.has(status)) {
+            if (NON_AUTHORITATIVE_LIFECYCLE_STATUSES.has(status)) {
                 console.warn(`[tracking_service] Non-authoritative lifecycle status "${status}" written to tracking for order ${orderIdStr}.`);
             }
 

@@ -118,7 +118,8 @@ class RiderTrackingProvider with ChangeNotifier {
   double? get destinationLongitude => _destinationLongitude;
 
   /// Distance remaining to destination in kilometers
-  double? get distanceKm => _distanceRemaining != null ? _distanceRemaining! / 1000.0 : null;
+  double? get distanceKm =>
+      _distanceRemaining != null ? _distanceRemaining! / 1000.0 : null;
 
   /// ETA in minutes
   double? get etaMinutes => _etaMinutes;
@@ -139,31 +140,40 @@ class RiderTrackingProvider with ChangeNotifier {
 
   /// Get the pickup location as LatLng
   LatLng? get pickupLatLng =>
-      _pickupLatitude != null && _pickupLongitude != null ? LatLng(_pickupLatitude!, _pickupLongitude!) : null;
+      _pickupLatitude != null && _pickupLongitude != null
+      ? LatLng(_pickupLatitude!, _pickupLongitude!)
+      : null;
 
   /// Get the destination location as LatLng
-  LatLng? get destinationLatLng => _destinationLatitude != null && _destinationLongitude != null
+  LatLng? get destinationLatLng =>
+      _destinationLatitude != null && _destinationLongitude != null
       ? LatLng(_destinationLatitude!, _destinationLongitude!)
       : null;
 
   /// Get current rider location as LatLng
-  LatLng? get currentLatLng => _latitude != null && _longitude != null ? LatLng(_latitude!, _longitude!) : null;
+  LatLng? get currentLatLng => _latitude != null && _longitude != null
+      ? LatLng(_latitude!, _longitude!)
+      : null;
   TrackingInfo? get trackingInfo => _trackingInfo;
 
   // ============================================
   // Constructor
   // ============================================
 
-  RiderTrackingProvider({RiderTrackingService? service, RiderForegroundService? foregroundService})
-    : _trackingService = service ?? RiderTrackingService(),
-      _foregroundService = foregroundService ?? RiderForegroundService();
+  RiderTrackingProvider({
+    RiderTrackingService? service,
+    RiderForegroundService? foregroundService,
+  }) : _trackingService = service ?? RiderTrackingService(),
+       _foregroundService = foregroundService ?? RiderForegroundService();
 
   /// Initialize the foreground service (call once at app startup)
   Future<void> initializeForegroundService() async {
     await _foregroundService.initialize();
 
     // Listen for location updates from background service
-    _backgroundServiceSubscription = _foregroundService.onEvent.listen(_onBackgroundLocationUpdate);
+    _backgroundServiceSubscription = _foregroundService.onEvent.listen(
+      _onBackgroundLocationUpdate,
+    );
   }
 
   /// Handle location updates from background service
@@ -219,8 +229,14 @@ class RiderTrackingProvider with ChangeNotifier {
           orderId: orderId,
           riderId: riderId,
           customerId: customerId,
-          pickupLocation: LocationDto(latitude: pickupLatitude, longitude: pickupLongitude),
-          destination: LocationDto(latitude: destinationLatitude, longitude: destinationLongitude),
+          pickupLocation: LocationDto(
+            latitude: pickupLatitude,
+            longitude: pickupLongitude,
+          ),
+          destination: LocationDto(
+            latitude: destinationLatitude,
+            longitude: destinationLongitude,
+          ),
         ),
       );
 
@@ -258,7 +274,10 @@ class RiderTrackingProvider with ChangeNotifier {
   Future<void> _startForegroundService() async {
     try {
       final authToken = await CacheService.getAuthToken();
-      if (authToken == null || _activeOrderId == null || _activeRiderId == null || _activeCustomerId == null) {
+      if (authToken == null ||
+          _activeOrderId == null ||
+          _activeRiderId == null ||
+          _activeCustomerId == null) {
         debugPrint('⚠️ Missing data for foreground service');
         return;
       }
@@ -297,7 +316,8 @@ class RiderTrackingProvider with ChangeNotifier {
       if (trackingInfo != null) {
         _activeOrderId = orderId;
         _activeCustomerId = trackingInfo.customerId;
-        _activeRiderId = trackingInfo.riderId; // Important: set riderId for foreground service
+        _activeRiderId = trackingInfo
+            .riderId; // Important: set riderId for foreground service
         _trackingInfo = trackingInfo;
         _currentStatus = TrackingStatus.fromString(trackingInfo.status);
 
@@ -312,7 +332,8 @@ class RiderTrackingProvider with ChangeNotifier {
         }
 
         // Only resume if order is still active
-        if (_currentStatus != TrackingStatus.delivered && _currentStatus != TrackingStatus.cancelled) {
+        if (_currentStatus != TrackingStatus.delivered &&
+            _currentStatus != TrackingStatus.cancelled) {
           // Set config based on status
           _config = _currentStatus == TrackingStatus.inTransit
               ? TrackingConfig.activeDelivery
@@ -421,25 +442,63 @@ class RiderTrackingProvider with ChangeNotifier {
     }
 
     try {
-      final success = await _trackingService.updateStatus(orderId: _activeOrderId!, status: newStatus);
+      final lifecycleStatus = _mapLifecycleStatus(newStatus);
+      if (lifecycleStatus != null) {
+        final lifecycleResult = await _trackingService.updateLifecycleStatus(
+          orderId: _activeOrderId!,
+          status: lifecycleStatus,
+        );
 
-      if (success) {
-        _currentStatus = newStatus;
-
-        // Update foreground service with new status
-        await _foregroundService.updateStatus(newStatus.name);
-
-        // Update notification content based on status
-        _updateNotificationForStatus(newStatus);
-
-        notifyListeners();
-        debugPrint('✅ Status updated to: ${newStatus.name}');
+        if (!lifecycleResult.success) {
+          _setError(
+            lifecycleResult.message ??
+                'Failed to update order lifecycle status',
+          );
+          return false;
+        }
       }
 
-      return success;
+      final trackingSyncSuccess = await _trackingService.updateStatus(
+        orderId: _activeOrderId!,
+        status: newStatus,
+      );
+
+      _currentStatus = newStatus;
+
+      // Update foreground service with new status
+      await _foregroundService.updateStatus(newStatus.name);
+
+      // Update notification content based on status
+      _updateNotificationForStatus(newStatus);
+
+      if (!trackingSyncSuccess) {
+        debugPrint(
+          '⚠️ Lifecycle updated but tracking status sync failed for ${newStatus.name}',
+        );
+      }
+
+      notifyListeners();
+      debugPrint('✅ Status updated to: ${newStatus.name}');
+      return true;
     } catch (e) {
       _setError('Error updating status: $e');
       return false;
+    }
+  }
+
+  String? _mapLifecycleStatus(TrackingStatus status) {
+    switch (status) {
+      case TrackingStatus.pickedUp:
+        return 'picked_up';
+      case TrackingStatus.inTransit:
+        return 'on_the_way';
+      case TrackingStatus.delivered:
+        return 'delivered';
+      case TrackingStatus.cancelled:
+        return 'cancelled';
+      case TrackingStatus.preparing:
+      case TrackingStatus.nearby:
+        return null;
     }
   }
 
@@ -481,7 +540,9 @@ class RiderTrackingProvider with ChangeNotifier {
     // Check permissions first
     var permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.deniedForever) {
-      _setError('Location permission permanently denied. Please enable in settings.');
+      _setError(
+        'Location permission permanently denied. Please enable in settings.',
+      );
       return;
     }
     if (permission == LocationPermission.denied) {
@@ -491,7 +552,9 @@ class RiderTrackingProvider with ChangeNotifier {
         return;
       }
       if (requested == LocationPermission.deniedForever) {
-        _setError('Location permission permanently denied. Please enable in settings.');
+        _setError(
+          'Location permission permanently denied. Please enable in settings.',
+        );
         return;
       }
       permission = requested;
@@ -505,13 +568,16 @@ class RiderTrackingProvider with ChangeNotifier {
     }
 
     // Start position stream
-    _positionSubscription = Geolocator.getPositionStream(locationSettings: _buildLocationSettings()).listen(
-      _onPositionUpdate,
-      onError: (e) {
-        debugPrint('❌ Location stream error: $e');
-        _handleLocationError();
-      },
-    );
+    _positionSubscription =
+        Geolocator.getPositionStream(
+          locationSettings: _buildLocationSettings(),
+        ).listen(
+          _onPositionUpdate,
+          onError: (e) {
+            debugPrint('❌ Location stream error: $e');
+            _handleLocationError();
+          },
+        );
 
     // Also use a timer to ensure regular updates to backend
     _locationUpdateTimer = Timer.periodic(
@@ -519,7 +585,9 @@ class RiderTrackingProvider with ChangeNotifier {
       (_) => _sendLocationToBackend(),
     );
 
-    debugPrint('✅ Location updates started (interval: ${_config.updateIntervalMs}ms)');
+    debugPrint(
+      '✅ Location updates started (interval: ${_config.updateIntervalMs}ms)',
+    );
   }
 
   void _stopLocationUpdates() {
@@ -542,7 +610,10 @@ class RiderTrackingProvider with ChangeNotifier {
         distanceFilter: 5, // meters
       );
     }
-    return const LocationSettings(accuracy: LocationAccuracy.medium, distanceFilter: 15);
+    return const LocationSettings(
+      accuracy: LocationAccuracy.medium,
+      distanceFilter: 15,
+    );
   }
 
   void _onPositionUpdate(Position position) {
@@ -563,7 +634,8 @@ class RiderTrackingProvider with ChangeNotifier {
     // Send to backend (throttled by timer, but can send immediately on significant movement)
     final shouldSendImmediately =
         _lastLocationUpdateTime == null ||
-        DateTime.now().difference(_lastLocationUpdateTime!).inMilliseconds > (_config.updateIntervalMs ~/ 2);
+        DateTime.now().difference(_lastLocationUpdateTime!).inMilliseconds >
+            (_config.updateIntervalMs ~/ 2);
 
     if (shouldSendImmediately && position.accuracy < 50) {
       // Only send if accuracy is reasonable
@@ -572,10 +644,13 @@ class RiderTrackingProvider with ChangeNotifier {
   }
 
   Future<void> _sendLocationToBackend() async {
-    if (_activeOrderId == null || _latitude == null || _longitude == null) return;
+    if (_activeOrderId == null || _latitude == null || _longitude == null)
+      return;
 
     // Don't send if status is delivered or cancelled
-    if (_currentStatus == TrackingStatus.delivered || _currentStatus == TrackingStatus.cancelled) return;
+    if (_currentStatus == TrackingStatus.delivered ||
+        _currentStatus == TrackingStatus.cancelled)
+      return;
 
     try {
       final response = await _trackingService.updateLocation(
@@ -609,7 +684,10 @@ class RiderTrackingProvider with ChangeNotifier {
   Future<void> _getCurrentPosition() async {
     try {
       final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 10)),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
+        ),
       );
 
       _latitude = position.latitude;
@@ -720,7 +798,10 @@ class RiderTrackingProvider with ChangeNotifier {
     // 1. Add Rider marker (current location - "You")
     if (_latitude != null && _longitude != null) {
       if (!_markerIconCache.containsKey('rider')) {
-        _markerIconCache['rider'] = await CustomMapMarkers.createRiderMarker(name: 'You', primaryColor: primaryColor);
+        _markerIconCache['rider'] = await CustomMapMarkers.createRiderMarker(
+          name: 'You',
+          primaryColor: primaryColor,
+        );
       }
 
       markers.add(
@@ -750,7 +831,10 @@ class RiderTrackingProvider with ChangeNotifier {
           markerId: const MarkerId('pickup'),
           position: LatLng(_pickupLatitude!, _pickupLongitude!),
           icon: _markerIconCache['pickup']!,
-          infoWindow: const InfoWindow(title: 'Restaurant', snippet: 'Pickup location'),
+          infoWindow: const InfoWindow(
+            title: 'Restaurant',
+            snippet: 'Pickup location',
+          ),
           anchor: const Offset(0.5, 0.5),
           zIndexInt: 5,
         ),
@@ -760,10 +844,11 @@ class RiderTrackingProvider with ChangeNotifier {
     // 3. Add Customer/Destination marker with home icon
     if (_destinationLatitude != null && _destinationLongitude != null) {
       if (!_markerIconCache.containsKey('destination')) {
-        _markerIconCache['destination'] = await CustomMapMarkers.createDestinationMarker(
-          name: 'Delivery',
-          primaryColor: AppColors.serviceGrocery,
-        );
+        _markerIconCache['destination'] =
+            await CustomMapMarkers.createDestinationMarker(
+              name: 'Delivery',
+              primaryColor: AppColors.serviceGrocery,
+            );
       }
 
       markers.add(
@@ -771,7 +856,10 @@ class RiderTrackingProvider with ChangeNotifier {
           markerId: const MarkerId('destination'),
           position: LatLng(_destinationLatitude!, _destinationLongitude!),
           icon: _markerIconCache['destination']!,
-          infoWindow: const InfoWindow(title: 'Customer', snippet: 'Delivery address'),
+          infoWindow: const InfoWindow(
+            title: 'Customer',
+            snippet: 'Delivery address',
+          ),
           anchor: const Offset(0.5, 0.5),
           zIndexInt: 5,
         ),
@@ -837,7 +925,9 @@ class RiderTrackingProvider with ChangeNotifier {
       final polylinePoints = PolylinePoints();
       final decoded = polylinePoints.decodePolyline(encodedPolyline);
 
-      final polylineCoordinates = decoded.map((point) => LatLng(point.latitude, point.longitude)).toList();
+      final polylineCoordinates = decoded
+          .map((point) => LatLng(point.latitude, point.longitude))
+          .toList();
 
       final routePolyline = Polyline(
         polylineId: const PolylineId('route'),
@@ -899,7 +989,10 @@ class RiderTrackingProvider with ChangeNotifier {
       // Create rider marker if it doesn't exist
       const primaryColor = AppColors.serviceFood;
       if (!_markerIconCache.containsKey('rider')) {
-        _markerIconCache['rider'] = await CustomMapMarkers.createRiderMarker(name: 'You', primaryColor: primaryColor);
+        _markerIconCache['rider'] = await CustomMapMarkers.createRiderMarker(
+          name: 'You',
+          primaryColor: primaryColor,
+        );
       }
 
       _markers = {
@@ -936,7 +1029,9 @@ class RiderTrackingProvider with ChangeNotifier {
     int steps = 15;
     int currentStep = 0;
 
-    _markerAnimationTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
+    _markerAnimationTimer = Timer.periodic(const Duration(milliseconds: 50), (
+      timer,
+    ) {
       if (currentStep >= steps || _isDisposed) {
         timer.cancel();
         return;
@@ -946,7 +1041,8 @@ class RiderTrackingProvider with ChangeNotifier {
       double fraction = currentStep / steps;
 
       double lat = start.latitude + (end.latitude - start.latitude) * fraction;
-      double lng = start.longitude + (end.longitude - start.longitude) * fraction;
+      double lng =
+          start.longitude + (end.longitude - start.longitude) * fraction;
 
       _updateRiderMarkerPosition(LatLng(lat, lng), bearing);
       notifyListeners();
@@ -972,7 +1068,10 @@ class RiderTrackingProvider with ChangeNotifier {
   void _updateRiderMarkerPosition(LatLng newPosition, double rotation) {
     _markers = _markers.map((marker) {
       if (marker.markerId.value == 'rider') {
-        return marker.copyWith(positionParam: newPosition, rotationParam: rotation);
+        return marker.copyWith(
+          positionParam: newPosition,
+          rotationParam: rotation,
+        );
       }
       return marker;
     }).toSet();
@@ -1004,15 +1103,21 @@ class RiderTrackingProvider with ChangeNotifier {
     minLng -= padding;
     maxLng += padding;
 
-    final bounds = LatLngBounds(southwest: LatLng(minLat, minLng), northeast: LatLng(maxLat, maxLng));
+    final bounds = LatLngBounds(
+      southwest: LatLng(minLat, minLng),
+      northeast: LatLng(maxLat, maxLng),
+    );
 
     _mapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 80));
   }
 
   /// Center camera on rider's current location
   void centerOnRider() {
-    if (_mapController == null || _latitude == null || _longitude == null) return;
-    _mapController?.animateCamera(CameraUpdate.newLatLngZoom(LatLng(_latitude!, _longitude!), 16));
+    if (_mapController == null || _latitude == null || _longitude == null)
+      return;
+    _mapController?.animateCamera(
+      CameraUpdate.newLatLngZoom(LatLng(_latitude!, _longitude!), 16),
+    );
   }
 
   // ============================================
