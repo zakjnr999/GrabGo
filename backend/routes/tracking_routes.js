@@ -4,9 +4,23 @@ const trackingService = require('../services/tracking_service');
 const prisma = require('../config/prisma');
 const { protect } = require('../middleware/auth');
 const TRACKING_STATUSES = new Set(['preparing', 'picked_up', 'in_transit', 'nearby', 'delivered', 'cancelled']);
+const TERMINAL_TRACKING_STATUSES = new Set(['delivered', 'cancelled']);
 const NON_AUTHORITATIVE_LIFECYCLE_STATUSES = new Set(['confirmed', 'ready', 'on_the_way']);
 const TRACKING_READ_ROLES = new Set(['customer', 'rider', 'admin']);
 const TRACKING_WRITE_ROLES = new Set(['rider', 'admin']);
+const ORDER_LIFECYCLE_TO_TRACKING_STATUSES = {
+    pending: new Set(['preparing']),
+    confirmed: new Set(['preparing']),
+    preparing: new Set(['preparing']),
+    ready: new Set(['preparing']),
+    picked_up: new Set(['picked_up']),
+    on_the_way: new Set(['in_transit', 'nearby']),
+    delivered: new Set(['delivered']),
+    cancelled: new Set(['cancelled']),
+};
+
+const isValidLatitude = (value) => Number.isFinite(value) && value >= -90 && value <= 90;
+const isValidLongitude = (value) => Number.isFinite(value) && value >= -180 && value <= 180;
 
 const parseNumber = (value) => {
     if (value === null || value === undefined || value === '') return null;
@@ -19,7 +33,17 @@ const parseLocation = (location) => {
     const latitude = parseNumber(location.latitude);
     const longitude = parseNumber(location.longitude);
     if (latitude === null || longitude === null) return null;
+    if (!isValidLatitude(latitude) || !isValidLongitude(longitude)) return null;
     return { latitude, longitude };
+};
+
+const firstDefined = (...values) =>
+    values.find((value) => value !== null && value !== undefined);
+
+const isTrackingStatusAlignedWithOrderLifecycle = (orderStatus, trackingStatus) => {
+    const allowedTrackingStatuses = ORDER_LIFECYCLE_TO_TRACKING_STATUSES[orderStatus];
+    if (!allowedTrackingStatuses) return false;
+    return allowedTrackingStatuses.has(trackingStatus);
 };
 
 const getOrderForTracking = async (orderId) => {
@@ -33,6 +57,45 @@ const getOrderForTracking = async (orderId) => {
             status: true,
             deliveryLatitude: true,
             deliveryLongitude: true,
+        },
+    });
+};
+
+const getOrderForTrackingInitialization = async (orderId) => {
+    if (!orderId) return null;
+    return prisma.order.findUnique({
+        where: { id: orderId },
+        select: {
+            id: true,
+            customerId: true,
+            riderId: true,
+            status: true,
+            deliveryLatitude: true,
+            deliveryLongitude: true,
+            restaurant: {
+                select: {
+                    latitude: true,
+                    longitude: true,
+                },
+            },
+            groceryStore: {
+                select: {
+                    latitude: true,
+                    longitude: true,
+                },
+            },
+            pharmacyStore: {
+                select: {
+                    latitude: true,
+                    longitude: true,
+                },
+            },
+            grabMartStore: {
+                select: {
+                    latitude: true,
+                    longitude: true,
+                },
+            },
         },
     });
 };
@@ -77,7 +140,7 @@ router.post('/initialize', protect, async (req, res) => {
             });
         }
 
-        const order = await getOrderForTracking(orderId);
+        const order = await getOrderForTrackingInitialization(orderId);
         if (!order) {
             return res.status(404).json({
                 success: false,
@@ -98,15 +161,35 @@ router.post('/initialize', protect, async (req, res) => {
                 message: 'Order has no assigned rider yet',
             });
         }
+        if (TERMINAL_TRACKING_STATUSES.has(order.status)) {
+            return res.status(409).json({
+                success: false,
+                message: `Order is already ${order.status}; tracking cannot be initialized`,
+            });
+        }
 
-        const parsedPickup = parseLocation(pickupLocation);
-        const orderDestination =
-            parseNumber(order.deliveryLatitude) !== null && parseNumber(order.deliveryLongitude) !== null
-                ? {
-                    latitude: Number(order.deliveryLatitude),
-                    longitude: Number(order.deliveryLongitude),
-                }
-                : null;
+        const pickupLat = firstDefined(
+            order?.restaurant?.latitude,
+            order?.groceryStore?.latitude,
+            order?.pharmacyStore?.latitude,
+            order?.grabMartStore?.latitude
+        );
+        const pickupLng = firstDefined(
+            order?.restaurant?.longitude,
+            order?.groceryStore?.longitude,
+            order?.pharmacyStore?.longitude,
+            order?.grabMartStore?.longitude
+        );
+        const orderPickup = parseLocation({
+            latitude: pickupLat,
+            longitude: pickupLng,
+        });
+
+        const parsedPickup = orderPickup || parseLocation(pickupLocation);
+        const orderDestination = parseLocation({
+            latitude: order.deliveryLatitude,
+            longitude: order.deliveryLongitude,
+        });
         const parsedDestination = orderDestination || parseLocation(destination);
 
         if (!parsedPickup || !parsedDestination) {
@@ -171,10 +254,37 @@ router.post('/location', protect, async (req, res) => {
 
         const parsedLat = parseNumber(latitude);
         const parsedLng = parseNumber(longitude);
+        const parsedSpeed = parseNumber(speed);
+        const parsedAccuracy = parseNumber(accuracy);
         if (parsedLat === null || parsedLng === null) {
             return res.status(400).json({
                 success: false,
                 message: 'latitude and longitude must be valid numbers',
+            });
+        }
+        if (!isValidLatitude(parsedLat) || !isValidLongitude(parsedLng)) {
+            return res.status(400).json({
+                success: false,
+                message: 'latitude must be between -90 and 90 and longitude between -180 and 180',
+            });
+        }
+        if (parsedSpeed !== null && parsedSpeed < 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'speed must be a non-negative number',
+            });
+        }
+        if (parsedAccuracy !== null && parsedAccuracy < 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'accuracy must be a non-negative number',
+            });
+        }
+
+        if (TERMINAL_TRACKING_STATUSES.has(order.status)) {
+            return res.status(409).json({
+                success: false,
+                message: `Order is already ${order.status}; location updates are no longer accepted`,
             });
         }
 
@@ -182,8 +292,8 @@ router.post('/location', protect, async (req, res) => {
             orderId,
             parsedLat,
             parsedLng,
-            speed,
-            accuracy
+            parsedSpeed ?? 0,
+            parsedAccuracy ?? 0
         );
 
         res.json({
@@ -226,6 +336,12 @@ router.patch('/status', protect, async (req, res) => {
                 message: `Invalid tracking status: ${status}`,
             });
         }
+        if (TERMINAL_TRACKING_STATUSES.has(status)) {
+            return res.status(400).json({
+                success: false,
+                message: `Status ${status} must be updated via /orders/:orderId/status`,
+            });
+        }
 
         const order = await getOrderForTracking(orderId);
         if (!order) {
@@ -239,6 +355,18 @@ router.patch('/status', protect, async (req, res) => {
             return res.status(403).json({
                 success: false,
                 message: 'Not authorized for this order',
+            });
+        }
+        if (TERMINAL_TRACKING_STATUSES.has(order.status)) {
+            return res.status(409).json({
+                success: false,
+                message: `Order is already ${order.status}; tracking status updates are no longer accepted`,
+            });
+        }
+        if (!isTrackingStatusAlignedWithOrderLifecycle(order.status, status)) {
+            return res.status(409).json({
+                success: false,
+                message: `Tracking status "${status}" is not valid while order lifecycle status is "${order.status}". Update /orders/:orderId/status first.`,
             });
         }
 

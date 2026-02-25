@@ -1,12 +1,33 @@
 const geolib = require('geolib');
 const OrderTracking = require('../models/OrderTracking');
 const socketService = require('./socket_service');
+const cache = require('../utils/cache');
+
+const GEOFENCE_EVENT_TTL_SECONDS = 30 * 60;
+const makeGeofenceEventKey = (orderId, eventType) =>
+    `grabgo:tracking:geofence:${orderId}:${eventType}`;
 
 class GeofenceService {
 
     // Geofence radiuses in meters
     static PICKUP_RADIUS = 50; // 50 meters from restaurant
     static DELIVERY_RADIUS = 100; // 100 meters from customer
+
+    async shouldEmitGeofenceEvent(orderId, eventType) {
+        const key = makeGeofenceEventKey(orderId, eventType);
+        try {
+            const hasRecentEvent = await cache.get(key);
+            if (hasRecentEvent) {
+                return false;
+            }
+            await cache.set(key, true, GEOFENCE_EVENT_TTL_SECONDS);
+            return true;
+        } catch (error) {
+            console.error('Geofence dedupe cache error:', error.message);
+            // Fail-open: still emit event if cache is unavailable.
+            return true;
+        }
+    }
 
     // Check if rider entered any geofence zones
     async checkGeofences(orderId, riderLat, riderLng) {
@@ -30,12 +51,18 @@ class GeofenceService {
                 const distanceToPickup = geolib.getDistance(riderLocation, pickupLocation);
 
                 if (distanceToPickup <= GeofenceService.PICKUP_RADIUS) {
-                    await this.triggerGeofenceEvent(tracking, 'arrived_at_restaurant');
+                    const shouldEmit = await this.shouldEmitGeofenceEvent(
+                        tracking.orderId,
+                        'arrived_at_restaurant'
+                    );
+                    if (shouldEmit) {
+                        await this.triggerGeofenceEvent(tracking, 'arrived_at_restaurant');
+                    }
                 }
             }
 
             // Check delivery geofence
-            if (tracking.status === 'in_transit') {
+            if (tracking.status !== 'delivered' && tracking.status !== 'cancelled') {
                 const deliveryLocation = {
                     latitude: tracking.destination.coordinates[1],
                     longitude: tracking.destination.coordinates[0]
@@ -44,11 +71,19 @@ class GeofenceService {
                 const distanceToDelivery = geolib.getDistance(riderLocation, deliveryLocation);
 
                 if (distanceToDelivery <= GeofenceService.DELIVERY_RADIUS) {
-                    tracking.status = 'nearby';
-                    tracking.lastUpdated = new Date();
-                    await tracking.save();
+                    if (tracking.status === 'in_transit') {
+                        tracking.status = 'nearby';
+                        tracking.lastUpdated = new Date();
+                        await tracking.save();
+                    }
 
-                    await this.triggerGeofenceEvent(tracking, "arrived_at_customer");
+                    const shouldEmit = await this.shouldEmitGeofenceEvent(
+                        tracking.orderId,
+                        'arrived_at_customer'
+                    );
+                    if (shouldEmit) {
+                        await this.triggerGeofenceEvent(tracking, "arrived_at_customer");
+                    }
                 }
             }
 

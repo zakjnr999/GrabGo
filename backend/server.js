@@ -46,6 +46,13 @@ socketService.initialize(io);
 // offline for a chat when all of their sockets for that chat have
 // disconnected.
 const chatPresence = new Map(); // key: `${chatId}:${userId}`, value: connection count
+const parseCoordinate = (value) => {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+const isValidLatitude = (value) => Number.isFinite(value) && value >= -90 && value <= 90;
+const isValidLongitude = (value) => Number.isFinite(value) && value >= -180 && value <= 180;
 
 io.use(async (socket, next) => {
   try {
@@ -375,10 +382,25 @@ io.on("connection", (socket) => {
       // Update rider's online status in MongoDB RiderStatus
       const RiderStatus = require('./models/RiderStatus');
       const { latitude, longitude, batteryLevel, isCharging } = data || {};
+      const parsedLat = parseCoordinate(latitude);
+      const parsedLon = parseCoordinate(longitude);
+      const hasProvidedLatitude = latitude !== null && latitude !== undefined && latitude !== '';
+      const hasProvidedLongitude = longitude !== null && longitude !== undefined && longitude !== '';
+
+      if (
+        (hasProvidedLatitude && (parsedLat === null || !isValidLatitude(parsedLat))) ||
+        (hasProvidedLongitude && (parsedLon === null || !isValidLongitude(parsedLon)))
+      ) {
+        socket.emit('rider:status', {
+          online: false,
+          message: 'Invalid coordinates provided',
+        });
+        return;
+      }
 
       // Use provided location or default
-      const lat = latitude || 5.6037;
-      const lon = longitude || -0.187;
+      const lat = parsedLat ?? 5.6037;
+      const lon = parsedLon ?? -0.187;
       const battery = typeof batteryLevel === 'number' ? batteryLevel : 100;
       const charging = isCharging === true;
 
@@ -424,14 +446,16 @@ io.on("connection", (socket) => {
     if (userRole !== 'rider') return;
 
     const { latitude, longitude, batteryLevel, isCharging } = data || {};
-    if (!latitude || !longitude) return;
+    const parsedLat = parseCoordinate(latitude);
+    const parsedLon = parseCoordinate(longitude);
+    if (!isValidLatitude(parsedLat) || !isValidLongitude(parsedLon)) return;
 
     try {
       // Update location in MongoDB RiderStatus
       const RiderStatus = require('./models/RiderStatus');
 
       const updateData = {
-        'location.coordinates': [parseFloat(longitude), parseFloat(latitude)],
+        'location.coordinates': [parsedLon, parsedLat],
         lastLocationUpdate: new Date(),
         lastActiveAt: new Date()
       };

@@ -42,7 +42,7 @@ class TrackingSocketService {
           .setAuth({'token': token})
           .enableAutoConnect()
           .enableReconnection()
-          .setReconnectionAttempts(5)
+          .setReconnectionAttempts(50)
           .setReconnectionDelay(2000)
           .build(),
     );
@@ -95,6 +95,10 @@ class TrackingSocketService {
       if (!_connectionController.isClosed) {
         _connectionController.add(false);
       }
+    });
+
+    _socket?.on('tracking:error', (data) {
+      debugPrint('⚠️ Tracking socket server error: $data');
     });
 
     // Tracking events

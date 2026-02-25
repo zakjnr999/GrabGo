@@ -35,6 +35,7 @@ class TrackingProvider extends BaseTrackingProvider {
   static const int _animationDurationMs = 1500; // Total animation duration
   static const int _animationFrameMs = 16; // ~60fps
   static const int _animationSteps = _animationDurationMs ~/ _animationFrameMs;
+  static const int _maxLocationHistoryPoints = 300;
 
   // Subscriptions
   StreamSubscription? _locationSubscription;
@@ -412,6 +413,12 @@ class TrackingProvider extends BaseTrackingProvider {
     updatedHistory.add(
       LocationHistory(location: event.location, timestamp: DateTime.now()),
     );
+    if (updatedHistory.length > _maxLocationHistoryPoints) {
+      updatedHistory.removeRange(
+        0,
+        updatedHistory.length - _maxLocationHistoryPoints,
+      );
+    }
 
     // Update tracking data
     _trackingData = TrackingData(

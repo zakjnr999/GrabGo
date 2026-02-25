@@ -515,10 +515,16 @@ class RiderTrackingProvider with ChangeNotifier {
         }
       }
 
-      final trackingSyncSuccess = await _trackingService.updateStatus(
-        orderId: _activeOrderId!,
-        status: newStatus,
-      );
+      bool trackingSyncSuccess = true;
+      final shouldSyncTracking =
+          newStatus != TrackingStatus.delivered &&
+          newStatus != TrackingStatus.cancelled;
+      if (shouldSyncTracking) {
+        trackingSyncSuccess = await _trackingService.updateStatus(
+          orderId: _activeOrderId!,
+          status: newStatus,
+        );
+      }
 
       _currentStatus = newStatus;
 

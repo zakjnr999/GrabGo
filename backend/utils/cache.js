@@ -42,7 +42,6 @@ const initRedis = () => {
             enableReadyCheck: true,
             lazyConnect: true,
         });
-
         redisClient.on('connect', () => {
             console.log('[Cache] Redis connected successfully');
             useRedis = true;

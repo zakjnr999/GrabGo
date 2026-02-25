@@ -25,7 +25,8 @@ class _OrdersPageState extends State<OrdersPage> {
   bool _routeOptimizationEnabled = true;
   bool _showDropPoints = false;
 
-  final AvailableOrdersService _availableOrdersService = AvailableOrdersService();
+  final AvailableOrdersService _availableOrdersService =
+      AvailableOrdersService();
   final battery = Battery();
   List<AvailableOrderDto> _availableOrders = [];
   OrderStatistics? _statistics;
@@ -60,14 +61,16 @@ class _OrdersPageState extends State<OrdersPage> {
       if (!mounted) return;
       setState(() {
         _isBatteryLow = level < 20;
-        _isCharging = state == BatteryState.charging || state == BatteryState.full;
+        _isCharging =
+            state == BatteryState.charging || state == BatteryState.full;
       });
 
       _batterySubscription = battery.onBatteryStateChanged.listen((state) {
         debugPrint('🔋 Battery state changed to: $state');
         if (!mounted) return;
         setState(() {
-          _isCharging = state == BatteryState.charging || state == BatteryState.full;
+          _isCharging =
+              state == BatteryState.charging || state == BatteryState.full;
         });
       });
     } catch (e) {
@@ -109,7 +112,10 @@ class _OrdersPageState extends State<OrdersPage> {
       }
 
       final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 100),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 100,
+        ),
       );
 
       if (!mounted) return;
@@ -118,7 +124,9 @@ class _OrdersPageState extends State<OrdersPage> {
         _currentLon = position.longitude;
       });
 
-      debugPrint('Location obtained: ${position.latitude}, ${position.longitude}');
+      debugPrint(
+        'Location obtained: ${position.latitude}, ${position.longitude}',
+      );
     } catch (e) {
       debugPrint('Error getting location: $e');
     }
@@ -131,7 +139,10 @@ class _OrdersPageState extends State<OrdersPage> {
     });
 
     try {
-      final result = await _availableOrdersService.getAvailableOrders(lat: _currentLat, lon: _currentLon);
+      final result = await _availableOrdersService.getAvailableOrders(
+        lat: _currentLat,
+        lon: _currentLon,
+      );
 
       if (!mounted) return;
       setState(() {
@@ -167,7 +178,9 @@ class _OrdersPageState extends State<OrdersPage> {
         statusBarIconBrightness: isDark ? Brightness.dark : Brightness.light,
         systemNavigationBarColor: colors.backgroundPrimary,
         systemNavigationBarDividerColor: Colors.transparent,
-        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        systemNavigationBarIconBrightness: isDark
+            ? Brightness.light
+            : Brightness.dark,
       ),
       child: Scaffold(
         backgroundColor: colors.backgroundSecondary,
@@ -180,7 +193,10 @@ class _OrdersPageState extends State<OrdersPage> {
               package: 'grab_go_shared',
               width: 24.w,
               height: 24.w,
-              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(
+                colors.textPrimary,
+                BlendMode.srcIn,
+              ),
             ),
             onPressed: () => context.pop(),
           ),
@@ -202,7 +218,10 @@ class _OrdersPageState extends State<OrdersPage> {
                 package: 'grab_go_shared',
                 width: 22.w,
                 height: 22.w,
-                colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                colorFilter: ColorFilter.mode(
+                  colors.textPrimary,
+                  BlendMode.srcIn,
+                ),
               ),
               onPressed: () {
                 context.push('/availableOrdersMap');
@@ -210,7 +229,9 @@ class _OrdersPageState extends State<OrdersPage> {
             ),
           ],
           bottom: PreferredSize(
-            preferredSize: _showBatteryWarning ? const Size.fromHeight(40) : Size.zero,
+            preferredSize: _showBatteryWarning
+                ? const Size.fromHeight(40)
+                : Size.zero,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,
@@ -221,7 +242,10 @@ class _OrdersPageState extends State<OrdersPage> {
                   opacity: _showBatteryWarning ? 1.0 : 0.0,
                   child: Container(
                     width: double.infinity,
-                    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 16.w,
+                      vertical: 8.h,
+                    ),
                     color: colors.warning,
                     child: Row(
                       children: [
@@ -230,13 +254,20 @@ class _OrdersPageState extends State<OrdersPage> {
                           package: 'grab_go_shared',
                           width: 16.w,
                           height: 16.w,
-                          colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                          colorFilter: ColorFilter.mode(
+                            Colors.white,
+                            BlendMode.srcIn,
+                          ),
                         ),
                         SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             'Low battery. Consider charging before accepting new orders.',
-                            style: TextStyle(fontSize: 11.sp, color: Colors.white, fontWeight: FontWeight.w500),
+                            style: TextStyle(
+                              fontSize: 11.sp,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ],
@@ -263,25 +294,40 @@ class _OrdersPageState extends State<OrdersPage> {
           children: [
             Container(
               padding: EdgeInsets.all(32.w),
-              decoration: BoxDecoration(color: colors.accentGreen.withValues(alpha: 0.1), shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: colors.accentGreen.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
               child: SvgPicture.asset(
                 Assets.icons.search,
                 package: 'grab_go_shared',
                 width: 64.w,
                 height: 64.w,
-                colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                colorFilter: ColorFilter.mode(
+                  colors.accentGreen,
+                  BlendMode.srcIn,
+                ),
               ),
             ),
             SizedBox(height: 32.h),
             Text(
               "No Orders Nearby",
-              style: TextStyle(color: colors.textPrimary, fontSize: 20.sp, fontWeight: FontWeight.w800),
+              style: TextStyle(
+                color: colors.textPrimary,
+                fontSize: 20.sp,
+                fontWeight: FontWeight.w800,
+              ),
               textAlign: TextAlign.center,
             ),
             SizedBox(height: 12.h),
             Text(
               "We couldn't find any orders in your current area. Try moving to a busier location or refresh to check again.",
-              style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w400, height: 1.5),
+              style: TextStyle(
+                color: colors.textSecondary,
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w400,
+                height: 1.5,
+              ),
               textAlign: TextAlign.center,
             ),
             SizedBox(height: 40.h),
@@ -293,7 +339,11 @@ class _OrdersPageState extends State<OrdersPage> {
                 buttonText: "Refresh Range",
                 backgroundColor: colors.accentGreen,
                 borderRadius: KBorderSize.borderRadius4,
-                textStyle: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w700),
+                textStyle: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ],
@@ -317,7 +367,9 @@ class _OrdersPageState extends State<OrdersPage> {
                   padding: EdgeInsets.all(20.w),
                   decoration: BoxDecoration(
                     color: colors.backgroundPrimary,
-                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                    borderRadius: BorderRadius.circular(
+                      KBorderSize.borderRadius4,
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -330,20 +382,30 @@ class _OrdersPageState extends State<OrdersPage> {
                             decoration: BoxDecoration(
                               color: colors.accentGreen,
                               shape: BoxShape.circle,
-                              border: Border.all(color: colors.backgroundSecondary, width: 3),
+                              border: Border.all(
+                                color: colors.backgroundSecondary,
+                                width: 3,
+                              ),
                             ),
                             child: Center(
                               child: Container(
                                 width: 8.w,
                                 height: 8.w,
-                                decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
+                                decoration: BoxDecoration(
+                                  color: colors.backgroundSecondary,
+                                  shape: BoxShape.circle,
+                                ),
                               ),
                             ),
                           ),
                           SizedBox(width: 12.w),
                           Text(
                             "From your location",
-                            style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                              color: colors.textPrimary,
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ],
                       ),
@@ -365,12 +427,16 @@ class _OrdersPageState extends State<OrdersPage> {
                                 ),
                                 SizedBox(height: 4.h),
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceEvenly,
                                   children: List.generate(3, (index) {
                                     return Container(
                                       width: 6.w,
                                       height: 6.w,
-                                      decoration: BoxDecoration(color: colors.accentGreen, shape: BoxShape.circle),
+                                      decoration: BoxDecoration(
+                                        color: colors.accentGreen,
+                                        shape: BoxShape.circle,
+                                      ),
                                     );
                                   }),
                                 ),
@@ -387,10 +453,15 @@ class _OrdersPageState extends State<OrdersPage> {
                                 });
                               },
                               child: Container(
-                                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 12.w,
+                                  vertical: 8.h,
+                                ),
                                 decoration: BoxDecoration(
                                   color: colors.backgroundSecondary,
-                                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                                  borderRadius: BorderRadius.circular(
+                                    KBorderSize.borderRadius4,
+                                  ),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -407,7 +478,9 @@ class _OrdersPageState extends State<OrdersPage> {
                                     ),
                                     SizedBox(width: 6.w),
                                     Icon(
-                                      _showDropPoints ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                                      _showDropPoints
+                                          ? Icons.keyboard_arrow_up
+                                          : Icons.keyboard_arrow_down,
                                       size: 16.w,
                                       color: colors.textSecondary,
                                     ),
@@ -426,12 +499,15 @@ class _OrdersPageState extends State<OrdersPage> {
                             ? Column(
                                 children: [
                                   SizedBox(height: 12.h),
-                                  ...List.generate(_availableOrders.length, (index) {
+                                  ...List.generate(_availableOrders.length, (
+                                    index,
+                                  ) {
                                     final order = _availableOrders[index];
                                     return Padding(
                                       padding: EdgeInsets.only(bottom: 12.h),
                                       child: Row(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Container(
                                             margin: EdgeInsets.only(top: 6.h),
@@ -473,14 +549,21 @@ class _OrdersPageState extends State<OrdersPage> {
                               package: 'grab_go_shared',
                               width: 20.w,
                               height: 20.w,
-                              colorFilter: ColorFilter.mode(colors.error, BlendMode.srcIn),
+                              colorFilter: ColorFilter.mode(
+                                colors.error,
+                                BlendMode.srcIn,
+                              ),
                             ),
                           ),
                           SizedBox(width: 12.w),
                           Expanded(
                             child: Text(
                               _farthestDropAddress,
-                              style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                              style: TextStyle(
+                                color: colors.textPrimary,
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w500,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -497,7 +580,9 @@ class _OrdersPageState extends State<OrdersPage> {
                   padding: EdgeInsets.all(20.w),
                   decoration: BoxDecoration(
                     color: colors.backgroundPrimary,
-                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                    borderRadius: BorderRadius.circular(
+                      KBorderSize.borderRadius4,
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -643,7 +728,9 @@ class _OrdersPageState extends State<OrdersPage> {
                   padding: EdgeInsets.all(20.w),
                   decoration: BoxDecoration(
                     color: colors.backgroundPrimary,
-                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                    borderRadius: BorderRadius.circular(
+                      KBorderSize.borderRadius4,
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -662,7 +749,11 @@ class _OrdersPageState extends State<OrdersPage> {
                       Expanded(
                         child: Text(
                           "Use traffic-aware route optimization to plan my deliveries",
-                          style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                            color: colors.textPrimary,
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ],
@@ -679,7 +770,11 @@ class _OrdersPageState extends State<OrdersPage> {
           decoration: BoxDecoration(
             color: colors.backgroundPrimary,
             boxShadow: [
-              BoxShadow(color: colors.shadow.withValues(alpha: 0.1), blurRadius: 5, offset: const Offset(0, -2)),
+              BoxShadow(
+                color: colors.shadow.withValues(alpha: 0.1),
+                blurRadius: 5,
+                offset: const Offset(0, -2),
+              ),
             ],
           ),
           child: SafeArea(
@@ -689,8 +784,12 @@ class _OrdersPageState extends State<OrdersPage> {
                 Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: _isLoadingOrders ? colors.accentGreen.withValues(alpha: 0.4) : colors.accentGreen,
-                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                    color: _isLoadingOrders
+                        ? colors.accentGreen.withValues(alpha: 0.4)
+                        : colors.accentGreen,
+                    borderRadius: BorderRadius.circular(
+                      KBorderSize.borderRadius4,
+                    ),
                   ),
                   child: Material(
                     color: Colors.transparent,
@@ -703,10 +802,11 @@ class _OrdersPageState extends State<OrdersPage> {
                                 backgroundColor: colors.accentGreen,
                                 gravity: ToastGravity.CENTER,
                                 radius: KBorderSize.borderRadius4,
-                                message: "Loading available orders, please wait...",
+                                message:
+                                    "Loading available orders, please wait...",
                               )
                             : context.push(
-                                '/order-confirmation',
+                                '/orderConfirmation',
                                 extra: {
                                   'orderId': 'ORD-12345',
                                   'restaurantName': 'Pizza Palace',
@@ -715,7 +815,10 @@ class _OrdersPageState extends State<OrdersPage> {
                                   'customerAddress': '123 Main Street, Accra',
                                   'customerPhone': '+233 123 456 789',
                                   'orderTotal': 'GHS 45.00',
-                                  'orderItems': ['Pizza Margherita x1', 'Coca Cola x2'],
+                                  'orderItems': [
+                                    'Pizza Margherita x1',
+                                    'Coca Cola x2',
+                                  ],
                                   'specialInstructions': 'Ring doorbell twice',
                                   'customerId': 'test-customer-123',
                                   'riderId': 'test-rider-456',
@@ -726,9 +829,14 @@ class _OrdersPageState extends State<OrdersPage> {
                                 },
                               );
                       },
-                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius8),
+                      borderRadius: BorderRadius.circular(
+                        KBorderSize.borderRadius8,
+                      ),
                       child: Padding(
-                        padding: EdgeInsets.symmetric(vertical: 18.h, horizontal: 20.w),
+                        padding: EdgeInsets.symmetric(
+                          vertical: 18.h,
+                          horizontal: 20.w,
+                        ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -737,12 +845,19 @@ class _OrdersPageState extends State<OrdersPage> {
                               package: 'grab_go_shared',
                               width: 24.w,
                               height: 24.w,
-                              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                              colorFilter: const ColorFilter.mode(
+                                Colors.white,
+                                BlendMode.srcIn,
+                              ),
                             ),
                             SizedBox(width: 12.w),
                             Text(
                               "Accept ${_isLoadingOrders ? "..." : _availableOrders.length} Available Orders",
-                              style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w700),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ],
                         ),
@@ -759,15 +874,24 @@ class _OrdersPageState extends State<OrdersPage> {
                   },
                   child: Container(
                     width: double.infinity,
-                    padding: EdgeInsets.symmetric(vertical: 18.h, horizontal: 20.w),
+                    padding: EdgeInsets.symmetric(
+                      vertical: 18.h,
+                      horizontal: 20.w,
+                    ),
                     decoration: BoxDecoration(
                       color: colors.inputBorder,
-                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                      borderRadius: BorderRadius.circular(
+                        KBorderSize.borderRadius4,
+                      ),
                     ),
                     child: Center(
                       child: Text(
                         "No, I'll custom select orders",
-                        style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                        style: TextStyle(
+                          color: colors.textSecondary,
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ),

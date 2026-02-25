@@ -6,6 +6,7 @@ const { protect, authorize } = require("../middleware/auth");
 const { uploadSingle, uploadToCloudinary } = require("../middleware/upload");
 const { cacheMiddleware } = require("../middleware/cache");
 const cache = require("../utils/cache");
+const trackingService = require("../services/tracking_service");
 const { sendOrderNotification, sendToUser } = require("../services/fcm_service");
 const { createNotification } = require("../services/notification_service");
 const ReferralService = require("../services/referral_service");
@@ -71,10 +72,33 @@ const STATUS_UPDATE_ROLE_RULES = {
   rider: new Set(["picked_up", "on_the_way", "delivered", "cancelled"]),
   admin: null,
 };
+const ALLOWED_ORDER_STATUS_TRANSITIONS = {
+  pending: new Set(["confirmed", "preparing", "cancelled"]),
+  confirmed: new Set(["preparing", "ready", "picked_up", "cancelled"]),
+  preparing: new Set(["ready", "picked_up", "cancelled"]),
+  ready: new Set(["picked_up", "cancelled"]),
+  picked_up: new Set(["on_the_way", "delivered", "cancelled"]),
+  on_the_way: new Set(["delivered", "cancelled"]),
+  delivered: new Set(),
+  cancelled: new Set(),
+};
+const canTransitionOrderStatus = (currentStatus, nextStatus, actorRole) => {
+  if (currentStatus === nextStatus) return true;
+  if (actorRole === "admin") return true;
+  const allowed = ALLOWED_ORDER_STATUS_TRANSITIONS[currentStatus];
+  return Boolean(allowed && allowed.has(nextStatus));
+};
 const DISPATCH_TRIGGER_STATUSES = new Set(["preparing", "ready"]);
 const shouldTriggerDispatchForStatus = (status) =>
   DISPATCH_TRIGGER_STATUSES.has(status) ||
   (featureFlags.isConfirmedPredispatchEnabled && status === "confirmed");
+const ORDER_TO_TRACKING_STATUS_MAP = {
+  preparing: "preparing",
+  picked_up: "picked_up",
+  on_the_way: "in_transit",
+  delivered: "delivered",
+  cancelled: "cancelled",
+};
 const shouldTriggerDispatchForOrder = (order, status = order?.status) => {
   if (!order) return false;
   if (order.paymentMethod === "cash") {
@@ -3095,6 +3119,24 @@ router.put(
         });
       }
 
+      if (order.status === status) {
+        return res.json({
+          success: true,
+          message: `Order is already ${status}`,
+          data: sanitizeOrderPayload(order),
+        });
+      }
+
+      if (!canTransitionOrderStatus(order.status, status, req.user.role)) {
+        return res.status(409).json({
+          success: false,
+          message: `Invalid order status transition from ${order.status} to ${status}`,
+          code: "INVALID_ORDER_STATUS_TRANSITION",
+          currentStatus: order.status,
+          requestedStatus: status,
+        });
+      }
+
       const rawCancellationReason = typeof cancellationReason === "string" ? cancellationReason.trim() : "";
       const isCodNoShowCancellation =
         status === "cancelled" &&
@@ -3521,6 +3563,23 @@ router.put(
       if (status === 'cancelled') {
         dispatchService.cancelOrderReservations(orderId).catch(err => {
           console.error(`Error cancelling reservations for order ${orderId}:`, err.message);
+        });
+      }
+
+      const trackingStatus = ORDER_TO_TRACKING_STATUS_MAP[status];
+      if (trackingStatus) {
+        trackingService.updateOrderStatus(orderId, trackingStatus).catch((trackingError) => {
+          const message = String(trackingError?.message || "");
+          if (message.toLowerCase().includes("tracking not found")) {
+            console.warn(
+              `[orders/status] Tracking missing for order ${orderId}; skipped tracking sync (${trackingStatus})`
+            );
+            return;
+          }
+          console.error(
+            `[orders/status] Failed to sync tracking status (${trackingStatus}) for order ${orderId}:`,
+            trackingError?.message || trackingError
+          );
         });
       }
 

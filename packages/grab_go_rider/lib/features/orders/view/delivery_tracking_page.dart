@@ -930,19 +930,9 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
 
     // Mark as picked up
     final pickedUpSuccess = await trackingProvider.markAsPickedUp();
-    if (pickedUpSuccess) {
-      debugPrint('✅ Order marked as picked up');
-    }
-
-    // Mark as in transit (starts high-frequency location updates)
-    final inTransitSuccess = await trackingProvider.markAsInTransit();
-    if (inTransitSuccess) {
-      debugPrint('✅ Order marked as in transit');
-    }
-
     if (!mounted) return;
 
-    if (!pickedUpSuccess || !inTransitSuccess) {
+    if (!pickedUpSuccess) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -954,6 +944,27 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
       );
       return;
     }
+
+    debugPrint('✅ Order marked as picked up');
+
+    // Mark as in transit (starts high-frequency location updates)
+    final inTransitSuccess = await trackingProvider.markAsInTransit();
+    if (!mounted) return;
+
+    if (!inTransitSuccess) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            trackingProvider.lastError ??
+                "Failed to update order status. Please try again.",
+          ),
+          backgroundColor: colors.error,
+        ),
+      );
+      return;
+    }
+
+    debugPrint('✅ Order marked as in transit');
 
     setState(() {
       _currentPhase = "delivery";

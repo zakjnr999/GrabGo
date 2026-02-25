@@ -59,6 +59,17 @@ const updateWalletBalance = async (userId) => {
 const firstDefined = (...values) =>
   values.find((value) => value !== null && value !== undefined);
 
+const parseCoordinate = (value) => {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const isValidLatitude = (value) => Number.isFinite(value) && value >= -90 && value <= 90;
+const isValidLongitude = (value) => Number.isFinite(value) && value >= -180 && value <= 180;
+const hasValidCoordinatePair = (latitude, longitude) =>
+  isValidLatitude(latitude) && isValidLongitude(longitude);
+
 const getPickupLocation = (order) => ({
   latitude: firstDefined(
     order?.restaurant?.latitude,
@@ -527,16 +538,18 @@ router.post(
         await OrderTracking.findOneAndDelete({ orderId: updatedOrder.id });
 
         const pickupLocation = getPickupLocation(updatedOrder);
-        const pickupLat = pickupLocation.latitude;
-        const pickupLon = pickupLocation.longitude;
+        const pickupLat = parseCoordinate(pickupLocation.latitude);
+        const pickupLon = parseCoordinate(pickupLocation.longitude);
+        const deliveryLat = parseCoordinate(updatedOrder.deliveryLatitude);
+        const deliveryLon = parseCoordinate(updatedOrder.deliveryLongitude);
 
-        if (pickupLat && pickupLon && updatedOrder.deliveryLatitude && updatedOrder.deliveryLongitude) {
+        if (hasValidCoordinatePair(pickupLat, pickupLon) && hasValidCoordinatePair(deliveryLat, deliveryLon)) {
           await trackingService.initializeTracking(
             updatedOrder.id,
             riderId,
             updatedOrder.customerId,
             { latitude: pickupLat, longitude: pickupLon },
-            { latitude: updatedOrder.deliveryLatitude, longitude: updatedOrder.deliveryLongitude }
+            { latitude: deliveryLat, longitude: deliveryLon }
           );
         }
       } catch (trackingError) {
@@ -553,17 +566,19 @@ router.post(
 
         if (riderStatus?.location?.coordinates) {
           const pickupLocation = getPickupLocation(updatedOrder);
-          const pickupLat = pickupLocation.latitude;
-          const pickupLon = pickupLocation.longitude;
+          const pickupLat = parseCoordinate(pickupLocation.latitude);
+          const pickupLon = parseCoordinate(pickupLocation.longitude);
+          const deliveryLat = parseCoordinate(updatedOrder.deliveryLatitude);
+          const deliveryLon = parseCoordinate(updatedOrder.deliveryLongitude);
 
           // Get vendor prep time
           const vendorPrepTime = getVendorPrepTime(updatedOrder);
 
-          if (pickupLat && pickupLon && updatedOrder.deliveryLatitude && updatedOrder.deliveryLongitude) {
+          if (hasValidCoordinatePair(pickupLat, pickupLon) && hasValidCoordinatePair(deliveryLat, deliveryLon)) {
             deliveryWindow = await trackingService.calculateInitialDeliveryWindow(
               { latitude: riderStatus.location.coordinates[1], longitude: riderStatus.location.coordinates[0] },
               { latitude: pickupLat, longitude: pickupLon },
-              { latitude: updatedOrder.deliveryLatitude, longitude: updatedOrder.deliveryLongitude },
+              { latitude: deliveryLat, longitude: deliveryLon },
               updatedOrder.status,
               vendorPrepTime,
               riderId,
@@ -775,8 +790,23 @@ router.post(
 
       // Use provided location or default to Accra
       // Note: GeoJSON uses [longitude, latitude] order
-      const lat = latitude || 5.6037;
-      const lon = longitude || -0.187;
+      const parsedLat = parseCoordinate(latitude);
+      const parsedLon = parseCoordinate(longitude);
+      const hasProvidedLatitude = latitude !== null && latitude !== undefined && latitude !== "";
+      const hasProvidedLongitude = longitude !== null && longitude !== undefined && longitude !== "";
+
+      if (
+        (hasProvidedLatitude && (parsedLat === null || !isValidLatitude(parsedLat))) ||
+        (hasProvidedLongitude && (parsedLon === null || !isValidLongitude(parsedLon)))
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Latitude must be between -90 and 90 and longitude between -180 and 180",
+        });
+      }
+
+      const lat = parsedLat ?? 5.6037;
+      const lon = parsedLon ?? -0.187;
 
       // Battery level (0-100), default to 100 if not provided
       const battery = typeof batteryLevel === 'number' ? Math.min(100, Math.max(0, batteryLevel)) : 100;
@@ -930,11 +960,13 @@ router.post(
     try {
       const userId = req.user.id;
       const { latitude, longitude, batteryLevel, isCharging } = req.body;
+      const parsedLat = parseCoordinate(latitude);
+      const parsedLon = parseCoordinate(longitude);
 
-      if (!latitude || !longitude) {
+      if (!hasValidCoordinatePair(parsedLat, parsedLon)) {
         return res.status(400).json({
           success: false,
-          message: "Latitude and longitude are required"
+          message: "Latitude must be between -90 and 90 and longitude between -180 and 180"
         });
       }
 
@@ -942,7 +974,7 @@ router.post(
       const updateData = {
         location: {
           type: 'Point',
-          coordinates: [parseFloat(longitude), parseFloat(latitude)]
+          coordinates: [parsedLon, parsedLat]
         },
         lastActiveAt: new Date(),
         lastLocationUpdate: new Date()
@@ -1368,15 +1400,25 @@ router.post(
         // Delete any existing tracking (in case order was previously cancelled)
         await OrderTracking.findOneAndDelete({ orderId: updatedOrder.id });
 
+        const pickupLocation = getPickupLocation(updatedOrder);
+        const pickupLat = parseCoordinate(pickupLocation.latitude);
+        const pickupLon = parseCoordinate(pickupLocation.longitude);
+        const deliveryLat = parseCoordinate(updatedOrder.deliveryLatitude);
+        const deliveryLon = parseCoordinate(updatedOrder.deliveryLongitude);
+
+        if (!hasValidCoordinatePair(pickupLat, pickupLon) || !hasValidCoordinatePair(deliveryLat, deliveryLon)) {
+          throw new Error("Invalid pickup/destination coordinates for tracking initialization");
+        }
+
         // Initialize fresh tracking
         await trackingService.initializeTracking(
           updatedOrder.id,
           updatedOrder.riderId,
           updatedOrder.customerId,
-          getPickupLocation(updatedOrder),
+          { latitude: pickupLat, longitude: pickupLon },
           {
-            latitude: updatedOrder.deliveryLatitude,
-            longitude: updatedOrder.deliveryLongitude
+            latitude: deliveryLat,
+            longitude: deliveryLon
           }
         );
         console.log(`📍 Tracking initialized for order ${updatedOrder.id}`);
@@ -1395,17 +1437,19 @@ router.post(
 
         if (riderStatus?.location?.coordinates) {
           const pickupLocation = getPickupLocation(updatedOrder);
-          const pickupLat = pickupLocation.latitude;
-          const pickupLon = pickupLocation.longitude;
+          const pickupLat = parseCoordinate(pickupLocation.latitude);
+          const pickupLon = parseCoordinate(pickupLocation.longitude);
+          const deliveryLat = parseCoordinate(updatedOrder.deliveryLatitude);
+          const deliveryLon = parseCoordinate(updatedOrder.deliveryLongitude);
 
           // Get vendor prep time
           const vendorPrepTime = getVendorPrepTime(updatedOrder);
 
-          if (pickupLat && pickupLon && updatedOrder.deliveryLatitude && updatedOrder.deliveryLongitude) {
+          if (hasValidCoordinatePair(pickupLat, pickupLon) && hasValidCoordinatePair(deliveryLat, deliveryLon)) {
             deliveryWindow = await trackingService.calculateInitialDeliveryWindow(
               { latitude: riderStatus.location.coordinates[1], longitude: riderStatus.location.coordinates[0] },
               { latitude: pickupLat, longitude: pickupLon },
-              { latitude: updatedOrder.deliveryLatitude, longitude: updatedOrder.deliveryLongitude },
+              { latitude: deliveryLat, longitude: deliveryLon },
               updatedOrder.status,
               vendorPrepTime,
               riderId,
