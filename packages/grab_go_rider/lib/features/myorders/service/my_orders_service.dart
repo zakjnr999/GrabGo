@@ -26,7 +26,13 @@ class MyOrdersService {
 
   /// Fetch ongoing orders (assigned to rider, not yet delivered/cancelled)
   Future<List<AvailableOrderDto>> getOngoingOrders() async {
-    return _fetchOrdersByStatus(['confirmed', 'preparing', 'ready', 'picked_up', 'on_the_way']);
+    return _fetchOrdersByStatus([
+      'confirmed',
+      'preparing',
+      'ready',
+      'picked_up',
+      'on_the_way',
+    ]);
   }
 
   /// Fetch completed (delivered) orders
@@ -40,7 +46,9 @@ class MyOrdersService {
   }
 
   /// Fetch orders by status(es)
-  Future<List<AvailableOrderDto>> _fetchOrdersByStatus(List<String> statuses) async {
+  Future<List<AvailableOrderDto>> _fetchOrdersByStatus(
+    List<String> statuses,
+  ) async {
     final uri = Uri.parse('$_baseUrl/orders');
     debugPrint('🔍 Fetching rider orders: $uri');
 
@@ -59,7 +67,9 @@ class MyOrdersService {
             .map((o) => _mapOrderToDto(o))
             .toList();
 
-        debugPrint('✅ Fetched ${orders.length} orders with statuses: $statuses');
+        debugPrint(
+          '✅ Fetched ${orders.length} orders with statuses: $statuses',
+        );
         return orders;
       } else {
         debugPrint('❌ Failed to fetch orders: ${response.statusCode}');
@@ -101,33 +111,54 @@ class MyOrdersService {
 
     // Get store details (restaurant, grocery, or pharmacy)
     final storeName =
-        restaurant?['restaurantName'] ?? groceryStore?['storeName'] ?? pharmacyStore?['storeName'] ?? 'Store';
+        restaurant?['restaurantName'] ??
+        groceryStore?['storeName'] ??
+        pharmacyStore?['storeName'] ??
+        'Store';
     final storeAddress =
         restaurant?['address'] ??
         restaurant?['location'] ??
         groceryStore?['address'] ??
         pharmacyStore?['address'] ??
         '';
-    final storeLogo = restaurant?['logo'] ?? groceryStore?['logo'] ?? pharmacyStore?['logo'];
-    final pickupLat = (restaurant?['latitude'] ?? groceryStore?['latitude'] ?? pharmacyStore?['latitude']) as num?;
-    final pickupLon = (restaurant?['longitude'] ?? groceryStore?['longitude'] ?? pharmacyStore?['longitude']) as num?;
+    final storeLogo =
+        restaurant?['logo'] ?? groceryStore?['logo'] ?? pharmacyStore?['logo'];
+    final pickupLat =
+        (restaurant?['latitude'] ??
+                groceryStore?['latitude'] ??
+                pharmacyStore?['latitude'])
+            as num?;
+    final pickupLon =
+        (restaurant?['longitude'] ??
+                groceryStore?['longitude'] ??
+                pharmacyStore?['longitude'])
+            as num?;
 
     // Build delivery address
     final street = order['deliveryStreet']?.toString() ?? '';
     final city = order['deliveryCity']?.toString() ?? '';
     final state = order['deliveryState']?.toString() ?? '';
-    final deliveryAddress = [street, city, state].where((s) => s.isNotEmpty).join(', ');
-    final finalAddress = deliveryAddress.isNotEmpty ? deliveryAddress : (order['deliveryAddress']?.toString() ?? '');
+    final deliveryAddress = [
+      street,
+      city,
+      state,
+    ].where((s) => s.isNotEmpty).join(', ');
+    final finalAddress = deliveryAddress.isNotEmpty
+        ? deliveryAddress
+        : (order['deliveryAddress']?.toString() ?? '');
 
     // Get rider earnings from backend (or calculate fallback)
     final totalAmount = (order['totalAmount'] as num?)?.toDouble() ?? 0.0;
-    final riderEarnings = (order['riderEarnings'] as num?)?.toDouble() ?? (totalAmount * 0.12) + 2.0;
+    final riderEarnings =
+        (order['riderEarnings'] as num?)?.toDouble() ??
+        (totalAmount * 0.12) + 2.0;
 
     return AvailableOrderDto(
       id: order['id']?.toString() ?? '',
       orderNumber: order['orderNumber']?.toString() ?? '',
       customerName: customer['username']?.toString() ?? 'Customer',
-      customerId: order['customerId']?.toString() ?? customer['id']?.toString() ?? '',
+      customerId:
+          order['customerId']?.toString() ?? customer['id']?.toString() ?? '',
       riderId: order['riderId']?.toString(),
       customerAddress: finalAddress,
       customerArea: city,
@@ -144,12 +175,21 @@ class MyOrdersService {
       paymentMethod: order['paymentMethod']?.toString() ?? 'cash',
       riderEarnings: riderEarnings,
       distance: (order['distance'] as num?)?.toDouble(),
-      createdAt: order['createdAt'] != null ? DateTime.tryParse(order['createdAt'].toString()) : DateTime.now(),
+      createdAt: order['createdAt'] != null
+          ? DateTime.tryParse(order['createdAt'].toString())
+          : DateTime.now(),
       notes: order['notes']?.toString(),
       pickupLatitude: pickupLat?.toDouble(),
       pickupLongitude: pickupLon?.toDouble(),
       destinationLatitude: (order['deliveryLatitude'] as num?)?.toDouble(),
       destinationLongitude: (order['deliveryLongitude'] as num?)?.toDouble(),
+      isGiftOrder: order['isGiftOrder'] == true,
+      deliveryVerificationRequired:
+          order['deliveryVerificationRequired'] == true,
+      giftRecipientName: order['giftRecipientName']?.toString(),
+      giftRecipientPhone: order['giftRecipientPhone']?.toString(),
+      deliveryVerificationMethod: order['deliveryVerificationMethod']
+          ?.toString(),
     );
   }
 }

@@ -129,6 +129,11 @@ router.get(
           status: true,
           notes: true,
           createdAt: true,
+          isGiftOrder: true,
+          deliveryVerificationRequired: true,
+          giftRecipientName: true,
+          giftRecipientPhone: true,
+          deliveryVerificationMethod: true,
           // Delivery address
           deliveryStreet: true,
           deliveryCity: true,

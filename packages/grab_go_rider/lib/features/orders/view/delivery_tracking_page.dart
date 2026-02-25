@@ -34,6 +34,11 @@ class DeliveryTrackingPage extends StatefulWidget {
   final double? pickupLongitude;
   final double? destinationLatitude;
   final double? destinationLongitude;
+  final bool isGiftOrder;
+  final bool deliveryVerificationRequired;
+  final String? giftRecipientName;
+  final String? giftRecipientPhone;
+  final String? deliveryVerificationMethod;
 
   const DeliveryTrackingPage({
     super.key,
@@ -54,6 +59,11 @@ class DeliveryTrackingPage extends StatefulWidget {
     this.pickupLongitude,
     this.destinationLatitude,
     this.destinationLongitude,
+    this.isGiftOrder = false,
+    this.deliveryVerificationRequired = false,
+    this.giftRecipientName,
+    this.giftRecipientPhone,
+    this.deliveryVerificationMethod,
   });
 
   @override
@@ -69,6 +79,7 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
   // Production features state
   bool _hasArrivedAtPickup = false;
   bool _hasArrivedAtCustomer = false;
+  bool _isCompletingDelivery = false;
 
   @override
   void initState() {
@@ -92,6 +103,9 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
     debugPrint('   pickupLongitude: ${widget.pickupLongitude}');
     debugPrint('   destinationLatitude: ${widget.destinationLatitude}');
     debugPrint('   destinationLongitude: ${widget.destinationLongitude}');
+    debugPrint(
+      '   deliveryVerificationRequired: ${widget.deliveryVerificationRequired}',
+    );
 
     // Check if we have the required data for tracking initialization
     if (widget.customerId == null ||
@@ -808,8 +822,12 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                 Expanded(
                   child: _buildActionButton(
                     icon: Assets.icons.check,
-                    label: "Complete Delivery",
-                    onPressed: () => _showPhotoProofDialog(colors),
+                    label: _isCompletingDelivery
+                        ? "Completing..."
+                        : "Complete Delivery",
+                    onPressed: _isCompletingDelivery
+                        ? () {}
+                        : () => _startDeliveryCompletion(colors),
                     backgroundColor: colors.accentGreen,
                     colors: colors,
                   ),
@@ -954,46 +972,462 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
   Future<void> _confirmDelivery(
     AppColorsExtension colors, {
     File? proofPhoto,
+    String? deliveryCode,
+    String? fallbackReason,
+    String? authorizedRecipientName,
   }) async {
+    if (_isCompletingDelivery) return;
+
+    setState(() {
+      _isCompletingDelivery = true;
+    });
+
     // Update tracking status via provider
     final trackingProvider = context.read<RiderTrackingProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+    Map<String, dynamic>? deliveryVerification;
 
-    // TODO: Upload proof photo to backend if provided
-    if (proofPhoto != null) {
-      debugPrint('📸 Delivery proof photo captured: ${proofPhoto.path}');
-      // await trackingProvider.uploadDeliveryProof(proofPhoto);
-    }
+    try {
+      final riderLat = trackingProvider.latitude;
+      final riderLng = trackingProvider.longitude;
 
-    final success = await trackingProvider.markAsDelivered();
+      if (widget.deliveryVerificationRequired) {
+        final normalizedCode = deliveryCode?.trim();
+        if (normalizedCode != null && normalizedCode.isNotEmpty) {
+          deliveryVerification = {
+            'method': 'code',
+            'code': normalizedCode,
+            if (riderLat != null) 'riderLat': riderLat,
+            if (riderLng != null) 'riderLng': riderLng,
+          };
+        } else {
+          final reason = fallbackReason?.trim() ?? '';
+          if (proofPhoto == null || reason.isEmpty) {
+            messenger.showSnackBar(
+              SnackBar(
+                content: const Text(
+                  "Photo and fallback reason are required to complete this delivery.",
+                ),
+                backgroundColor: colors.error,
+              ),
+            );
+            return;
+          }
 
-    if (success) {
-      debugPrint('✅ Order marked as delivered');
-    }
+          final uploadResult = await trackingProvider.uploadDeliveryProofPhoto(
+            proofPhoto,
+          );
+          if (!mounted) return;
 
-    if (!mounted) return;
+          if (!uploadResult.success ||
+              uploadResult.photoUrl == null ||
+              uploadResult.photoUrl!.isEmpty) {
+            messenger.showSnackBar(
+              SnackBar(
+                content: Text(
+                  uploadResult.message ??
+                      "Failed to upload delivery proof photo.",
+                ),
+                backgroundColor: colors.error,
+              ),
+            );
+            return;
+          }
 
-    if (!success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            trackingProvider.lastError ??
-                "Failed to complete delivery. Please try again.",
+          deliveryVerification = {
+            'method': 'authorized_photo',
+            'photoUrl': uploadResult.photoUrl,
+            'reason': reason,
+            'contactAttempted': true,
+            if ((authorizedRecipientName ?? '').trim().isNotEmpty)
+              'authorizedRecipientName': authorizedRecipientName!.trim(),
+            if (riderLat != null) 'riderLat': riderLat,
+            if (riderLng != null) 'riderLng': riderLng,
+          };
+        }
+      } else if (proofPhoto != null) {
+        // Best-effort local capture for non-verified orders.
+        debugPrint('📸 Delivery proof photo captured: ${proofPhoto.path}');
+      }
+
+      final success = await trackingProvider.markAsDelivered(
+        deliveryVerification: deliveryVerification,
+      );
+
+      if (success) {
+        debugPrint('✅ Order marked as delivered');
+      }
+
+      if (!mounted) return;
+
+      if (!success) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              trackingProvider.lastError ??
+                  "Failed to complete delivery. Please try again.",
+            ),
+            backgroundColor: colors.error,
           ),
-          backgroundColor: colors.error,
+        );
+        return;
+      }
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: const Text("Order delivered successfully!"),
+          backgroundColor: colors.accentGreen,
         ),
       );
+
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) context.pop();
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCompletingDelivery = false;
+        });
+      }
+    }
+  }
+
+  void _startDeliveryCompletion(AppColorsExtension colors) {
+    if (widget.deliveryVerificationRequired) {
+      _showDeliveryVerificationDialog(colors);
       return;
     }
+    _showPhotoProofDialog(colors);
+  }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text("Order delivered successfully!"),
-        backgroundColor: colors.accentGreen,
-      ),
+  void _showDeliveryVerificationDialog(AppColorsExtension colors) {
+    final recipientLabel = widget.giftRecipientName?.trim().isNotEmpty == true
+        ? widget.giftRecipientName!.trim()
+        : "recipient";
+
+    AppDialog.show(
+      context: context,
+      title: "Delivery Verification Required",
+      message:
+          "This gift order requires verification before completion. Use the 4-digit code from the $recipientLabel, or use authorized photo fallback.",
+      type: AppDialogType.info,
+      primaryButtonText: "Enter Code",
+      secondaryButtonText: "Use Photo Fallback",
+      primaryButtonColor: colors.accentGreen,
+      borderRadius: KBorderSize.borderRadius4,
+      buttonBorderRadius: KBorderSize.borderRadius4,
+      onPrimaryPressed: () {
+        Navigator.pop(context);
+        _showDeliveryCodeDialog(colors);
+      },
+      onSecondaryPressed: () {
+        Navigator.pop(context);
+        _showFallbackPhotoCaptureDialog(colors);
+      },
     );
+  }
 
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) context.pop();
+  void _showDeliveryCodeDialog(AppColorsExtension colors) {
+    final codeController = TextEditingController();
+    bool isSubmitting = false;
+    bool isResending = false;
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            backgroundColor: colors.backgroundPrimary,
+            title: Text(
+              "Enter Delivery Code",
+              style: TextStyle(
+                color: colors.textPrimary,
+                fontSize: 18.sp,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Ask the recipient for the 4-digit delivery code.",
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                SizedBox(height: 12.h),
+                TextField(
+                  controller: codeController,
+                  keyboardType: TextInputType.number,
+                  maxLength: 4,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  enabled: !isSubmitting && !isResending,
+                  style: TextStyle(
+                    color: colors.textPrimary,
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  decoration: InputDecoration(
+                    counterText: '',
+                    hintText: '0000',
+                    hintStyle: TextStyle(color: colors.textSecondary),
+                    filled: true,
+                    fillColor: colors.backgroundSecondary,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(
+                        KBorderSize.borderRadius4,
+                      ),
+                      borderSide: BorderSide(color: colors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(
+                        KBorderSize.borderRadius4,
+                      ),
+                      borderSide: BorderSide(color: colors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(
+                        KBorderSize.borderRadius4,
+                      ),
+                      borderSide: BorderSide(
+                        color: colors.accentGreen,
+                        width: 1.5,
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 8.h),
+                TextButton(
+                  onPressed: (isSubmitting || isResending)
+                      ? null
+                      : () async {
+                          setDialogState(() => isResending = true);
+                          final result = await context
+                              .read<RiderTrackingProvider>()
+                              .resendDeliveryCodeToRecipient();
+                          if (!mounted) return;
+
+                          setDialogState(() => isResending = false);
+
+                          ScaffoldMessenger.of(this.context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                result.success
+                                    ? (result.message ??
+                                          "Delivery code resent to recipient.")
+                                    : (result.message ??
+                                          "Failed to resend delivery code."),
+                              ),
+                              backgroundColor: result.success
+                                  ? colors.accentGreen
+                                  : colors.error,
+                            ),
+                          );
+                        },
+                  child: Text(
+                    isResending ? "Resending..." : "Resend code to recipient",
+                    style: TextStyle(
+                      color: colors.accentBlue,
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: (isSubmitting || isResending)
+                    ? null
+                    : () {
+                        Navigator.pop(dialogContext);
+                        _showFallbackPhotoCaptureDialog(colors);
+                      },
+                child: Text(
+                  "Use Fallback",
+                  style: TextStyle(color: colors.accentOrange),
+                ),
+              ),
+              TextButton(
+                onPressed: (isSubmitting || isResending)
+                    ? null
+                    : () => Navigator.pop(dialogContext),
+                child: Text(
+                  "Cancel",
+                  style: TextStyle(color: colors.textSecondary),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: (isSubmitting || isResending)
+                    ? null
+                    : () async {
+                        final code = codeController.text.trim();
+                        if (code.length != 4 || int.tryParse(code) == null) {
+                          ScaffoldMessenger.of(this.context).showSnackBar(
+                            SnackBar(
+                              content: const Text(
+                                "Delivery code must be exactly 4 digits.",
+                              ),
+                              backgroundColor: colors.error,
+                            ),
+                          );
+                          return;
+                        }
+
+                        setDialogState(() => isSubmitting = true);
+                        Navigator.pop(dialogContext);
+                        await _confirmDelivery(colors, deliveryCode: code);
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.accentGreen,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text("Confirm"),
+              ),
+            ],
+          );
+        },
+      ),
+    ).whenComplete(codeController.dispose);
+  }
+
+  void _showFallbackPhotoCaptureDialog(AppColorsExtension colors) {
+    PhotoProofCapture.show(
+      context: context,
+      orderId: widget.orderId,
+      orderNumber: 'Order ${widget.orderId}',
+      title: 'Authorized Photo Fallback',
+      description:
+          'Take a clear photo proving delivery to an authorized recipient at the address.',
+      onPhotoCapture: (photo) {
+        _showFallbackReasonDialog(colors, proofPhoto: photo);
+      },
+      onSkip: () {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              "Photo proof is required for fallback verification.",
+            ),
+            backgroundColor: colors.error,
+          ),
+        );
+        _showDeliveryVerificationDialog(colors);
+      },
+    );
+  }
+
+  void _showFallbackReasonDialog(
+    AppColorsExtension colors, {
+    required File proofPhoto,
+  }) {
+    final reasonController = TextEditingController();
+    final authorizedNameController = TextEditingController();
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: colors.backgroundPrimary,
+        title: Text(
+          "Fallback Details",
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontSize: 18.sp,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Provide a short reason and who received the order (if known).",
+                style: TextStyle(
+                  color: colors.textSecondary,
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              SizedBox(height: 12.h),
+              TextField(
+                controller: reasonController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  labelText: 'Reason',
+                  hintText:
+                      'Recipient unavailable, handed to authorized person',
+                  filled: true,
+                  fillColor: colors.backgroundSecondary,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(
+                      KBorderSize.borderRadius4,
+                    ),
+                    borderSide: BorderSide(color: colors.border),
+                  ),
+                ),
+              ),
+              SizedBox(height: 12.h),
+              TextField(
+                controller: authorizedNameController,
+                decoration: InputDecoration(
+                  labelText: 'Authorized recipient name (optional)',
+                  filled: true,
+                  fillColor: colors.backgroundSecondary,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(
+                      KBorderSize.borderRadius4,
+                    ),
+                    borderSide: BorderSide(color: colors.border),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(
+              "Cancel",
+              style: TextStyle(color: colors.textSecondary),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final reason = reasonController.text.trim();
+              if (reason.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text("Please provide a fallback reason."),
+                    backgroundColor: colors.error,
+                  ),
+                );
+                return;
+              }
+
+              Navigator.pop(dialogContext);
+              _confirmDelivery(
+                colors,
+                proofPhoto: proofPhoto,
+                fallbackReason: reason,
+                authorizedRecipientName: authorizedNameController.text.trim(),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.accentGreen,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text("Complete Delivery"),
+          ),
+        ],
+      ),
+    ).whenComplete(() {
+      reasonController.dispose();
+      authorizedNameController.dispose();
     });
   }
 

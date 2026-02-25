@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -103,6 +104,36 @@ class LifecycleStatusUpdateResult {
   final String? message;
 
   const LifecycleStatusUpdateResult({required this.success, this.message});
+}
+
+/// Response for delivery proof photo uploads.
+class DeliveryProofUploadResult {
+  final bool success;
+  final String? message;
+  final String? photoUrl;
+  final String? blurHash;
+
+  const DeliveryProofUploadResult({
+    required this.success,
+    this.message,
+    this.photoUrl,
+    this.blurHash,
+  });
+}
+
+/// Response for delivery code resend actions.
+class DeliveryCodeResendResult {
+  final bool success;
+  final String? message;
+  final DateTime? resentAt;
+  final int? retryAfterSeconds;
+
+  const DeliveryCodeResendResult({
+    required this.success,
+    this.message,
+    this.resentAt,
+    this.retryAfterSeconds,
+  });
 }
 
 /// Tracking info response
@@ -422,6 +453,81 @@ class RiderTrackingService {
       return LifecycleStatusUpdateResult(
         success: false,
         message: 'Network error: $e',
+      );
+    }
+  }
+
+  /// Upload delivery proof photo for verification fallback.
+  Future<DeliveryProofUploadResult> uploadDeliveryProofPhoto({
+    required String orderId,
+    required File photo,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/orders/$orderId/delivery-proof/photo');
+    try {
+      final headers = await _buildHeaders();
+      headers.remove('Content-Type');
+
+      final request = http.MultipartRequest('POST', uri)
+        ..headers.addAll(headers)
+        ..files.add(await http.MultipartFile.fromPath('photo', photo.path));
+
+      final streamed = await request.send();
+      final response = await http.Response.fromStream(streamed);
+
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      final success = decoded['success'] == true;
+      final message = decoded['message']?.toString();
+      final data = decoded['data'] as Map<String, dynamic>?;
+
+      return DeliveryProofUploadResult(
+        success: success,
+        message: message,
+        photoUrl: data?['photoUrl']?.toString(),
+        blurHash: data?['blurHash']?.toString(),
+      );
+    } catch (e) {
+      debugPrint('❌ Error uploading delivery proof photo: $e');
+      return DeliveryProofUploadResult(
+        success: false,
+        message: 'Failed to upload delivery proof photo',
+      );
+    }
+  }
+
+  /// Resend gift delivery code to recipient (rider role).
+  Future<DeliveryCodeResendResult> resendDeliveryCodeToRecipient({
+    required String orderId,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/orders/$orderId/delivery-code/resend');
+
+    try {
+      final response = await _client.post(
+        uri,
+        headers: await _buildHeaders(),
+        body: jsonEncode({'target': 'recipient'}),
+      );
+
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      final success = decoded['success'] == true;
+      final message = decoded['message']?.toString();
+      final data = decoded['data'] as Map<String, dynamic>?;
+
+      DateTime? resentAt;
+      if (data?['resentAt'] != null) {
+        resentAt = DateTime.tryParse(data!['resentAt'].toString());
+      }
+
+      return DeliveryCodeResendResult(
+        success: success,
+        message: message,
+        resentAt: resentAt,
+        retryAfterSeconds: (decoded['retryAfterSeconds'] as num?)?.toInt(),
+      );
+    } catch (e) {
+      debugPrint('❌ Error resending delivery code: $e');
+      return DeliveryCodeResendResult(
+        success: false,
+        message: 'Failed to resend delivery code',
       );
     }
   }

@@ -104,17 +104,27 @@ class _OngoingOrdersState extends State<OngoingOrders> {
               package: 'grab_go_shared',
               width: 80.w,
               height: 80.w,
-              colorFilter: ColorFilter.mode(colors.textSecondary.withValues(alpha: 0.2), BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(
+                colors.textSecondary.withValues(alpha: 0.2),
+                BlendMode.srcIn,
+              ),
             ),
             SizedBox(height: 16.h),
             Text(
               "No ongoing orders",
-              style: TextStyle(color: colors.textSecondary, fontSize: 16.sp, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                color: colors.textSecondary,
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w500,
+              ),
             ),
             SizedBox(height: 8.h),
             Text(
               "Accept orders to see them here",
-              style: TextStyle(color: colors.textSecondary.withValues(alpha: 0.7), fontSize: 13.sp),
+              style: TextStyle(
+                color: colors.textSecondary.withValues(alpha: 0.7),
+                fontSize: 13.sp,
+              ),
             ),
           ],
         ),
@@ -138,7 +148,12 @@ class _OngoingOrdersState extends State<OngoingOrders> {
     );
   }
 
-  Widget _buildOngoingCard(BuildContext context, AvailableOrderDto order, AppColorsExtension colors, Size size) {
+  Widget _buildOngoingCard(
+    BuildContext context,
+    AvailableOrderDto order,
+    AppColorsExtension colors,
+    Size size,
+  ) {
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
@@ -154,7 +169,10 @@ class _OngoingOrdersState extends State<OngoingOrders> {
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                 decoration: BoxDecoration(
-                  color: _getStatusColor(order.orderStatus, colors).withValues(alpha: 0.1),
+                  color: _getStatusColor(
+                    order.orderStatus,
+                    colors,
+                  ).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20.r),
                 ),
                 child: Row(
@@ -181,21 +199,31 @@ class _OngoingOrdersState extends State<OngoingOrders> {
               ),
               Text(
                 "#${order.orderNumber}",
-                style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: colors.textSecondary,
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
           SizedBox(height: 16.h),
           Row(
             children: [
-              if (order.restaurantLogo != null && order.restaurantLogo!.isNotEmpty)
+              if (order.restaurantLogo != null &&
+                  order.restaurantLogo!.isNotEmpty)
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                  borderRadius: BorderRadius.circular(
+                    KBorderSize.borderRadius4,
+                  ),
                   child: CachedNetworkImage(
                     height: size.width * 0.12,
                     width: size.width * 0.12,
                     fit: BoxFit.cover,
-                    imageUrl: ImageOptimizer.getPreviewUrl(order.restaurantLogo!, width: 200),
+                    imageUrl: ImageOptimizer.getPreviewUrl(
+                      order.restaurantLogo!,
+                      width: 200,
+                    ),
                     memCacheWidth: 200,
                     maxHeightDiskCache: 200,
                     placeholder: (context, url) => Container(
@@ -204,14 +232,19 @@ class _OngoingOrdersState extends State<OngoingOrders> {
                       padding: EdgeInsets.all(12.r),
                       decoration: BoxDecoration(
                         color: colors.accentGreen.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                        borderRadius: BorderRadius.circular(
+                          KBorderSize.borderRadius4,
+                        ),
                       ),
                       child: SvgPicture.asset(
                         Assets.icons.store,
                         package: 'grab_go_shared',
                         width: 24.w,
                         height: 24.w,
-                        colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                        colorFilter: ColorFilter.mode(
+                          colors.accentGreen,
+                          BlendMode.srcIn,
+                        ),
                       ),
                     ),
                     errorWidget: (context, url, error) => Container(
@@ -220,14 +253,19 @@ class _OngoingOrdersState extends State<OngoingOrders> {
                       padding: EdgeInsets.all(12.r),
                       decoration: BoxDecoration(
                         color: colors.accentGreen.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                        borderRadius: BorderRadius.circular(
+                          KBorderSize.borderRadius4,
+                        ),
                       ),
                       child: SvgPicture.asset(
                         Assets.icons.store,
                         package: 'grab_go_shared',
                         width: 24.w,
                         height: 24.w,
-                        colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                        colorFilter: ColorFilter.mode(
+                          colors.accentGreen,
+                          BlendMode.srcIn,
+                        ),
                       ),
                     ),
                   ),
@@ -239,11 +277,18 @@ class _OngoingOrdersState extends State<OngoingOrders> {
                   children: [
                     Text(
                       order.restaurantName,
-                      style: TextStyle(color: colors.textPrimary, fontSize: 15.sp, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 15.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     Text(
                       order.restaurantAddress,
-                      style: TextStyle(color: colors.textSecondary, fontSize: 12.sp),
+                      style: TextStyle(
+                        color: colors.textSecondary,
+                        fontSize: 12.sp,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -261,7 +306,10 @@ class _OngoingOrdersState extends State<OngoingOrders> {
                   height: size.width * 0.12,
                   width: size.width * 0.12,
                   fit: BoxFit.cover,
-                  imageUrl: ImageOptimizer.getPreviewUrl(order.customerPhoto!, width: 200),
+                  imageUrl: ImageOptimizer.getPreviewUrl(
+                    order.customerPhoto!,
+                    width: 200,
+                  ),
                   memCacheWidth: 200,
                   maxHeightDiskCache: 200,
                   placeholder: (context, url) => Container(
@@ -270,14 +318,19 @@ class _OngoingOrdersState extends State<OngoingOrders> {
                     padding: EdgeInsets.all(12.r),
                     decoration: BoxDecoration(
                       color: colors.accentGreen.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                      borderRadius: BorderRadius.circular(
+                        KBorderSize.borderRadius4,
+                      ),
                     ),
                     child: SvgPicture.asset(
                       Assets.icons.user,
                       package: 'grab_go_shared',
                       width: 24.w,
                       height: 24.w,
-                      colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                      colorFilter: ColorFilter.mode(
+                        colors.accentGreen,
+                        BlendMode.srcIn,
+                      ),
                     ),
                   ),
                   errorWidget: (context, url, error) => Container(
@@ -286,14 +339,19 @@ class _OngoingOrdersState extends State<OngoingOrders> {
                     padding: EdgeInsets.all(12.r),
                     decoration: BoxDecoration(
                       color: colors.accentGreen.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                      borderRadius: BorderRadius.circular(
+                        KBorderSize.borderRadius4,
+                      ),
                     ),
                     child: SvgPicture.asset(
                       Assets.icons.user,
                       package: 'grab_go_shared',
                       width: 24.w,
                       height: 24.w,
-                      colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                      colorFilter: ColorFilter.mode(
+                        colors.accentGreen,
+                        BlendMode.srcIn,
+                      ),
                     ),
                   ),
                 ),
@@ -305,11 +363,18 @@ class _OngoingOrdersState extends State<OngoingOrders> {
                   children: [
                     Text(
                       order.customerName,
-                      style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     Text(
                       order.customerAddress,
-                      style: TextStyle(color: colors.textSecondary, fontSize: 12.sp),
+                      style: TextStyle(
+                        color: colors.textSecondary,
+                        fontSize: 12.sp,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -327,11 +392,19 @@ class _OngoingOrdersState extends State<OngoingOrders> {
                 children: [
                   Text(
                     "EARNINGS",
-                    style: TextStyle(color: colors.textSecondary, fontSize: 10.sp, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      color: colors.textSecondary,
+                      fontSize: 10.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   Text(
                     "GHS ${order.riderEarnings?.toStringAsFixed(2) ?? '0.00'}",
-                    style: TextStyle(color: colors.accentGreen, fontSize: 18.sp, fontWeight: FontWeight.w800),
+                    style: TextStyle(
+                      color: colors.accentGreen,
+                      fontSize: 18.sp,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ],
               ),
@@ -342,15 +415,27 @@ class _OngoingOrdersState extends State<OngoingOrders> {
                   children: [
                     Text(
                       "DELIVERY WINDOW",
-                      style: TextStyle(color: colors.textSecondary, fontSize: 10.sp, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        color: colors.textSecondary,
+                        fontSize: 10.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     Row(
                       children: [
-                        Icon(Icons.timer_outlined, color: colors.warning, size: 16.sp),
+                        Icon(
+                          Icons.timer_outlined,
+                          color: colors.warning,
+                          size: 16.sp,
+                        ),
                         SizedBox(width: 4.w),
                         Text(
                           order.deliveryWindowText!,
-                          style: TextStyle(color: colors.warning, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                          style: TextStyle(
+                            color: colors.warning,
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ],
                     ),
@@ -359,7 +444,10 @@ class _OngoingOrdersState extends State<OngoingOrders> {
               else
                 Text(
                   "${order.itemCount} item${order.itemCount > 1 ? 's' : ''}",
-                  style: TextStyle(color: colors.textSecondary, fontSize: 12.sp),
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 12.sp,
+                  ),
                 ),
             ],
           ),
@@ -368,12 +456,20 @@ class _OngoingOrdersState extends State<OngoingOrders> {
             children: [
               Expanded(
                 child: AppButton(
-                  onPressed: () => _showCancelOrderDialog(context, order, colors),
+                  onPressed: () =>
+                      _showCancelOrderDialog(context, order, colors),
                   buttonText: "Cancel Order",
                   backgroundColor: colors.inputBorder,
                   borderRadius: KBorderSize.borderRadius4,
-                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
-                  textStyle: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w700),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 16.w,
+                    vertical: 10.h,
+                  ),
+                  textStyle: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
                   height: 40.h,
                 ),
               ),
@@ -384,8 +480,15 @@ class _OngoingOrdersState extends State<OngoingOrders> {
                   buttonText: _getActionButtonText(order.orderStatus),
                   backgroundColor: colors.accentGreen,
                   borderRadius: KBorderSize.borderRadius4,
-                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
-                  textStyle: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.w700),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 16.w,
+                    vertical: 10.h,
+                  ),
+                  textStyle: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
                   height: 40.h,
                 ),
               ),
@@ -467,6 +570,11 @@ class _OngoingOrdersState extends State<OngoingOrders> {
           'pickupLongitude': order.pickupLongitude,
           'destinationLatitude': order.destinationLatitude,
           'destinationLongitude': order.destinationLongitude,
+          'isGiftOrder': order.isGiftOrder,
+          'deliveryVerificationRequired': order.deliveryVerificationRequired,
+          'giftRecipientName': order.giftRecipientName,
+          'giftRecipientPhone': order.giftRecipientPhone,
+          'deliveryVerificationMethod': order.deliveryVerificationMethod,
         },
       );
     } else {
@@ -494,12 +602,21 @@ class _OngoingOrdersState extends State<OngoingOrders> {
           'pickupLongitude': order.pickupLongitude,
           'destinationLatitude': order.destinationLatitude,
           'destinationLongitude': order.destinationLongitude,
+          'isGiftOrder': order.isGiftOrder,
+          'deliveryVerificationRequired': order.deliveryVerificationRequired,
+          'giftRecipientName': order.giftRecipientName,
+          'giftRecipientPhone': order.giftRecipientPhone,
+          'deliveryVerificationMethod': order.deliveryVerificationMethod,
         },
       );
     }
   }
 
-  void _showCancelOrderDialog(BuildContext context, AvailableOrderDto order, AppColorsExtension colors) {
+  void _showCancelOrderDialog(
+    BuildContext context,
+    AvailableOrderDto order,
+    AppColorsExtension colors,
+  ) {
     final orderService = AvailableOrdersService();
 
     CancelOrderDialog.show(
@@ -507,10 +624,16 @@ class _OngoingOrdersState extends State<OngoingOrders> {
       orderId: order.id,
       orderNumber: '#${order.orderNumber}',
       onConfirm: (reason, notes) async {
-        debugPrint('🚫 Cancelling order: ${reason.apiValue}${notes != null ? " - $notes" : ""}');
+        debugPrint(
+          '🚫 Cancelling order: ${reason.apiValue}${notes != null ? " - $notes" : ""}',
+        );
         debugPrint('🚫 Cancelling order: ${order.id}');
 
-        final success = await orderService.cancelOrder(order.id, reason: reason.apiValue, notes: notes);
+        final success = await orderService.cancelOrder(
+          order.id,
+          reason: reason.apiValue,
+          notes: notes,
+        );
 
         if (!mounted) return;
 

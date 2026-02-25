@@ -34,6 +34,11 @@ class AvailableOrderDto {
   final int? deliveryWindowMax;
   final DateTime? expectedDelivery;
   final DateTime? riderAssignedAt;
+  final bool isGiftOrder;
+  final bool deliveryVerificationRequired;
+  final String? giftRecipientName;
+  final String? giftRecipientPhone;
+  final String? deliveryVerificationMethod;
 
   AvailableOrderDto({
     required this.id,
@@ -67,6 +72,11 @@ class AvailableOrderDto {
     this.deliveryWindowMax,
     this.expectedDelivery,
     this.riderAssignedAt,
+    this.isGiftOrder = false,
+    this.deliveryVerificationRequired = false,
+    this.giftRecipientName,
+    this.giftRecipientPhone,
+    this.deliveryVerificationMethod,
   });
 
   /// Returns the delivery window as a display string (e.g., "15-25 mins")
@@ -86,6 +96,7 @@ class AvailableOrderDto {
 
   factory AvailableOrderDto.fromJson(Map<String, dynamic> json) {
     final customer = json['customer'] as Map<String, dynamic>?;
+    final rider = json['rider'] as Map<String, dynamic>?;
     final restaurant = json['restaurant'] as Map<String, dynamic>?;
     final groceryStore = json['groceryStore'] as Map<String, dynamic>?;
     final pharmacyStore = json['pharmacyStore'] as Map<String, dynamic>?;
@@ -99,7 +110,9 @@ class AvailableOrderDto {
       if (state != null && state.isNotEmpty) state,
     ];
 
-    final customerAddress = addressParts.isNotEmpty ? addressParts.join(', ') : '';
+    final customerAddress = addressParts.isNotEmpty
+        ? addressParts.join(', ')
+        : '';
     final destinationLat = (json['deliveryLatitude'] as num?)?.toDouble();
     final destinationLng = (json['deliveryLongitude'] as num?)?.toDouble();
 
@@ -128,7 +141,9 @@ class AvailableOrderDto {
         .whereType<String>()
         .toList();
 
-    final customerArea = street?.isNotEmpty == true ? street! : (city ?? state ?? 'Unknown Area');
+    final customerArea = street?.isNotEmpty == true
+        ? street!
+        : (city ?? state ?? 'Unknown Area');
     DateTime? createdAt;
     if (json['createdAt'] != null) {
       try {
@@ -169,19 +184,32 @@ class AvailableOrderDto {
     return AvailableOrderDto(
       id: json['id']?.toString() ?? json['_id']?.toString() ?? '',
       orderNumber: json['orderNumber']?.toString() ?? '',
-      customerName: customer != null ? (customer['username']?.toString() ?? 'Customer') : 'Customer',
-      customerId: customer != null ? (customer['id']?.toString() ?? customer['_id']?.toString() ?? '') : '',
-      riderId: json['riderId']?.toString(),
+      customerName: customer != null
+          ? (customer['username']?.toString() ?? 'Customer')
+          : 'Customer',
+      customerId: customer != null
+          ? (customer['id']?.toString() ?? customer['_id']?.toString() ?? '')
+          : '',
+      riderId:
+          json['riderId']?.toString() ??
+          rider?['id']?.toString() ??
+          rider?['_id']?.toString(),
       customerAddress: customerAddress,
       customerArea: customerArea,
-      customerPhone: customer != null ? (customer['phone']?.toString() ?? '') : '',
+      customerPhone: customer != null
+          ? (customer['phone']?.toString() ?? '')
+          : '',
       customerPhoto: customer != null
           ? (customer['profilePicture']?.toString() ??
                 customer['profile_picture']?.toString() ??
                 customer['photo']?.toString())
           : null,
       restaurantName: storeName,
-      restaurantLogo: (restaurant?['logo'] ?? groceryStore?['logo'] ?? pharmacyStore?['logo'])?.toString(),
+      restaurantLogo:
+          (restaurant?['logo'] ??
+                  groceryStore?['logo'] ??
+                  pharmacyStore?['logo'])
+              ?.toString(),
       restaurantAddress:
           restaurant?['address']?.toString() ??
           groceryStore?['address']?.toString() ??
@@ -206,6 +234,13 @@ class AvailableOrderDto {
       deliveryWindowMax: (json['deliveryWindowMax'] as num?)?.toInt(),
       expectedDelivery: expectedDelivery,
       riderAssignedAt: riderAssignedAt,
+      isGiftOrder: json['isGiftOrder'] == true,
+      deliveryVerificationRequired:
+          json['deliveryVerificationRequired'] == true,
+      giftRecipientName: json['giftRecipientName']?.toString(),
+      giftRecipientPhone: json['giftRecipientPhone']?.toString(),
+      deliveryVerificationMethod: json['deliveryVerificationMethod']
+          ?.toString(),
     );
   }
 }

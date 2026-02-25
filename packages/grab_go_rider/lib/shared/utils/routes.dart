@@ -355,7 +355,10 @@ final GoRouter appRouter = GoRouter(
 
         return CustomTransitionPage(
           key: state.pageKey,
-          child: AvailableOrders(preloadedOrders: preloadedOrders, preloadedStatistics: preloadedStatistics),
+          child: AvailableOrders(
+            preloadedOrders: preloadedOrders,
+            preloadedStatistics: preloadedStatistics,
+          ),
           transitionDuration: const Duration(milliseconds: 800),
           reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -666,11 +669,16 @@ final GoRouter appRouter = GoRouter(
             orderStatus: extra?['orderStatus'],
             orderInstructions: extra?['orderInstructions'] ?? "",
             customerName: extra?['customerName'] ?? "John Doe",
-            customerAddress: extra?['customerAddress'] ?? "123 Main Street, Accra, Ghana",
-            customerPhoto: extra?['profilePhoto'],
-            customerPhone: extra?['phone'] ?? "+233 123 456 789",
+            customerAddress:
+                extra?['customerAddress'] ?? "123 Main Street, Accra, Ghana",
+            customerPhoto: extra?['profilePhoto'] ?? extra?['customerPhoto'],
+            customerPhone:
+                extra?['customerPhone'] ??
+                extra?['phone'] ??
+                "+233 123 456 789",
             restaurantName: extra?['restaurantName'] ?? "Pizza Palace",
-            restaurantAddress: extra?['restaurantAddress'] ?? "456 Food Street, Accra, Ghana",
+            restaurantAddress:
+                extra?['restaurantAddress'] ?? "456 Food Street, Accra, Ghana",
             orderTotal: extra?['orderTotal'] ?? "GHS 45.00",
             orderItems: extra?['orderItems'] != null
                 ? (extra!['orderItems'] is List<String>
@@ -680,6 +688,12 @@ final GoRouter appRouter = GoRouter(
             specialInstructions: extra?['specialInstructions'],
             customerId: extra?['customerId'],
             riderId: extra?['riderId'],
+            isGiftOrder: extra?['isGiftOrder'] == true,
+            deliveryVerificationRequired:
+                extra?['deliveryVerificationRequired'] == true,
+            giftRecipientName: extra?['giftRecipientName'],
+            giftRecipientPhone: extra?['giftRecipientPhone'],
+            deliveryVerificationMethod: extra?['deliveryVerificationMethod'],
             riderEarnings: (extra?['riderEarnings'] as num?)?.toDouble() ?? 5.0,
             restaurantLogo: extra?['restaurantLogo'],
             pickupLatitude: extra?['pickupLatitude'] as double?,
@@ -709,10 +723,12 @@ final GoRouter appRouter = GoRouter(
           child: DeliveryTrackingPage(
             orderId: extra?['orderId'] ?? "ORD-12345",
             customerName: extra?['customerName'] ?? "John Doe",
-            customerAddress: extra?['customerAddress'] ?? "123 Main Street, Accra, Ghana",
+            customerAddress:
+                extra?['customerAddress'] ?? "123 Main Street, Accra, Ghana",
             customerPhone: extra?['customerPhone'] ?? "+233 123 456 789",
             restaurantName: extra?['restaurantName'] ?? "Pizza Palace",
-            restaurantAddress: extra?['restaurantAddress'] ?? "456 Food Street, Accra, Ghana",
+            restaurantAddress:
+                extra?['restaurantAddress'] ?? "456 Food Street, Accra, Ghana",
             orderTotal: extra?['orderTotal'] ?? "GHS 45.00",
             orderItems: extra?['orderItems'] != null
                 ? List<String>.from(extra!['orderItems'])
@@ -722,6 +738,12 @@ final GoRouter appRouter = GoRouter(
             hasPickedUp: extra?['hasPickedUp'],
             customerId: extra?['customerId'],
             riderId: extra?['riderId'],
+            isGiftOrder: extra?['isGiftOrder'] == true,
+            deliveryVerificationRequired:
+                extra?['deliveryVerificationRequired'] == true,
+            giftRecipientName: extra?['giftRecipientName'],
+            giftRecipientPhone: extra?['giftRecipientPhone'],
+            deliveryVerificationMethod: extra?['deliveryVerificationMethod'],
             pickupLatitude: extra?['pickupLatitude'] as double?,
             pickupLongitude: extra?['pickupLongitude'] as double?,
             destinationLatitude: extra?['destinationLatitude'] as double?,

@@ -16,7 +16,11 @@ class AvailableOrders extends StatefulWidget {
   final List<AvailableOrderDto>? preloadedOrders;
   final OrderStatistics? preloadedStatistics;
 
-  const AvailableOrders({super.key, this.preloadedOrders, this.preloadedStatistics});
+  const AvailableOrders({
+    super.key,
+    this.preloadedOrders,
+    this.preloadedStatistics,
+  });
 
   @override
   State<AvailableOrders> createState() => _AvailableOrdersState();
@@ -52,7 +56,10 @@ class _AvailableOrdersState extends State<AvailableOrders> {
     });
 
     try {
-      final result = await _service.getAvailableOrders(lat: _currentLat, lon: _currentLon);
+      final result = await _service.getAvailableOrders(
+        lat: _currentLat,
+        lon: _currentLon,
+      );
 
       if (!mounted) return;
       setState(() {
@@ -74,7 +81,10 @@ class _AvailableOrdersState extends State<AvailableOrders> {
     setState(() => isRefreshing = true);
 
     try {
-      final result = await _service.getAvailableOrders(lat: _currentLat, lon: _currentLon);
+      final result = await _service.getAvailableOrders(
+        lat: _currentLat,
+        lon: _currentLon,
+      );
       if (!mounted) return;
       setState(() {
         _availableOrders = result['orders'] as List<AvailableOrderDto>;
@@ -127,12 +137,19 @@ class _AvailableOrdersState extends State<AvailableOrders> {
             'orderItems': acceptedOrder.orderItems,
             'specialInstructions': acceptedOrder.notes,
             'customerId': acceptedOrder.customerId,
-            'riderId': acceptedOrder.id,
+            'riderId': acceptedOrder.riderId,
             'riderEarnings': acceptedOrder.riderEarnings,
             'pickupLatitude': acceptedOrder.pickupLatitude,
             'pickupLongitude': acceptedOrder.pickupLongitude,
             'destinationLatitude': acceptedOrder.destinationLatitude,
             'destinationLongitude': acceptedOrder.destinationLongitude,
+            'isGiftOrder': acceptedOrder.isGiftOrder,
+            'deliveryVerificationRequired':
+                acceptedOrder.deliveryVerificationRequired,
+            'giftRecipientName': acceptedOrder.giftRecipientName,
+            'giftRecipientPhone': acceptedOrder.giftRecipientPhone,
+            'deliveryVerificationMethod':
+                acceptedOrder.deliveryVerificationMethod,
           },
         );
 
@@ -140,9 +157,14 @@ class _AvailableOrdersState extends State<AvailableOrders> {
       } else if (result.isReserved) {
         // Order is reserved for another rider - refresh list and show info
         await _refreshOrders();
-        _showReservedDialog(result.errorMessage ?? 'This order is currently reserved for another rider.');
+        _showReservedDialog(
+          result.errorMessage ??
+              'This order is currently reserved for another rider.',
+        );
       } else {
-        _showErrorDialog(result.errorMessage ?? 'Failed to accept order. Please try again.');
+        _showErrorDialog(
+          result.errorMessage ?? 'Failed to accept order. Please try again.',
+        );
       }
     } catch (e) {
       if (!mounted) return;
@@ -207,7 +229,9 @@ class _AvailableOrdersState extends State<AvailableOrders> {
         statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
         systemNavigationBarColor: colors.backgroundPrimary,
         systemNavigationBarDividerColor: Colors.transparent,
-        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        systemNavigationBarIconBrightness: isDark
+            ? Brightness.light
+            : Brightness.dark,
       ),
       child: Scaffold(
         backgroundColor: colors.backgroundSecondary,
@@ -220,7 +244,10 @@ class _AvailableOrdersState extends State<AvailableOrders> {
               package: 'grab_go_shared',
               width: 24.w,
               height: 24.w,
-              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(
+                colors.textPrimary,
+                BlendMode.srcIn,
+              ),
             ),
             onPressed: () => context.pop(),
           ),
@@ -242,9 +269,14 @@ class _AvailableOrdersState extends State<AvailableOrders> {
                 package: 'grab_go_shared',
                 width: 22.w,
                 height: 22.w,
-                colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                colorFilter: ColorFilter.mode(
+                  colors.textPrimary,
+                  BlendMode.srcIn,
+                ),
               ),
-              onPressed: _isLoading ? null : () => context.push('/availableOrdersMap'),
+              onPressed: _isLoading
+                  ? null
+                  : () => context.push('/availableOrdersMap'),
               tooltip: 'Map View',
             ),
             IconButton(
@@ -253,7 +285,10 @@ class _AvailableOrdersState extends State<AvailableOrders> {
                 package: 'grab_go_shared',
                 width: 22.w,
                 height: 22.w,
-                colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                colorFilter: ColorFilter.mode(
+                  colors.textPrimary,
+                  BlendMode.srcIn,
+                ),
               ),
               onPressed: _isLoading ? null : _refreshOrders,
               tooltip: 'Refresh',
@@ -272,7 +307,10 @@ class _AvailableOrdersState extends State<AvailableOrders> {
         child: Padding(
           padding: EdgeInsets.only(top: 6.h),
           child: Column(
-            children: List.generate(10, (index) => OrdersListSkeleton(colors: colors, isDark: isDark)),
+            children: List.generate(
+              10,
+              (index) => OrdersListSkeleton(colors: colors, isDark: isDark),
+            ),
           ),
         ),
       );
@@ -303,7 +341,10 @@ class _AvailableOrdersState extends State<AvailableOrders> {
           children: [
             Container(
               padding: EdgeInsets.all(32.w),
-              decoration: BoxDecoration(color: colors.error.withValues(alpha: 0.1), shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: colors.error.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
               child: SvgPicture.asset(
                 Assets.icons.circleAlert,
                 package: 'grab_go_shared',
@@ -315,13 +356,22 @@ class _AvailableOrdersState extends State<AvailableOrders> {
             SizedBox(height: 32.h),
             Text(
               "Network Error",
-              style: TextStyle(color: colors.textPrimary, fontSize: 20.sp, fontWeight: FontWeight.w800),
+              style: TextStyle(
+                color: colors.textPrimary,
+                fontSize: 20.sp,
+                fontWeight: FontWeight.w800,
+              ),
               textAlign: TextAlign.center,
             ),
             SizedBox(height: 12.h),
             Text(
               "An error occured while fetching available orders. Please check your connection and try again.",
-              style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w400, height: 1.5),
+              style: TextStyle(
+                color: colors.textSecondary,
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w400,
+                height: 1.5,
+              ),
               textAlign: TextAlign.center,
             ),
             SizedBox(height: 40.h),
@@ -332,7 +382,11 @@ class _AvailableOrdersState extends State<AvailableOrders> {
                 onPressed: _loadOrders,
                 buttonText: "Try Again",
                 backgroundColor: colors.error,
-                textStyle: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w700),
+                textStyle: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ],
@@ -350,25 +404,40 @@ class _AvailableOrdersState extends State<AvailableOrders> {
           children: [
             Container(
               padding: EdgeInsets.all(32.w),
-              decoration: BoxDecoration(color: colors.accentGreen.withValues(alpha: 0.1), shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: colors.accentGreen.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
               child: SvgPicture.asset(
                 Assets.icons.search,
                 package: 'grab_go_shared',
                 width: 64.w,
                 height: 64.w,
-                colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                colorFilter: ColorFilter.mode(
+                  colors.accentGreen,
+                  BlendMode.srcIn,
+                ),
               ),
             ),
             SizedBox(height: 32.h),
             Text(
               "No Orders Nearby",
-              style: TextStyle(color: colors.textPrimary, fontSize: 20.sp, fontWeight: FontWeight.w800),
+              style: TextStyle(
+                color: colors.textPrimary,
+                fontSize: 20.sp,
+                fontWeight: FontWeight.w800,
+              ),
               textAlign: TextAlign.center,
             ),
             SizedBox(height: 12.h),
             Text(
               "We couldn't find any orders in your current area. Try moving to a busier location or refresh to check again.",
-              style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w400, height: 1.5),
+              style: TextStyle(
+                color: colors.textSecondary,
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w400,
+                height: 1.5,
+              ),
               textAlign: TextAlign.center,
             ),
             SizedBox(height: 40.h),
@@ -379,7 +448,11 @@ class _AvailableOrdersState extends State<AvailableOrders> {
                 onPressed: _refreshOrders,
                 buttonText: "Refresh Range",
                 backgroundColor: colors.accentGreen,
-                textStyle: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w700),
+                textStyle: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ],
@@ -409,7 +482,8 @@ class _AvailableOrdersState extends State<AvailableOrders> {
       if (duration.inMinutes < 1) {
         timeSince = 'Just now';
       } else if (duration.inMinutes < 60) {
-        timeSince = '${duration.inMinutes} min${duration.inMinutes > 1 ? 's' : ''} ago';
+        timeSince =
+            '${duration.inMinutes} min${duration.inMinutes > 1 ? 's' : ''} ago';
       } else {
         timeSince = '${duration.inHours}h ago';
       }
@@ -459,7 +533,11 @@ class _AvailableOrdersState extends State<AvailableOrders> {
               children: [
                 Text(
                   order.restaurantName,
-                  style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    color: colors.textPrimary,
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -469,13 +547,20 @@ class _AvailableOrdersState extends State<AvailableOrders> {
                   package: 'grab_go_shared',
                   width: 16.w,
                   height: 16.w,
-                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                  colorFilter: ColorFilter.mode(
+                    colors.textPrimary,
+                    BlendMode.srcIn,
+                  ),
                 ),
                 SizedBox(width: 5.w),
                 Flexible(
                   child: Text(
                     order.customerArea,
-                    style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      color: colors.textPrimary,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.right,
@@ -494,23 +579,39 @@ class _AvailableOrdersState extends State<AvailableOrders> {
                   package: 'grab_go_shared',
                   width: 14.w,
                   height: 14.w,
-                  colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                  colorFilter: ColorFilter.mode(
+                    colors.accentGreen,
+                    BlendMode.srcIn,
+                  ),
                 ),
                 SizedBox(width: 4.w),
                 Text(
-                  order.distance != null ? '${order.distance!.toStringAsFixed(1)} km' : '-- km',
-                  style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w500),
+                  order.distance != null
+                      ? '${order.distance!.toStringAsFixed(1)} km'
+                      : '-- km',
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 SizedBox(width: 10.w),
                 Container(
                   height: 4.h,
                   width: 4.h,
-                  decoration: BoxDecoration(color: colors.textSecondary, shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                    color: colors.textSecondary,
+                    shape: BoxShape.circle,
+                  ),
                 ),
                 SizedBox(width: 10.w),
                 Text(
                   statusText,
-                  style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
               ],
             ),
@@ -536,13 +637,21 @@ class _AvailableOrdersState extends State<AvailableOrders> {
                   children: [
                     Text(
                       "YOUR EARNINGS :",
-                      style: TextStyle(fontSize: 10.sp, color: colors.textPrimary, fontWeight: FontWeight.w400),
+                      style: TextStyle(
+                        fontSize: 10.sp,
+                        color: colors.textPrimary,
+                        fontWeight: FontWeight.w400,
+                      ),
                     ),
                     Text(
                       order.riderEarnings != null && order.riderEarnings! > 0
                           ? 'GHS ${order.riderEarnings!.toStringAsFixed(2)}'
                           : 'unavailable',
-                      style: TextStyle(color: colors.accentGreen, fontSize: 18.sp, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        color: colors.accentGreen,
+                        fontSize: 18.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
@@ -563,14 +672,21 @@ class _AvailableOrdersState extends State<AvailableOrders> {
                     if (order.itemCount > 0) ...[
                       SizedBox(width: 8.w),
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 10.w,
+                          vertical: 4.h,
+                        ),
                         decoration: BoxDecoration(
                           color: colors.backgroundPrimary,
                           borderRadius: BorderRadius.circular(6.r),
                         ),
                         child: Text(
                           '${order.itemCount} item${order.itemCount > 1 ? 's' : ''}',
-                          style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                            color: colors.textSecondary,
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ],
@@ -584,7 +700,15 @@ class _AvailableOrdersState extends State<AvailableOrders> {
     );
   }
 
-  void _showOrderDetails(AvailableOrderDto order, AppColorsExtension colors, Size size) {
-    AvailableOrderDetailsBottomSheet.show(context: context, order: order, onAccept: () => _acceptOrder(order));
+  void _showOrderDetails(
+    AvailableOrderDto order,
+    AppColorsExtension colors,
+    Size size,
+  ) {
+    AvailableOrderDetailsBottomSheet.show(
+      context: context,
+      order: order,
+      onAccept: () => _acceptOrder(order),
+    );
   }
 }

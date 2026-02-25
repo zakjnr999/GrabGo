@@ -69,7 +69,9 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
 
   Future<void> _loadRiderMarker() async {
     try {
-      _riderLocationMarker = await CustomMapMarkers.createRiderLocationMarker(primaryColor: const Color(0xFF10B981));
+      _riderLocationMarker = await CustomMapMarkers.createRiderLocationMarker(
+        primaryColor: const Color(0xFF10B981),
+      );
     } catch (e) {
       debugPrint('Error loading rider marker: $e');
     }
@@ -98,7 +100,9 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
       }
 
       final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
 
       if (!mounted) return;
@@ -106,7 +110,12 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
         _currentPosition = position;
       });
 
-      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(LatLng(position.latitude, position.longitude), 14));
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(
+          LatLng(position.latitude, position.longitude),
+          14,
+        ),
+      );
     } catch (e) {
       debugPrint('Error getting current location: $e');
     }
@@ -115,7 +124,10 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
   void _startLocationUpdates() {
     _positionSubscription =
         Geolocator.getPositionStream(
-          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 20),
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 20,
+          ),
         ).listen(
           (Position position) {
             if (!mounted) return;
@@ -150,7 +162,8 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
       String? closestId;
       double minDistance = double.infinity;
       for (final order in orders) {
-        final dist = order.distanceToPickup ?? order.distance ?? double.infinity;
+        final dist =
+            order.distanceToPickup ?? order.distance ?? double.infinity;
         if (dist < minDistance) {
           minDistance = dist;
           closestId = order.id;
@@ -185,7 +198,10 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
       markers.add(
         Marker(
           markerId: const MarkerId('rider_location'),
-          position: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+          position: LatLng(
+            _currentPosition!.latitude,
+            _currentPosition!.longitude,
+          ),
           icon: _riderLocationMarker!,
           anchor: const Offset(0.5, 0.5),
           zIndexInt: 100,
@@ -194,7 +210,8 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
     }
 
     for (final order in _availableOrders) {
-      if (order.pickupLatitude == null || order.pickupLongitude == null) continue;
+      if (order.pickupLatitude == null || order.pickupLongitude == null)
+        continue;
 
       final isClosest = order.id == _closestOrderId;
       final cacheKey = '${order.id}_${isClosest}_${order.itemCount}';
@@ -239,7 +256,9 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
     if (_markers.isEmpty || _mapController == null) return;
 
     if (_markers.length == 1) {
-      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(_markers.first.position, 15));
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(_markers.first.position, 15),
+      );
       return;
     }
 
@@ -258,7 +277,9 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
     }
 
     if (minLat == maxLat && minLng == maxLng) {
-      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(LatLng(minLat, minLng), 15));
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(LatLng(minLat, minLng), 15),
+      );
       return;
     }
 
@@ -282,7 +303,11 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
         _acceptOrder(order);
       },
       onViewDetails: () {
-        AvailableOrderDetailsBottomSheet.show(context: context, order: order, onAccept: () => _acceptOrder(order));
+        AvailableOrderDetailsBottomSheet.show(
+          context: context,
+          order: order,
+          onAccept: () => _acceptOrder(order),
+        );
       },
     );
   }
@@ -314,12 +339,19 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
             'orderItems': acceptedOrder.orderItems,
             'specialInstructions': acceptedOrder.notes,
             'customerId': acceptedOrder.customerId,
-            'riderId': acceptedOrder.id,
+            'riderId': acceptedOrder.riderId,
             'riderEarnings': acceptedOrder.riderEarnings,
             'pickupLatitude': acceptedOrder.pickupLatitude,
             'pickupLongitude': acceptedOrder.pickupLongitude,
             'destinationLatitude': acceptedOrder.destinationLatitude,
             'destinationLongitude': acceptedOrder.destinationLongitude,
+            'isGiftOrder': acceptedOrder.isGiftOrder,
+            'deliveryVerificationRequired':
+                acceptedOrder.deliveryVerificationRequired,
+            'giftRecipientName': acceptedOrder.giftRecipientName,
+            'giftRecipientPhone': acceptedOrder.giftRecipientPhone,
+            'deliveryVerificationMethod':
+                acceptedOrder.deliveryVerificationMethod,
           },
         );
 
@@ -335,7 +367,10 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
               children: [
                 Icon(Icons.schedule, color: colors.accentOrange),
                 SizedBox(width: 8),
-                Text('Order Reserved', style: TextStyle(color: colors.textPrimary)),
+                Text(
+                  'Order Reserved',
+                  style: TextStyle(color: colors.textPrimary),
+                ),
               ],
             ),
             content: Text(
@@ -378,7 +413,10 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
   void _centerOnRider() {
     if (_currentPosition == null || _mapController == null) return;
     _mapController!.animateCamera(
-      CameraUpdate.newLatLngZoom(LatLng(_currentPosition!.latitude, _currentPosition!.longitude), 15),
+      CameraUpdate.newLatLngZoom(
+        LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+        15,
+      ),
     );
   }
 
@@ -393,7 +431,9 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
         statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
         systemNavigationBarColor: colors.backgroundPrimary,
         systemNavigationBarDividerColor: Colors.transparent,
-        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        systemNavigationBarIconBrightness: isDark
+            ? Brightness.light
+            : Brightness.dark,
       ),
       child: Scaffold(
         extendBodyBehindAppBar: true,
@@ -403,9 +443,13 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
           systemOverlayStyle: SystemUiOverlayStyle(
             statusBarColor: Colors.transparent,
             systemNavigationBarColor: Colors.transparent,
-            statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+            statusBarIconBrightness: isDark
+                ? Brightness.light
+                : Brightness.dark,
             statusBarBrightness: isDark ? Brightness.light : Brightness.dark,
-            systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+            systemNavigationBarIconBrightness: isDark
+                ? Brightness.light
+                : Brightness.dark,
           ),
           automaticallyImplyLeading: false,
           elevation: 0,
@@ -425,7 +469,9 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
+                        color: isDark
+                            ? Colors.black.withAlpha(20)
+                            : Colors.black.withAlpha(5),
                         spreadRadius: 0,
                         blurRadius: 8,
                         offset: const Offset(0, 2),
@@ -442,7 +488,10 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
                         child: SvgPicture.asset(
                           Assets.icons.navArrowLeft,
                           package: 'grab_go_shared',
-                          colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                          colorFilter: ColorFilter.mode(
+                            colors.textPrimary,
+                            BlendMode.srcIn,
+                          ),
                         ),
                       ),
                     ),
@@ -459,7 +508,10 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
               child: GoogleMap(
                 initialCameraPosition: CameraPosition(
                   target: _currentPosition != null
-                      ? LatLng(_currentPosition!.latitude, _currentPosition!.longitude)
+                      ? LatLng(
+                          _currentPosition!.latitude,
+                          _currentPosition!.longitude,
+                        )
                       : _defaultPosition,
                   zoom: 14,
                 ),
@@ -477,11 +529,16 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
                 trafficEnabled: false,
                 buildingsEnabled: false,
                 liteModeEnabled: false,
-                style: GrabGoMapStyles.forBrightness(Theme.of(context).brightness),
+                style: GrabGoMapStyles.forBrightness(
+                  Theme.of(context).brightness,
+                ),
                 padding: EdgeInsets.only(bottom: 100.h),
                 onMapCreated: (controller) {
                   _mapController = controller;
-                  Future.delayed(const Duration(milliseconds: 500), _fitCameraToMarkers);
+                  Future.delayed(
+                    const Duration(milliseconds: 500),
+                    _fitCameraToMarkers,
+                  );
                 },
               ),
             ),
@@ -493,7 +550,9 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
                   child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
-                      children: [SpinKitCubeGrid(color: colors.accentGreen, size: 35)],
+                      children: [
+                        SpinKitCubeGrid(color: colors.accentGreen, size: 35),
+                      ],
                     ),
                   ),
                 ),
@@ -510,7 +569,9 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
                   decoration: BoxDecoration(
                     color: colors.error.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12.r),
-                    border: Border.all(color: colors.error.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: colors.error.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -519,7 +580,10 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
                       Expanded(
                         child: Text(
                           _errorMessage!,
-                          style: TextStyle(color: colors.textPrimary, fontSize: 13.sp),
+                          style: TextStyle(
+                            color: colors.textPrimary,
+                            fontSize: 13.sp,
+                          ),
                         ),
                       ),
                       IconButton(
@@ -563,10 +627,14 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
                 padding: EdgeInsets.all(16.w),
                 decoration: BoxDecoration(
                   color: colors.backgroundPrimary,
-                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                  borderRadius: BorderRadius.circular(
+                    KBorderSize.borderRadius4,
+                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(10),
+                      color: isDark
+                          ? Colors.black.withAlpha(30)
+                          : Colors.black.withAlpha(10),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -578,14 +646,19 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
                       padding: EdgeInsets.all(8.r),
                       decoration: BoxDecoration(
                         color: colors.accentGreen.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                        borderRadius: BorderRadius.circular(
+                          KBorderSize.borderRadius4,
+                        ),
                       ),
                       child: SvgPicture.asset(
                         Assets.icons.deliveryTruck,
                         package: 'grab_go_shared',
                         width: 24.w,
                         height: 24.w,
-                        colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                        colorFilter: ColorFilter.mode(
+                          colors.accentGreen,
+                          BlendMode.srcIn,
+                        ),
                       ),
                     ),
                     SizedBox(width: 12.w),
@@ -595,7 +668,11 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
                         children: [
                           Text(
                             '${_isLoading ? "..." : _availableOrders.length} orders available',
-                            style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w700),
+                            style: TextStyle(
+                              color: colors.textPrimary,
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                           if (_closestOrderId != null) ...[
                             SizedBox(height: 2.h),
@@ -615,16 +692,30 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
                       color: Colors.transparent,
                       child: InkWell(
                         onTap: () {
-                          context.push('/availableOrders', extra: {'orders': _availableOrders, 'statistics': null});
+                          context.push(
+                            '/availableOrders',
+                            extra: {
+                              'orders': _availableOrders,
+                              'statistics': null,
+                            },
+                          );
                         },
-                        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                        borderRadius: BorderRadius.circular(
+                          KBorderSize.borderRadius4,
+                        ),
                         child: Container(
                           padding: EdgeInsets.all(8.r),
                           decoration: BoxDecoration(
                             color: colors.backgroundSecondary,
-                            borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                            borderRadius: BorderRadius.circular(
+                              KBorderSize.borderRadius4,
+                            ),
                           ),
-                          child: Icon(Icons.list_rounded, color: colors.textPrimary, size: 24.sp),
+                          child: Icon(
+                            Icons.list_rounded,
+                            color: colors.textPrimary,
+                            size: 24.sp,
+                          ),
                         ),
                       ),
                     ),
@@ -652,7 +743,9 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(15),
+            color: isDark
+                ? Colors.black.withAlpha(30)
+                : Colors.black.withAlpha(15),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -668,7 +761,10 @@ class _AvailableOrdersMapState extends State<AvailableOrdersMap> {
             child: SvgPicture.asset(
               icon,
               package: 'grab_go_shared',
-              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(
+                colors.textPrimary,
+                BlendMode.srcIn,
+              ),
               width: 22.w,
               height: 22.w,
             ),

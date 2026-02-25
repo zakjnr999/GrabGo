@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -413,8 +414,13 @@ class RiderTrackingProvider with ChangeNotifier {
   }
 
   /// Mark order as delivered
-  Future<bool> markAsDelivered() async {
-    final success = await _updateStatus(TrackingStatus.delivered);
+  Future<bool> markAsDelivered({
+    Map<String, dynamic>? deliveryVerification,
+  }) async {
+    final success = await _updateStatus(
+      TrackingStatus.delivered,
+      deliveryVerification: deliveryVerification,
+    );
     if (success) {
       await stopTracking();
     }
@@ -435,7 +441,55 @@ class RiderTrackingProvider with ChangeNotifier {
     return success;
   }
 
-  Future<bool> _updateStatus(TrackingStatus newStatus) async {
+  /// Upload fallback delivery proof photo for gift order verification.
+  Future<DeliveryProofUploadResult> uploadDeliveryProofPhoto(File photo) async {
+    if (_activeOrderId == null) {
+      const result = DeliveryProofUploadResult(
+        success: false,
+        message: 'No active order to upload proof for',
+      );
+      _setError(result.message!);
+      return result;
+    }
+
+    final result = await _trackingService.uploadDeliveryProofPhoto(
+      orderId: _activeOrderId!,
+      photo: photo,
+    );
+
+    if (!result.success) {
+      _setError(result.message ?? 'Failed to upload delivery proof photo');
+    }
+
+    return result;
+  }
+
+  /// Ask backend to resend delivery verification code to recipient.
+  Future<DeliveryCodeResendResult> resendDeliveryCodeToRecipient() async {
+    if (_activeOrderId == null) {
+      const result = DeliveryCodeResendResult(
+        success: false,
+        message: 'No active order to resend delivery code for',
+      );
+      _setError(result.message!);
+      return result;
+    }
+
+    final result = await _trackingService.resendDeliveryCodeToRecipient(
+      orderId: _activeOrderId!,
+    );
+
+    if (!result.success) {
+      _setError(result.message ?? 'Failed to resend delivery code');
+    }
+
+    return result;
+  }
+
+  Future<bool> _updateStatus(
+    TrackingStatus newStatus, {
+    Map<String, dynamic>? deliveryVerification,
+  }) async {
     if (_activeOrderId == null) {
       debugPrint('⚠️ No active order to update status');
       return false;
@@ -447,6 +501,9 @@ class RiderTrackingProvider with ChangeNotifier {
         final lifecycleResult = await _trackingService.updateLifecycleStatus(
           orderId: _activeOrderId!,
           status: lifecycleStatus,
+          deliveryVerification: newStatus == TrackingStatus.delivered
+              ? deliveryVerification
+              : null,
         );
 
         if (!lifecycleResult.success) {
