@@ -21,6 +21,7 @@ class FoodItemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
+    final reviewCountText = item.reviewCount > 0 ? " (${item.reviewCount})" : "";
 
     return GestureDetector(
       onTap: onTap,
@@ -157,7 +158,7 @@ class FoodItemCard extends StatelessWidget {
                       ),
                       SizedBox(width: 4.w),
                       Text(
-                        '${item.rating.toStringAsFixed(1)} (146)',
+                        '${item.rating.toStringAsFixed(1)}$reviewCountText',
                         style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
                       ),
                     ],
