@@ -1,6 +1,8 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { protect } = require('../middleware/auth');
+const { invalidateCache } = require('../middleware/cache');
+const cache = require('../utils/cache');
 const {
   CheckoutSessionError,
   createCheckoutSession,
@@ -10,6 +12,13 @@ const {
 } = require('../services/checkout_session_service');
 
 const router = express.Router();
+
+const invalidateFoodOrderHistoryCaches = async () => {
+  await invalidateCache([
+    `${cache.CACHE_KEYS.FOOD_ITEM}:history`,
+    `${cache.CACHE_KEYS.FOOD_ITEM}:recent`,
+  ]);
+};
 
 const handleCheckoutSessionError = (res, error) => {
   if (error instanceof CheckoutSessionError) {
@@ -147,6 +156,10 @@ router.post(
         customer: req.user,
         reference: req.body.reference,
         provider: req.body.provider,
+      });
+
+      await invalidateFoodOrderHistoryCaches().catch((cacheError) => {
+        console.error('Food order-history cache invalidation error:', cacheError.message);
       });
 
       return res.json({

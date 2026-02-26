@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
 class AreaUnavailableScreen extends StatelessWidget {
@@ -30,16 +32,8 @@ class AreaUnavailableScreen extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            padding: EdgeInsets.all(24.r),
-            decoration: BoxDecoration(color: themedAccentColor.withValues(alpha: 0.1), shape: BoxShape.circle),
-            child: Icon(
-              isAreaUnavailable ? Icons.map_outlined : Icons.location_off_rounded,
-              size: 64.r,
-              color: themedAccentColor,
-            ),
-          ),
-          SizedBox(height: 24.h),
+          SvgPicture.asset(Assets.icons.noService, package: 'grab_go_shared', width: 180.w, height: 180.w),
+
           Text(
             title,
             style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.w700, color: textPrimary),

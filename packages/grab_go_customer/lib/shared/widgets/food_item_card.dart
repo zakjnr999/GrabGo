@@ -16,21 +16,12 @@ class FoodItemCard extends StatelessWidget {
   final EdgeInsetsGeometry? margin;
   final String? deliveryTimeLabel;
 
-  const FoodItemCard({
-    super.key,
-    required this.item,
-    this.onTap,
-    this.trailing,
-    this.margin,
-    this.deliveryTimeLabel,
-  });
+  const FoodItemCard({super.key, required this.item, this.onTap, this.trailing, this.margin, this.deliveryTimeLabel});
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    final reviewCountText = item.reviewCount > 0
-        ? " (${item.reviewCount})"
-        : "";
+    final reviewCountText = item.reviewCount > 0 ? " (${item.reviewCount})" : "";
 
     return GestureDetector(
       onTap: onTap,
@@ -53,10 +44,7 @@ class FoodItemCard extends StatelessWidget {
                     bottomRight: Radius.circular(KBorderSize.borderRadius4),
                   ),
                   child: CachedNetworkImage(
-                    imageUrl: ImageOptimizer.getPreviewUrl(
-                      item.image,
-                      width: 600,
-                    ),
+                    imageUrl: ImageOptimizer.getPreviewUrl(item.image, width: 600),
                     height: 120,
                     width: double.infinity,
                     fit: BoxFit.cover,
@@ -79,10 +67,7 @@ class FoodItemCard extends StatelessWidget {
                         child: SvgPicture.asset(
                           Assets.icons.utensilsCrossed,
                           package: 'grab_go_shared',
-                          colorFilter: ColorFilter.mode(
-                            colors.textSecondary.withValues(alpha: 0.3),
-                            BlendMode.srcIn,
-                          ),
+                          colorFilter: ColorFilter.mode(colors.textSecondary.withValues(alpha: 0.3), BlendMode.srcIn),
                           width: 40.w,
                           height: 40,
                         ),
@@ -96,10 +81,7 @@ class FoodItemCard extends StatelessWidget {
                         child: SvgPicture.asset(
                           Assets.icons.utensilsCrossed,
                           package: 'grab_go_shared',
-                          colorFilter: ColorFilter.mode(
-                            colors.textSecondary.withValues(alpha: 0.3),
-                            BlendMode.srcIn,
-                          ),
+                          colorFilter: ColorFilter.mode(colors.textSecondary.withValues(alpha: 0.3), BlendMode.srcIn),
                           width: 40.w,
                           height: 40,
                         ),
@@ -115,6 +97,7 @@ class FoodItemCard extends StatelessWidget {
                       width: 36.w,
                       height: 36.w,
                       decoration: BoxDecoration(
+                        borderRadius: const BorderRadius.only(topRight: Radius.circular(KBorderSize.borderMedium)),
                         gradient: RadialGradient(
                           center: const Alignment(1.0, -1.0),
                           radius: 1.15,
@@ -145,16 +128,11 @@ class FoodItemCard extends StatelessWidget {
                           }
                         },
                         child: SvgPicture.asset(
-                          isFavorite
-                              ? Assets.icons.heartSolid
-                              : Assets.icons.heart,
+                          isFavorite ? Assets.icons.heartSolid : Assets.icons.heart,
                           package: 'grab_go_shared',
                           height: 24,
                           width: 24.w,
-                          colorFilter: ColorFilter.mode(
-                            isFavorite ? colors.error : Colors.white,
-                            BlendMode.srcIn,
-                          ),
+                          colorFilter: ColorFilter.mode(isFavorite ? colors.error : Colors.white, BlendMode.srcIn),
                         ),
                       ),
                     );
@@ -165,8 +143,7 @@ class FoodItemCard extends StatelessWidget {
                     top: 0,
                     left: 8.w,
                     child: VerticalZigzagTag(
-                      primaryText:
-                          "${item.discountPercentage.toStringAsFixed(0)} %",
+                      primaryText: "${item.discountPercentage.toStringAsFixed(0)} %",
                       secondaryText: 'OFF',
                       color: colors.accentOrange,
                     ),
@@ -200,19 +177,12 @@ class FoodItemCard extends StatelessWidget {
                         package: 'grab_go_shared',
                         height: 13,
                         width: 13.w,
-                        colorFilter: ColorFilter.mode(
-                          colors.accentOrange,
-                          BlendMode.srcIn,
-                        ),
+                        colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                       ),
                       SizedBox(width: 4.w),
                       Text(
                         '${item.rating.toStringAsFixed(1)}$reviewCountText',
-                        style: TextStyle(
-                          fontSize: 12.sp,
-                          fontWeight: FontWeight.w600,
-                          color: colors.textPrimary,
-                        ),
+                        style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
                       ),
                     ],
                   ),
@@ -222,22 +192,9 @@ class FoodItemCard extends StatelessWidget {
                     children: [
                       Text(
                         item.sellerName,
-                        style: TextStyle(
-                          fontSize: 13.sp,
-                          fontWeight: FontWeight.w500,
-                          color: colors.textSecondary,
-                        ),
+                        style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                      ),
-                      SizedBox(width: 8.w),
-                      Container(
-                        width: 3.w,
-                        height: 3,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: colors.textSecondary,
-                        ),
                       ),
                       SizedBox(width: 8.w),
                       if (item.isRestaurantOpen) ...[
@@ -245,10 +202,7 @@ class FoodItemCard extends StatelessWidget {
                         Container(
                           width: 3.w,
                           height: 3,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: colors.textSecondary,
-                          ),
+                          decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
                         ),
                         SizedBox(width: 8.w),
                         SvgPicture.asset(
@@ -256,29 +210,25 @@ class FoodItemCard extends StatelessWidget {
                           package: 'grab_go_shared',
                           height: 12,
                           width: 12.w,
-                          colorFilter: ColorFilter.mode(
-                            colors.textSecondary,
-                            BlendMode.srcIn,
-                          ),
+                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                         ),
                         SizedBox(width: 4.w),
                         Text(
                           deliveryTimeLabel ?? item.estimatedDeliveryTime,
-                          style: TextStyle(
-                            fontSize: 11.sp,
-                            fontWeight: FontWeight.w500,
-                            color: colors.textSecondary,
-                          ),
+                          style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
                         ),
                       ] else ...[
+                        Container(
+                          width: 3.w,
+                          height: 3,
+                          decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
+                        ),
                         Text(
                           "We're closed",
                           style: TextStyle(
                             fontSize: 12.sp,
                             fontWeight: FontWeight.w600,
-                            color: item.isRestaurantOpen
-                                ? colors.accentGreen
-                                : colors.error,
+                            color: item.isRestaurantOpen ? colors.accentGreen : colors.error,
                           ),
                         ),
                       ],
@@ -289,21 +239,14 @@ class FoodItemCard extends StatelessWidget {
                   Row(
                     children: [
                       Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 8.w,
-                          vertical: 4,
-                        ),
+                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4),
                         decoration: BoxDecoration(
                           color: colors.accentOrange.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8.r),
                         ),
                         child: Text(
                           'GHS ${(item.price * (1 - item.discountPercentage / 100)).toStringAsFixed(2)}',
-                          style: TextStyle(
-                            fontSize: 13.sp,
-                            fontWeight: FontWeight.w700,
-                            color: colors.accentOrange,
-                          ),
+                          style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: colors.accentOrange),
                         ),
                       ),
                       SizedBox(width: 8.w),

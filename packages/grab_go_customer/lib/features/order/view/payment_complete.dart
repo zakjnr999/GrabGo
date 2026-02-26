@@ -6,7 +6,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
+import 'package:grab_go_customer/features/home/viewmodel/food_discovery_provider.dart';
 import 'package:grab_go_customer/features/order/service/order_service_wrapper.dart';
+import 'package:grab_go_customer/features/order/viewmodel/order_provider.dart';
 import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
@@ -120,7 +122,17 @@ class _PaymentCompleteState extends State<PaymentComplete>
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<CartProvider>(context, listen: false).clearCart();
+      final cartProvider = Provider.of<CartProvider>(context, listen: false);
+      final discoveryProvider = Provider.of<FoodDiscoveryProvider>(
+        context,
+        listen: false,
+      );
+      final orderProvider = Provider.of<OrderProvider>(context, listen: false);
+
+      cartProvider.clearCart();
+      discoveryProvider.fetchOrderHistory(forceRefresh: true);
+      discoveryProvider.fetchRecentOrderItems(forceRefresh: true);
+      orderProvider.fetchOrders(forceRefresh: true);
     });
   }
 

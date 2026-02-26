@@ -1549,7 +1549,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             ),
                           )
                         : SvgPicture.asset(
-                            Assets.icons.cart,
+                            isInCart ? Assets.icons.check : Assets.icons.cart,
                             package: 'grab_go_shared',
                             height: 16.h,
                             width: 16.w,

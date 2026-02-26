@@ -30,9 +30,7 @@ class VendorCard extends StatelessWidget {
     final size = MediaQuery.sizeOf(context);
     final cardWidth = width ?? (size.width - 40.w);
     final imageHeight = (cardWidth * 0.45).clamp(90.0, 125.0);
-    final reviewCountText = vendor.totalReviews > 0
-        ? " (${vendor.totalReviews})"
-        : "";
+    final reviewCountText = vendor.totalReviews > 0 ? " (${vendor.totalReviews})" : "";
 
     return Container(
       width: width ?? double.infinity,
@@ -84,10 +82,7 @@ class VendorCard extends StatelessWidget {
                                   package: 'grab_go_shared',
                                   height: 13,
                                   width: 13.w,
-                                  colorFilter: ColorFilter.mode(
-                                    colors.accentOrange,
-                                    BlendMode.srcIn,
-                                  ),
+                                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                                 ),
                                 SizedBox(width: 4.w),
                                 Text(
@@ -132,8 +127,7 @@ class VendorCard extends StatelessWidget {
                                       fontWeight: FontWeight.w800,
                                     ),
                                   ),
-                                if (showDistance &&
-                                    vendor.distanceText.isNotEmpty)
+                                if (showDistance && vendor.distanceText.isNotEmpty)
                                   Text(
                                     vendor.distanceText,
                                     maxLines: 1,
@@ -150,10 +144,7 @@ class VendorCard extends StatelessWidget {
                             Container(
                               width: 3.w,
                               height: 3,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: colors.textSecondary,
-                              ),
+                              decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
                             ),
                             SizedBox(width: 8.w),
                             SvgPicture.asset(
@@ -161,10 +152,7 @@ class VendorCard extends StatelessWidget {
                               package: 'grab_go_shared',
                               height: 12,
                               width: 12.w,
-                              colorFilter: ColorFilter.mode(
-                                colors.textSecondary,
-                                BlendMode.srcIn,
-                              ),
+                              colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                             ),
                             SizedBox(width: 4.w),
                             Flexible(
@@ -198,10 +186,7 @@ class VendorCard extends StatelessWidget {
                                         package: 'grab_go_shared',
                                         height: 13,
                                         width: 13.w,
-                                        colorFilter: ColorFilter.mode(
-                                          colors.textPrimary,
-                                          BlendMode.srcIn,
-                                        ),
+                                        colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                                       ),
                                       SizedBox(width: 4.w),
                                       Text(
@@ -217,10 +202,7 @@ class VendorCard extends StatelessWidget {
                                   if (vendor.minOrder > 0) ...[
                                     Text(
                                       "|",
-                                      style: TextStyle(
-                                        color: colors.textTertiary,
-                                        fontSize: 12.sp,
-                                      ),
+                                      style: TextStyle(color: colors.textTertiary, fontSize: 12.sp),
                                     ),
                                     Text(
                                       "Min:",
@@ -249,9 +231,7 @@ class VendorCard extends StatelessWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  color: vendor.isOpen
-                                      ? colors.accentGreen
-                                      : colors.error,
+                                  color: vendor.isOpen ? colors.accentGreen : colors.error,
                                   fontSize: 12.sp,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -282,10 +262,7 @@ class VendorCard extends StatelessWidget {
             bottomRight: Radius.circular(KBorderSize.borderRadius4),
           ),
           child: CachedNetworkImage(
-            imageUrl: ImageOptimizer.getPreviewUrl(
-              vendor.logo ?? '',
-              width: 800,
-            ),
+            imageUrl: ImageOptimizer.getPreviewUrl(vendor.logo ?? '', width: 800),
             height: imageHeight,
             width: double.infinity,
             fit: BoxFit.cover,
@@ -297,10 +274,7 @@ class VendorCard extends StatelessWidget {
                 child: SvgPicture.asset(
                   Assets.icons.store,
                   package: 'grab_go_shared',
-                  colorFilter: ColorFilter.mode(
-                    colors.textSecondary,
-                    BlendMode.srcIn,
-                  ),
+                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                   width: 30.w,
                   height: 30,
                 ),
@@ -314,10 +288,7 @@ class VendorCard extends StatelessWidget {
                 child: SvgPicture.asset(
                   Assets.icons.store,
                   package: 'grab_go_shared',
-                  colorFilter: ColorFilter.mode(
-                    colors.textSecondary,
-                    BlendMode.srcIn,
-                  ),
+                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                   width: 30.w,
                   height: 30,
                 ),
@@ -333,6 +304,7 @@ class VendorCard extends StatelessWidget {
               width: 36.w,
               height: 36.w,
               decoration: BoxDecoration(
+                borderRadius: const BorderRadius.only(topRight: Radius.circular(KBorderSize.borderMedium)),
                 gradient: RadialGradient(
                   center: const Alignment(1.0, -1.0),
                   radius: 1.15,
@@ -357,10 +329,7 @@ class VendorCard extends StatelessWidget {
               package: 'grab_go_shared',
               height: 24,
               width: 24.w,
-              colorFilter: const ColorFilter.mode(
-                Colors.white,
-                BlendMode.srcIn,
-              ),
+              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
             ),
           ),
         ),
@@ -379,11 +348,7 @@ class VendorCard extends StatelessWidget {
               alignment: Alignment.center,
               child: Text(
                 "We're closed",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w800,
-                ),
+                style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.w800),
               ),
             ),
           ),

@@ -31,11 +31,20 @@ class OrderProvider extends ChangeNotifier {
       return;
     }
 
-    // Don't fetch if already loading or if we have orders (unless force refresh)
-    if (!forceRefresh && (_orders.isNotEmpty || _isLoading)) {
+    // Don't fetch if already loading.
+    if (_isLoading) {
       if (kDebugMode) {
-        print('⏭️ Skipping fetch: orders=${_orders.isNotEmpty}, loading=$_isLoading');
+        print('⏭️ Skipping fetch: loading=$_isLoading');
       }
+      return;
+    }
+
+    // If we already have data, keep current UI responsive and refresh in background.
+    if (!forceRefresh && _orders.isNotEmpty) {
+      if (kDebugMode) {
+        print('🔄 Orders already loaded; refreshing in background');
+      }
+      _fetchOrdersInBackground();
       return;
     }
 
@@ -97,11 +106,14 @@ class OrderProvider extends ChangeNotifier {
         _saveOrdersToCacheAsync();
       } catch (e) {
         String errorMessage = 'Error fetching orders';
-        if (e.toString().contains('SocketException') || e.toString().contains('Failed host lookup')) {
-          errorMessage = 'Cannot connect to server. Please check your internet connection or try again later.';
+        if (e.toString().contains('SocketException') ||
+            e.toString().contains('Failed host lookup')) {
+          errorMessage =
+              'Cannot connect to server. Please check your internet connection or try again later.';
         } else if (e.toString().contains('TimeoutException')) {
           errorMessage = 'Request timed out. Please try again.';
-        } else if (e.toString().contains('authentication') || e.toString().contains('token')) {
+        } else if (e.toString().contains('authentication') ||
+            e.toString().contains('token')) {
           errorMessage = 'Authentication error. Please log in again.';
         } else {
           errorMessage = 'Error fetching orders: ${e.toString()}';
@@ -192,11 +204,14 @@ class OrderProvider extends ChangeNotifier {
       _saveOrdersToCacheAsync();
     } catch (e) {
       String errorMessage = 'Error refreshing orders';
-      if (e.toString().contains('SocketException') || e.toString().contains('Failed host lookup')) {
-        errorMessage = 'Cannot connect to server. Please check your internet connection or try again later.';
+      if (e.toString().contains('SocketException') ||
+          e.toString().contains('Failed host lookup')) {
+        errorMessage =
+            'Cannot connect to server. Please check your internet connection or try again later.';
       } else if (e.toString().contains('TimeoutException')) {
         errorMessage = 'Request timed out. Please try again.';
-      } else if (e.toString().contains('authentication') || e.toString().contains('token')) {
+      } else if (e.toString().contains('authentication') ||
+          e.toString().contains('token')) {
         errorMessage = 'Authentication error. Please log in again.';
       } else {
         errorMessage = 'Error refreshing orders: ${e.toString()}';
@@ -291,7 +306,13 @@ class OrderProvider extends ChangeNotifier {
         case 'pending':
           return orderStatus == 'pending';
         case 'ongoing':
-          return ['confirmed', 'preparing', 'ready', 'picked_up', 'on_the_way'].contains(orderStatus);
+          return [
+            'confirmed',
+            'preparing',
+            'ready',
+            'picked_up',
+            'on_the_way',
+          ].contains(orderStatus);
         case 'completed':
           return orderStatus == 'delivered';
         case 'cancelled':
@@ -348,9 +369,15 @@ class OrderProvider extends ChangeNotifier {
   /// Get order statistics
   Map<String, dynamic> getOrderStatistics() {
     final totalOrders = _orders.length;
-    final completedOrders = _orders.where((order) => order['status'] == 'completed').length;
-    final pendingOrders = _orders.where((order) => order['status'] == 'pending').length;
-    final cancelledOrders = _orders.where((order) => order['status'] == 'cancelled').length;
+    final completedOrders = _orders
+        .where((order) => order['status'] == 'completed')
+        .length;
+    final pendingOrders = _orders
+        .where((order) => order['status'] == 'pending')
+        .length;
+    final cancelledOrders = _orders
+        .where((order) => order['status'] == 'cancelled')
+        .length;
 
     double totalSpent = 0.0;
     for (var order in _orders) {

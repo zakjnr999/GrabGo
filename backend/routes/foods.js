@@ -548,12 +548,27 @@ router.get("/order-history", protect, cacheMiddleware(cache.CACHE_KEYS.FOOD_ITEM
 
     console.log(`\n🔍 [DEBUG] Fetching food order history for user: ${userId}`);
 
-    // Get completed food orders for the user
+    // Get food orders across active lifecycle states so "Order Again"
+    // can appear immediately after checkout.
     const orders = await prisma.order.findMany({
       where: {
         customerId: userId,
         orderType: 'food',
-        status: { in: ['delivered', 'on_the_way', 'picked_up', 'confirmed'] }
+        OR: [
+          { paymentMethod: 'cash' },
+          { paymentStatus: { in: ['paid', 'successful'] } },
+        ],
+        status: {
+          in: [
+            'pending',
+            'confirmed',
+            'preparing',
+            'ready',
+            'picked_up',
+            'on_the_way',
+            'delivered',
+          ],
+        },
       },
       include: {
         items: {

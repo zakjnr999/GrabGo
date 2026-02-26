@@ -4,7 +4,7 @@ const crypto = require("crypto");
 const prisma = require("../config/prisma");
 const { protect, authorize } = require("../middleware/auth");
 const { uploadSingle, uploadToCloudinary } = require("../middleware/upload");
-const { cacheMiddleware } = require("../middleware/cache");
+const { cacheMiddleware, invalidateCache } = require("../middleware/cache");
 const cache = require("../utils/cache");
 const trackingService = require("../services/tracking_service");
 const { sendOrderNotification, sendToUser } = require("../services/fcm_service");
@@ -54,6 +54,13 @@ const {
 const router = express.Router();
 
 const { FOOD_INCLUDE_RELATIONS, formatFoodResponse } = require('../utils/food_helpers');
+
+const invalidateFoodOrderHistoryCaches = async () => {
+  await invalidateCache([
+    `${cache.CACHE_KEYS.FOOD_ITEM}:history`,
+    `${cache.CACHE_KEYS.FOOD_ITEM}:recent`,
+  ]);
+};
 
 const normalizeFulfillmentMode = (mode) => {
   if (!mode) return "delivery";
@@ -1258,6 +1265,12 @@ router.post(
         };
       }
 
+      if (resolvedOrderType === "food") {
+        await invalidateFoodOrderHistoryCaches().catch((cacheError) => {
+          console.error("Food order-history cache invalidation error:", cacheError.message);
+        });
+      }
+
       res.status(201).json({
         success: true,
         message: "Order created successfully",
@@ -1684,6 +1697,7 @@ router.post(
           customerId: true,
           paymentMethod: true,
           paymentStatus: true,
+          orderType: true,
           status: true,
           fulfillmentMode: true,
           riderId: true,
@@ -1983,6 +1997,12 @@ router.post(
         );
       } catch (notifError) {
         console.error("Payment notification error:", notifError.message);
+      }
+
+      if (order.orderType === "food") {
+        await invalidateFoodOrderHistoryCaches().catch((cacheError) => {
+          console.error("Food order-history cache invalidation error:", cacheError.message);
+        });
       }
 
       return res.json({

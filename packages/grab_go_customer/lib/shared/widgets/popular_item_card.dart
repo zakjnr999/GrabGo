@@ -4,7 +4,10 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
+import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
+import 'package:grab_go_customer/features/grabmart/model/grabmart_item.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
+import 'package:grab_go_customer/features/pharmacy/model/pharmacy_item.dart';
 import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
 import 'package:grab_go_customer/shared/widgets/vertical_zigzag_tag.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
@@ -36,13 +39,13 @@ class PopularItemCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final effectiveAccentColor = accentColor ?? colors.accentOrange;
+    final reviewCount = _resolveReviewCount(item);
+    final reviewCountText = reviewCount > 0 ? " (${_formatReviewCount(reviewCount)})" : "";
     final shouldShowOrderTag = !useVerticalZigzagTag || orderCount > 0;
     Size size = MediaQuery.sizeOf(context);
     final cardWidth = size.width * 0.5;
     final imageHeight = (cardWidth * 0.62).clamp(96.0, 120.0);
-    final isOpen = item is FoodItem
-        ? (item as FoodItem).isRestaurantOpen
-        : true;
+    final isOpen = item is FoodItem ? (item as FoodItem).isRestaurantOpen : true;
 
     return GestureDetector(
       onTap: onTap,
@@ -68,10 +71,7 @@ class PopularItemCard extends StatelessWidget {
                     bottomRight: Radius.circular(KBorderSize.borderRadius4),
                   ),
                   child: CachedNetworkImage(
-                    imageUrl: ImageOptimizer.getPreviewUrl(
-                      item.image,
-                      width: 400,
-                    ),
+                    imageUrl: ImageOptimizer.getPreviewUrl(item.image, width: 400),
                     height: imageHeight,
                     width: double.infinity,
                     fit: BoxFit.cover,
@@ -84,10 +84,7 @@ class PopularItemCard extends StatelessWidget {
                         child: SvgPicture.asset(
                           Assets.icons.utensilsCrossed,
                           package: 'grab_go_shared',
-                          colorFilter: ColorFilter.mode(
-                            colors.textSecondary,
-                            BlendMode.srcIn,
-                          ),
+                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                           width: 30.w,
                           height: 30,
                         ),
@@ -100,10 +97,7 @@ class PopularItemCard extends StatelessWidget {
                         child: SvgPicture.asset(
                           Assets.icons.utensilsCrossed,
                           package: 'grab_go_shared',
-                          colorFilter: ColorFilter.mode(
-                            colors.textSecondary,
-                            BlendMode.srcIn,
-                          ),
+                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                           width: 30.w,
                           height: 30,
                         ),
@@ -129,6 +123,7 @@ class PopularItemCard extends StatelessWidget {
                       width: 36.w,
                       height: 36.w,
                       decoration: BoxDecoration(
+                        borderRadius: const BorderRadius.only(topRight: Radius.circular(KBorderSize.borderMedium)),
                         gradient: RadialGradient(
                           center: const Alignment(1.0, -1.0),
                           radius: 1.15,
@@ -145,9 +140,7 @@ class PopularItemCard extends StatelessWidget {
                 ),
                 Consumer<FavoritesProvider>(
                   builder: (context, favoriteProvider, child) {
-                    final bool isFavorite = item is FoodItem
-                        ? favoriteProvider.isFavorite(item as FoodItem)
-                        : false;
+                    final bool isFavorite = item is FoodItem ? favoriteProvider.isFavorite(item as FoodItem) : false;
                     return Positioned(
                       right: 6.r,
                       top: 6.r,
@@ -155,9 +148,7 @@ class PopularItemCard extends StatelessWidget {
                         onTap: () {
                           if (item is FoodItem) {
                             if (isFavorite) {
-                              favoriteProvider.removeFromFavorites(
-                                item as FoodItem,
-                              );
+                              favoriteProvider.removeFromFavorites(item as FoodItem);
                             } else {
                               favoriteProvider.addToFavorites(item as FoodItem);
                             }
@@ -166,16 +157,11 @@ class PopularItemCard extends StatelessWidget {
                           }
                         },
                         child: SvgPicture.asset(
-                          isFavorite
-                              ? Assets.icons.heartSolid
-                              : Assets.icons.heart,
+                          isFavorite ? Assets.icons.heartSolid : Assets.icons.heart,
                           package: 'grab_go_shared',
                           height: 24,
                           width: 24.w,
-                          colorFilter: ColorFilter.mode(
-                            isFavorite ? colors.error : Colors.white,
-                            BlendMode.srcIn,
-                          ),
+                          colorFilter: ColorFilter.mode(isFavorite ? colors.error : Colors.white, BlendMode.srcIn),
                         ),
                       ),
                     );
@@ -196,11 +182,7 @@ class PopularItemCard extends StatelessWidget {
                           item.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w600,
-                            color: colors.textPrimary,
-                          ),
+                          style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
                         ),
                         const SizedBox(height: 6),
                         if (showDeliveryTime)
@@ -219,33 +201,32 @@ class PopularItemCard extends StatelessWidget {
                                         ),
                                       ),
                                     ),
-                                    SizedBox(width: 6.w),
+                                    SizedBox(width: 4.w),
                                     Container(
                                       width: 3.w,
                                       height: 3,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: colors.textSecondary,
-                                      ),
+                                      decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
                                     ),
-                                    SizedBox(width: 6.w),
+                                    SizedBox(width: 4.w),
                                     SvgPicture.asset(
                                       Assets.icons.starSolid,
                                       package: 'grab_go_shared',
                                       height: 11,
                                       width: 11.w,
-                                      colorFilter: ColorFilter.mode(
-                                        effectiveAccentColor,
-                                        BlendMode.srcIn,
-                                      ),
+                                      colorFilter: ColorFilter.mode(effectiveAccentColor, BlendMode.srcIn),
                                     ),
                                     SizedBox(width: 3.w),
-                                    Text(
-                                      item.rating.toStringAsFixed(1),
-                                      style: TextStyle(
-                                        fontSize: 11.sp,
-                                        fontWeight: FontWeight.w600,
-                                        color: colors.textPrimary,
+                                    Flexible(
+                                      child: Text(
+                                        '${item.rating.toStringAsFixed(1)}$reviewCountText',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        softWrap: false,
+                                        style: TextStyle(
+                                          fontSize: 11.sp,
+                                          fontWeight: FontWeight.w600,
+                                          color: colors.textPrimary,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -254,29 +235,18 @@ class PopularItemCard extends StatelessWidget {
                                   "We're closed",
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 11.sp,
-                                    fontWeight: FontWeight.w600,
-                                    color: colors.error,
-                                  ),
+                                  style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: colors.error),
                                 ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 12),
                         Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 8.w,
-                            vertical: 4,
-                          ),
+                          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4),
                           decoration: BoxDecoration(
                             color: effectiveAccentColor.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(8.r),
                           ),
                           child: Text(
                             "GHS ${item.price.toStringAsFixed(2)}",
-                            style: TextStyle(
-                              fontSize: 13.sp,
-                              fontWeight: FontWeight.w800,
-                              color: effectiveAccentColor,
-                            ),
+                            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w800, color: effectiveAccentColor),
                           ),
                         ),
                       ],
@@ -284,11 +254,8 @@ class PopularItemCard extends StatelessWidget {
                   ),
                   Consumer<CartProvider>(
                     builder: (context, provider, _) {
-                      final bool isInCart = provider.cartItems.containsKey(
-                        item,
-                      );
-                      final bool isItemPending = provider
-                          .isItemOperationPending(item);
+                      final bool isInCart = provider.cartItems.containsKey(item);
+                      final bool isItemPending = provider.isItemOperationPending(item);
                       return GestureDetector(
                         onTap: () {
                           if (isItemPending) return;
@@ -304,17 +271,12 @@ class PopularItemCard extends StatelessWidget {
                           padding: EdgeInsets.all(10.r),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: isInCart
-                                ? effectiveAccentColor
-                                : colors.backgroundSecondary,
+                            color: isInCart ? effectiveAccentColor : colors.backgroundSecondary,
                           ),
                           child: AnimatedSwitcher(
                             duration: const Duration(milliseconds: 200),
                             transitionBuilder: (child, animation) {
-                              return ScaleTransition(
-                                scale: animation,
-                                child: child,
-                              );
+                              return ScaleTransition(scale: animation, child: child);
                             },
                             child: isItemPending
                                 ? SizedBox(
@@ -324,24 +286,18 @@ class PopularItemCard extends StatelessWidget {
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
                                       valueColor: AlwaysStoppedAnimation<Color>(
-                                        isInCart
-                                            ? Colors.white
-                                            : colors.accentOrange,
+                                        isInCart ? Colors.white : colors.accentOrange,
                                       ),
                                     ),
                                   )
                                 : SvgPicture.asset(
-                                    isInCart
-                                        ? Assets.icons.check
-                                        : Assets.icons.cart,
+                                    isInCart ? Assets.icons.check : Assets.icons.cart,
                                     key: ValueKey(isInCart),
                                     package: 'grab_go_shared',
                                     height: 18,
                                     width: 18.w,
                                     colorFilter: ColorFilter.mode(
-                                      isInCart
-                                          ? Colors.white
-                                          : colors.textPrimary,
+                                      isInCart ? Colors.white : colors.textPrimary,
                                       BlendMode.srcIn,
                                     ),
                                   ),
@@ -357,5 +313,19 @@ class PopularItemCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  int _resolveReviewCount(CartItem item) {
+    if (item is FoodItem) return item.reviewCount;
+    if (item is GroceryItem) return item.reviewCount;
+    if (item is PharmacyItem) return item.reviewCount;
+    if (item is GrabMartItem) return item.reviewCount;
+    return 0;
+  }
+
+  String _formatReviewCount(int count) {
+    if (count < 1000) return count.toString();
+    if (count < 10000) return '${(count / 1000).toStringAsFixed(1)}k';
+    return '${(count / 1000).round()}k';
   }
 }
