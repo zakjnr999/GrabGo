@@ -250,7 +250,9 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
     if (isAcceptingOrders is bool && !isAcceptingOrders) return false;
 
     final status = vendor['status']?.toString().toLowerCase();
-    if (status != null && status.isNotEmpty && status != 'approved') return false;
+    if (status != null && status.isNotEmpty && status != 'approved') {
+      return false;
+    }
 
     return true;
   }
@@ -336,48 +338,54 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
                         return SizedBox(height: currentHeight);
                       },
                     ),
-                    _buildTabs(colors),
                     Expanded(
                       child: Consumer<OrderProvider>(
                         builder: (context, orderProvider, _) {
+                          final hasAnyOrders = orderProvider.orders.isNotEmpty;
+
                           if (orderProvider.isLoading && orderProvider.orders.isEmpty) {
                             return OrderSkeleton(colors: colors, isDark: isDark);
                           }
 
                           final filteredOrders = _getFilteredOrders(orderProvider.orders);
 
-                          if (filteredOrders.isEmpty) {
-                            return _buildEmptyState(colors);
-                          }
-
-                          return AppRefreshIndicator(
-                            iconPath: Assets.icons.boxIso,
-                            bgColor: colors.accentOrange,
-                            onRefresh: () => orderProvider.refreshOrders(),
-                            child: ListView.separated(
-                              controller: _scrollController,
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-                              itemCount: filteredOrders.length,
-                              separatorBuilder: (context, index) {
-                                return Column(
-                                  children: [
-                                    SizedBox(height: 16.h),
-                                    DottedLine(
-                                      dashLength: 6,
-                                      dashGapLength: 4,
-                                      lineThickness: 1,
-                                      dashColor: colors.textSecondary.withAlpha(50),
-                                    ),
-                                    SizedBox(height: 16.h),
-                                  ],
-                                );
-                              },
-                              itemBuilder: (context, index) {
-                                final order = filteredOrders[index];
-                                return _buildOrderCard(order, colors, isDark);
-                              },
-                            ),
+                          return Column(
+                            children: [
+                              if (hasAnyOrders) _buildTabs(colors),
+                              Expanded(
+                                child: filteredOrders.isEmpty
+                                    ? _buildEmptyState(colors)
+                                    : AppRefreshIndicator(
+                                        iconPath: Assets.icons.boxIso,
+                                        bgColor: colors.accentOrange,
+                                        onRefresh: () => orderProvider.refreshOrders(),
+                                        child: ListView.separated(
+                                          controller: _scrollController,
+                                          physics: const AlwaysScrollableScrollPhysics(),
+                                          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+                                          itemCount: filteredOrders.length,
+                                          separatorBuilder: (context, index) {
+                                            return Column(
+                                              children: [
+                                                SizedBox(height: 16.h),
+                                                DottedLine(
+                                                  dashLength: 6,
+                                                  dashGapLength: 4,
+                                                  lineThickness: 1,
+                                                  dashColor: colors.textSecondary.withAlpha(50),
+                                                ),
+                                                SizedBox(height: 16.h),
+                                              ],
+                                            );
+                                          },
+                                          itemBuilder: (context, index) {
+                                            final order = filteredOrders[index];
+                                            return _buildOrderCard(order, colors, isDark);
+                                          },
+                                        ),
+                                      ),
+                              ),
+                            ],
                           );
                         },
                       ),
@@ -498,48 +506,48 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
                   ),
                 ),
               ),
-              CustomPopupMenu(
-                menuWidth: 280.w,
-                showArrow: false,
-                items: [
-                  CustomPopupMenuItem(
-                    value: 'sort',
-                    label: 'Sort Favorites',
-                    icon: Assets.icons.sort,
-                    iconColor: colors.textSecondary,
-                  ),
-                  CustomPopupMenuItem(
-                    value: 'clear',
-                    label: 'Clear All Favorites',
-                    icon: Assets.icons.brushCleaning,
-                    iconColor: colors.textSecondary,
-                  ),
-                ],
-                onSelected: (value) {
-                  switch (value) {
-                    case "sort":
-                      debugPrint("sort");
-                    case "clear":
-                  }
-                },
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
-                      // context.push("/notification");
-                    },
-                    customBorder: const CircleBorder(),
-                    child: Padding(
-                      padding: EdgeInsets.all(10.r),
-                      child: SvgPicture.asset(
-                        Assets.icons.moreVertical,
-                        package: 'grab_go_shared',
-                        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+              // CustomPopupMenu(
+              //   menuWidth: 280.w,
+              //   showArrow: false,
+              //   items: [
+              //     CustomPopupMenuItem(
+              //       value: 'sort',
+              //       label: 'Sort Favorites',
+              //       icon: Assets.icons.sort,
+              //       iconColor: colors.textSecondary,
+              //     ),
+              //     CustomPopupMenuItem(
+              //       value: 'clear',
+              //       label: 'Clear All Favorites',
+              //       icon: Assets.icons.brushCleaning,
+              //       iconColor: colors.textSecondary,
+              //     ),
+              //   ],
+              //   onSelected: (value) {
+              //     switch (value) {
+              //       case "sort":
+              //         debugPrint("sort");
+              //       case "clear":
+              //     }
+              //   },
+              //   child: Material(
+              //     color: Colors.transparent,
+              //     child: InkWell(
+              //       onTap: () {
+              //         // context.push("/notification");
+              //       },
+              //       customBorder: const CircleBorder(),
+              //       child: Padding(
+              //         padding: EdgeInsets.all(10.r),
+              //         child: SvgPicture.asset(
+              //           Assets.icons.moreVertical,
+              //           package: 'grab_go_shared',
+              //           colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+              //         ),
+              //       ),
+              //     ),
+              //   ),
+              // ),
             ],
           ),
           SizedBox(height: 6.h),
@@ -559,36 +567,21 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
   }
 
   Widget _buildEmptyState(AppColorsExtension colors) {
-    String title;
-    String message;
-
-    switch (selectedTabIndex) {
-      case 0:
-        title = AppStrings.ordersNoOrders;
-        message = AppStrings.ordersNoOngoingOrders;
-        break;
-      case 1:
-        title = AppStrings.ordersNoOrders;
-        message = "You don't have any completed or cancelled orders yet.";
-        break;
-      default:
-        title = AppStrings.ordersNoOrders;
-        message = '';
-    }
-
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          SvgPicture.asset(Assets.icons.emptyOrdersScreen, package: 'grab_go_shared', width: 180.w, height: 180.h),
+          SizedBox(height: 12.h),
           Text(
-            title,
+            AppStrings.ordersNoOrders,
             style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
           ),
           SizedBox(height: 8.h),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 40.w),
             child: Text(
-              message,
+              "You don't have any orders yet. Place an order to track it from here.",
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
             ),

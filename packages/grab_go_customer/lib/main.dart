@@ -6,6 +6,7 @@ import 'package:grab_go_customer/features/home/viewmodel/food_banner_provider.da
 import 'package:grab_go_customer/features/home/viewmodel/food_category_provider.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_deals_provider.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_discovery_provider.dart';
+import 'package:grab_go_customer/features/order/view/call_screen.dart';
 import 'package:grab_go_customer/shared/viewmodels/settings_provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_shared/shared/services/secure_storage_service.dart';
@@ -79,10 +80,22 @@ void main() async {
           FoodProvider
         >(
           create: (context) => FoodProvider(
-            categoryProvider: Provider.of<FoodCategoryProvider>(context, listen: false),
-            bannerProvider: Provider.of<FoodBannerProvider>(context, listen: false),
-            dealsProvider: Provider.of<FoodDealsProvider>(context, listen: false),
-            discoveryProvider: Provider.of<FoodDiscoveryProvider>(context, listen: false),
+            categoryProvider: Provider.of<FoodCategoryProvider>(
+              context,
+              listen: false,
+            ),
+            bannerProvider: Provider.of<FoodBannerProvider>(
+              context,
+              listen: false,
+            ),
+            dealsProvider: Provider.of<FoodDealsProvider>(
+              context,
+              listen: false,
+            ),
+            discoveryProvider: Provider.of<FoodDiscoveryProvider>(
+              context,
+              listen: false,
+            ),
           ),
           update: (context, cat, ban, deal, disc, food) => food!,
         ),
@@ -96,7 +109,9 @@ void main() async {
         ChangeNotifierProvider(create: (context) => GroceryProvider()),
         ChangeNotifierProvider(create: (context) => PharmacyProvider()),
         ChangeNotifierProvider(create: (context) => GrabMartProvider()),
-        ChangeNotifierProvider(create: (context) => VendorProvider(vendorService)),
+        ChangeNotifierProvider(
+          create: (context) => VendorProvider(vendorService),
+        ),
         ChangeNotifierProvider(create: (context) => WebRTCService()),
       ],
       child: const GrabGoCustomerApp(),
@@ -122,40 +137,76 @@ class GrabGoCustomerApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<GrabGoCustomerApp> with WidgetsBindingObserver {
+  WebRTCService? _webrtcService;
+  void Function(SocketConnectionState)? _socketConnectionListener;
+  bool _isIncomingCallScreenOpen = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    // Initialize WebRTC service after frame is built
+    // Initialize WebRTC and keep it bound to socket reconnects.
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setupWebRTCBindings();
       _initializeWebRTC();
     });
   }
 
+  void _setupWebRTCBindings() {
+    _webrtcService = context.read<WebRTCService>();
+    _webrtcService!.addListener(_handleWebRTCStateChanged);
+
+    _socketConnectionListener = (state) {
+      if (state == SocketConnectionState.connected && mounted) {
+        _initializeWebRTC();
+      }
+    };
+    SocketService().addConnectionListener(_socketConnectionListener!);
+  }
+
+  void _handleWebRTCStateChanged() {
+    final service = _webrtcService;
+    if (service == null || !mounted) return;
+
+    if (!service.hasPendingIncomingCall || _isIncomingCallScreenOpen) {
+      return;
+    }
+
+    final otherUserId = service.otherUserId;
+    if (otherUserId == null || otherUserId.isEmpty) {
+      return;
+    }
+
+    _isIncomingCallScreenOpen = true;
+    final navContext = navigatorKey.currentContext ?? context;
+    Navigator.of(navContext)
+        .push(
+          MaterialPageRoute(
+            builder: (context) => CallScreen(
+              otherUserId: otherUserId,
+              otherUserName: 'Incoming call',
+              orderId: service.orderId,
+              isIncoming: true,
+            ),
+            fullscreenDialog: true,
+          ),
+        )
+        .whenComplete(() {
+          _isIncomingCallScreenOpen = false;
+        });
+  }
+
   Future<void> _initializeWebRTC() async {
     try {
-      debugPrint('🔧 Attempting to initialize WebRTC...');
       final socketService = SocketService();
-      final webrtcService = context.read<WebRTCService>();
+      final webrtcService = _webrtcService ?? context.read<WebRTCService>();
       final user = UserService().currentUser;
 
-      debugPrint('   Socket connected: ${socketService.isConnected}');
-      debugPrint('   Socket exists: ${socketService.socket != null}');
-      debugPrint('   User exists: ${user != null}');
-      debugPrint('   User ID: ${user?.id}');
-
-      if (socketService.isConnected && socketService.socket != null && user != null) {
+      if (socketService.isConnected &&
+          socketService.socket != null &&
+          user != null) {
         await webrtcService.initialize(socketService.socket!, user.id!);
-        debugPrint('✅ WebRTC service initialized');
-      } else {
-        debugPrint('⚠️ Cannot initialize WebRTC: Socket not connected or user not logged in');
-        debugPrint('   Will retry in 2 seconds...');
-
-        // Retry after a delay
-        Future.delayed(const Duration(seconds: 2), () {
-          if (mounted) _initializeWebRTC();
-        });
       }
     } catch (e) {
       debugPrint('Error initializing WebRTC: $e');
@@ -164,6 +215,10 @@ class _MyAppState extends State<GrabGoCustomerApp> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    if (_socketConnectionListener != null) {
+      SocketService().removeConnectionListener(_socketConnectionListener!);
+    }
+    _webrtcService?.removeListener(_handleWebRTCStateChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

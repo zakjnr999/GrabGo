@@ -1,0 +1,26 @@
+<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <rect x="25" y="55" width="70" height="45" fill="#E2E8F0" />
+  <rect x="25" y="100" width="70" height="5" fill="#CBD5E1" />
+  <rect x="45" y="70" width="30" height="30" fill="#38BDF8" />
+  <line x1="60" y1="70" x2="60" y2="100" stroke="#F8FAFC" stroke-width="2" />
+  <rect x="52" y="85" width="4" height="2" fill="#F8FAFC" />
+  <rect x="64" y="85" width="4" height="2" fill="#F8FAFC" />
+  <rect x="30" y="70" width="10" height="15" fill="#BAE6FD" />
+  <rect x="80" y="70" width="10" height="15" fill="#BAE6FD" />
+  <defs>
+    <clipPath id="awningClip">
+       <path d="M15,55 L25,40 L95,40 L105,55 Z" />
+    </clipPath>
+  </defs>
+  <path d="M15,55 L25,40 L95,40 L105,55 Z" fill="#F8FAFC" />
+  <g clip-path="url(#awningClip)">
+     <rect x="10" y="40" width="20" height="20" fill="#0EA5E9" />
+     <rect x="30" y="40" width="20" height="20" fill="#10B981" />
+     <rect x="50" y="40" width="20" height="20" fill="#F8FAFC" />
+     <rect x="70" y="40" width="20" height="20" fill="#0EA5E9" />
+     <rect x="90" y="40" width="20" height="20" fill="#10B981" />
+  </g>
+  <rect x="15" y="55" width="90" height="5" fill="#94A3B8" />
+  <rect x="35" y="15" width="28" height="20" rx="4" fill="#F97316" />
+  <text x="49" y="30" fill="#FFF" font-family="sans-serif" font-weight="900" font-size="14" text-anchor="middle">24</text>
+</svg>

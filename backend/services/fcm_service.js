@@ -698,19 +698,20 @@ const sendCallNotification = async (
     callerAvatar = null,
     callerId = null
 ) => {
-    const callIcon = callType === 'video' ? '📹' : '📞';
+    const normalizedCallType = 'audio';
+    const callIcon = '📞';
 
     return sendToUser(
         recipientId,
         {
-            title: `${callIcon} Incoming ${callType} call`,
+            title: `${callIcon} Incoming ${normalizedCallType} call`,
             body: `${callerName} is calling you...`,
             ...(callerAvatar && { imageUrl: callerAvatar }),
         },
         {
             type: 'incoming_call',
             callId,
-            callType,
+            callType: normalizedCallType,
             callerId: callerId || '', // Actual caller's ID
             callerName,
             callerAvatar: callerAvatar || '',

@@ -16,7 +16,8 @@ import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:provider/provider.dart';
 
 class ConfirmAddressPage extends StatefulWidget {
-  const ConfirmAddressPage({super.key});
+  final bool returnToPrevious;
+  const ConfirmAddressPage({super.key, this.returnToPrevious = false});
 
   @override
   State<ConfirmAddressPage> createState() => _ConfirmAddressPageState();
@@ -421,7 +422,11 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
       await locationProvider.setConfirmedAddress(addressModel);
 
       if (mounted) {
-        context.go("/homepage");
+        if (widget.returnToPrevious) {
+          context.pop(true);
+        } else {
+          context.go("/homepage");
+        }
       }
     } catch (e) {
       if (mounted) {

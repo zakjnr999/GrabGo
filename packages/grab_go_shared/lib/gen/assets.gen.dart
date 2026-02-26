@@ -218,6 +218,15 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/emoji.svg
   String get emoji => 'lib/assets/icons/emoji.svg';
 
+  /// File path: lib/assets/icons/empty_cart.svg
+  String get emptyCart => 'lib/assets/icons/empty_cart.svg';
+
+  /// File path: lib/assets/icons/empty_orders_screen.svg
+  String get emptyOrdersScreen => 'lib/assets/icons/empty_orders_screen.svg';
+
+  /// File path: lib/assets/icons/empty_search_icon..svg
+  String get emptySearchIcon => 'lib/assets/icons/empty_search_icon..svg';
+
   /// File path: lib/assets/icons/expand.svg
   String get expand => 'lib/assets/icons/expand.svg';
 
@@ -267,9 +276,15 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/gift.svg
   String get gift => 'lib/assets/icons/gift.svg';
 
+  /// File path: lib/assets/icons/goceries_icon.svg
+  String get goceriesIcon => 'lib/assets/icons/goceries_icon.svg';
+
   /// File path: lib/assets/icons/google.png
   AssetGenImage get google =>
       const AssetGenImage('lib/assets/icons/google.png');
+
+  /// File path: lib/assets/icons/grabmart_icon.svg
+  String get grabmartIcon => 'lib/assets/icons/grabmart_icon.svg';
 
   /// File path: lib/assets/icons/group.svg
   String get group => 'lib/assets/icons/group.svg';
@@ -361,6 +376,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/more-vertical.svg
   String get moreVertical => 'lib/assets/icons/more-vertical.svg';
 
+  /// File path: lib/assets/icons/more_services_icon.svg
+  String get moreServicesIcon => 'lib/assets/icons/more_services_icon.svg';
+
   /// File path: lib/assets/icons/nav-arrow-down.svg
   String get navArrowDown => 'lib/assets/icons/nav-arrow-down.svg';
 
@@ -413,6 +431,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/pharmacy-cross-circle.svg
   String get pharmacyCrossCircle =>
       'lib/assets/icons/pharmacy-cross-circle.svg';
+
+  /// File path: lib/assets/icons/pharmacy_icon.svg
+  String get pharmacyIcon => 'lib/assets/icons/pharmacy_icon.svg';
 
   /// File path: lib/assets/icons/phone-solid.svg
   String get phoneSolid => 'lib/assets/icons/phone-solid.svg';
@@ -624,6 +645,9 @@ class $LibAssetsIconsGen {
     editPencil,
     edit,
     emoji,
+    emptyCart,
+    emptyOrdersScreen,
+    emptySearchIcon,
     expand,
     eyeClosed,
     eye,
@@ -639,7 +663,9 @@ class $LibAssetsIconsGen {
     foregroundIconCustomer,
     foregroundIconRider,
     gift,
+    goceriesIcon,
     google,
+    grabmartIcon,
     group,
     halfMoon,
     handCash,
@@ -670,6 +696,7 @@ class $LibAssetsIconsGen {
     mom,
     moreVert,
     moreVertical,
+    moreServicesIcon,
     navArrowDown,
     navArrowLeft,
     navArrowRight,
@@ -686,6 +713,7 @@ class $LibAssetsIconsGen {
     percentageCircle,
     percentage,
     pharmacyCrossCircle,
+    pharmacyIcon,
     phoneSolid,
     phone,
     play,

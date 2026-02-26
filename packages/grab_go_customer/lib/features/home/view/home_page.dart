@@ -930,7 +930,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 Expanded(
                   child: GestureDetector(
                     onTap: () async {
-                      final locationChanged = await context.push("/confirm-address");
+                      final locationChanged = await context.push("/confirm-address?returnTo=previous");
 
                       if (locationChanged == true && mounted) {
                         setState(() {

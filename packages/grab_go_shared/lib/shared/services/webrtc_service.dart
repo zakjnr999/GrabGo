@@ -1,27 +1,31 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:http/http.dart' as http;
+import 'package:socket_io_client/socket_io_client.dart' as io;
+
+import '../utils/config.dart';
+import 'secure_storage_service.dart';
+import 'turn_credentials_service.dart';
 
 enum CallState { idle, ringing, connecting, active, ended }
 
 class WebRTCService extends ChangeNotifier {
-  // Singleton pattern
   WebRTCService._();
   static final WebRTCService _instance = WebRTCService._();
   factory WebRTCService() => _instance;
 
-  // WebRTC components
+  static const String _voiceCallType = 'audio';
+
   RTCPeerConnection? _peerConnection;
   MediaStream? _localStream;
   MediaStream? _remoteStream;
 
-  // Socket
-  IO.Socket? _socket;
+  io.Socket? _socket;
   String? _userId;
 
-  // State
   CallState _callState = CallState.idle;
   String? _currentCallId;
   String? _otherUserId;
@@ -31,7 +35,36 @@ class WebRTCService extends ChangeNotifier {
   bool _isIncoming = false;
   Map<String, dynamic>? _incomingOffer;
 
-  // Getters
+  Map<String, dynamic> _peerConnectionIceConfig = {
+    'iceServers': const [
+      {'urls': 'stun:stun.l.google.com:19302'},
+      {'urls': 'stun:stun1.l.google.com:19302'},
+    ],
+  };
+
+  final Map<String, dynamic> _peerConnectionConfig = {
+    'mandatory': {},
+    'optional': [
+      {'DtlsSrtpKeyAgreement': true},
+    ],
+  };
+
+  final _httpClient = http.Client();
+
+  // Reusable listener references so we can cleanly unbind.
+  late final void Function(dynamic) _incomingCallListener = _handleIncomingCall;
+  late final void Function(dynamic) _callRingingListener = _handleCallRinging;
+  late final void Function(dynamic) _callAnsweredListener = _handleCallAnswered;
+  late final void Function(dynamic) _iceCandidateListener = _handleIceCandidate;
+  late final void Function(dynamic) _callEndedListener = _handleCallEnded;
+  late final void Function(dynamic) _callRejectedListener = _handleCallRejected;
+  late final void Function(dynamic) _callTimeoutListener = _handleCallTimeout;
+  late final void Function(dynamic) _errorListener = _handleError;
+  late final void Function(dynamic) _socketConnectedListener =
+      _handleSocketConnected;
+  late final void Function(dynamic) _socketDisconnectedListener =
+      _handleSocketDisconnected;
+
   CallState get callState => _callState;
   MediaStream? get localStream => _localStream;
   MediaStream? get remoteStream => _remoteStream;
@@ -41,138 +74,189 @@ class WebRTCService extends ChangeNotifier {
   bool get isMuted => _isMuted;
   bool get isSpeakerOn => _isSpeakerOn;
   bool get isIncoming => _isIncoming;
+  bool get hasPendingIncomingCall =>
+      _isIncoming && _callState == CallState.ringing && _currentCallId != null;
 
-  // STUN  // ICE servers configuration - Using Metered.ca for reliable TURN
-  final Map<String, dynamic> _iceServers = {
-    'iceServers': [
-      {'urls': 'stun:stun.relay.metered.ca:80'},
-      {
-        'urls': 'turn:global.relay.metered.ca:80',
-        'username': '391f82e16b189f1a5fc1e628',
-        'credential': 'T0cC8/w3OJ4F3hVD'
-      },
-      {
-        'urls': 'turn:global.relay.metered.ca:80?transport=tcp',
-        'username': '391f82e16b189f1a5fc1e628',
-        'credential': 'T0cC8/w3OJ4F3hVD'
-      },
-      {
-        'urls': 'turn:global.relay.metered.ca:443',
-        'username': '391f82e16b189f1a5fc1e628',
-        'credential': 'T0cC8/w3OJ4F3hVD'
-      },
-      {
-        'urls': 'turns:global.relay.metered.ca:443?transport=tcp',
-        'username': '391f82e16b189f1a5fc1e628',
-        'credential': 'T0cC8/w3OJ4F3hVD'
-      }
-    ],
-  };
+  Future<void> initialize(io.Socket socket, String userId) async {
+    final normalizedUserId = userId.trim();
+    if (normalizedUserId.isEmpty) return;
 
-  // Peer connection configuration
-  final Map<String, dynamic> _config = {
-    'mandatory': {},
-    'optional': [
-      {'DtlsSrtpKeyAgreement': true},
-    ],
-  };
+    final previousSocket = _socket;
+    if (previousSocket != null && !identical(previousSocket, socket)) {
+      _unbindSocketListeners(previousSocket);
+    }
 
-  /// Initialize WebRTC service with socket
-  Future<void> initialize(IO.Socket socket, String userId) async {
     _socket = socket;
-    _userId = userId;
-    _setupSocketListeners();
+    _userId = normalizedUserId;
 
-    // Register user for WebRTC signaling
-    _socket?.emit('webrtc:register', userId);
+    if (previousSocket == null || !identical(previousSocket, socket)) {
+      _bindSocketListeners(socket);
+    }
 
-    debugPrint('WebRTC Service initialized for user: $userId');
+    await _refreshIceServers();
+    _registerForSignaling();
+
+    debugPrint('WebRTC service initialized for user: $normalizedUserId');
   }
 
-  /// Setup Socket.IO listeners for WebRTC signaling
-  void _setupSocketListeners() {
-    _socket?.on('webrtc:incoming-call', _handleIncomingCall);
-    _socket?.on('webrtc:call-ringing', _handleCallRinging);
-    _socket?.on('webrtc:call-answered', _handleCallAnswered);
-    _socket?.on('webrtc:ice-candidate', _handleIceCandidate);
-    _socket?.on('webrtc:call-ended', _handleCallEnded);
-    _socket?.on('webrtc:call-rejected', _handleCallRejected);
-    _socket?.on('webrtc:call-timeout', _handleCallTimeout);
-    _socket?.on('webrtc:error', _handleError);
+  Future<void> _refreshIceServers({bool forceRefresh = false}) async {
+    final credentials = await TurnCredentialsService.fetchTurnCredentials(
+      forceRefresh: forceRefresh,
+    );
+    final dynamic iceServers = credentials['iceServers'];
+
+    if (iceServers is List && iceServers.isNotEmpty) {
+      _peerConnectionIceConfig = {'iceServers': iceServers};
+      return;
+    }
+
+    _peerConnectionIceConfig = {
+      'iceServers': const [
+        {'urls': 'stun:stun.l.google.com:19302'},
+        {'urls': 'stun:stun1.l.google.com:19302'},
+      ],
+    };
   }
 
-  /// Request permissions for microphone
+  void _bindSocketListeners(io.Socket socket) {
+    socket.on('webrtc:incoming-call', _incomingCallListener);
+    socket.on('webrtc:call-ringing', _callRingingListener);
+    socket.on('webrtc:call-answered', _callAnsweredListener);
+    socket.on('webrtc:ice-candidate', _iceCandidateListener);
+    socket.on('webrtc:call-ended', _callEndedListener);
+    socket.on('webrtc:call-rejected', _callRejectedListener);
+    socket.on('webrtc:call-timeout', _callTimeoutListener);
+    socket.on('webrtc:error', _errorListener);
+
+    // Re-register after reconnects.
+    socket.on('connect', _socketConnectedListener);
+    socket.on('disconnect', _socketDisconnectedListener);
+  }
+
+  void _unbindSocketListeners(io.Socket socket) {
+    socket.off('webrtc:incoming-call', _incomingCallListener);
+    socket.off('webrtc:call-ringing', _callRingingListener);
+    socket.off('webrtc:call-answered', _callAnsweredListener);
+    socket.off('webrtc:ice-candidate', _iceCandidateListener);
+    socket.off('webrtc:call-ended', _callEndedListener);
+    socket.off('webrtc:call-rejected', _callRejectedListener);
+    socket.off('webrtc:call-timeout', _callTimeoutListener);
+    socket.off('webrtc:error', _errorListener);
+
+    socket.off('connect', _socketConnectedListener);
+    socket.off('disconnect', _socketDisconnectedListener);
+  }
+
+  void _handleSocketConnected(dynamic _) {
+    _registerForSignaling();
+  }
+
+  void _handleSocketDisconnected(dynamic _) {
+    debugPrint('WebRTC signaling socket disconnected');
+  }
+
+  void _registerForSignaling() {
+    final socket = _socket;
+    final userId = _userId;
+    if (socket == null || userId == null || userId.isEmpty) return;
+
+    if (socket.connected) {
+      socket.emit('webrtc:register', userId);
+    }
+  }
+
   Future<bool> requestPermissions() async {
     try {
-      final Map<String, dynamic> mediaConstraints = {'audio': true, 'video': false};
+      const Map<String, dynamic> mediaConstraints = {
+        'audio': true,
+        'video': false,
+      };
 
-      final stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+      final stream = await navigator.mediaDevices.getUserMedia(
+        mediaConstraints,
+      );
       await stream.dispose();
       return true;
-    } catch (e) {
-      debugPrint('Permission denied: $e');
+    } catch (error) {
+      debugPrint('Permission denied: $error');
       return false;
     }
   }
 
-  /// Initiate an audio call
-  Future<void> initiateCall({required String calleeId, required String orderId}) async {
+  Future<void> initiateCall({
+    required String calleeId,
+    required String orderId,
+  }) async {
     if (_callState != CallState.idle) {
       debugPrint('Cannot initiate call: already in a call');
       return;
     }
 
+    if (_socket?.connected != true) {
+      debugPrint('Cannot initiate call: signaling socket is disconnected');
+      return;
+    }
+
+    final normalizedCalleeId = calleeId.trim();
+    final normalizedOrderId = orderId.trim();
+
+    if (normalizedCalleeId.isEmpty || normalizedOrderId.isEmpty) {
+      debugPrint('Cannot initiate call: missing calleeId/orderId');
+      return;
+    }
+
     try {
       _callState = CallState.connecting;
-      _otherUserId = calleeId;
-      _orderId = orderId;
+      _otherUserId = normalizedCalleeId;
+      _orderId = normalizedOrderId;
       _isIncoming = false;
       notifyListeners();
 
-      // Get user media (audio only)
-      final Map<String, dynamic> mediaConstraints = {'audio': true, 'video': false};
+      const Map<String, dynamic> mediaConstraints = {
+        'audio': true,
+        'video': false,
+      };
+      _localStream = await navigator.mediaDevices.getUserMedia(
+        mediaConstraints,
+      );
 
-      _localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
-
-      // Create peer connection
       await _createPeerConnection();
 
-      // Add local stream to peer connection
-      _localStream!.getTracks().forEach((track) {
+      for (final track in _localStream!.getTracks()) {
         _peerConnection!.addTrack(track, _localStream!);
-      });
+      }
 
-      // Create offer
-      final offer = await _peerConnection!.createOffer();
+      final offer = await _peerConnection!.createOffer({
+        'offerToReceiveAudio': true,
+        'offerToReceiveVideo': false,
+      });
       await _peerConnection!.setLocalDescription(offer);
 
-      // Send offer to server
-      debugPrint('📡 Socket connected: ${_socket?.connected}');
-      debugPrint('📡 Socket ID: ${_socket?.id}');
-      debugPrint('📞 Emitting webrtc:call event...');
-      debugPrint('   Callee ID: $calleeId');
-      debugPrint('   Caller ID: $_userId');
-      debugPrint('   Order ID: $orderId');
-
       _socket?.emit('webrtc:call', {
-        'calleeId': calleeId,
+        'calleeId': normalizedCalleeId,
         'callerId': _userId,
-        'orderId': orderId,
+        'orderId': normalizedOrderId,
         'offer': offer.toMap(),
-        'callType': 'audio',
+        'callType': _voiceCallType,
       });
 
-      debugPrint('Call initiated to $calleeId');
-    } catch (e) {
-      debugPrint('Error initiating call: $e');
+      debugPrint('Voice call initiated to $normalizedCalleeId');
+    } catch (error) {
+      debugPrint('Error initiating call: $error');
       await endCall();
     }
   }
 
-  /// Answer an incoming call
   Future<void> answerCall() async {
-    if (_callState != CallState.ringing || !_isIncoming || _incomingOffer == null) {
+    if (_callState != CallState.ringing ||
+        !_isIncoming ||
+        _incomingOffer == null) {
       debugPrint('Cannot answer: no incoming call');
+      return;
+    }
+
+    if (_socket?.connected != true) {
+      debugPrint('Cannot answer call: signaling socket is disconnected');
       return;
     }
 
@@ -180,237 +264,297 @@ class WebRTCService extends ChangeNotifier {
       _callState = CallState.connecting;
       notifyListeners();
 
-      // Get user media (audio only)
-      final Map<String, dynamic> mediaConstraints = {'audio': true, 'video': false};
+      const Map<String, dynamic> mediaConstraints = {
+        'audio': true,
+        'video': false,
+      };
+      _localStream = await navigator.mediaDevices.getUserMedia(
+        mediaConstraints,
+      );
 
-      _localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
-
-      // Create peer connection
       await _createPeerConnection();
 
-      // Add local stream to peer connection
-      _localStream!.getTracks().forEach((track) {
+      for (final track in _localStream!.getTracks()) {
         _peerConnection!.addTrack(track, _localStream!);
-      });
+      }
 
-      // Set remote description (offer)
       await _peerConnection!.setRemoteDescription(
         RTCSessionDescription(_incomingOffer!['sdp'], _incomingOffer!['type']),
       );
 
-      // Create answer
-      final answer = await _peerConnection!.createAnswer();
+      final answer = await _peerConnection!.createAnswer({
+        'offerToReceiveAudio': true,
+        'offerToReceiveVideo': false,
+      });
       await _peerConnection!.setLocalDescription(answer);
 
-      // Send answer to server
-      _socket?.emit('webrtc:answer', {'callId': _currentCallId, 'answer': answer.toMap()});
+      _socket?.emit('webrtc:answer', {
+        'callId': _currentCallId,
+        'answer': answer.toMap(),
+      });
 
-      debugPrint('Call answered');
-    } catch (e) {
-      debugPrint('Error answering call: $e');
+      debugPrint('Voice call answered');
+    } catch (error) {
+      debugPrint('Error answering call: $error');
       await endCall();
     }
   }
 
-  /// Reject an incoming call
   Future<void> rejectCall() async {
     if (_currentCallId == null) return;
 
     _socket?.emit('webrtc:reject', {'callId': _currentCallId});
-
     await _cleanup();
-    debugPrint('Call rejected');
   }
 
-  /// End the current call
   Future<void> endCall() async {
     if (_currentCallId != null) {
       _socket?.emit('webrtc:end-call', {'callId': _currentCallId});
     }
 
     await _cleanup();
-    debugPrint('Call ended');
   }
 
-  /// Toggle mute
   void toggleMute() {
     if (_localStream == null) return;
 
     _isMuted = !_isMuted;
-    _localStream!.getAudioTracks().forEach((track) {
+    for (final track in _localStream!.getAudioTracks()) {
       track.enabled = !_isMuted;
-    });
+    }
 
     notifyListeners();
-    debugPrint('Mute toggled: $_isMuted');
   }
 
-  /// Toggle speaker
   void toggleSpeaker() {
     _isSpeakerOn = !_isSpeakerOn;
     Helper.setSpeakerphoneOn(_isSpeakerOn);
     notifyListeners();
-    debugPrint('Speaker toggled: $_isSpeakerOn');
   }
 
-  /// Create peer connection
   Future<void> _createPeerConnection() async {
-    _peerConnection = await createPeerConnection(_iceServers, _config);
+    await _refreshIceServers();
+    _peerConnection = await createPeerConnection(
+      _peerConnectionIceConfig,
+      _peerConnectionConfig,
+    );
 
-    // Handle ICE candidates
     _peerConnection!.onIceCandidate = (candidate) {
-      debugPrint('🧊 Sending ICE candidate to remote');
+      if (_currentCallId == null || _otherUserId == null) {
+        return;
+      }
+
       _socket?.emit('webrtc:ice-candidate', {
         'callId': _currentCallId,
         'candidate': candidate.toMap(),
-        'targetUserId': _otherUserId,
       });
-      debugPrint('✅ ICE candidate sent');
     };
 
-    // Handle remote stream
     _peerConnection!.onTrack = (event) {
       if (event.streams.isNotEmpty) {
         _remoteStream = event.streams[0];
         notifyListeners();
-        debugPrint('Remote stream received');
       }
     };
 
-    // Handle connection state changes
     _peerConnection!.onConnectionState = (state) {
-      debugPrint('📡 Connection state: $state');
       if (state == RTCPeerConnectionState.RTCPeerConnectionStateConnected) {
-        debugPrint('✅ Call is now ACTIVE!');
         _callState = CallState.active;
         notifyListeners();
       } else if (state == RTCPeerConnectionState.RTCPeerConnectionStateFailed ||
-          state == RTCPeerConnectionState.RTCPeerConnectionStateDisconnected) {
-        debugPrint('❌ Connection failed or disconnected');
+          state == RTCPeerConnectionState.RTCPeerConnectionStateDisconnected ||
+          state == RTCPeerConnectionState.RTCPeerConnectionStateClosed) {
         endCall();
       }
     };
-
-    // Handle ICE gathering state
-    _peerConnection!.onIceGatheringState = (state) {
-      debugPrint('🧊 ICE gathering state: $state');
-    };
-
-    // Handle ICE connection state
-    _peerConnection!.onIceConnectionState = (state) {
-      debugPrint('🧊 ICE connection state: $state');
-    };
   }
 
-  /// Handle incoming call
+  bool _isValidSessionDescriptionMap(dynamic payload) {
+    if (payload is! Map) return false;
+    final sdp = payload['sdp'];
+    final type = payload['type'];
+    if (sdp is! String || sdp.trim().isEmpty) return false;
+    if (type is! String || type.trim().isEmpty) return false;
+    return true;
+  }
+
+  /// Rebuild pending incoming call state from a push-notification call ID.
+  Future<bool> hydrateIncomingCallFromCallId(String callId) async {
+    final normalizedCallId = callId.trim();
+    if (normalizedCallId.isEmpty) {
+      return false;
+    }
+
+    final token = await SecureStorageService.getAuthToken();
+    final baseUrl = AppConfig.apiBaseUrl;
+
+    if (token == null || token.isEmpty || baseUrl.isEmpty) {
+      return false;
+    }
+
+    try {
+      final normalizedBaseUrl = baseUrl.endsWith('/')
+          ? baseUrl.substring(0, baseUrl.length - 1)
+          : baseUrl;
+      final response = await _httpClient.get(
+        Uri.parse('$normalizedBaseUrl/api/calls/$normalizedCallId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode != 200) {
+        return false;
+      }
+
+      final body = json.decode(response.body);
+      if (body is! Map<String, dynamic>) {
+        return false;
+      }
+
+      final callType = (body['callType'] ?? '').toString().toLowerCase();
+      if (callType != _voiceCallType) {
+        return false;
+      }
+
+      final offer = body['offer'];
+      if (!_isValidSessionDescriptionMap(offer)) {
+        return false;
+      }
+
+      _currentCallId = (body['callId'] ?? normalizedCallId).toString();
+      _otherUserId = (body['callerId'] ?? '').toString();
+      _orderId = (body['orderId'] ?? '').toString();
+      _incomingOffer = Map<String, dynamic>.from(offer as Map);
+      _isIncoming = true;
+      _callState = CallState.ringing;
+      notifyListeners();
+
+      return true;
+    } catch (error) {
+      debugPrint('Failed to hydrate incoming call from callId: $error');
+      return false;
+    }
+  }
+
   void _handleIncomingCall(dynamic data) {
-    final callId = data['callId'];
-    final callerId = data['callerId'];
-    final orderId = data['orderId'];
+    if (data is! Map) {
+      return;
+    }
+
+    final callType = (data['callType'] ?? '').toString().toLowerCase();
+    final callId = (data['callId'] ?? '').toString();
+    final callerId = (data['callerId'] ?? '').toString();
+    final orderId = (data['orderId'] ?? '').toString();
     final offer = data['offer'];
+
+    if (callType != _voiceCallType) {
+      if (callId.isNotEmpty) {
+        _socket?.emit('webrtc:reject', {'callId': callId});
+      }
+      return;
+    }
+
+    if (callId.isEmpty ||
+        callerId.isEmpty ||
+        !_isValidSessionDescriptionMap(offer)) {
+      debugPrint('Ignoring malformed incoming call payload');
+      return;
+    }
 
     _currentCallId = callId;
     _otherUserId = callerId;
     _orderId = orderId;
-    _incomingOffer = offer;
+    _incomingOffer = Map<String, dynamic>.from(offer as Map);
     _isIncoming = true;
     _callState = CallState.ringing;
     notifyListeners();
-
-    debugPrint('WebRTC: Incoming call from $callerId');
   }
 
-  /// Handle call ringing
-  void _handleCallRinging(dynamic data) {
+  void _handleCallRinging(dynamic _) {
     _callState = CallState.ringing;
     notifyListeners();
-    debugPrint('WebRTC: Call is ringing');
   }
 
-  /// Handle call answered
-  void _handleCallAnswered(dynamic data) async {
-    debugPrint('📞 Received call-answered event');
-    debugPrint('   Data: $data');
-
-    final answer = data['answer'];
-
-    if (_peerConnection == null) {
-      debugPrint('WebRTC: Cannot set remote description - peer connection is null');
+  Future<void> _handleCallAnswered(dynamic data) async {
+    if (data is! Map) {
       return;
     }
 
-    debugPrint('📞 Setting remote description (answer)...');
-    await _peerConnection!.setRemoteDescription(RTCSessionDescription(answer['sdp'], answer['type']));
+    final answer = data['answer'];
+    if (_peerConnection == null || !_isValidSessionDescriptionMap(answer)) {
+      return;
+    }
 
-    debugPrint('✅ WebRTC: Call answered - remote description set');
+    await _peerConnection!.setRemoteDescription(
+      RTCSessionDescription(answer['sdp'] as String, answer['type'] as String),
+    );
 
-    // Check connection state immediately
     final connectionState = await _peerConnection!.getConnectionState();
-    debugPrint('📡 Current connection state: $connectionState');
-
-    // If already connected, update state immediately
-    if (connectionState == RTCPeerConnectionState.RTCPeerConnectionStateConnected) {
-      debugPrint('✅ Already connected! Setting state to active');
+    if (connectionState ==
+        RTCPeerConnectionState.RTCPeerConnectionStateConnected) {
       _callState = CallState.active;
       notifyListeners();
     }
   }
 
-  /// Handle ICE candidate
-  void _handleIceCandidate(dynamic data) async {
-    debugPrint('🧊 Received ICE candidate from remote');
-    final candidate = data['candidate'];
+  Future<void> _handleIceCandidate(dynamic data) async {
+    if (data is! Map) {
+      return;
+    }
 
-    if (_peerConnection == null) {
-      debugPrint('WebRTC: Cannot add ICE candidate - peer connection is null');
+    final candidate = data['candidate'];
+    if (_peerConnection == null || candidate is! Map) {
+      return;
+    }
+
+    final rawCandidate = candidate['candidate'];
+    if (rawCandidate is! String || rawCandidate.trim().isEmpty) {
       return;
     }
 
     await _peerConnection!.addCandidate(
-      RTCIceCandidate(candidate['candidate'], candidate['sdpMid'], candidate['sdpMLineIndex']),
+      RTCIceCandidate(
+        rawCandidate,
+        candidate['sdpMid']?.toString(),
+        candidate['sdpMLineIndex'] is int
+            ? candidate['sdpMLineIndex'] as int
+            : null,
+      ),
     );
-
-    debugPrint('✅ WebRTC: ICE candidate added');
   }
 
-  /// Handle call ended
-  void _handleCallEnded(dynamic data) {
-    debugPrint('WebRTC: Call ended by other party');
+  void _handleCallEnded(dynamic _) {
     _cleanup();
   }
 
-  /// Handle call rejected
-  void _handleCallRejected(dynamic data) {
-    debugPrint('WebRTC: Call rejected');
+  void _handleCallRejected(dynamic _) {
     _cleanup();
   }
 
-  /// Handle call timeout
-  void _handleCallTimeout(dynamic data) {
-    debugPrint('WebRTC: Call timeout (no answer)');
+  void _handleCallTimeout(dynamic _) {
     _cleanup();
   }
 
-  /// Handle error
   void _handleError(dynamic data) {
-    debugPrint('WebRTC Error: ${data['error']}');
+    final message = data is Map ? data['error'] : null;
+    debugPrint('WebRTC signaling error: $message');
     _cleanup();
   }
 
-  /// Cleanup resources
   Future<void> _cleanup() async {
     _callState = CallState.ended;
     notifyListeners();
 
-    // Wait a bit before full cleanup to allow UI to update
-    await Future.delayed(const Duration(milliseconds: 500));
+    await Future.delayed(const Duration(milliseconds: 300));
 
     try {
       await _localStream?.dispose();
       await _remoteStream?.dispose();
       await _peerConnection?.close();
-    } catch (e) {
-      debugPrint('Error during cleanup: $e');
+    } catch (error) {
+      debugPrint('Error during call cleanup: $error');
     }
 
     _localStream = null;
@@ -428,9 +572,14 @@ class WebRTCService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Dispose
   @override
   void dispose() {
+    final socket = _socket;
+    if (socket != null) {
+      _unbindSocketListeners(socket);
+    }
+
+    _httpClient.close();
     _cleanup();
     super.dispose();
   }

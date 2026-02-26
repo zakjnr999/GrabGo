@@ -30,6 +30,21 @@ class _ServiceSelectorState extends State<ServiceSelector> {
 
   int selectedIndex = 0;
 
+  String? _serviceIconAsset(String serviceId) {
+    switch (serviceId) {
+      case 'groceries':
+        return Assets.icons.goceriesIcon;
+      case 'pharmacy':
+        return Assets.icons.pharmacyIcon;
+      case 'convenience':
+        return Assets.icons.grabmartIcon;
+      case 'more':
+        return Assets.icons.moreServicesIcon;
+      default:
+        return null;
+    }
+  }
+
   Widget _buildEmoji(BuildContext context, String emoji, double size) {
     final baseColor = DefaultTextStyle.of(context).style.color ?? context.appColors.textPrimary;
 
@@ -40,6 +55,22 @@ class _ServiceSelectorState extends State<ServiceSelector> {
       overflow: TextOverflow.visible,
       textScaler: TextScaler.noScaling,
       style: TextStyle(inherit: false, color: baseColor, fontSize: size, fontFamilyFallback: _emojiFallbackFonts),
+    );
+  }
+
+  Widget _buildServiceIcon(BuildContext context, ServiceModel service, double size, {double opacity = 1}) {
+    final iconPath = _serviceIconAsset(service.id);
+    if (iconPath == null) {
+      return Opacity(opacity: opacity, child: _buildEmoji(context, service.emoji, size));
+    }
+
+    return Opacity(
+      opacity: opacity,
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: SvgPicture.asset(iconPath, package: 'grab_go_shared', fit: BoxFit.contain),
+      ),
     );
   }
 
@@ -164,33 +195,15 @@ class _ServiceSelectorState extends State<ServiceSelector> {
               borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
               child: Ink(
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: isSelected
-                        ? [colors.accentOrange.withValues(alpha: 0.18), colors.accentOrange.withValues(alpha: 0.1)]
-                        : [colors.accentOrange.withValues(alpha: 0.08), colors.accentOrange.withValues(alpha: 0.04)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                  color: colors.accentOrange.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: colors.accentOrange.withValues(alpha: 0.15),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ]
-                      : null,
                 ),
                 child: Stack(
                   children: [
                     Positioned(
-                      right: -8,
-                      bottom: -8,
-                      child: Opacity(
-                        opacity: isSelected ? 0.2 : 0.08,
-                        child: _buildEmoji(context, service.emoji, 50.sp),
-                      ),
+                      right: -12,
+                      bottom: -12,
+                      child: _buildServiceIcon(context, service, 66.sp, opacity: isSelected ? 0.2 : 0.08),
                     ),
                     if (isSelected)
                       Positioned(
@@ -198,17 +211,7 @@ class _ServiceSelectorState extends State<ServiceSelector> {
                         right: 6.r,
                         child: Container(
                           padding: EdgeInsets.all(3.r),
-                          decoration: BoxDecoration(
-                            color: colors.accentOrange,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.1),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
+                          decoration: BoxDecoration(color: colors.accentOrange, shape: BoxShape.circle),
                           child: Container(
                             height: 14.h,
                             width: 14.w,
@@ -230,8 +233,8 @@ class _ServiceSelectorState extends State<ServiceSelector> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          _buildEmoji(context, service.emoji, 26.sp),
-                          SizedBox(width: 10.w),
+                          _buildServiceIcon(context, service, 40.sp),
+                          SizedBox(width: 8.w),
                           Flexible(
                             child: Text(
                               service.name,

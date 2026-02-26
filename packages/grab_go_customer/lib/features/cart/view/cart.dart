@@ -364,6 +364,8 @@ class Cart extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            SvgPicture.asset(Assets.icons.emptyCart, package: 'grab_go_shared', width: 180.w, height: 180.w),
+
             Text(
               AppStrings.cartEmpty,
               style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),

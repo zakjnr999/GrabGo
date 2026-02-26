@@ -1003,9 +1003,11 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: "/confirm-address",
       pageBuilder: (context, state) {
+        final returnToPrevious =
+            state.uri.queryParameters['returnTo'] == 'previous';
         return CustomTransitionPage(
           key: state.pageKey,
-          child: const ConfirmAddressPage(),
+          child: ConfirmAddressPage(returnToPrevious: returnToPrevious),
           transitionDuration: const Duration(milliseconds: 400),
           reverseTransitionDuration: const Duration(milliseconds: 400),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:grab_go_customer/features/chat/view/chats_details.dart';
 import 'package:grab_go_customer/features/status/view/story_viewer.dart';
 import 'package:grab_go_customer/main.dart';
+import 'package:grab_go_shared/grub_go_shared.dart';
 
 /// Parse boolean value from dynamic data (handles both string and boolean)
 bool _parseBool(dynamic value) {
@@ -12,7 +13,10 @@ bool _parseBool(dynamic value) {
 }
 
 /// Validate required deep link data fields
-bool _validateDeepLinkData(Map<String, dynamic> data, List<String> requiredFields) {
+bool _validateDeepLinkData(
+  Map<String, dynamic> data,
+  List<String> requiredFields,
+) {
   for (final field in requiredFields) {
     final value = data[field]?.toString();
     if (value == null || value.isEmpty) {
@@ -31,7 +35,7 @@ void _navigateToRoute(BuildContext context, String route) {
     debugPrint('❌ Navigation failed for route $route: $e');
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Unable to open this notification'),
+        content: const Text('Unable to open this notification'),
         action: SnackBarAction(label: 'Dismiss', onPressed: () {}),
       ),
     );
@@ -48,7 +52,7 @@ void handleNotificationTap(Map<String, dynamic> data) {
 
   debugPrint('📲 Notification tapped: type=$type');
 
-  Future.delayed(const Duration(milliseconds: 500), () {
+  Future.delayed(const Duration(milliseconds: 500), () async {
     try {
       final context = navigatorKey.currentContext;
       if (context == null) {
@@ -62,7 +66,10 @@ void handleNotificationTap(Map<String, dynamic> data) {
 
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => ChatDetail(chatId: chatId, senderName: data['senderName'] ?? 'Chat'),
+            builder: (context) => ChatDetail(
+              chatId: chatId,
+              senderName: data['senderName'] ?? 'Chat',
+            ),
           ),
         );
       } else if (type == 'order_update' && orderId != null) {
@@ -71,7 +78,9 @@ void handleNotificationTap(Map<String, dynamic> data) {
 
         debugPrint('Navigate to order: $orderId');
         _navigateToRoute(context, '/orders/$orderId');
-      } else if ((type == 'comment_reply' || type == 'comment_reaction') && statusId != null && restaurantId != null) {
+      } else if ((type == 'comment_reply' || type == 'comment_reaction') &&
+          statusId != null &&
+          restaurantId != null) {
         // Validate comment data
         if (!_validateDeepLinkData(data, ['restaurantId', 'statusId'])) return;
 
@@ -113,6 +122,19 @@ void handleNotificationTap(Map<String, dynamic> data) {
       } else if (type == 'system' || type == 'update') {
         debugPrint('Navigate to notifications');
         _navigateToRoute(context, '/notifications');
+      } else if (type == 'incoming_call') {
+        final callId = data['callId']?.toString() ?? '';
+        if (callId.isEmpty) return;
+
+        final webrtcService = WebRTCService();
+        final hydrated = await webrtcService.hydrateIncomingCallFromCallId(
+          callId,
+        );
+        if (!hydrated) {
+          debugPrint(
+            'Incoming call could not be restored (expired/unavailable): callId=$callId',
+          );
+        }
       }
     } catch (e, stackTrace) {
       debugPrint('❌ Error handling notification tap: $e');

@@ -1,0 +1,13 @@
+<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <g transform="rotate(-35, 60, 60)">
+    <rect x="20" y="45" width="80" height="40" rx="20" fill="rgba(0,0,0,0.1)" transform="translate(0, 4)" />
+    <defs>
+      <clipPath id="pillClip">
+        <rect x="20" y="40" width="80" height="40" rx="20" />
+      </clipPath>
+    </defs>
+    <rect x="20" y="40" width="40" height="40" fill="#FFD166" clip-path="url(#pillClip)" />
+    <rect x="60" y="40" width="40" height="40" fill="#EF476F" clip-path="url(#pillClip)" />
+    <path d="M 30 46 Q 60 40 90 46" fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="4" stroke-linecap="round" clip-path="url(#pillClip)" />
+  </g>
+</svg>

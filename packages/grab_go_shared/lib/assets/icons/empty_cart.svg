@@ -1,0 +1,73 @@
+<svg viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg">
+  <!-- Cart Base Floor Shadow -->
+  <ellipse cx="120" cy="190" rx="65" ry="10" fill="rgba(231,111,81,0.08)" />
+
+  <!-- Floating Plus Sign (Encouraging users to add items) -->
+  <g transform="translate(40, 40)">
+    <path d="M 12,0 L 12,24 M 0,12 L 24,12" stroke="#F4A261" stroke-width="5" stroke-linecap="round" />
+  </g>
+
+  <!-- Floating Sparkle -->
+  <g transform="translate(190, 130) rotate(15) scale(0.6)">
+    <path d="M 5,-10 Q 5,5 20,5 Q 5,5 5,20 Q 5,5 -10,5 Q 5,5 5,-10 Z" fill="rgba(255,209,102,0.3)" />
+    <path d="M 0,-15 Q 0,0 15,0 Q 0,0 0,15 Q 0,0 -15,0 Q 0,0 0,-15 Z" fill="#FFD166" />
+  </g>
+
+  <!-- Floating Leaf -->
+  <g transform="translate(180, 185) rotate(45) scale(0.6)">
+    <!-- Soft shadow layer for depth -->
+    <path d="M 5,5 C 20,-15 40,-5 45,15 C 30,35 10,25 5,5 Z" fill="rgba(128,185,24,0.2)" />
+    <path d="M 0,0 C 15,-20 35,-10 40,10 C 25,30 5,20 0,0 Z" fill="#80B918" />
+  </g>
+
+  <!-- Centerpiece: The Shopping Cart -->
+  <g transform="translate(0, 5)">
+    <!-- Chassis / Metal Frame -->
+    <path d="M 50,60 L 80,170" stroke="#CBD5E1" stroke-width="8" stroke-linecap="round" />
+    <path d="M 75,166 L 165,166" stroke="#CBD5E1" stroke-width="8" stroke-linecap="round" />
+    
+    <!-- Cart Handle -->
+    <rect x="30" y="55" width="35" height="10" rx="5" fill="#F4A261" />
+
+    <!-- Wheels -->
+    <!-- Back Wheel -->
+    <circle cx="85" cy="180" r="12" fill="rgba(71,85,105,0.2)" transform="translate(0, 4)" />
+    <circle cx="85" cy="180" r="12" fill="#475569" />
+    <circle cx="85" cy="180" r="4" fill="#F8FAFC" />
+    
+    <!-- Front Wheel -->
+    <circle cx="155" cy="180" r="12" fill="rgba(71,85,105,0.2)" transform="translate(0, 4)" />
+    <circle cx="155" cy="180" r="12" fill="#475569" />
+    <circle cx="155" cy="180" r="4" fill="#F8FAFC" />
+
+    <!-- Basket Drop Shadow -->
+    <polygon points="65,85 195,85 175,155 85,155" fill="rgba(42,157,143,0.15)" transform="translate(-4, 6)" />
+
+    <!-- Basket Back Inside Wall (Darker depth) -->
+    <polygon points="75,80 180,80 170,105 85,105" fill="#21867A" />
+
+    <!-- Floating "Ghost" item outline inside the cart indicating it's empty -->
+    <circle cx="127" cy="115" r="15" fill="none" stroke="#BAE6FD" stroke-width="3" stroke-dasharray="4 4" opacity="0.6" />
+
+    <!-- Basket Front Wall -->
+    <polygon points="65,80 190,80 170,150 85,150" fill="#2A9D8F" />
+
+    <!-- Top Rim Highlight -->
+    <line x1="65" y1="80" x2="190" y2="80" stroke="#34D399" stroke-width="6" stroke-linecap="round" />
+
+    <!-- Wireframe Ribs (Creating the cart look over the solid color) -->
+    <line x1="90" y1="80" x2="100" y2="150" stroke="#34D399" stroke-width="4" stroke-linecap="round" />
+    <line x1="127.5" y1="80" x2="127.5" y2="150" stroke="#34D399" stroke-width="4" stroke-linecap="round" />
+    <line x1="165" y1="80" x2="155" y2="150" stroke="#34D399" stroke-width="4" stroke-linecap="round" />
+
+    <!-- "0 Items" Alert Badge / Bubble -->
+    <g transform="translate(185, 65)">
+      <!-- Badge Drop Shadow -->
+      <circle cx="0" cy="5" r="20" fill="rgba(230,57,70,0.2)" />
+      <!-- Red Badge Background -->
+      <circle cx="0" cy="0" r="20" fill="#E63946" />
+      <!-- Text -->
+      <text x="0" y="7" fill="#FFF" font-family="sans-serif" font-weight="900" font-size="22" text-anchor="middle">0</text>
+    </g>
+  </g>
+</svg>

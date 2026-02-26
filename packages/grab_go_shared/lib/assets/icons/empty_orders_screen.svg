@@ -1,0 +1,82 @@
+<svg viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg">
+  <!-- Organic Soft Background Blob -->
+  <path d="M196.2,185.1 C176.5,212.4 133.7,222.9 97.4,213.3 C61.1,203.7 30.6,172.5 20.3,135.5 C10.1,98.5 21.3,55.9 48.6,31.7 C75.9,7.5 118.7,-2.9 155,6.6 C191.3,16.2 221.8,47.4 232.1,84.4 C242.3,121.4 215.9,157.8 196.2,185.1 Z" fill="#FFF4F2" />
+
+  <!-- Dashed accent swirl -->
+  <path d="M 40 180 C 20 140, 20 80, 60 40 C 100 0, 180 20, 210 60" fill="none" stroke="#FFE8E2" stroke-width="3" stroke-dasharray="8 8" stroke-linecap="round" />
+
+  <!-- Floating Leaf -->
+  <g transform="translate(35, 140) rotate(-15)">
+    <!-- Soft shadow layer for depth -->
+    <path d="M 5,5 C 20,-15 40,-5 45,15 C 30,35 10,25 5,5 Z" fill="rgba(128,185,24,0.2)" />
+    <path d="M 0,0 C 15,-20 35,-10 40,10 C 25,30 5,20 0,0 Z" fill="#80B918" />
+  </g>
+
+  <!-- Floating Clock (Representing Order History) -->
+  <g transform="translate(190, 50) rotate(10)">
+    <circle cx="0" cy="8" r="16" fill="rgba(56,189,248,0.2)" />
+    <circle cx="0" cy="0" r="16" fill="#38BDF8" />
+    <circle cx="0" cy="0" r="12" fill="#FFF" />
+    <path d="M 0,-6 L 0,0 L 4,4" fill="none" stroke="#38BDF8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Floating Sparkle -->
+  <g transform="translate(60, 40) rotate(20) scale(0.8)">
+    <path d="M 5,-10 Q 5,5 20,5 Q 5,5 5,20 Q 5,5 -10,5 Q 5,5 5,-10 Z" fill="rgba(255,209,102,0.3)" />
+    <path d="M 0,-15 Q 0,0 15,0 Q 0,0 0,15 Q 0,0 -15,0 Q 0,0 0,-15 Z" fill="#FFD166" />
+  </g>
+
+  <!-- Floating Tomato slice -->
+  <g transform="translate(180, 170) rotate(-30)">
+    <circle cx="2" cy="5" r="14" fill="rgba(230,57,70,0.2)" />
+    <circle cx="0" cy="0" r="14" fill="#E63946" />
+    <path d="M -6,-6 Q 0,0 6,-6 M -6,6 Q 0,0 6,6 M -8,0 L -2,0 M 2,0 L 8,0" fill="none" stroke="#FFF" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+  </g>
+
+  <!-- Center Receipt (The "Order") -->
+  <g transform="translate(110, 115) rotate(-5) translate(-60, -70)">
+    <!-- Flat Shadow Layer (Bulletproof across platforms) -->
+    <path d="M 18,8 L 118,8 L 118,148 L 108,138 L 98,148 L 88,138 L 78,148 L 68,138 L 58,148 L 48,138 L 38,148 L 28,138 L 18,148 Z" fill="rgba(231,111,81,0.08)" />
+    <!-- White Paper Base -->
+    <path d="M 10,0 L 110,0 L 110,140 L 100,130 L 90,140 L 80,130 L 70,140 L 60,130 L 50,140 L 40,130 L 30,140 L 20,130 L 10,140 Z" fill="#FFFFFF" />
+    
+    <!-- Receipt Header Icon -->
+    <rect x="25" y="20" width="30" height="30" rx="8" fill="#F8FAFC" />
+    <path d="M 30,35 L 35,40 L 45,30" fill="none" stroke="#CBD5E1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+
+    <!-- Text Lines -->
+    <rect x="65" y="25" width="25" height="6" rx="3" fill="#E2E8F0" />
+    <rect x="65" y="40" width="15" height="6" rx="3" fill="#E2E8F0" />
+    
+    <line x1="25" y1="70" x2="95" y2="70" stroke="#F1F5F9" stroke-width="2" stroke-dasharray="4 4" />
+
+    <rect x="25" y="85" width="50" height="6" rx="3" fill="#F1F5F9" />
+    <rect x="85" y="85" width="10" height="6" rx="3" fill="#F1F5F9" />
+
+    <rect x="25" y="100" width="40" height="6" rx="3" fill="#F1F5F9" />
+    <rect x="85" y="100" width="10" height="6" rx="3" fill="#F1F5F9" />
+  </g>
+
+  <!-- Magnifying Glass -->
+  <g transform="translate(130, 130) rotate(15)">
+    <!-- Handle bottom shadow -->
+    <rect x="-8" y="30" width="16" height="45" rx="8" fill="#E76F51" />
+    <!-- Handle top highlight -->
+    <rect x="-8" y="30" width="10" height="45" rx="5" fill="#F4A261" />
+    <!-- Metal Connector -->
+    <rect x="-12" y="25" width="24" height="10" rx="3" fill="#CBD5E1" />
+    <rect x="-12" y="25" width="24" height="4" rx="2" fill="#94A3B8" />
+
+    <!-- Rim Shadow -->
+    <circle cx="-3" cy="6" r="36" fill="rgba(42,157,143,0.15)" />
+    <!-- Rim Base -->
+    <circle cx="0" cy="0" r="36" fill="#2A9D8F" />
+    <circle cx="0" cy="0" r="28" fill="#FFF" />
+    <!-- Glass lens (Semi-transparent) -->
+    <circle cx="0" cy="0" r="28" fill="#BAE6FD" opacity="0.4" />
+    
+    <!-- Shiny Glass Reflection -->
+    <path d="M -18,-15 A 24,24 0 0,1 10,-22" fill="none" stroke="#FFF" stroke-width="4" stroke-linecap="round" opacity="0.8" />
+    <circle cx="16" cy="-18" r="2" fill="#FFF" opacity="0.8" />
+  </g>
+</svg>
