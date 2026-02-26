@@ -578,6 +578,7 @@ app.use("/api/users", require("./routes/auth"));
 app.use("/api/users", require("./routes/notification_settings"));
 app.use("/api/restaurants", require("./routes/restaurants"));
 app.use("/api/orders", require("./routes/orders"));
+app.use("/api/checkout-sessions", require("./routes/checkout_sessions"));
 app.use("/api/payments", require("./routes/payments"));
 app.use("/api/categories", require("./routes/categories"));
 app.use("/api/foods", require("./routes/foods"));

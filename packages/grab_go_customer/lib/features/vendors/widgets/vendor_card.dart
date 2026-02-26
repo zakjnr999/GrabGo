@@ -326,6 +326,28 @@ class VendorCard extends StatelessWidget {
           ),
         ),
         Positioned(
+          top: 2.h,
+          right: 2.w,
+          child: IgnorePointer(
+            child: Container(
+              width: 36.w,
+              height: 36.w,
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: const Alignment(1.0, -1.0),
+                  radius: 1.15,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.28),
+                    Colors.black.withValues(alpha: 0.10),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.0, 0.45, 1.0],
+                ),
+              ),
+            ),
+          ),
+        ),
+        Positioned(
           right: 6.r,
           top: 6.r,
           child: GestureDetector(

@@ -154,6 +154,62 @@ const sanitizeOrderPayload = (payload) => {
   return sanitized;
 };
 
+const computeGroupMetaForOrders = async (orders) => {
+  const safeOrders = Array.isArray(orders) ? orders : [];
+  const groupIds = [...new Set(safeOrders.map((order) => order?.groupId).filter(Boolean))];
+  if (groupIds.length === 0) return safeOrders;
+
+  const groupOrders = await prisma.order.findMany({
+    where: { groupId: { in: groupIds } },
+    select: {
+      groupId: true,
+      totalAmount: true,
+      paymentStatus: true,
+      status: true,
+    },
+  });
+
+  const grouped = new Map();
+  for (const entry of groupOrders) {
+    if (!entry?.groupId) continue;
+    const bucket = grouped.get(entry.groupId) || [];
+    bucket.push(entry);
+    grouped.set(entry.groupId, bucket);
+  }
+
+  return safeOrders.map((order) => {
+    if (!order?.groupId) return order;
+    const children = grouped.get(order.groupId) || [];
+    if (children.length === 0) return order;
+
+    const groupTotal = children.reduce((sum, child) => sum + Number(child.totalAmount || 0), 0);
+    const vendorCount = children.length;
+    const paymentStatuses = new Set(children.map((child) => child.paymentStatus).filter(Boolean));
+    const statuses = new Set(children.map((child) => child.status).filter(Boolean));
+
+    let groupPaymentStatus = 'pending';
+    if (paymentStatuses.size === 1) {
+      groupPaymentStatus = [...paymentStatuses][0];
+    } else if (paymentStatuses.has('failed')) {
+      groupPaymentStatus = 'failed';
+    } else if (paymentStatuses.has('processing')) {
+      groupPaymentStatus = 'processing';
+    } else if (paymentStatuses.has('paid') || paymentStatuses.has('successful')) {
+      groupPaymentStatus = 'processing';
+    }
+
+    return {
+      ...order,
+      groupMeta: {
+        vendorCount,
+        groupTotal: Math.round((groupTotal + Number.EPSILON) * 100) / 100,
+        groupPaymentStatus,
+        childStatuses: [...statuses],
+      },
+    };
+  });
+};
+
 const getVendorContextForUser = async (user) => {
   if (!user?.email) return null;
   const [restaurant, groceryStore, pharmacyStore, grabMartStore] = await Promise.all([
@@ -1323,10 +1379,12 @@ router.get("/", protect, async (req, res) => {
       orderBy: { createdAt: 'desc' }
     });
 
+    const ordersWithGroupMeta = await computeGroupMetaForOrders(orders);
+
     res.json({
       success: true,
       message: "Orders retrieved successfully",
-      data: sanitizeOrderPayload(orders),
+      data: sanitizeOrderPayload(ordersWithGroupMeta),
     });
   } catch (error) {
     console.error("Get orders error:", error);
@@ -1581,10 +1639,12 @@ router.get("/:orderId", protect, async (req, res) => {
       }
     }
 
+    const [orderWithGroupMeta] = await computeGroupMetaForOrders([order]);
+
     res.json({
       success: true,
       message: "Order retrieved successfully",
-      data: sanitizeOrderPayload(order),
+      data: sanitizeOrderPayload(orderWithGroupMeta || order),
     });
   } catch (error) {
     console.error("Get order error:", error);

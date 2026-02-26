@@ -48,6 +48,8 @@ module.exports = {
   isGiftOrdersEnabled: parseFlag('GIFT_ORDERS_ENABLED', false),
   isScheduledOrdersEnabled: parseFlag('SCHEDULED_ORDERS_ENABLED', false),
   isConfirmedPredispatchEnabled: parseFlag('CONFIRMED_PREDISPATCH_ENABLED', false),
+  isMixedCartEnabled: parseFlag('MIXED_CART_ENABLED', false),
+  isMixedCheckoutEnabled: parseFlag('MIXED_CHECKOUT_ENABLED', false),
   isCodEnabled: parseFlag('COD_ENABLED', false),
   codMinPrepaidDeliveredOrders: parseIntFlag('COD_MIN_PREPAID_DELIVERED_ORDERS', 3, { min: 0, max: 20 }),
   codNoShowDisableThreshold: parseIntFlag('COD_NO_SHOW_DISABLE_THRESHOLD', 1, { min: 1, max: 10 }),

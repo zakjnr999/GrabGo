@@ -429,6 +429,113 @@ const calculateCartPricing = async (cart, options = {}) => {
     };
 };
 
+const calculateCartGroupsPricing = async (carts = [], options = {}) => {
+    const safeCarts = Array.isArray(carts) ? carts : [];
+
+    if (safeCarts.length === 0) {
+        return {
+            groups: [],
+            summary: {
+                subtotal: 0,
+                deliveryFee: 0,
+                serviceFee: 0,
+                tax: 0,
+                rainFee: 0,
+                total: 0,
+                itemCount: 0,
+                vendorCount: 0,
+                creditsApplied: 0,
+                totalAfterCredits: 0,
+                creditBalance: 0,
+                availableBalance: 0,
+            },
+        };
+    }
+
+    const { userId, deliveryLocation, useCredits, fulfillmentMode } = options;
+    const shouldUseCredits = useCredits !== false;
+    const groupResults = await Promise.all(
+        safeCarts.map(async (cart) => {
+            const pricing = await calculateCartPricing(cart, {
+                userId,
+                deliveryLocation,
+                useCredits: false,
+                fulfillmentMode,
+            });
+
+            return { cart, pricing };
+        })
+    );
+
+    let subtotal = 0;
+    let deliveryFee = 0;
+    let serviceFee = 0;
+    let tax = 0;
+    let rainFee = 0;
+    let total = 0;
+    let itemCount = 0;
+
+    const groups = groupResults.map(({ cart, pricing }) => {
+        subtotal += toNumber(pricing?.subtotal, 0);
+        deliveryFee += toNumber(pricing?.deliveryFee, 0);
+        serviceFee += toNumber(pricing?.serviceFee, 0);
+        tax += toNumber(pricing?.tax, 0);
+        rainFee += toNumber(pricing?.rainFee, 0);
+        total += toNumber(pricing?.total, 0);
+        itemCount += toNumber(pricing?.itemCount, 0);
+
+        return {
+            ...cart,
+            pricing,
+        };
+    });
+
+    subtotal = roundCurrency(subtotal);
+    deliveryFee = roundCurrency(deliveryFee);
+    serviceFee = roundCurrency(serviceFee);
+    tax = roundCurrency(tax);
+    rainFee = roundCurrency(rainFee);
+    total = roundCurrency(total);
+
+    let creditsApplied = 0;
+    let totalAfterCredits = total;
+    let creditBalance = 0;
+    let availableBalance = 0;
+
+    if (userId) {
+        const creditResult = await creditService.calculateCreditApplication(
+            userId,
+            total,
+            shouldUseCredits
+        );
+        creditsApplied = toNumber(creditResult?.creditsApplied, 0);
+        totalAfterCredits = roundCurrency(toNumber(creditResult?.remainingPayment, total));
+        creditBalance = toNumber(creditResult?.creditBalance, 0);
+        availableBalance = toNumber(
+            creditResult?.availableBalance,
+            Number.isFinite(creditBalance) ? creditBalance : 0
+        );
+    }
+
+    return {
+        groups,
+        summary: {
+            subtotal,
+            deliveryFee,
+            serviceFee,
+            tax,
+            rainFee,
+            total: totalAfterCredits,
+            itemCount,
+            vendorCount: groups.length,
+            creditsApplied,
+            totalAfterCredits,
+            creditBalance,
+            availableBalance,
+        },
+    };
+};
+
 const calculateOrderPricing = async ({
     subtotal,
     baseDeliveryFee,
@@ -485,5 +592,6 @@ const calculateOrderPricing = async ({
 
 module.exports = {
     calculateCartPricing,
+    calculateCartGroupsPricing,
     calculateOrderPricing
 };

@@ -10,10 +10,22 @@ class FoodDealsState {
   final bool isLoading;
   final String? error;
 
-  const FoodDealsState({this.deals = const [], this.isLoading = false, this.error});
+  const FoodDealsState({
+    this.deals = const [],
+    this.isLoading = false,
+    this.error,
+  });
 
-  FoodDealsState copyWith({List<FoodItem>? deals, bool? isLoading, String? error}) {
-    return FoodDealsState(deals: deals ?? this.deals, isLoading: isLoading ?? this.isLoading, error: error);
+  FoodDealsState copyWith({
+    List<FoodItem>? deals,
+    bool? isLoading,
+    String? error,
+  }) {
+    return FoodDealsState(
+      deals: deals ?? this.deals,
+      isLoading: isLoading ?? this.isLoading,
+      error: error,
+    );
   }
 }
 
@@ -33,21 +45,25 @@ class FoodDealsProvider extends ChangeNotifier with CacheMixin {
     // Skip if already loading
     if (_state.isLoading) return;
 
-    // Try loading from cache ONLY if we have no data yet and not force refreshing
+    // Load cache for instant UI, but still revalidate from backend.
+    var loadedFromCache = false;
     if (!forceRefresh && _state.deals.isEmpty) {
       if (CacheService.isFoodDealsCacheValid()) {
         await _loadFromCache();
-        if (_state.deals.isNotEmpty) {
-          return; // Cache hit, we're done
-        }
+        loadedFromCache = _state.deals.isNotEmpty;
       }
     }
 
-    _updateState(_state.copyWith(isLoading: true));
+    // Show loading indicator only when we have nothing rendered yet.
+    if (!loadedFromCache) {
+      _updateState(_state.copyWith(isLoading: true));
+    }
 
     try {
       final deals = await _repository.fetchDeals();
-      _updateState(_state.copyWith(deals: deals, isLoading: false, error: null));
+      _updateState(
+        _state.copyWith(deals: deals, isLoading: false, error: null),
+      );
       await _saveToCache();
     } catch (e) {
       if (kDebugMode) {
@@ -59,7 +75,12 @@ class FoodDealsProvider extends ChangeNotifier with CacheMixin {
         await _loadFromCache();
       }
 
-      _updateState(_state.copyWith(isLoading: false, error: 'Failed to load deals: ${e.toString()}'));
+      _updateState(
+        _state.copyWith(
+          isLoading: false,
+          error: 'Failed to load deals: ${e.toString()}',
+        ),
+      );
     }
   }
 

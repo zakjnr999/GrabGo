@@ -31,22 +31,12 @@ class NoInternetScreen extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      padding: EdgeInsets.all(24.r),
-                      decoration: BoxDecoration(
-                        color: colors.accentOrange.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: SvgPicture.asset(
-                        Assets.icons.wifiOff,
-                        package: 'grab_go_shared',
-                        height: 56.h,
-                        width: 56.w,
-                        colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                      ),
+                    SvgPicture.asset(
+                      Assets.icons.noInternetIcon,
+                      package: 'grab_go_shared',
+                      width: 180.w,
+                      height: 180.w,
                     ),
-
-                    SizedBox(height: 24.h),
 
                     Text(
                       'No Internet Connection',
@@ -58,7 +48,7 @@ class NoInternetScreen extends StatelessWidget {
 
                     Text(
                       'Please check your network settings and try again.',
-                      style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w400, color: colors.textSecondary),
+                      style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w400, color: colors.textSecondary),
                       textAlign: TextAlign.center,
                     ),
 

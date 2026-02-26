@@ -1,4 +1,5 @@
 const prisma = require('../config/prisma');
+const featureFlags = require('../config/feature_flags');
 const { isRestaurantOpen } = require('../utils/restaurant');
 const { isVendorAcceptingScheduledOrders } = require('../utils/scheduled_orders');
 
@@ -24,6 +25,11 @@ const cartTypeFromItemType = (itemTypeEnum) => {
     if (itemTypeEnum === 'PharmacyItem') return 'pharmacy';
     if (itemTypeEnum === 'GrabMartItem') return 'grabmart';
     return 'food';
+};
+
+const buildProviderScopeKey = (cartType, vendorId) => {
+    if (!cartType || !vendorId) return null;
+    return `${cartType}:${vendorId}`;
 };
 
 const normalizeFulfillmentMode = (mode) => {
@@ -161,6 +167,154 @@ const mutationCartInclude = {
     }
 };
 
+const readInclude = {
+    items: {
+        include: {
+            food: {
+                include: {
+                    restaurant: {
+                        select: {
+                            id: true,
+                            restaurantName: true,
+                            logo: true,
+                            isOpen: true,
+                            status: true,
+                            isAcceptingOrders: true,
+                            isDeleted: true,
+                            features: true,
+                            openingHours: {
+                                select: {
+                                    dayOfWeek: true,
+                                    openTime: true,
+                                    closeTime: true,
+                                    isClosed: true
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            groceryItem: {
+                include: {
+                    store: {
+                        select: {
+                            id: true,
+                            storeName: true,
+                            logo: true,
+                            isOpen: true,
+                            status: true,
+                            isAcceptingOrders: true,
+                            isDeleted: true,
+                            features: true,
+                            openingHours: {
+                                select: {
+                                    dayOfWeek: true,
+                                    openTime: true,
+                                    closeTime: true,
+                                    isClosed: true
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            pharmacyItem: {
+                include: {
+                    store: {
+                        select: {
+                            id: true,
+                            storeName: true,
+                            logo: true,
+                            isOpen: true,
+                            status: true,
+                            isAcceptingOrders: true,
+                            isDeleted: true,
+                            features: true,
+                            openingHours: {
+                                select: {
+                                    dayOfWeek: true,
+                                    openTime: true,
+                                    closeTime: true,
+                                    isClosed: true
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            grabMartItem: {
+                include: {
+                    store: {
+                        select: {
+                            id: true,
+                            storeName: true,
+                            logo: true,
+                            isOpen: true,
+                            status: true,
+                            isAcceptingOrders: true,
+                            isDeleted: true,
+                            features: true,
+                            is24Hours: true
+                        }
+                    }
+                }
+            }
+        }
+    }
+};
+
+const sanitizeCartAfterRead = async (cart) => {
+    if (!cart) return null;
+
+    if (Array.isArray(cart.items)) {
+        for (const item of cart.items) {
+            if (item.itemType !== 'Food' || !item.food || !item.food.restaurant) continue;
+            const computedIsOpen = isRestaurantOpen(item.food.restaurant);
+            item.food.isRestaurantOpen = computedIsOpen;
+            item.food.restaurant.isRestaurantOpen = computedIsOpen;
+            item.food.restaurant.isOpen = computedIsOpen;
+        }
+    }
+
+    if (Array.isArray(cart.items)) {
+        const originalLength = cart.items.length;
+        const validItems = cart.items.filter((item) => {
+            if (item.itemType === 'Food') return item.food !== null;
+            if (item.itemType === 'GroceryItem') return item.groceryItem !== null;
+            if (item.itemType === 'PharmacyItem') return item.pharmacyItem !== null;
+            if (item.itemType === 'GrabMartItem') return item.grabMartItem !== null;
+            return false;
+        });
+
+        if (validItems.length < originalLength) {
+            const itemsToDelete = cart.items.filter((item) => !validItems.includes(item));
+            await prisma.cartItem.deleteMany({
+                where: {
+                    id: { in: itemsToDelete.map((entry) => entry.id) }
+                }
+            });
+
+            if (validItems.length === 0) {
+                await prisma.cart.update({
+                    where: { id: cart.id },
+                    data: {
+                        restaurantId: null,
+                        groceryStoreId: null,
+                        pharmacyStoreId: null,
+                        grabMartStoreId: null,
+                        providerScopeKey: null
+                    }
+                });
+            }
+
+            cart.items = validItems;
+        }
+    }
+
+    cart.scheduleAvailability = buildScheduleAvailability(cart);
+    return cart;
+};
+
 const refreshCartAggregates = async (cartId) => {
     const items = await prisma.cartItem.findMany({
         where: { cartId },
@@ -186,6 +340,7 @@ const refreshCartAggregates = async (cartId) => {
         updateData.groceryStoreId = null;
         updateData.pharmacyStoreId = null;
         updateData.grabMartStoreId = null;
+        updateData.providerScopeKey = null;
     }
 
     await prisma.cart.update({
@@ -194,15 +349,25 @@ const refreshCartAggregates = async (cartId) => {
     });
 };
 
-const getOrCreateCart = async (userId, cartType = 'food', fulfillmentMode = 'delivery') => {
+const getOrCreateCart = async (
+    userId,
+    cartType = 'food',
+    fulfillmentMode = 'delivery',
+    providerScopeKey = null,
+    vendorField = null,
+    vendorId = null
+) => {
     const normalizedMode = normalizeFulfillmentMode(fulfillmentMode);
+    const resolvedScopeKey = featureFlags.isMixedCartEnabled ? providerScopeKey : null;
+    const where = {
+        userId,
+        isActive: true,
+        cartType,
+        fulfillmentMode: normalizedMode,
+        ...(resolvedScopeKey ? { providerScopeKey: resolvedScopeKey } : {})
+    };
     let cart = await prisma.cart.findFirst({
-        where: {
-            userId,
-            isActive: true,
-            cartType,
-            fulfillmentMode: normalizedMode
-        },
+        where,
         include: {
             items: {
                 include: {
@@ -215,12 +380,56 @@ const getOrCreateCart = async (userId, cartType = 'food', fulfillmentMode = 'del
         }
     });
 
+    if (!cart && featureFlags.isMixedCartEnabled && resolvedScopeKey && vendorField && vendorId) {
+        // Migration-safe fallback: reuse legacy vendor cart row that predates providerScopeKey.
+        const legacyWhere = {
+            userId,
+            isActive: true,
+            cartType,
+            fulfillmentMode: normalizedMode,
+            providerScopeKey: null,
+            [vendorField]: vendorId
+        };
+
+        const legacyCart = await prisma.cart.findFirst({
+            where: legacyWhere,
+            include: {
+                items: {
+                    include: {
+                        food: true,
+                        groceryItem: true,
+                        pharmacyItem: true,
+                        grabMartItem: true
+                    }
+                }
+            }
+        });
+
+        if (legacyCart) {
+            cart = await prisma.cart.update({
+                where: { id: legacyCart.id },
+                data: { providerScopeKey: resolvedScopeKey },
+                include: {
+                    items: {
+                        include: {
+                            food: true,
+                            groceryItem: true,
+                            pharmacyItem: true,
+                            grabMartItem: true
+                        }
+                    }
+                }
+            });
+        }
+    }
+
     if (!cart) {
         cart = await prisma.cart.create({
             data: {
                 userId,
                 cartType,
                 fulfillmentMode: normalizedMode,
+                providerScopeKey: resolvedScopeKey,
                 items: {
                     create: []
                 }
@@ -306,96 +515,66 @@ const addToCart = async (userId, itemData) => {
     // Determine cart type
     const cartType = cartTypeFromItemType(itemTypeEnum);
     const normalizedMode = normalizeFulfillmentMode(fulfillmentMode);
+    let resolvedVendorId = null;
+    let vendorLabel = 'Vendor';
+    let vendorField = null;
+    let vendorDoc = null;
 
-    // Get or create cart
-    let cart = await getOrCreateCart(userId, cartType, normalizedMode);
-
-    // Validate and check if switching restaurants/stores
     if (cartType === 'food') {
-        const resolvedRestaurantId = restaurantId || item?.restaurantId;
-        if (!resolvedRestaurantId) throw new Error('Restaurant not found or inactive');
-
-        const restaurant = await prisma.restaurant.findUnique({
-            where: { id: resolvedRestaurantId }
-        });
-        const availabilityError = getVendorAvailabilityError(restaurant, 'Restaurant');
-        if (availabilityError) throw new Error(availabilityError);
-
-        if (cart.restaurantId && cart.restaurantId !== resolvedRestaurantId) {
-            // Clear cart if switching restaurants
-            await prisma.cartItem.deleteMany({
-                where: { cartId: cart.id }
-            });
-        }
-
-        await prisma.cart.update({
-            where: { id: cart.id },
-            data: { restaurantId: resolvedRestaurantId }
-        });
+        resolvedVendorId = restaurantId || item?.restaurantId;
+        vendorLabel = 'Restaurant';
+        vendorField = 'restaurantId';
+        if (!resolvedVendorId) throw new Error('Restaurant not found or inactive');
+        vendorDoc = await prisma.restaurant.findUnique({ where: { id: resolvedVendorId } });
     } else if (cartType === 'grocery') {
-        const resolvedStoreId = groceryStoreId || item?.storeId;
-        if (!resolvedStoreId) throw new Error('Grocery store not found or inactive');
-
-        const store = await prisma.groceryStore.findUnique({
-            where: { id: resolvedStoreId }
-        });
-        const availabilityError = getVendorAvailabilityError(store, 'Grocery store');
-        if (availabilityError) throw new Error(availabilityError);
-
-        if (cart.groceryStoreId && cart.groceryStoreId !== resolvedStoreId) {
-            // Clear cart if switching stores
-            await prisma.cartItem.deleteMany({
-                where: { cartId: cart.id }
-            });
-        }
-
-        await prisma.cart.update({
-            where: { id: cart.id },
-            data: { groceryStoreId: resolvedStoreId }
-        });
+        resolvedVendorId = groceryStoreId || item?.storeId;
+        vendorLabel = 'Grocery store';
+        vendorField = 'groceryStoreId';
+        if (!resolvedVendorId) throw new Error('Grocery store not found or inactive');
+        vendorDoc = await prisma.groceryStore.findUnique({ where: { id: resolvedVendorId } });
     } else if (cartType === 'pharmacy') {
-        const resolvedStoreId = pharmacyStoreId || item?.storeId;
-        if (!resolvedStoreId) throw new Error('Pharmacy store not found or inactive');
-
-        const store = await prisma.pharmacyStore.findUnique({
-            where: { id: resolvedStoreId }
-        });
-        const availabilityError = getVendorAvailabilityError(store, 'Pharmacy store');
-        if (availabilityError) throw new Error(availabilityError);
-
-        if (cart.pharmacyStoreId && cart.pharmacyStoreId !== resolvedStoreId) {
-            // Clear cart if switching stores
-            await prisma.cartItem.deleteMany({
-                where: { cartId: cart.id }
-            });
-        }
-
-        await prisma.cart.update({
-            where: { id: cart.id },
-            data: { pharmacyStoreId: resolvedStoreId }
-        });
+        resolvedVendorId = pharmacyStoreId || item?.storeId;
+        vendorLabel = 'Pharmacy store';
+        vendorField = 'pharmacyStoreId';
+        if (!resolvedVendorId) throw new Error('Pharmacy store not found or inactive');
+        vendorDoc = await prisma.pharmacyStore.findUnique({ where: { id: resolvedVendorId } });
     } else if (cartType === 'grabmart') {
-        const resolvedStoreId = grabMartStoreId || item?.storeId;
-        if (!resolvedStoreId) throw new Error('GrabMart store not found or inactive');
+        resolvedVendorId = grabMartStoreId || item?.storeId;
+        vendorLabel = 'GrabMart store';
+        vendorField = 'grabMartStoreId';
+        if (!resolvedVendorId) throw new Error('GrabMart store not found or inactive');
+        vendorDoc = await prisma.grabMartStore.findUnique({ where: { id: resolvedVendorId } });
+    }
 
-        const store = await prisma.grabMartStore.findUnique({
-            where: { id: resolvedStoreId }
-        });
-        const availabilityError = getVendorAvailabilityError(store, 'GrabMart store');
-        if (availabilityError) throw new Error(availabilityError);
+    const availabilityError = getVendorAvailabilityError(vendorDoc, vendorLabel);
+    if (availabilityError) throw new Error(availabilityError);
 
-        if (cart.grabMartStoreId && cart.grabMartStoreId !== resolvedStoreId) {
-            // Clear cart if switching stores
-            await prisma.cartItem.deleteMany({
-                where: { cartId: cart.id }
-            });
-        }
+    const providerScopeKey = buildProviderScopeKey(cartType, resolvedVendorId);
 
-        await prisma.cart.update({
-            where: { id: cart.id },
-            data: { grabMartStoreId: resolvedStoreId }
+    // Get or create vendor-scoped cart when mixed cart is enabled.
+    let cart = await getOrCreateCart(
+        userId,
+        cartType,
+        normalizedMode,
+        providerScopeKey,
+        vendorField,
+        resolvedVendorId
+    );
+
+    if (!featureFlags.isMixedCartEnabled && vendorField && cart[vendorField] && cart[vendorField] !== resolvedVendorId) {
+        // Legacy behavior: clear cart when switching vendors.
+        await prisma.cartItem.deleteMany({
+            where: { cartId: cart.id }
         });
     }
+
+    await prisma.cart.update({
+        where: { id: cart.id },
+        data: {
+            [vendorField]: resolvedVendorId,
+            providerScopeKey
+        }
+    });
 
     // Reload cart with items
     cart = await prisma.cart.findUnique({
@@ -568,6 +747,7 @@ const clearCart = async (userId, fulfillmentMode = 'delivery') => {
             groceryStoreId: null,
             pharmacyStoreId: null,
             grabMartStoreId: null,
+            providerScopeKey: null,
             totalAmount: 0,
             itemCount: 0,
             abandonmentNotificationSent: false,
@@ -595,102 +775,6 @@ const getUserCart = async (userId, cartType = null, fulfillmentMode = 'delivery'
         where.cartType = cartType;
     }
 
-    const readInclude = {
-        items: {
-            include: {
-                food: {
-                    include: {
-                        restaurant: {
-                            select: {
-                                id: true,
-                                restaurantName: true,
-                                logo: true,
-                                isOpen: true,
-                                status: true,
-                                isAcceptingOrders: true,
-                                isDeleted: true,
-                                features: true,
-                                openingHours: {
-                                    select: {
-                                        dayOfWeek: true,
-                                        openTime: true,
-                                        closeTime: true,
-                                        isClosed: true
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                groceryItem: {
-                    include: {
-                        store: {
-                            select: {
-                                id: true,
-                                storeName: true,
-                                logo: true,
-                                isOpen: true,
-                                status: true,
-                                isAcceptingOrders: true,
-                                isDeleted: true,
-                                features: true,
-                                openingHours: {
-                                    select: {
-                                        dayOfWeek: true,
-                                        openTime: true,
-                                        closeTime: true,
-                                        isClosed: true
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                pharmacyItem: {
-                    include: {
-                        store: {
-                            select: {
-                                id: true,
-                                storeName: true,
-                                logo: true,
-                                isOpen: true,
-                                status: true,
-                                isAcceptingOrders: true,
-                                isDeleted: true,
-                                features: true,
-                                openingHours: {
-                                    select: {
-                                        dayOfWeek: true,
-                                        openTime: true,
-                                        closeTime: true,
-                                        isClosed: true
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                grabMartItem: {
-                    include: {
-                        store: {
-                            select: {
-                                id: true,
-                                storeName: true,
-                                logo: true,
-                                isOpen: true,
-                                status: true,
-                                isAcceptingOrders: true,
-                                isDeleted: true,
-                                features: true,
-                                is24Hours: true
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    };
-
     let cart = null;
     if (cartType) {
         cart = await prisma.cart.findFirst({
@@ -706,60 +790,30 @@ const getUserCart = async (userId, cartType = null, fulfillmentMode = 'delivery'
         });
         cart = carts.find((entry) => Array.isArray(entry.items) && entry.items.length > 0) || carts[0] || null;
     }
+    return sanitizeCartAfterRead(cart);
+};
 
-    // Keep cart restaurant-open status aligned with food listing logic (opening hours aware)
-    if (cart && cart.items) {
-        for (const item of cart.items) {
-            if (item.itemType !== 'Food' || !item.food || !item.food.restaurant) continue;
-            const computedIsOpen = isRestaurantOpen(item.food.restaurant);
-            item.food.isRestaurantOpen = computedIsOpen;
-            item.food.restaurant.isRestaurantOpen = computedIsOpen;
-            item.food.restaurant.isOpen = computedIsOpen;
-        }
+const getUserCartGroups = async (userId, fulfillmentMode = 'delivery') => {
+    const where = {
+        userId,
+        isActive: true,
+        fulfillmentMode: normalizeFulfillmentMode(fulfillmentMode)
+    };
+
+    const carts = await prisma.cart.findMany({
+        where,
+        include: readInclude,
+        orderBy: { lastUpdatedAt: 'desc' }
+    });
+
+    const groups = [];
+    for (const cart of carts) {
+        const sanitized = await sanitizeCartAfterRead(cart);
+        if (!sanitized || !Array.isArray(sanitized.items) || sanitized.items.length === 0) continue;
+        groups.push(sanitized);
     }
 
-    // Filter out items with deleted references
-    if (cart && cart.items) {
-        const originalLength = cart.items.length;
-        const validItems = cart.items.filter(item => {
-            if (item.itemType === 'Food') return item.food !== null;
-            if (item.itemType === 'GroceryItem') return item.groceryItem !== null;
-            if (item.itemType === 'PharmacyItem') return item.pharmacyItem !== null;
-            if (item.itemType === 'GrabMartItem') return item.grabMartItem !== null;
-            return false;
-        });
-
-        // If items were removed, update the cart
-        if (validItems.length < originalLength) {
-            const itemsToDelete = cart.items.filter(item => !validItems.includes(item));
-            await prisma.cartItem.deleteMany({
-                where: {
-                    id: { in: itemsToDelete.map(i => i.id) }
-                }
-            });
-
-            // If all items were removed, clear restaurant/store
-            if (validItems.length === 0) {
-                await prisma.cart.update({
-                    where: { id: cart.id },
-                    data: {
-                        restaurantId: null,
-                        groceryStoreId: null,
-                        pharmacyStoreId: null,
-                        grabMartStoreId: null
-                    }
-                });
-            }
-
-            cart.items = validItems;
-        }
-    }
-
-    if (cart) {
-        cart.scheduleAvailability = buildScheduleAvailability(cart);
-    }
-
-    return cart;
+    return groups;
 };
 
 /**
@@ -876,12 +930,14 @@ const markAbandonmentNotificationSent = async (cartId) => {
 
 module.exports = {
     normalizeFulfillmentMode,
+    buildProviderScopeKey,
     getOrCreateCart,
     addToCart,
     updateCartItem,
     removeFromCart,
     clearCart,
     getUserCart,
+    getUserCartGroups,
     markCartAsConverted,
     findAbandonedCarts,
     markAbandonmentNotificationSent

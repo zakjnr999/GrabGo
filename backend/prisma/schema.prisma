@@ -70,6 +70,15 @@ enum PaymentStatus {
   refunded
 }
 
+enum CheckoutSessionStatus {
+  pending
+  processing
+  paid
+  failed
+  cancelled
+  expired
+}
+
 enum FulfillmentMode {
   delivery
   pickup
@@ -348,6 +357,7 @@ model User {
   favoriteGrabMartItems  UserFavoriteGrabMartItem[]
   orders                 Order[]                    @relation("CustomerOrders")
   riderOrders            Order[]                    @relation("RiderOrders")
+  checkoutSessions       CheckoutSession[]
   creditHolds            UserCreditHold[]
   carts                  Cart[]
   payments               Payment[]
@@ -1017,6 +1027,49 @@ model PharmacyItem {
 
 // ==================== ORDER ====================
 
+model CheckoutSession {
+  id               String                @id @default(cuid())
+  groupOrderNumber String                @unique
+  customerId       String
+  fulfillmentMode  FulfillmentMode       @default(delivery)
+  paymentMethod    PaymentMethod
+  paymentProvider  PaymentProvider?
+  paymentReferenceId String?
+  paymentStatus    PaymentStatus         @default(pending)
+  status           CheckoutSessionStatus @default(pending)
+  subtotal         Float
+  deliveryFee      Float                 @default(0)
+  serviceFee       Float                 @default(0)
+  tax              Float                 @default(0)
+  rainFee          Float                 @default(0)
+  totalAmount      Float
+  creditsApplied   Float                 @default(0)
+  vendorCount      Int                   @default(1)
+  currency         Currency              @default(GHS)
+  notes            String?
+  restrictions     Json?
+  deliveryStreet   String?
+  deliveryCity     String?
+  deliveryState    String?
+  deliveryZipCode  String?
+  deliveryLatitude Float?
+  deliveryLongitude Float?
+  expiresAt        DateTime?
+  paidAt           DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customer User    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  orders   Order[] @relation("CheckoutSessionOrders")
+
+  @@index([customerId])
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([createdAt])
+  @@map("checkout_sessions")
+}
+
 model Order {
   id                 String           @id @default(cuid())
   orderNumber        String           @unique
@@ -1027,6 +1080,10 @@ model Order {
   groceryStoreId     String?
   pharmacyStoreId    String?
   grabMartStoreId    String?
+  checkoutSessionId  String?
+  groupId            String?
+  groupOrderNumber   String?
+  isGroupedOrder     Boolean          @default(false)
   riderId            String?
   subtotal           Float
   deliveryFee        Float            @default(0)
@@ -1124,6 +1181,7 @@ model Order {
   // Relations
   customer      User           @relation("CustomerOrders", fields: [customerId], references: [id])
   rider         User?          @relation("RiderOrders", fields: [riderId], references: [id])
+  checkoutSession CheckoutSession? @relation("CheckoutSessionOrders", fields: [checkoutSessionId], references: [id], onDelete: SetNull)
   restaurant    Restaurant?    @relation(fields: [restaurantId], references: [id])
   groceryStore  GroceryStore?  @relation("GroceryStoreOrders", fields: [groceryStoreId], references: [id])
   pharmacyStore PharmacyStore? @relation("PharmacyStoreOrders", fields: [pharmacyStoreId], references: [id])
@@ -1135,6 +1193,9 @@ model Order {
   creditHold    UserCreditHold?
 
   @@index([customerId])
+  @@index([checkoutSessionId])
+  @@index([groupId])
+  @@index([groupOrderNumber])
   @@index([restaurantId])
   @@index([groceryStoreId])
   @@index([pharmacyStoreId])
@@ -1183,6 +1244,7 @@ model Cart {
   userId                        String
   cartType                      CartType
   fulfillmentMode               FulfillmentMode @default(delivery)
+  providerScopeKey              String?
   restaurantId                  String?
   groceryStoreId                String?
   pharmacyStoreId               String?
@@ -1206,6 +1268,7 @@ model Cart {
   @@index([userId])
   @@index([cartType])
   @@index([fulfillmentMode])
+  @@index([userId, fulfillmentMode, providerScopeKey, isActive])
   @@index([userId, cartType, fulfillmentMode, isActive])
   @@map("carts")
 }

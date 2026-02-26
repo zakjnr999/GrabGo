@@ -1,15 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
-const { calculateCartPricing } = require('../services/pricing_service');
+const { calculateCartPricing, calculateCartGroupsPricing } = require('../services/pricing_service');
 const {
     normalizeFulfillmentMode,
     addToCart,
     updateCartItem,
     removeFromCart,
     clearCart,
-    getUserCart
+    getUserCart,
+    getUserCartGroups,
 } = require('../services/cart_service');
+const featureFlags = require('../config/feature_flags');
 
 const parseBoolean = (value) => {
     if (typeof value === 'boolean') return value;
@@ -21,6 +23,52 @@ const parseBoolean = (value) => {
     }
     return undefined;
 };
+
+/**
+ * @route   GET /api/cart/groups
+ * @desc    Get grouped cart data (one group per vendor)
+ * @access  Private
+ */
+router.get('/groups', protect, async (req, res) => {
+    try {
+        if (!featureFlags.isMixedCartEnabled) {
+            return res.status(403).json({
+                success: false,
+                message: 'Mixed cart is currently unavailable',
+                code: 'MIXED_CART_DISABLED',
+            });
+        }
+
+        const fulfillmentMode = normalizeFulfillmentMode(req.query.fulfillmentMode);
+        const carts = await getUserCartGroups(req.user.id, fulfillmentMode);
+        const lat = Number(req.query.lat);
+        const lng = Number(req.query.lng);
+        const deliveryLocation =
+            Number.isFinite(lat) && Number.isFinite(lng) ? { latitude: lat, longitude: lng } : null;
+        const useCredits = parseBoolean(req.query.useCredits);
+
+        const groupedPricing = await calculateCartGroupsPricing(carts, {
+            userId: req.user.id,
+            deliveryLocation,
+            useCredits,
+            fulfillmentMode,
+        });
+
+        return res.json({
+            success: true,
+            mixedCartEnabled: featureFlags.isMixedCartEnabled,
+            groups: groupedPricing.groups,
+            summary: groupedPricing.summary,
+        });
+    } catch (error) {
+        console.error('Error fetching grouped cart:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch grouped cart',
+            error: error.message,
+        });
+    }
+});
 
 /**
  * @route   GET /api/cart

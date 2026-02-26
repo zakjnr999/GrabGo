@@ -257,18 +257,20 @@ class GroceryProvider extends ChangeNotifier {
 
   /// Fetch grocery deals
   Future<void> fetchDeals({bool forceRefresh = false}) async {
+    var loadedFromCache = false;
     if (_deals.isEmpty) {
       final cached = CacheService.getGroceryDeals();
       if (cached.isNotEmpty) {
         _deals = cached.map((json) => GroceryItem.fromJson(json)).toList();
+        loadedFromCache = true;
         notifyListeners();
       }
     }
 
-    if (!forceRefresh && _deals.isNotEmpty) return;
+    if (!forceRefresh && _deals.isNotEmpty && !loadedFromCache) return;
 
-    // Only show loading state if we have no data
-    if (_deals.isEmpty) {
+    // Only show loading state if no deals are rendered yet.
+    if (_deals.isEmpty && !loadedFromCache) {
       _isLoadingDeals = true;
       notifyListeners();
     }

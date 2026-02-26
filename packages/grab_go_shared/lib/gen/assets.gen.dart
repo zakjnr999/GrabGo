@@ -394,6 +394,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/night.png
   AssetGenImage get night => const AssetGenImage('lib/assets/icons/night.png');
 
+  /// File path: lib/assets/icons/no_internet_icon.svg
+  String get noInternetIcon => 'lib/assets/icons/no_internet_icon.svg';
+
   /// File path: lib/assets/icons/no_profile.png
   AssetGenImage get noProfile =>
       const AssetGenImage('lib/assets/icons/no_profile.png');
@@ -702,6 +705,7 @@ class $LibAssetsIconsGen {
     navArrowRight,
     navArrowUp,
     night,
+    noInternetIcon,
     noProfile,
     notes,
     orderFood,

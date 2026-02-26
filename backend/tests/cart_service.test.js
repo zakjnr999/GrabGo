@@ -34,7 +34,9 @@ jest.mock("../utils/scheduled_orders", () => ({
 }));
 
 const prisma = require("../config/prisma");
+const featureFlags = require("../config/feature_flags");
 const {
+  addToCart,
   updateCartItem,
   removeFromCart,
   clearCart,
@@ -44,6 +46,7 @@ const {
 describe("cart_service", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    featureFlags.isMixedCartEnabled = false;
   });
 
   it("updates quantity using cart item ownership, not first cart", async () => {
@@ -232,5 +235,70 @@ describe("cart_service", () => {
     );
     expect(prisma.cart.findMany).not.toHaveBeenCalled();
     expect(cart.id).toBe("food_cart_1");
+  });
+
+  it("scopes carts by vendor when mixed cart is enabled", async () => {
+    featureFlags.isMixedCartEnabled = true;
+
+    prisma.food.findUnique.mockResolvedValue({
+      id: "food_1",
+      name: "Waakye",
+      price: 12.5,
+      foodImage: "waakye.jpg",
+      isAvailable: true,
+      restaurantId: "rest_2",
+    });
+    prisma.restaurant.findUnique.mockResolvedValue({
+      id: "rest_2",
+      status: "approved",
+      isDeleted: false,
+      isAcceptingOrders: true,
+    });
+    prisma.cart.findFirst.mockResolvedValue({
+      id: "cart_food_rest_2",
+      userId: "user_2",
+      cartType: "food",
+      fulfillmentMode: "delivery",
+      providerScopeKey: "food:rest_2",
+      restaurantId: "rest_2",
+      items: [],
+    });
+    prisma.cart.update.mockResolvedValue({ id: "cart_food_rest_2" });
+    prisma.cart.findUnique.mockResolvedValue({
+      id: "cart_food_rest_2",
+      items: [],
+    });
+    prisma.cartItem.create.mockResolvedValue({ id: "cart_item_1" });
+    prisma.cartItem.findMany.mockResolvedValue([{ quantity: 1, price: 12.5 }]);
+
+    const result = await addToCart("user_2", {
+      itemId: "food_1",
+      itemType: "Food",
+      quantity: 1,
+      restaurantId: "rest_2",
+      fulfillmentMode: "delivery",
+    });
+
+    expect(prisma.cart.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          userId: "user_2",
+          cartType: "food",
+          fulfillmentMode: "delivery",
+          providerScopeKey: "food:rest_2",
+        }),
+      })
+    );
+    expect(prisma.cartItem.deleteMany).not.toHaveBeenCalled();
+    expect(prisma.cart.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "cart_food_rest_2" },
+        data: expect.objectContaining({
+          restaurantId: "rest_2",
+          providerScopeKey: "food:rest_2",
+        }),
+      })
+    );
+    expect(result.id).toBe("cart_food_rest_2");
   });
 });
