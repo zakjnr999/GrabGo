@@ -542,7 +542,7 @@ const calculateCartGroupsPricing = async (carts = [], options = {}) => {
     let estimatedDeliveryCompletionMin = null;
     let estimatedDeliveryCompletionMax = null;
 
-    if (etaGroups.length > 0) {
+    if (etaGroups.length > 0 && etaGroups.length === groups.length) {
         const earliestWindow = etaGroups.reduce((best, current) => {
             if (!best) return current;
             if (current.minMinutes < best.minMinutes) return current;
