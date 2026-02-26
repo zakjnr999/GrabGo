@@ -5,6 +5,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:grab_go_customer/features/order/service/order_service_wrapper.dart';
+import 'package:grab_go_customer/shared/services/paystack_service.dart' as paystack;
 import 'package:grab_go_customer/shared/widgets/order_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
@@ -17,6 +19,12 @@ import 'package:provider/provider.dart';
 class OrderModel {
   final String id;
   final String orderNumber;
+  final String? groupOrderNumber;
+  final String? groupId;
+  final String? checkoutSessionId;
+  final bool isGroupedOrder;
+  final int? groupVendorCount;
+  final double? groupTotalAmount;
   final String restaurantName;
   final String? restaurantLogo;
   final List<OrderItem> items;
@@ -32,6 +40,12 @@ class OrderModel {
   OrderModel({
     required this.id,
     required this.orderNumber,
+    this.groupOrderNumber,
+    this.groupId,
+    this.checkoutSessionId,
+    this.isGroupedOrder = false,
+    this.groupVendorCount,
+    this.groupTotalAmount,
     required this.restaurantName,
     this.restaurantLogo,
     required this.items,
@@ -109,10 +123,15 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
   OrderModel _convertAPIOrderToOrderModel(Map<String, dynamic> apiOrder) {
     final items = (apiOrder['items'] as List? ?? []).map((item) {
       final itemName = item['name'] ?? item['food']?['name'] ?? 'Unknown Item';
-      final itemPrice = (item['price'] ?? item['food']?['price'] ?? 0.0).toDouble();
+      final itemPrice = _toDouble(item['price'] ?? item['food']?['price']);
       final itemImage = item['image'] ?? item['food']?['image'];
 
-      return OrderItem(name: itemName, quantity: item['quantity'] ?? 1, price: itemPrice, image: itemImage);
+      return OrderItem(
+        name: itemName,
+        quantity: _toInt(item['quantity'], fallback: 1),
+        price: itemPrice,
+        image: itemImage,
+      );
     }).toList();
 
     OrderStatus status;
@@ -170,14 +189,23 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
     final cancelledDate = parseDate(apiOrder['cancelledDate']);
 
     final paymentStatus = (apiOrder['paymentStatus'] as String?)?.toLowerCase();
+    final groupMeta = apiOrder['groupMeta'] is Map ? Map<String, dynamic>.from(apiOrder['groupMeta']) : null;
+    final groupId = apiOrder['groupId']?.toString();
+    final isGroupedOrder = (apiOrder['isGroupedOrder'] == true) || (groupId != null && groupId.isNotEmpty);
 
     return OrderModel(
       id: apiOrder['id']?.toString() ?? apiOrder['_id']?.toString() ?? '',
       orderNumber: apiOrder['orderNumber']?.toString() ?? '',
+      groupOrderNumber: apiOrder['groupOrderNumber']?.toString(),
+      groupId: groupId,
+      checkoutSessionId: apiOrder['checkoutSessionId']?.toString(),
+      isGroupedOrder: isGroupedOrder,
+      groupVendorCount: _toNullableInt(groupMeta?['vendorCount']),
+      groupTotalAmount: _toNullableDouble(groupMeta?['groupTotal']),
       restaurantName: restaurantName,
       restaurantLogo: restaurantLogo,
       items: items,
-      totalAmount: (apiOrder['totalAmount'] ?? 0.0).toDouble(),
+      totalAmount: _toDouble(apiOrder['totalAmount']),
       orderDate: orderDate,
       expectedDelivery: expectedDelivery,
       status: status,
@@ -188,9 +216,31 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
     );
   }
 
-  List<OrderModel> _getFilteredOrders(List<Map<String, dynamic>> allOrders) {
-    final convertedOrders = allOrders.map((orderData) => _convertAPIOrderToOrderModel(orderData)).toList();
+  double _toDouble(dynamic value, {double fallback = 0.0}) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? fallback;
+    return fallback;
+  }
 
+  double? _toNullableDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
+  }
+
+  int _toInt(dynamic value, {int fallback = 0}) {
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? fallback;
+    return fallback;
+  }
+
+  int? _toNullableInt(dynamic value) {
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  List<OrderModel> _filterOrdersByTab(List<OrderModel> convertedOrders) {
     switch (selectedTabIndex) {
       case 0:
         return convertedOrders
@@ -203,6 +253,39 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
       default:
         return convertedOrders;
     }
+  }
+
+  List<OrderModel> _getGroupOrders(OrderModel order, List<OrderModel> allOrders) {
+    final groupId = order.groupId?.trim();
+    if (!order.isGroupedOrder || groupId == null || groupId.isEmpty) {
+      return const [];
+    }
+
+    final children = allOrders.where((entry) => entry.groupId == groupId).toList()
+      ..sort((a, b) => a.orderDate.compareTo(b.orderDate));
+    return children;
+  }
+
+  List<_GroupedVendorSummary> _buildGroupedVendorSummaries(List<OrderModel> groupOrders) {
+    final grouped = <String, _GroupedVendorSummaryMutable>{};
+    for (final child in groupOrders) {
+      final vendorName = child.restaurantName.trim().isNotEmpty ? child.restaurantName.trim() : 'Vendor';
+      grouped.putIfAbsent(vendorName, () => _GroupedVendorSummaryMutable(vendorName: vendorName));
+      grouped[vendorName]!.orderCount += 1;
+      grouped[vendorName]!.itemCount += child.itemCount;
+      grouped[vendorName]!.totalAmount += child.totalAmount;
+    }
+
+    return grouped.values
+        .map(
+          (value) => _GroupedVendorSummary(
+            vendorName: value.vendorName,
+            orderCount: value.orderCount,
+            itemCount: value.itemCount,
+            totalAmount: value.totalAmount,
+          ),
+        )
+        .toList(growable: false);
   }
 
   String _getTimeAgo(DateTime timestamp) {
@@ -276,6 +359,11 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
   }
 
   Future<void> _retryPayment(BuildContext context, OrderModel order) async {
+    if (order.isGroupedOrder && order.checkoutSessionId != null && order.checkoutSessionId!.isNotEmpty) {
+      await _retryGroupedPayment(context, order);
+      return;
+    }
+
     LoadingDialog.instance().show(context: context, text: 'Preparing checkout...');
     final cartProvider = context.read<CartProvider>();
 
@@ -306,6 +394,104 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
         primaryButtonText: 'OK',
       );
     }
+  }
+
+  Future<void> _retryGroupedPayment(BuildContext context, OrderModel order) async {
+    final sessionId = order.checkoutSessionId;
+    if (sessionId == null || sessionId.isEmpty) {
+      AppDialog.show(
+        context: context,
+        type: AppDialogType.error,
+        title: 'Unable to retry payment',
+        message: 'Missing checkout session reference for this grouped order.',
+        primaryButtonText: 'OK',
+      );
+      return;
+    }
+
+    LoadingDialog.instance().show(context: context, text: 'Preparing payment...');
+    final orderService = OrderServiceWrapper();
+
+    try {
+      final init = await orderService.initializeCheckoutSessionPaystackPayment(sessionId: sessionId);
+      LoadingDialog.instance().hide();
+
+      final result = await paystack.PaystackService.instance.launchPayment(
+        context: context,
+        authorizationUrl: init.authorizationUrl,
+        reference: init.reference,
+      );
+
+      if (!context.mounted) return;
+
+      if (result.status == paystack.PaystackPaymentStatus.success ||
+          result.status == paystack.PaystackPaymentStatus.unknown) {
+        context.go(
+          '/paymentConfirming',
+          extra: {
+            'orderId': null,
+            'sessionId': sessionId,
+            'reference': result.reference ?? init.reference,
+            'paymentData': _buildGroupedRetryPaymentData(order, init),
+          },
+        );
+        return;
+      }
+
+      await orderService.releaseCheckoutSessionCreditHold(sessionId: sessionId);
+      if (!context.mounted) return;
+      AppDialog.show(
+        context: context,
+        type: AppDialogType.warning,
+        title: 'Payment not completed',
+        message: 'You can retry payment for this grouped order anytime.',
+        primaryButtonText: 'OK',
+      );
+    } catch (_) {
+      LoadingDialog.instance().hide();
+      try {
+        await orderService.releaseCheckoutSessionCreditHold(sessionId: sessionId);
+      } catch (_) {}
+
+      if (!context.mounted) return;
+      AppDialog.show(
+        context: context,
+        type: AppDialogType.error,
+        title: 'Retry failed',
+        message: 'Unable to initialize payment right now. Please try again.',
+        primaryButtonText: 'OK',
+      );
+    }
+  }
+
+  Map<String, dynamic> _buildGroupedRetryPaymentData(OrderModel order, InitializePaymentResult init) {
+    final raw = order.rawOrder;
+    final paymentAmount =
+        init.paymentAmount ?? order.groupTotalAmount ?? _toDouble(raw['totalAmount'], fallback: order.totalAmount);
+
+    return {
+      'orderId': null,
+      'checkoutSessionId': order.checkoutSessionId,
+      'isGroupedOrder': true,
+      'method': 'Paystack',
+      'paymentMethod': 'card',
+      'paymentScope': init.paymentScope,
+      'total': paymentAmount,
+      'orderGrandTotal': paymentAmount,
+      'codRemainingCashAmount': null,
+      'subTotal': _toDouble(raw['subtotal'], fallback: paymentAmount),
+      'deliveryFee': _toDouble(raw['deliveryFee'], fallback: 0.0),
+      'serviceFee': _toDouble(raw['serviceFee'], fallback: 0.0),
+      'rainFee': _toDouble(raw['rainFee'], fallback: 0.0),
+      'tax': _toDouble(raw['tax'], fallback: 0.0),
+      'tip': _toDouble(raw['tip'], fallback: 0.0),
+      'orderNumber': order.groupOrderNumber ?? order.orderNumber,
+      'timestamp': DateTime.now().toIso8601String(),
+      'isGiftOrder': false,
+      'giftRecipientName': null,
+      'giftRecipientPhone': null,
+      'giftDeliveryCode': null,
+    };
   }
 
   @override
@@ -347,7 +533,10 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
                             return OrderSkeleton(colors: colors, isDark: isDark);
                           }
 
-                          final filteredOrders = _getFilteredOrders(orderProvider.orders);
+                          final convertedOrders = orderProvider.orders
+                              .map((orderData) => _convertAPIOrderToOrderModel(orderData))
+                              .toList(growable: false);
+                          final filteredOrders = _filterOrdersByTab(convertedOrders);
 
                           return Column(
                             children: [
@@ -380,7 +569,7 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
                                           },
                                           itemBuilder: (context, index) {
                                             final order = filteredOrders[index];
-                                            return _buildOrderCard(order, colors, isDark);
+                                            return _buildOrderCard(order, colors, isDark, convertedOrders);
                                           },
                                         ),
                                       ),
@@ -591,12 +780,19 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
     );
   }
 
-  Widget _buildOrderCard(OrderModel order, AppColorsExtension colors, bool isDark) {
+  Widget _buildOrderCard(OrderModel order, AppColorsExtension colors, bool isDark, List<OrderModel> allOrders) {
     final isCancelled = order.status == OrderStatus.cancelled;
     final isOngoing = order.status == OrderStatus.ongoing;
     final isPending = order.status == OrderStatus.pending;
     final isPaymentPending = order.paymentStatus == 'pending' || order.paymentStatus == 'processing';
     final isVendorOpen = _isVendorOpen(order);
+    final hasGroupOrder = order.isGroupedOrder;
+    final groupOrderRef = order.groupOrderNumber?.trim();
+    final hasGroupOrderRef = groupOrderRef != null && groupOrderRef.isNotEmpty;
+    final primaryOrderRef = hasGroupOrderRef ? groupOrderRef : order.orderNumber;
+    final groupOrders = _getGroupOrders(order, allOrders);
+    final vendorBreakdown = _buildGroupedVendorSummaries(groupOrders);
+    final canShowGroupDetails = hasGroupOrder && groupOrders.isNotEmpty;
 
     return Container(
       color: colors.backgroundPrimary,
@@ -615,7 +811,7 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
                           child: Padding(
                             padding: EdgeInsets.only(right: 12.w),
                             child: Text(
-                              order.orderNumber,
+                              primaryOrderRef,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
                             ),
@@ -631,6 +827,18 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
                         color: colors.textSecondary.withValues(alpha: 0.7),
                       ),
                     ),
+                    if (hasGroupOrder && hasGroupOrderRef && groupOrderRef != order.orderNumber)
+                      Padding(
+                        padding: EdgeInsets.only(top: 2.h),
+                        child: Text(
+                          'Child order: ${order.orderNumber}',
+                          style: TextStyle(
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.w600,
+                            color: colors.textSecondary.withValues(alpha: 0.8),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -667,6 +875,20 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
                   ),
                 ),
               ),
+              if (hasGroupOrder) ...[
+                SizedBox(width: 6.w),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                  decoration: BoxDecoration(
+                    color: colors.backgroundSecondary,
+                    borderRadius: BorderRadius.circular(20.r),
+                  ),
+                  child: Text(
+                    order.groupVendorCount != null ? '${order.groupVendorCount} vendors' : 'Grouped',
+                    style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w700, color: colors.textSecondary),
+                  ),
+                ),
+              ],
             ],
           ),
           SizedBox(height: 16.h),
@@ -727,6 +949,14 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    if (hasGroupOrder && hasGroupOrderRef)
+                      Padding(
+                        padding: EdgeInsets.only(top: 2.h),
+                        child: Text(
+                          'Part of $groupOrderRef',
+                          style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: colors.accentOrange),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -823,11 +1053,47 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
                       '${AppStrings.currencySymbol} ${order.totalAmount.toStringAsFixed(2)}',
                       style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.accentOrange),
                     ),
+                    if (hasGroupOrder && order.groupTotalAmount != null)
+                      Text(
+                        'Group: ${AppStrings.currencySymbol} ${order.groupTotalAmount!.toStringAsFixed(2)}',
+                        style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w600, color: colors.textSecondary),
+                      ),
                   ],
                 ),
               ],
             ),
           ),
+          if (canShowGroupDetails) ...[
+            SizedBox(height: 10.h),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => _showGroupedOrderDetailsSheet(
+                  context: context,
+                  order: order,
+                  groupOrders: groupOrders,
+                  vendorBreakdown: vendorBreakdown,
+                  colors: colors,
+                ),
+                icon: SvgPicture.asset(
+                  Assets.icons.navArrowRight,
+                  package: 'grab_go_shared',
+                  height: 12.h,
+                  width: 12.w,
+                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                ),
+                label: Text(
+                  "View grouped order details",
+                  style: TextStyle(color: colors.accentOrange, fontSize: 12.sp, fontWeight: FontWeight.w700),
+                ),
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            ),
+          ],
           SizedBox(height: 16.h),
           if (isPending && isPaymentPending)
             Row(
@@ -886,4 +1152,243 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
       ),
     );
   }
+
+  String _statusLabel(OrderStatus status) {
+    switch (status) {
+      case OrderStatus.pending:
+        return 'Pending';
+      case OrderStatus.ongoing:
+        return 'Ongoing';
+      case OrderStatus.completed:
+        return 'Completed';
+      case OrderStatus.cancelled:
+        return 'Cancelled';
+    }
+  }
+
+  Color _statusColor(OrderStatus status, AppColorsExtension colors) {
+    switch (status) {
+      case OrderStatus.pending:
+      case OrderStatus.ongoing:
+        return colors.accentOrange;
+      case OrderStatus.completed:
+        return colors.accentGreen;
+      case OrderStatus.cancelled:
+        return colors.error;
+    }
+  }
+
+  void _showGroupedOrderDetailsSheet({
+    required BuildContext context,
+    required OrderModel order,
+    required List<OrderModel> groupOrders,
+    required List<_GroupedVendorSummary> vendorBreakdown,
+    required AppColorsExtension colors,
+  }) {
+    final groupReference = order.groupOrderNumber?.trim().isNotEmpty == true
+        ? order.groupOrderNumber!.trim()
+        : order.orderNumber;
+    final computedGroupTotal = groupOrders.fold<double>(0, (sum, child) => sum + child.totalAmount);
+
+    showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Container(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.86),
+          padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 20.h),
+          decoration: BoxDecoration(
+            color: colors.backgroundPrimary,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(22.r)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36.w,
+                  height: 4.h,
+                  decoration: BoxDecoration(color: colors.divider, borderRadius: BorderRadius.circular(999)),
+                ),
+              ),
+              SizedBox(height: 14.h),
+              Text(
+                "Grouped Order Details",
+                style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w800),
+              ),
+              SizedBox(height: 4.h),
+              Text(
+                groupReference,
+                style: TextStyle(color: colors.accentOrange, fontSize: 13.sp, fontWeight: FontWeight.w700),
+              ),
+              SizedBox(height: 10.h),
+              Row(
+                children: [
+                  Text(
+                    '${vendorBreakdown.length} vendors',
+                    style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w600),
+                  ),
+                  const Spacer(),
+                  Text(
+                    'Group total: ${AppStrings.currencySymbol} ${computedGroupTotal.toStringAsFixed(2)}',
+                    style: TextStyle(color: colors.textPrimary, fontSize: 12.sp, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+              SizedBox(height: 14.h),
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(12.r),
+                decoration: BoxDecoration(
+                  color: colors.backgroundSecondary,
+                  borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Per-vendor totals",
+                      style: TextStyle(color: colors.textPrimary, fontSize: 12.sp, fontWeight: FontWeight.w800),
+                    ),
+                    SizedBox(height: 8.h),
+                    for (int i = 0; i < vendorBreakdown.length; i++) ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              vendorBreakdown[i].vendorName,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(color: colors.textPrimary, fontSize: 12.sp, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                          SizedBox(width: 8.w),
+                          Text(
+                            '${vendorBreakdown[i].itemCount} items',
+                            style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w600),
+                          ),
+                          SizedBox(width: 10.w),
+                          Text(
+                            '${AppStrings.currencySymbol} ${vendorBreakdown[i].totalAmount.toStringAsFixed(2)}',
+                            style: TextStyle(color: colors.textPrimary, fontSize: 12.sp, fontWeight: FontWeight.w700),
+                          ),
+                        ],
+                      ),
+                      if (i < vendorBreakdown.length - 1) SizedBox(height: 6.h),
+                    ],
+                  ],
+                ),
+              ),
+              SizedBox(height: 14.h),
+              Text(
+                "Child Orders",
+                style: TextStyle(color: colors.textPrimary, fontSize: 13.sp, fontWeight: FontWeight.w800),
+              ),
+              SizedBox(height: 8.h),
+              Expanded(
+                child: ListView.separated(
+                  itemCount: groupOrders.length,
+                  separatorBuilder: (context, index) => SizedBox(height: 8.h),
+                  itemBuilder: (context, index) {
+                    final child = groupOrders[index];
+                    final statusColor = _statusColor(child.status, colors);
+                    return Container(
+                      padding: EdgeInsets.all(12.r),
+                      decoration: BoxDecoration(
+                        color: colors.backgroundSecondary,
+                        borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  child.restaurantName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: colors.textPrimary,
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 2.h),
+                                decoration: BoxDecoration(
+                                  color: statusColor.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(20.r),
+                                ),
+                                child: Text(
+                                  _statusLabel(child.status),
+                                  style: TextStyle(color: statusColor, fontSize: 10.sp, fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 4.h),
+                          Text(
+                            child.orderNumber,
+                            style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w600),
+                          ),
+                          SizedBox(height: 6.h),
+                          Row(
+                            children: [
+                              Text(
+                                '${child.itemCount} ${child.itemCount == 1 ? 'item' : 'items'}',
+                                style: TextStyle(
+                                  color: colors.textSecondary,
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                '${AppStrings.currencySymbol} ${child.totalAmount.toStringAsFixed(2)}',
+                                style: TextStyle(
+                                  color: colors.textPrimary,
+                                  fontSize: 12.sp,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _GroupedVendorSummary {
+  final String vendorName;
+  final int orderCount;
+  final int itemCount;
+  final double totalAmount;
+
+  const _GroupedVendorSummary({
+    required this.vendorName,
+    required this.orderCount,
+    required this.itemCount,
+    required this.totalAmount,
+  });
+}
+
+class _GroupedVendorSummaryMutable {
+  final String vendorName;
+  int orderCount;
+  int itemCount;
+  double totalAmount;
+
+  _GroupedVendorSummaryMutable({required this.vendorName}) : orderCount = 0, itemCount = 0, totalAmount = 0;
 }

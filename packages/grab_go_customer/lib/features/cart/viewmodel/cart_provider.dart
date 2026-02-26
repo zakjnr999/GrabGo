@@ -26,6 +26,10 @@ class CartProvider extends ChangeNotifier {
   double? _total;
   int? _estimatedDeliveryMin;
   int? _estimatedDeliveryMax;
+  int? _estimatedDeliveryFirstMin;
+  int? _estimatedDeliveryFirstMax;
+  int? _estimatedDeliveryCompletionMin;
+  int? _estimatedDeliveryCompletionMax;
   bool _useCredits = true;
   bool _hasPricingFromBackend = false;
   double? _deliveryLatitude;
@@ -53,11 +57,20 @@ class CartProvider extends ChangeNotifier {
       _total ?? (subtotal + deliveryFee + serviceFee + tax + rainFee);
   int? get estimatedDeliveryMin => _estimatedDeliveryMin;
   int? get estimatedDeliveryMax => _estimatedDeliveryMax;
+  int? get estimatedDeliveryFirstMin => _estimatedDeliveryFirstMin;
+  int? get estimatedDeliveryFirstMax => _estimatedDeliveryFirstMax;
+  int? get estimatedDeliveryCompletionMin => _estimatedDeliveryCompletionMin;
+  int? get estimatedDeliveryCompletionMax => _estimatedDeliveryCompletionMax;
   bool get useCredits => _useCredits;
   bool get isPricingLoading => _isSyncing && !_hasPricingFromBackend;
   bool get hasPendingCartOperations => _pendingItemOps.isNotEmpty;
   bool get isCartInteractionLocked => hasPendingCartOperations;
   String get fulfillmentMode => _fulfillmentMode;
+  int get providerCount => _cartItems.keys
+      .map((item) => '${item.itemType}:${item.providerId}')
+      .where((key) => key.trim().isNotEmpty)
+      .toSet()
+      .length;
   Map<String, dynamic>? get scheduleAvailability =>
       _scheduleAvailability == null
       ? null
@@ -178,172 +191,245 @@ class CartProvider extends ChangeNotifier {
           previousOpenByProviderId[item.restaurantId] = item.isRestaurantOpen;
         }
       }
-      final response = await cartApiService.getCart(
-        type: _cartType ?? _inferCartType(),
-        fulfillmentMode: _fulfillmentMode,
-        lat: _deliveryLatitude,
-        lng: _deliveryLongitude,
-        useCredits: _useCredits,
-      );
+      Map<String, dynamic>? cartData;
+      Object? syncError;
 
-      if (response.isSuccessful && response.body != null) {
-        syncSucceeded = true;
-        final cartData = response.body!['cart'];
-        if (cartData == null || cartData is! Map) {
-          _scheduleAvailability = null;
-          _cartItems.clear();
-          _cartItemIdsByKey.clear();
-          _cartType = null;
-          _applyPricing(null);
-          _resetGiftOrderDraftIfCartIsEmpty(notify: false);
-          await _saveCart();
-          notifyListeners();
-          return syncSucceeded;
-        }
+      try {
+        final groupsResponse = await cartApiService.getCartGroups(
+          fulfillmentMode: _fulfillmentMode,
+          lat: _deliveryLatitude,
+          lng: _deliveryLongitude,
+          useCredits: _useCredits,
+        );
+        final groupsBody = groupsResponse.body;
+        if (groupsResponse.isSuccessful &&
+            groupsBody != null &&
+            groupsBody['success'] == true) {
+          syncSucceeded = true;
+          final rawGroups = groupsBody['groups'];
+          final flattenedItems = <Map<String, dynamic>>[];
+          Map<String, dynamic>? singleGroupScheduleAvailability;
+          String? groupedFulfillmentMode;
 
-        final rawItems = cartData['items'];
-        if (rawItems is! List) {
-          _scheduleAvailability = null;
-          _cartItems.clear();
-          _cartItemIdsByKey.clear();
-          _cartType = null;
-          _applyPricing(null);
-          _resetGiftOrderDraftIfCartIsEmpty(notify: false);
-          await _saveCart();
-          notifyListeners();
-          return syncSucceeded;
-        }
-
-        {
-          final shouldSkipApplyingSnapshot =
-              mutationVersionAtStart != _localMutationVersion;
-          if (shouldSkipApplyingSnapshot) {
-            _syncQueued = true;
-            return syncSucceeded;
-          }
-
-          _scheduleAvailability = _parseScheduleAvailability(
-            cartData['scheduleAvailability'],
-          );
-          final previousMode = _normalizeFulfillmentMode(_fulfillmentMode);
-          final previousItemOrderStableKeys = _cartItems.keys
-              .map(_itemStableKey)
-              .toList(growable: false);
-          _fulfillmentMode = _normalizeFulfillmentMode(
-            cartData['fulfillmentMode']?.toString(),
-          );
-          final parsedEntriesByStableKey = <String, MapEntry<CartItem, int>>{};
-          final parsedEntryStableKeysInOrder = <String>[];
-          _cartItems.clear();
-          _cartItemIdsByKey.clear();
-
-          for (var item in rawItems) {
-            // Extract the populated item (Food/Grocery/Pharmacy)
-            final itemData =
-                item['itemId'] ??
-                item['food'] ??
-                item['groceryItem'] ??
-                item['pharmacyItem'] ??
-                item['grabMartItem'];
-            if (itemData == null) continue; // Skip if item was deleted
-
-            String? itemType = item['itemType'];
-            if (itemType == null) {
-              if (item['food'] != null) itemType = 'Food';
-              if (item['groceryItem'] != null) itemType = 'GroceryItem';
-              if (item['pharmacyItem'] != null) itemType = 'PharmacyItem';
-              if (item['grabMartItem'] != null) itemType = 'GrabMartItem';
-            }
-
-            CartItem? cartItem;
-
-            if (itemType == 'Food') {
-              final restaurantData = itemData['restaurant'];
-              String? providerId;
-              if (restaurantData is Map) {
-                providerId =
-                    restaurantData['_id']?.toString() ??
-                    restaurantData['id']?.toString();
+          if (rawGroups is List) {
+            for (final rawGroup in rawGroups) {
+              if (rawGroup is! Map) continue;
+              final group = Map<String, dynamic>.from(rawGroup);
+              groupedFulfillmentMode =
+                  groupedFulfillmentMode ??
+                  group['fulfillmentMode']?.toString();
+              if (rawGroups.length == 1) {
+                final scheduleAvailability = group['scheduleAvailability'];
+                if (scheduleAvailability is Map) {
+                  singleGroupScheduleAvailability = Map<String, dynamic>.from(
+                    scheduleAvailability,
+                  );
+                }
               }
-              providerId ??=
-                  itemData['restaurantId']?.toString() ??
-                  itemData['restaurant']?.toString();
-              providerId ??= item['restaurantId']?.toString();
 
-              final fallbackOpen =
-                  previousOpenById[itemData['_id']?.toString() ??
-                      itemData['id']?.toString() ??
-                      item['foodId']?.toString() ??
-                      item['itemId']?.toString() ??
-                      ''] ??
-                  (providerId != null
-                      ? previousOpenByProviderId[providerId]
-                      : null);
-              cartItem = _createFoodItemFromBackend(
-                Map<String, dynamic>.from(itemData),
-                item,
-                fallbackIsOpen: fallbackOpen,
+              final groupItems = group['items'];
+              if (groupItems is! List) continue;
+              final groupMode = _normalizeFulfillmentMode(
+                group['fulfillmentMode']?.toString(),
               );
-            } else if (itemType == 'GroceryItem') {
-              cartItem = _createGroceryItemFromBackend(
-                Map<String, dynamic>.from(itemData),
-                item,
-              );
-            } else if (itemType == 'PharmacyItem') {
-              cartItem = _createPharmacyItemFromBackend(
-                Map<String, dynamic>.from(itemData),
-                item,
-              );
-            } else if (itemType == 'GrabMartItem') {
-              cartItem = _createGrabMartItemFromBackend(
-                Map<String, dynamic>.from(itemData),
-                item,
-              );
-            } else {
-              debugPrint('Unknown item type: $itemType');
-              continue; // Skip unknown types
-            }
 
-            final quantity = (item['quantity'] as num?)?.toInt() ?? 1;
-            final stableKey = _itemStableKey(cartItem);
-            parsedEntriesByStableKey[stableKey] = MapEntry(cartItem, quantity);
-            parsedEntryStableKeysInOrder.add(stableKey);
-
-            final cartItemId = item['id']?.toString();
-            final itemKey = _itemKeyFromBackend(itemType, itemData, item);
-            if (cartItemId != null && itemKey != null) {
-              _cartItemIdsByKey[itemKey] = cartItemId;
+              for (final rawItem in groupItems) {
+                if (rawItem is! Map) continue;
+                final item = Map<String, dynamic>.from(rawItem);
+                item['fulfillmentMode'] = groupMode;
+                flattenedItems.add(item);
+              }
             }
           }
 
-          final shouldPreserveOrder = previousMode == _fulfillmentMode;
-          if (shouldPreserveOrder) {
-            for (final stableKey in previousItemOrderStableKeys) {
-              final entry = parsedEntriesByStableKey.remove(stableKey);
-              if (entry == null) continue;
-              _cartItems[entry.key] = entry.value;
-            }
+          final summary = groupsBody['summary'];
+          cartData = {
+            'items': flattenedItems,
+            'fulfillmentMode': groupedFulfillmentMode ?? _fulfillmentMode,
+            'scheduleAvailability': singleGroupScheduleAvailability,
+            'pricing': summary is Map
+                ? Map<String, dynamic>.from(summary)
+                : null,
+          };
+        }
+      } catch (e) {
+        syncError = e;
+      }
+
+      if (cartData == null) {
+        final response = await cartApiService.getCart(
+          type: _cartType ?? _inferCartType(),
+          fulfillmentMode: _fulfillmentMode,
+          lat: _deliveryLatitude,
+          lng: _deliveryLongitude,
+          useCredits: _useCredits,
+        );
+
+        if (response.isSuccessful && response.body != null) {
+          syncSucceeded = true;
+          final backendCart = response.body!['cart'];
+          if (backendCart is Map) {
+            cartData = Map<String, dynamic>.from(backendCart);
           }
-          for (final stableKey in parsedEntryStableKeysInOrder) {
+        } else {
+          syncError = response.error;
+        }
+      }
+
+      if (cartData == null) {
+        _scheduleAvailability = null;
+        debugPrint('Error syncing cart from backend: $syncError');
+        return syncSucceeded;
+      }
+
+      final rawItems = cartData['items'];
+      if (rawItems is! List) {
+        _scheduleAvailability = null;
+        _cartItems.clear();
+        _cartItemIdsByKey.clear();
+        _cartType = null;
+        _applyPricing(null);
+        _resetGiftOrderDraftIfCartIsEmpty(notify: false);
+        await _saveCart();
+        notifyListeners();
+        return syncSucceeded;
+      }
+
+      {
+        final shouldSkipApplyingSnapshot =
+            mutationVersionAtStart != _localMutationVersion;
+        if (shouldSkipApplyingSnapshot) {
+          _syncQueued = true;
+          return syncSucceeded;
+        }
+
+        _scheduleAvailability = _parseScheduleAvailability(
+          cartData['scheduleAvailability'],
+        );
+        final previousMode = _normalizeFulfillmentMode(_fulfillmentMode);
+        final previousItemOrderStableKeys = _cartItems.keys
+            .map(_itemStableKey)
+            .toList(growable: false);
+        _fulfillmentMode = _normalizeFulfillmentMode(
+          cartData['fulfillmentMode']?.toString(),
+        );
+        final parsedEntriesByStableKey = <String, MapEntry<CartItem, int>>{};
+        final parsedEntryStableKeysInOrder = <String>[];
+        _cartItems.clear();
+        _cartItemIdsByKey.clear();
+
+        for (final rawItem in rawItems) {
+          if (rawItem is! Map) continue;
+          final item = Map<String, dynamic>.from(rawItem);
+
+          final itemData =
+              item['itemId'] ??
+              item['food'] ??
+              item['groceryItem'] ??
+              item['pharmacyItem'] ??
+              item['grabMartItem'];
+          if (itemData == null || itemData is! Map) continue;
+
+          String? itemType = item['itemType']?.toString();
+          if (itemType == null || itemType.isEmpty) {
+            if (item['food'] != null) itemType = 'Food';
+            if (item['groceryItem'] != null) itemType = 'GroceryItem';
+            if (item['pharmacyItem'] != null) itemType = 'PharmacyItem';
+            if (item['grabMartItem'] != null) itemType = 'GrabMartItem';
+          }
+          if (itemType == null || itemType.isEmpty) continue;
+
+          CartItem? cartItem;
+
+          if (itemType == 'Food') {
+            final itemDataMap = Map<String, dynamic>.from(itemData);
+            final restaurantData = itemDataMap['restaurant'];
+            String? providerId;
+            if (restaurantData is Map) {
+              providerId =
+                  restaurantData['_id']?.toString() ??
+                  restaurantData['id']?.toString();
+            }
+            providerId ??=
+                itemDataMap['restaurantId']?.toString() ??
+                itemDataMap['restaurant']?.toString();
+            providerId ??= item['restaurantId']?.toString();
+
+            final fallbackOpen =
+                previousOpenById[itemDataMap['_id']?.toString() ??
+                    itemDataMap['id']?.toString() ??
+                    item['foodId']?.toString() ??
+                    item['itemId']?.toString() ??
+                    ''] ??
+                (providerId != null
+                    ? previousOpenByProviderId[providerId]
+                    : null);
+
+            cartItem = _createFoodItemFromBackend(
+              itemDataMap,
+              item,
+              fallbackIsOpen: fallbackOpen,
+            );
+          } else if (itemType == 'GroceryItem') {
+            cartItem = _createGroceryItemFromBackend(
+              Map<String, dynamic>.from(itemData),
+              item,
+            );
+          } else if (itemType == 'PharmacyItem') {
+            cartItem = _createPharmacyItemFromBackend(
+              Map<String, dynamic>.from(itemData),
+              item,
+            );
+          } else if (itemType == 'GrabMartItem') {
+            cartItem = _createGrabMartItemFromBackend(
+              Map<String, dynamic>.from(itemData),
+              item,
+            );
+          } else {
+            debugPrint('Unknown item type: $itemType');
+            continue;
+          }
+
+          final quantity = (item['quantity'] as num?)?.toInt() ?? 1;
+          final stableKey = _itemStableKey(cartItem);
+          parsedEntriesByStableKey[stableKey] = MapEntry(cartItem, quantity);
+          parsedEntryStableKeysInOrder.add(stableKey);
+
+          final cartItemId = item['id']?.toString();
+          final itemKey = _itemKeyFromBackend(
+            itemType,
+            Map<String, dynamic>.from(itemData),
+            item,
+          );
+          if (cartItemId != null && itemKey != null) {
+            _cartItemIdsByKey[itemKey] = cartItemId;
+          }
+        }
+
+        final shouldPreserveOrder = previousMode == _fulfillmentMode;
+        if (shouldPreserveOrder) {
+          for (final stableKey in previousItemOrderStableKeys) {
             final entry = parsedEntriesByStableKey.remove(stableKey);
             if (entry == null) continue;
             _cartItems[entry.key] = entry.value;
           }
-
-          _cartType = _inferCartType();
-          final pricing = cartData['pricing'];
-          if (pricing is Map) {
-            _applyPricing(Map<String, dynamic>.from(pricing));
-          } else {
-            _recalculateLocalPricing();
-          }
-          _resetGiftOrderDraftIfCartIsEmpty(notify: false);
-          await _saveCart();
-          notifyListeners();
         }
-      } else {
-        _scheduleAvailability = null;
-        debugPrint('Error syncing cart from backend: ${response.error}');
+        for (final stableKey in parsedEntryStableKeysInOrder) {
+          final entry = parsedEntriesByStableKey.remove(stableKey);
+          if (entry == null) continue;
+          _cartItems[entry.key] = entry.value;
+        }
+
+        _cartType = _cartItems.isEmpty ? null : _inferCartType();
+        final pricing = cartData['pricing'];
+        if (pricing is Map) {
+          _applyPricing(Map<String, dynamic>.from(pricing));
+        } else {
+          _recalculateLocalPricing();
+        }
+        _resetGiftOrderDraftIfCartIsEmpty(notify: false);
+        await _saveCart();
+        notifyListeners();
       }
     } catch (e) {
       debugPrint('Error syncing cart from backend: $e');
@@ -364,6 +450,10 @@ class CartProvider extends ChangeNotifier {
       _total = null;
       _estimatedDeliveryMin = null;
       _estimatedDeliveryMax = null;
+      _estimatedDeliveryFirstMin = null;
+      _estimatedDeliveryFirstMax = null;
+      _estimatedDeliveryCompletionMin = null;
+      _estimatedDeliveryCompletionMax = null;
       _hasPricingFromBackend = false;
       return;
     }
@@ -381,6 +471,23 @@ class CartProvider extends ChangeNotifier {
     _total = (pricing['total'] as num?)?.toDouble();
     _estimatedDeliveryMin = (pricing['estimatedDeliveryMin'] as num?)?.toInt();
     _estimatedDeliveryMax = (pricing['estimatedDeliveryMax'] as num?)?.toInt();
+    _estimatedDeliveryFirstMin = (pricing['estimatedDeliveryFirstMin'] as num?)
+        ?.toInt();
+    _estimatedDeliveryFirstMax = (pricing['estimatedDeliveryFirstMax'] as num?)
+        ?.toInt();
+    _estimatedDeliveryCompletionMin =
+        (pricing['estimatedDeliveryCompletionMin'] as num?)?.toInt();
+    _estimatedDeliveryCompletionMax =
+        (pricing['estimatedDeliveryCompletionMax'] as num?)?.toInt();
+
+    _estimatedDeliveryCompletionMin ??= _estimatedDeliveryMin;
+    _estimatedDeliveryCompletionMax ??= _estimatedDeliveryMax;
+    if (_estimatedDeliveryFirstMin == null &&
+        _estimatedDeliveryFirstMax == null &&
+        providerCount <= 1) {
+      _estimatedDeliveryFirstMin = _estimatedDeliveryMin;
+      _estimatedDeliveryFirstMax = _estimatedDeliveryMax;
+    }
     _hasPricingFromBackend = true;
 
     if (_availableCredits <= 0 && _useCredits) {
@@ -1161,42 +1268,6 @@ class CartProvider extends ChangeNotifier {
         : item.itemType == 'GrabMartItem'
         ? 'grabmart'
         : _cartType;
-    // Check for store/restaurant mismatch
-    if (context != null && _cartItems.isNotEmpty) {
-      final existingItem = _cartItems.keys.first;
-      final existingProviderId = existingItem.providerId;
-      final newProviderId = item.providerId;
-
-      // Check if switching stores/restaurants
-      if (existingProviderId != newProviderId) {
-        final isGrocery = item.itemType == 'GroceryItem';
-        final providerType = isGrocery ? 'store' : 'restaurant';
-
-        // Show warning dialog
-        final shouldReplace = await AppDialog.show(
-          context: context,
-          type: AppDialogType.warning,
-          title: 'Replace Cart Items?',
-          message:
-              'You have items from a different $providerType in your cart. Adding this item will remove your current cart items. Do you want to continue?',
-          primaryButtonText: 'Replace Cart',
-          secondaryButtonText: 'Cancel',
-        );
-
-        if (shouldReplace != true) {
-          _pendingItemOps.remove(key);
-          return; // User cancelled
-        }
-
-        // Clear cart before adding new item
-        _cartItems.clear();
-        _cartItemIdsByKey.clear();
-        _cartType = null;
-        _markLocalCartMutated();
-        _saveCart();
-      }
-    }
-
     final previousQuantity = _cartItems[item] ?? 0;
 
     try {

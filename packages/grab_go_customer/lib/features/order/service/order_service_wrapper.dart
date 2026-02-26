@@ -25,6 +25,20 @@ class CreateOrderResult {
   });
 }
 
+class CreateCheckoutSessionResult {
+  final String sessionId;
+  final String? groupOrderNumber;
+  final List<Map<String, dynamic>> childOrders;
+  final Map<String, dynamic> summary;
+
+  const CreateCheckoutSessionResult({
+    required this.sessionId,
+    this.groupOrderNumber,
+    required this.childOrders,
+    required this.summary,
+  });
+}
+
 class DeliveryCodeResendResult {
   final bool success;
   final String message;
@@ -46,12 +60,14 @@ class ConfirmPaymentResult {
   final String? paymentScope;
   final double? externalPaymentAmount;
   final double? codRemainingCashAmount;
+  final String? sessionId;
 
   const ConfirmPaymentResult({
     required this.success,
     this.paymentScope,
     this.externalPaymentAmount,
     this.codRemainingCashAmount,
+    this.sessionId,
   });
 }
 
@@ -61,6 +77,8 @@ class InitializePaymentResult {
   final double? paymentAmount;
   final String? paymentScope;
   final double? codRemainingCashAmount;
+  final String? sessionId;
+  final String? groupOrderNumber;
 
   const InitializePaymentResult({
     required this.authorizationUrl,
@@ -68,6 +86,8 @@ class InitializePaymentResult {
     this.paymentAmount,
     this.paymentScope,
     this.codRemainingCashAmount,
+    this.sessionId,
+    this.groupOrderNumber,
   });
 }
 
@@ -299,6 +319,7 @@ class OrderServiceWrapper {
         paymentScope: data?['paymentScope']?.toString(),
         externalPaymentAmount: _asDouble(data?['externalPaymentAmount']),
         codRemainingCashAmount: _asDouble(data?['codRemainingCashAmount']),
+        sessionId: data?['session']?['id']?.toString(),
       );
     } catch (e) {
       return const ConfirmPaymentResult(success: false);
@@ -347,9 +368,164 @@ class OrderServiceWrapper {
         paymentAmount: _asDouble(data['paymentAmount']),
         paymentScope: data['paymentScope']?.toString(),
         codRemainingCashAmount: _asDouble(data['codRemainingCashAmount']),
+        sessionId: data['sessionId']?.toString(),
+        groupOrderNumber: data['groupOrderNumber']?.toString(),
       );
     } catch (e) {
       throw Exception('Payment initialization failed: $e');
+    }
+  }
+
+  Future<CreateCheckoutSessionResult> createCheckoutSession({
+    required String fulfillmentMode,
+    required String paymentMethod,
+    required DeliveryAddress deliveryAddress,
+    bool? useCredits,
+    String? notes,
+    bool? isGiftOrder,
+    String? deliveryTimeType,
+    String? scheduledForAt,
+  }) async {
+    try {
+      final response = await _orderService.createCheckoutSession({
+        'fulfillmentMode': fulfillmentMode,
+        'paymentMethod': paymentMethod,
+        'deliveryAddress': deliveryAddress.toJson(),
+        if (useCredits != null) 'useCredits': useCredits,
+        if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
+        if (isGiftOrder != null) 'isGiftOrder': isGiftOrder,
+        if (deliveryTimeType != null && deliveryTimeType.trim().isNotEmpty)
+          'deliveryTimeType': deliveryTimeType.trim(),
+        if (scheduledForAt != null && scheduledForAt.trim().isNotEmpty)
+          'scheduledForAt': scheduledForAt.trim(),
+      });
+
+      if (!response.isSuccessful || response.body == null) {
+        throw Exception(
+          _resolveResponseMap(response)?['message'] ??
+              'Checkout session creation failed',
+        );
+      }
+
+      final body = response.body!;
+      if (body['success'] != true) {
+        throw Exception(body['message'] ?? 'Checkout session creation failed');
+      }
+
+      final data = body['data'] as Map<String, dynamic>? ?? {};
+      final session = data['session'] as Map<String, dynamic>? ?? {};
+      final sessionId = session['id']?.toString();
+      if (sessionId == null || sessionId.isEmpty) {
+        throw Exception('Checkout session created but no session id returned');
+      }
+
+      final childOrdersRaw = data['childOrders'];
+      final childOrders = childOrdersRaw is List
+          ? childOrdersRaw
+                .whereType<Map>()
+                .map((entry) => Map<String, dynamic>.from(entry))
+                .toList(growable: false)
+          : const <Map<String, dynamic>>[];
+
+      final summaryRaw = data['summary'];
+      final summary = summaryRaw is Map
+          ? Map<String, dynamic>.from(summaryRaw)
+          : const <String, dynamic>{};
+
+      return CreateCheckoutSessionResult(
+        sessionId: sessionId,
+        groupOrderNumber: session['groupOrderNumber']?.toString(),
+        childOrders: childOrders,
+        summary: summary,
+      );
+    } catch (e) {
+      throw Exception('Failed to create checkout session: $e');
+    }
+  }
+
+  Future<InitializePaymentResult> initializeCheckoutSessionPaystackPayment({
+    required String sessionId,
+  }) async {
+    try {
+      final response = await _orderService.initializeCheckoutSessionPaystack(
+        sessionId,
+      );
+      if (!response.isSuccessful ||
+          response.body == null ||
+          response.body!['success'] != true) {
+        throw Exception(
+          response.body?['message'] ?? 'Payment initialization failed',
+        );
+      }
+
+      final data = response.body?['data'] as Map<String, dynamic>? ?? {};
+      final authorizationUrl = data['authorizationUrl']?.toString();
+      final reference = data['reference']?.toString();
+
+      if (authorizationUrl == null || reference == null) {
+        throw Exception('Payment initialization missing authorization URL');
+      }
+
+      return InitializePaymentResult(
+        authorizationUrl: authorizationUrl,
+        reference: reference,
+        paymentAmount: _asDouble(data['paymentAmount']),
+        paymentScope: data['paymentScope']?.toString(),
+        sessionId: data['sessionId']?.toString(),
+        groupOrderNumber: data['groupOrderNumber']?.toString(),
+      );
+    } catch (e) {
+      throw Exception('Payment initialization failed: $e');
+    }
+  }
+
+  Future<ConfirmPaymentResult> confirmCheckoutSessionPayment({
+    required String sessionId,
+    required String reference,
+    String provider = 'paystack',
+  }) async {
+    try {
+      final response = await _orderService.confirmCheckoutSessionPayment(
+        sessionId,
+        {'reference': reference, 'provider': provider},
+      );
+
+      if (!response.isSuccessful || response.body == null) {
+        return const ConfirmPaymentResult(success: false);
+      }
+
+      final body = response.body!;
+      final isSuccess = body['success'] == true;
+      final data = body['data'] as Map<String, dynamic>?;
+      final session = data?['session'] as Map<String, dynamic>?;
+
+      return ConfirmPaymentResult(
+        success: isSuccess,
+        paymentScope: data?['paymentScope']?.toString(),
+        externalPaymentAmount: _asDouble(data?['externalPaymentAmount']),
+        sessionId: session?['id']?.toString() ?? sessionId,
+      );
+    } catch (_) {
+      return const ConfirmPaymentResult(success: false);
+    }
+  }
+
+  Future<void> releaseCheckoutSessionCreditHold({
+    required String sessionId,
+  }) async {
+    try {
+      final response = await _orderService.releaseCheckoutSessionCreditHold(
+        sessionId,
+      );
+      if (!response.isSuccessful ||
+          response.body == null ||
+          response.body!['success'] != true) {
+        throw Exception(
+          response.body?['message'] ?? 'Release credit hold failed',
+        );
+      }
+    } catch (e) {
+      throw Exception('Release credit hold failed: $e');
     }
   }
 
@@ -455,6 +631,18 @@ class OrderServiceWrapper {
       }
     }
     return null;
+  }
+
+  DeliveryAddress resolveDeliveryAddress(
+    String selectedAddress, {
+    double? latitude,
+    double? longitude,
+  }) {
+    return _resolveDeliveryAddress(
+      selectedAddress,
+      latitude: latitude,
+      longitude: longitude,
+    );
   }
 
   String _generateOrderNumber() {

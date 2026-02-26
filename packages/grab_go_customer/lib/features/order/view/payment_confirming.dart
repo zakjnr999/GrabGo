@@ -6,13 +6,15 @@ import 'package:grab_go_customer/features/order/service/order_service_wrapper.da
 import 'package:grab_go_shared/grub_go_shared.dart';
 
 class PaymentConfirming extends StatefulWidget {
-  final String orderId;
+  final String? orderId;
+  final String? sessionId;
   final String reference;
   final Map<String, dynamic> paymentData;
 
   const PaymentConfirming({
     super.key,
-    required this.orderId,
+    this.orderId,
+    this.sessionId,
     required this.reference,
     required this.paymentData,
   });
@@ -40,10 +42,17 @@ class _PaymentConfirmingState extends State<PaymentConfirming> {
       success: false,
     );
     try {
-      confirmationResult = await orderService.confirmPayment(
-        orderId: widget.orderId,
-        reference: widget.reference,
-      );
+      if (widget.sessionId != null && widget.sessionId!.isNotEmpty) {
+        confirmationResult = await orderService.confirmCheckoutSessionPayment(
+          sessionId: widget.sessionId!,
+          reference: widget.reference,
+        );
+      } else if (widget.orderId != null && widget.orderId!.isNotEmpty) {
+        confirmationResult = await orderService.confirmPayment(
+          orderId: widget.orderId!,
+          reference: widget.reference,
+        );
+      }
     } catch (e) {
       debugPrint('⚠️ Failed to confirm payment: $e');
     }

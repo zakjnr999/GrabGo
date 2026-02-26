@@ -65,6 +65,49 @@ final class _$OrderServiceChopper extends OrderServiceChopper {
   }
 
   @override
+  Future<Response<Map<String, dynamic>>> createCheckoutSession(
+    Map<String, dynamic> body,
+  ) {
+    final Uri $url = Uri.parse('/checkout-sessions');
+    final $body = body;
+    final Request $request = Request('POST', $url, client.baseUrl, body: $body);
+    return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
+  }
+
+  @override
+  Future<Response<Map<String, dynamic>>> initializeCheckoutSessionPaystack(
+    String sessionId,
+  ) {
+    final Uri $url = Uri.parse(
+      '/checkout-sessions/${sessionId}/paystack/initialize',
+    );
+    final Request $request = Request('POST', $url, client.baseUrl);
+    return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
+  }
+
+  @override
+  Future<Response<Map<String, dynamic>>> confirmCheckoutSessionPayment(
+    String sessionId,
+    Map<String, dynamic> body,
+  ) {
+    final Uri $url = Uri.parse('/checkout-sessions/${sessionId}/confirm-payment');
+    final $body = body;
+    final Request $request = Request('POST', $url, client.baseUrl, body: $body);
+    return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
+  }
+
+  @override
+  Future<Response<Map<String, dynamic>>> releaseCheckoutSessionCreditHold(
+    String sessionId,
+  ) {
+    final Uri $url = Uri.parse(
+      '/checkout-sessions/${sessionId}/release-credit-hold',
+    );
+    final Request $request = Request('POST', $url, client.baseUrl);
+    return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
+  }
+
+  @override
   Future<Response<Map<String, dynamic>>> getOrder(String orderId) {
     final Uri $url = Uri.parse('/orders/${orderId}');
     final Request $request = Request('GET', $url, client.baseUrl);

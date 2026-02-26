@@ -653,28 +653,35 @@ final GoRouter appRouter = GoRouter(
       path: "/paymentComplete",
       pageBuilder: (context, state) {
         final extra = state.extra as Map<String, dynamic>? ?? {};
+        double readDouble(String key) {
+          final value = extra[key];
+          if (value is num) return value.toDouble();
+          if (value is String) return double.tryParse(value) ?? 0.0;
+          return 0.0;
+        }
 
         return CustomTransitionPage(
           key: state.pageKey,
           child: PaymentComplete(
             method: extra["method"] as String? ?? "",
-            total: extra["total"] as double? ?? 0.0,
-            subTotal: extra["subTotal"] as double? ?? 0.0,
-            deliveryFee: extra["deliveryFee"] as double? ?? 0.0,
-            serviceFee: extra["serviceFee"] as double? ?? 0.0,
-            rainFee: extra["rainFee"] as double? ?? 0.0,
-            tax: extra["tax"] as double? ?? 0.0,
-            tip: extra["tip"] as double? ?? 0.0,
+            total: readDouble("total"),
+            subTotal: readDouble("subTotal"),
+            deliveryFee: readDouble("deliveryFee"),
+            serviceFee: readDouble("serviceFee"),
+            rainFee: readDouble("rainFee"),
+            tax: readDouble("tax"),
+            tip: readDouble("tip"),
             orderNumber: extra["orderNumber"] as String?,
             timestamp: extra["timestamp"] as String?,
             orderId: extra["orderId"]?.toString(),
+            checkoutSessionId: extra["checkoutSessionId"]?.toString(),
+            isGroupedOrder: extra["isGroupedOrder"] as bool? ?? false,
             isGiftOrder: extra["isGiftOrder"] as bool? ?? false,
             giftRecipientName: extra["giftRecipientName"] as String?,
             giftRecipientPhone: extra["giftRecipientPhone"] as String?,
             giftDeliveryCode: extra["giftDeliveryCode"] as String?,
-            codRemainingCashAmount: (extra["codRemainingCashAmount"] as num?)
-                ?.toDouble(),
-            orderGrandTotal: (extra["orderGrandTotal"] as num?)?.toDouble(),
+            codRemainingCashAmount: readDouble("codRemainingCashAmount"),
+            orderGrandTotal: readDouble("orderGrandTotal"),
           ),
           transitionDuration: const Duration(milliseconds: 400),
           reverseTransitionDuration: const Duration(milliseconds: 400),
@@ -696,7 +703,8 @@ final GoRouter appRouter = GoRouter(
         return CustomTransitionPage(
           key: state.pageKey,
           child: PaymentConfirming(
-            orderId: extra['orderId']?.toString() ?? '',
+            orderId: extra['orderId']?.toString(),
+            sessionId: extra['sessionId']?.toString(),
             reference: extra['reference']?.toString() ?? '',
             paymentData: (extra['paymentData'] as Map<String, dynamic>?) ?? {},
           ),
@@ -716,18 +724,24 @@ final GoRouter appRouter = GoRouter(
       path: "/paymentFailed",
       pageBuilder: (context, state) {
         final extra = state.extra as Map<String, dynamic>? ?? {};
+        double readDouble(String key) {
+          final value = extra[key];
+          if (value is num) return value.toDouble();
+          if (value is String) return double.tryParse(value) ?? 0.0;
+          return 0.0;
+        }
 
         return CustomTransitionPage(
           key: state.pageKey,
           child: PaymentFailed(
             method: extra["method"] as String? ?? "",
-            total: extra["total"] as double? ?? 0.0,
-            subTotal: extra["subTotal"] as double? ?? 0.0,
-            deliveryFee: extra["deliveryFee"] as double? ?? 0.0,
-            serviceFee: extra["serviceFee"] as double? ?? 0.0,
-            rainFee: extra["rainFee"] as double? ?? 0.0,
-            tax: extra["tax"] as double? ?? 0.0,
-            tip: extra["tip"] as double? ?? 0.0,
+            total: readDouble("total"),
+            subTotal: readDouble("subTotal"),
+            deliveryFee: readDouble("deliveryFee"),
+            serviceFee: readDouble("serviceFee"),
+            rainFee: readDouble("rainFee"),
+            tax: readDouble("tax"),
+            tip: readDouble("tip"),
             orderNumber: extra["orderNumber"] as String?,
             timestamp: extra["timestamp"] as String?,
           ),

@@ -33,6 +33,27 @@ abstract class OrderServiceChopper extends ChopperService {
     @Path() String orderId,
   );
 
+  @POST(path: '/checkout-sessions')
+  Future<Response<Map<String, dynamic>>> createCheckoutSession(
+    @Body() Map<String, dynamic> body,
+  );
+
+  @POST(path: '/checkout-sessions/{sessionId}/paystack/initialize')
+  Future<Response<Map<String, dynamic>>> initializeCheckoutSessionPaystack(
+    @Path() String sessionId,
+  );
+
+  @POST(path: '/checkout-sessions/{sessionId}/confirm-payment')
+  Future<Response<Map<String, dynamic>>> confirmCheckoutSessionPayment(
+    @Path() String sessionId,
+    @Body() Map<String, dynamic> body,
+  );
+
+  @POST(path: '/checkout-sessions/{sessionId}/release-credit-hold')
+  Future<Response<Map<String, dynamic>>> releaseCheckoutSessionCreditHold(
+    @Path() String sessionId,
+  );
+
   @GET(path: '/orders/{orderId}')
   Future<Response<Map<String, dynamic>>> getOrder(@Path() String orderId);
 

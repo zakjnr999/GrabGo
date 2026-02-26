@@ -24,6 +24,8 @@ class PaymentComplete extends StatefulWidget {
   final String? orderNumber;
   final String? timestamp;
   final String? orderId;
+  final String? checkoutSessionId;
+  final bool isGroupedOrder;
   final bool isGiftOrder;
   final String? giftRecipientName;
   final String? giftRecipientPhone;
@@ -44,6 +46,8 @@ class PaymentComplete extends StatefulWidget {
     this.orderNumber,
     this.timestamp,
     this.orderId,
+    this.checkoutSessionId,
+    this.isGroupedOrder = false,
     this.isGiftOrder = false,
     this.giftRecipientName,
     this.giftRecipientPhone,
@@ -202,7 +206,9 @@ class _PaymentCompleteState extends State<PaymentComplete>
                                 ),
                                 SizedBox(height: 8.h),
                                 Text(
-                                  "Your order has been placed successfully.\nYou'll receive a confirmation once the vendor accepts it.",
+                                  widget.isGroupedOrder
+                                      ? "Your multi-vendor order has been placed successfully.\nYou'll receive confirmation for each vendor once accepted."
+                                      : "Your order has been placed successfully.\nYou'll receive a confirmation once the vendor accepts it.",
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: 14.sp,

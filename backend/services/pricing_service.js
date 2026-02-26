@@ -444,6 +444,12 @@ const calculateCartGroupsPricing = async (carts = [], options = {}) => {
                 total: 0,
                 itemCount: 0,
                 vendorCount: 0,
+                estimatedDeliveryMin: null,
+                estimatedDeliveryMax: null,
+                estimatedDeliveryFirstMin: null,
+                estimatedDeliveryFirstMax: null,
+                estimatedDeliveryCompletionMin: null,
+                estimatedDeliveryCompletionMax: null,
                 creditsApplied: 0,
                 totalAfterCredits: 0,
                 creditBalance: 0,
@@ -474,6 +480,7 @@ const calculateCartGroupsPricing = async (carts = [], options = {}) => {
     let rainFee = 0;
     let total = 0;
     let itemCount = 0;
+    const etaGroups = [];
 
     const groups = groupResults.map(({ cart, pricing }) => {
         subtotal += toNumber(pricing?.subtotal, 0);
@@ -483,6 +490,19 @@ const calculateCartGroupsPricing = async (carts = [], options = {}) => {
         rainFee += toNumber(pricing?.rainFee, 0);
         total += toNumber(pricing?.total, 0);
         itemCount += toNumber(pricing?.itemCount, 0);
+        const minMinutes = toNumber(pricing?.estimatedDeliveryMin, NaN);
+        const maxMinutes = toNumber(pricing?.estimatedDeliveryMax, NaN);
+        if (
+            Number.isFinite(minMinutes) &&
+            Number.isFinite(maxMinutes) &&
+            minMinutes > 0 &&
+            maxMinutes > 0
+        ) {
+            etaGroups.push({
+                minMinutes: Math.round(minMinutes),
+                maxMinutes: Math.round(maxMinutes),
+            });
+        }
 
         return {
             ...cart,
@@ -517,6 +537,25 @@ const calculateCartGroupsPricing = async (carts = [], options = {}) => {
         );
     }
 
+    let estimatedDeliveryFirstMin = null;
+    let estimatedDeliveryFirstMax = null;
+    let estimatedDeliveryCompletionMin = null;
+    let estimatedDeliveryCompletionMax = null;
+
+    if (etaGroups.length > 0) {
+        const earliestWindow = etaGroups.reduce((best, current) => {
+            if (!best) return current;
+            if (current.minMinutes < best.minMinutes) return current;
+            if (current.minMinutes === best.minMinutes && current.maxMinutes < best.maxMinutes) return current;
+            return best;
+        }, null);
+
+        estimatedDeliveryFirstMin = earliestWindow?.minMinutes ?? null;
+        estimatedDeliveryFirstMax = earliestWindow?.maxMinutes ?? null;
+        estimatedDeliveryCompletionMin = Math.max(...etaGroups.map((entry) => entry.minMinutes));
+        estimatedDeliveryCompletionMax = Math.max(...etaGroups.map((entry) => entry.maxMinutes));
+    }
+
     return {
         groups,
         summary: {
@@ -528,6 +567,12 @@ const calculateCartGroupsPricing = async (carts = [], options = {}) => {
             total: totalAfterCredits,
             itemCount,
             vendorCount: groups.length,
+            estimatedDeliveryMin: estimatedDeliveryCompletionMin,
+            estimatedDeliveryMax: estimatedDeliveryCompletionMax,
+            estimatedDeliveryFirstMin,
+            estimatedDeliveryFirstMax,
+            estimatedDeliveryCompletionMin,
+            estimatedDeliveryCompletionMax,
             creditsApplied,
             totalAfterCredits,
             creditBalance,

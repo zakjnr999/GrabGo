@@ -4,7 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:grab_go_customer/features/cart/model/cart_item.dart' as cart_widgets;
+import 'package:grab_go_customer/features/cart/model/cart_item.dart'
+    as cart_widgets;
 import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
@@ -29,7 +30,9 @@ class Cart extends StatelessWidget {
       statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       systemNavigationBarColor: colors.backgroundPrimary,
       systemNavigationBarDividerColor: Colors.transparent,
-      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      systemNavigationBarIconBrightness: isDark
+          ? Brightness.light
+          : Brightness.dark,
     );
 
     SystemChrome.setSystemUIOverlayStyle(systemUiOverlayStyle);
@@ -40,7 +43,8 @@ class Cart extends StatelessWidget {
         backgroundColor: colors.backgroundPrimary,
         body: Consumer<CartProvider>(
           builder: (context, provider, child) {
-            final bool isPickupTab = context.watch<NavigationProvider>().selectedIndex == 1;
+            final bool isPickupTab =
+                context.watch<NavigationProvider>().selectedIndex == 1;
             if (isPickupTab && provider.fulfillmentMode != 'pickup') {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (!context.mounted) return;
@@ -56,8 +60,12 @@ class Cart extends StatelessWidget {
             final bool isPricingLoading = provider.isPricingLoading;
             final bool hasCredits = provider.availableCredits > 0;
             final bool useCredits = hasCredits && provider.useCredits;
-            final bool isPickupMode = provider.fulfillmentMode == 'pickup' || isPickupTab;
-            final int itemCount = provider.cartItems.values.fold(0, (sum, quantity) => sum + quantity);
+            final bool isPickupMode =
+                provider.fulfillmentMode == 'pickup' || isPickupTab;
+            final int itemCount = provider.cartItems.values.fold(
+              0,
+              (sum, quantity) => sum + quantity,
+            );
             final List<String> providerNames = provider.cartItems.keys
                 .map((item) => item.providerName.trim())
                 .where((name) => name.isNotEmpty)
@@ -68,18 +76,27 @@ class Cart extends StatelessWidget {
                 : providerNames.length == 1
                 ? providerNames.first
                 : '${providerNames.length} vendors';
-            final String orderSubtitle = '$itemCount ${itemCount == 1 ? 'item' : 'items'} • $providerLabel';
+            final String orderSubtitle =
+                '$itemCount ${itemCount == 1 ? 'item' : 'items'} • $providerLabel';
 
             return Column(
               children: [
                 Padding(
-                  padding: EdgeInsets.only(top: padding.top + 10, left: 20.w, right: 20.w, bottom: 16.h),
+                  padding: EdgeInsets.only(
+                    top: padding.top + 10,
+                    left: 20.w,
+                    right: 20.w,
+                    bottom: 16.h,
+                  ),
                   child: Row(
                     children: [
                       Container(
                         height: 44,
                         width: 44,
-                        decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
+                        decoration: BoxDecoration(
+                          color: colors.backgroundSecondary,
+                          shape: BoxShape.circle,
+                        ),
                         child: Material(
                           color: Colors.transparent,
                           child: InkWell(
@@ -90,7 +107,10 @@ class Cart extends StatelessWidget {
                               child: SvgPicture.asset(
                                 Assets.icons.navArrowLeft,
                                 package: 'grab_go_shared',
-                                colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                                colorFilter: ColorFilter.mode(
+                                  colors.textPrimary,
+                                  BlendMode.srcIn,
+                                ),
                               ),
                             ),
                           ),
@@ -110,7 +130,11 @@ class Cart extends StatelessWidget {
                     ],
                   ),
                 ),
-                Divider(color: colors.backgroundSecondary, height: 1.h, thickness: 1),
+                Divider(
+                  color: colors.backgroundSecondary,
+                  height: 1.h,
+                  thickness: 1,
+                ),
                 if (provider.cartItems.isEmpty)
                   _buildEmptyCart(context, colors)
                 else
@@ -151,7 +175,10 @@ class Cart extends StatelessWidget {
                           ),
                           const cart_widgets.CartItem(),
                           Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 20.w,
+                              vertical: 16.h,
+                            ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -162,14 +189,17 @@ class Cart extends StatelessWidget {
                                       onApply: (code) {
                                         AppToastMessage.show(
                                           context: context,
-                                          message: 'Promo code "$code" applied successfully!',
+                                          message:
+                                              'Promo code "$code" applied successfully!',
                                           backgroundColor: colors.accentGreen,
                                         );
                                       },
                                     );
 
                                     if (promoCode != null) {
-                                      debugPrint('Promo code applied: $promoCode');
+                                      debugPrint(
+                                        'Promo code applied: $promoCode',
+                                      );
                                     }
                                   },
                                   child: Row(
@@ -177,21 +207,29 @@ class Cart extends StatelessWidget {
                                       Container(
                                         padding: EdgeInsets.all(8.r),
                                         decoration: BoxDecoration(
-                                          color: colors.accentOrange.withValues(alpha: 0.15),
-                                          borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                                          color: colors.accentOrange.withValues(
+                                            alpha: 0.15,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            KBorderSize.borderMedium,
+                                          ),
                                         ),
                                         child: SvgPicture.asset(
                                           Assets.icons.badgePercent,
                                           package: 'grab_go_shared',
                                           height: 20.h,
                                           width: 20.w,
-                                          colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                          colorFilter: ColorFilter.mode(
+                                            colors.accentOrange,
+                                            BlendMode.srcIn,
+                                          ),
                                         ),
                                       ),
                                       SizedBox(width: 12.w),
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text(
                                               AppStrings.cartPromoCode,
@@ -218,17 +256,24 @@ class Cart extends StatelessWidget {
                                         package: 'grab_go_shared',
                                         height: 18.h,
                                         width: 18.w,
-                                        colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                        colorFilter: ColorFilter.mode(
+                                          colors.accentOrange,
+                                          BlendMode.srcIn,
+                                        ),
                                       ),
                                     ],
                                   ),
                                 ),
-                                if (!isPickupMode) ...[SizedBox(height: 12.h), _buildGiftEntry(provider, colors)],
+                                if (!isPickupMode) ...[
+                                  SizedBox(height: 12.h),
+                                  _buildGiftEntry(provider, colors),
+                                ],
                                 SizedBox(height: 20.h),
                                 Row(
                                   children: [
                                     Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           "Use Credits",
@@ -268,7 +313,12 @@ class Cart extends StatelessWidget {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Padding(
-                                      padding: EdgeInsets.fromLTRB(0.w, 0.h, 20.w, 16.h),
+                                      padding: EdgeInsets.fromLTRB(
+                                        0.w,
+                                        0.h,
+                                        20.w,
+                                        16.h,
+                                      ),
                                       child: Text(
                                         "Order Summary",
                                         style: TextStyle(
@@ -340,7 +390,13 @@ class Cart extends StatelessWidget {
                                       ),
                                     ],
                                     SizedBox(height: 6.h),
-                                    _buildTotalRow(context, total, creditsApplied, colors, isLoading: isPricingLoading),
+                                    _buildTotalRow(
+                                      context,
+                                      total,
+                                      creditsApplied,
+                                      colors,
+                                      isLoading: isPricingLoading,
+                                    ),
                                   ],
                                 ),
                                 SizedBox(height: 12.h),
@@ -349,8 +405,17 @@ class Cart extends StatelessWidget {
                                   child: Text(
                                     _formatEstimatedDelivery(
                                       provider.cartItems,
+                                      providerCount: provider.providerCount,
                                       minMinutes: provider.estimatedDeliveryMin,
                                       maxMinutes: provider.estimatedDeliveryMax,
+                                      firstMinMinutes:
+                                          provider.estimatedDeliveryFirstMin,
+                                      firstMaxMinutes:
+                                          provider.estimatedDeliveryFirstMax,
+                                      completionMinMinutes: provider
+                                          .estimatedDeliveryCompletionMin,
+                                      completionMaxMinutes: provider
+                                          .estimatedDeliveryCompletionMax,
                                       isPickupMode: isPickupMode,
                                     ),
                                     style: TextStyle(
@@ -372,10 +437,20 @@ class Cart extends StatelessWidget {
                   const SizedBox.shrink()
                 else
                   Container(
-                    padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 16.h, bottom: padding.bottom + 16.h),
+                    padding: EdgeInsets.only(
+                      left: 20.w,
+                      right: 20.w,
+                      top: 16.h,
+                      bottom: padding.bottom + 16.h,
+                    ),
                     decoration: BoxDecoration(
                       color: colors.backgroundPrimary,
-                      border: Border(top: BorderSide(color: colors.backgroundSecondary, width: 0.5)),
+                      border: Border(
+                        top: BorderSide(
+                          color: colors.backgroundSecondary,
+                          width: 0.5,
+                        ),
+                      ),
                     ),
                     child: AppButton(
                       width: double.infinity,
@@ -388,8 +463,10 @@ class Cart extends StatelessWidget {
                             backgroundColor: colors.error,
                           );
                         } else {
-                          final navigationProvider = context.read<NavigationProvider>();
-                          final targetMode = navigationProvider.selectedIndex == 1
+                          final navigationProvider = context
+                              .read<NavigationProvider>();
+                          final targetMode =
+                              navigationProvider.selectedIndex == 1
                               ? 'pickup'
                               : provider.fulfillmentMode;
                           if (provider.fulfillmentMode != targetMode) {
@@ -401,9 +478,16 @@ class Cart extends StatelessWidget {
                       },
                       buttonText: provider.hasPendingCartOperations
                           ? "Updating cart..."
-                          : (isPickupMode ? "Proceed to Pickup Checkout" : "Proceed to Checkout"),
-                      textStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800),
-                      textColor: provider.cartItems.isEmpty || provider.hasPendingCartOperations
+                          : (isPickupMode
+                                ? "Proceed to Pickup Checkout"
+                                : "Proceed to Checkout"),
+                      textStyle: TextStyle(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      textColor:
+                          provider.cartItems.isEmpty ||
+                              provider.hasPendingCartOperations
                           ? colors.textSecondary
                           : Colors.white,
                       padding: EdgeInsets.symmetric(vertical: 16.h),
@@ -427,11 +511,20 @@ class Cart extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SvgPicture.asset(Assets.icons.emptyCart, package: 'grab_go_shared', width: 180.w, height: 180.w),
+            SvgPicture.asset(
+              Assets.icons.emptyCart,
+              package: 'grab_go_shared',
+              width: 180.w,
+              height: 180.w,
+            ),
 
             Text(
               AppStrings.cartEmpty,
-              style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+              style: TextStyle(
+                fontSize: 20.sp,
+                fontWeight: FontWeight.w800,
+                color: colors.textPrimary,
+              ),
             ),
             SizedBox(height: 8.h),
             Padding(
@@ -439,7 +532,11 @@ class Cart extends StatelessWidget {
               child: Text(
                 AppStrings.cartEmptyMessage,
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+                style: TextStyle(
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w500,
+                  color: colors.textSecondary,
+                ),
               ),
             ),
             SizedBox(height: KSpacing.xl.h),
@@ -450,7 +547,10 @@ class Cart extends StatelessWidget {
                 width: double.infinity,
                 onPressed: () => context.pop(),
                 buttonText: "Browse",
-                textStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800),
+                textStyle: TextStyle(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w800,
+                ),
                 textColor: Colors.white,
                 padding: EdgeInsets.symmetric(vertical: 16.h),
                 borderRadius: KBorderSize.borderMedium,
@@ -487,7 +587,9 @@ class Cart extends StatelessWidget {
             ? Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: infoType == null ? null : () => _showFeeInfoSheet(context, colors, infoType),
+                  onTap: infoType == null
+                      ? null
+                      : () => _showFeeInfoSheet(context, colors, infoType),
                   borderRadius: BorderRadius.circular(999),
                   child: Padding(
                     padding: EdgeInsets.all(8.0.r),
@@ -496,7 +598,10 @@ class Cart extends StatelessWidget {
                       package: "grab_go_shared",
                       height: 10.h,
                       width: 10.w,
-                      colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                      colorFilter: ColorFilter.mode(
+                        colors.textSecondary,
+                        BlendMode.srcIn,
+                      ),
                     ),
                   ),
                 ),
@@ -556,14 +661,22 @@ class Cart extends StatelessWidget {
             children: [
               Text(
                 "Send as a gift",
-                style: TextStyle(color: colors.textPrimary, fontSize: 13.sp, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  color: colors.textPrimary,
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               SizedBox(height: 2.h),
               Text(
                 giftSummary,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  color: colors.textSecondary,
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),
@@ -589,24 +702,38 @@ class Cart extends StatelessWidget {
         children: [
           Text(
             "Total Amount",
-            style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const Spacer(),
           Text(
             "...",
-            style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       );
     }
 
-    final double? originalTotal = creditsApplied > 0 ? total + creditsApplied : null;
+    final double? originalTotal = creditsApplied > 0
+        ? total + creditsApplied
+        : null;
 
     return Row(
       children: [
         Text(
           "Total Amount",
-          style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontSize: 16.sp,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         const Spacer(),
         if (originalTotal != null)
@@ -614,7 +741,8 @@ class Cart extends StatelessWidget {
             text: TextSpan(
               children: [
                 TextSpan(
-                  text: "${AppStrings.currencySymbol} ${originalTotal.toStringAsFixed(2)}",
+                  text:
+                      "${AppStrings.currencySymbol} ${originalTotal.toStringAsFixed(2)}",
                   style: TextStyle(
                     color: colors.textSecondary,
                     fontSize: 13.sp,
@@ -624,11 +752,20 @@ class Cart extends StatelessWidget {
                 ),
                 TextSpan(
                   text: " / ",
-                  style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w400),
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
                 TextSpan(
-                  text: "${AppStrings.currencySymbol} ${total.toStringAsFixed(2)}",
-                  style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
+                  text:
+                      "${AppStrings.currencySymbol} ${total.toStringAsFixed(2)}",
+                  style: TextStyle(
+                    color: colors.textPrimary,
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -636,13 +773,21 @@ class Cart extends StatelessWidget {
         else
           Text(
             "${AppStrings.currencySymbol} ${total.toStringAsFixed(2)}",
-            style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w600,
+            ),
           ),
       ],
     );
   }
 
-  void _showFeeInfoSheet(BuildContext context, AppColorsExtension colors, _FeeInfoType type) {
+  void _showFeeInfoSheet(
+    BuildContext context,
+    AppColorsExtension colors,
+    _FeeInfoType type,
+  ) {
     final title = type == _FeeInfoType.delivery
         ? "Delivery Fee"
         : type == _FeeInfoType.service
@@ -658,39 +803,52 @@ class Cart extends StatelessWidget {
         ? const [
             _FeeInfoDetail(
               title: "Distance-based",
-              body: "Calculated using the distance from the vendor to your delivery address.",
+              body:
+                  "Calculated using the distance from the vendor to your delivery address.",
             ),
             _FeeInfoDetail(
               title: "Fair limits",
-              body: "A minimum and maximum are applied to keep pricing predictable.",
+              body:
+                  "A minimum and maximum are applied to keep pricing predictable.",
             ),
-            _FeeInfoDetail(title: "Courier coverage", body: "Helps cover rider time, fuel, and delivery handling."),
+            _FeeInfoDetail(
+              title: "Courier coverage",
+              body: "Helps cover rider time, fuel, and delivery handling.",
+            ),
           ]
         : type == _FeeInfoType.service
         ? const [
             _FeeInfoDetail(
               title: "Platform support",
-              body: "Keeps the app running, including customer support and order processing.",
+              body:
+                  "Keeps the app running, including customer support and order processing.",
             ),
             _FeeInfoDetail(
               title: "Order value based",
-              body: "Scales with your subtotal so larger orders contribute slightly more.",
+              body:
+                  "Scales with your subtotal so larger orders contribute slightly more.",
             ),
             _FeeInfoDetail(
               title: "Lower delivery fees",
-              body: "Helps reduce delivery charges by spreading costs across orders.",
+              body:
+                  "Helps reduce delivery charges by spreading costs across orders.",
             ),
           ]
         : const [
             _FeeInfoDetail(
               title: "Weather-based",
-              body: "Applied only when active rain is detected for your delivery area.",
+              body:
+                  "Applied only when active rain is detected for your delivery area.",
             ),
             _FeeInfoDetail(
               title: "Rider safety",
-              body: "Helps cover extra time and protective handling in wet conditions.",
+              body:
+                  "Helps cover extra time and protective handling in wet conditions.",
             ),
-            _FeeInfoDetail(title: "Transparent pricing", body: "The fee is fixed and visible before checkout."),
+            _FeeInfoDetail(
+              title: "Transparent pricing",
+              body: "The fee is fixed and visible before checkout.",
+            ),
           ];
 
     showModalBottomSheet<void>(
@@ -714,7 +872,10 @@ class Cart extends StatelessWidget {
                   child: Container(
                     width: 36.w,
                     height: 4.h,
-                    decoration: BoxDecoration(color: colors.divider, borderRadius: BorderRadius.circular(999)),
+                    decoration: BoxDecoration(
+                      color: colors.divider,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
                   ),
                 ),
                 SizedBox(height: 14.h),
@@ -722,21 +883,33 @@ class Cart extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w800),
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ],
                 ),
                 SizedBox(height: 8.h),
                 Text(
                   description,
-                  style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 SizedBox(height: 12.h),
                 ...details.map((detail) => _buildInfoDetail(detail, colors)),
                 SizedBox(height: 6.h),
                 Text(
                   "Fees can vary by location, vendor, and promotions.",
-                  style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -756,7 +929,10 @@ class Cart extends StatelessWidget {
             width: 6.w,
             height: 6.w,
             margin: EdgeInsets.only(top: 6.h),
-            decoration: BoxDecoration(color: colors.accentOrange, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: colors.accentOrange,
+              shape: BoxShape.circle,
+            ),
           ),
           SizedBox(width: 10.w),
           Expanded(
@@ -765,12 +941,20 @@ class Cart extends StatelessWidget {
               children: [
                 Text(
                   detail.title,
-                  style: TextStyle(color: colors.textPrimary, fontSize: 12.sp, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    color: colors.textPrimary,
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 SizedBox(height: 2.h),
                 Text(
                   detail.body,
-                  style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -782,18 +966,48 @@ class Cart extends StatelessWidget {
 
   String _formatEstimatedDelivery(
     Map<CartItem, int> cartItems, {
+    int providerCount = 1,
     int? minMinutes,
     int? maxMinutes,
+    int? firstMinMinutes,
+    int? firstMaxMinutes,
+    int? completionMinMinutes,
+    int? completionMaxMinutes,
     bool isPickupMode = false,
   }) {
     final prefix = isPickupMode ? "Est. Pickup" : "Est. Delivery";
-    if (minMinutes != null && maxMinutes != null && minMinutes > 0 && maxMinutes > 0) {
-      if (minMinutes == maxMinutes) {
+    String formatWindow(int start, int end) {
+      if (start == end) {
         const padding = 5;
-        minMinutes = math.max(5, minMinutes - padding);
-        maxMinutes = maxMinutes + padding;
+        start = math.max(5, start - padding);
+        end = end + padding;
       }
-      return "$prefix: $minMinutes-$maxMinutes mins";
+      return "$start-$end mins";
+    }
+
+    if (!isPickupMode &&
+        providerCount > 1 &&
+        firstMinMinutes != null &&
+        firstMaxMinutes != null &&
+        completionMinMinutes != null &&
+        completionMaxMinutes != null &&
+        firstMinMinutes > 0 &&
+        firstMaxMinutes > 0 &&
+        completionMinMinutes > 0 &&
+        completionMaxMinutes > 0) {
+      final firstWindow = formatWindow(firstMinMinutes, firstMaxMinutes);
+      final completionWindow = formatWindow(
+        completionMinMinutes,
+        completionMaxMinutes,
+      );
+      return "First delivery: $firstWindow | All deliveries by: $completionWindow";
+    }
+
+    if (minMinutes != null &&
+        maxMinutes != null &&
+        minMinutes > 0 &&
+        maxMinutes > 0) {
+      return "$prefix: ${formatWindow(minMinutes, maxMinutes)}";
     }
 
     if (cartItems.isEmpty) {

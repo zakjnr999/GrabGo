@@ -4,6 +4,15 @@ part 'cart_api_service.chopper.dart';
 
 @ChopperApi(baseUrl: '/cart')
 abstract class CartApiService extends ChopperService {
+  /// Get user's cart grouped by vendor
+  @GET(path: '/groups')
+  Future<Response<Map<String, dynamic>>> getCartGroups({
+    @Query('fulfillmentMode') String? fulfillmentMode,
+    @Query('lat') double? lat,
+    @Query('lng') double? lng,
+    @Query('useCredits') bool? useCredits,
+  });
+
   /// Get user's active cart
   @GET()
   Future<Response<Map<String, dynamic>>> getCart({
