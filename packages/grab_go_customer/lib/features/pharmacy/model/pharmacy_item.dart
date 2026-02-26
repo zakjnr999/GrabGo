@@ -181,6 +181,7 @@ class PharmacyItem implements CartItem {
       restaurantId: storeId,
       restaurantImage: storeLogo ?? '',
       orderCount: orderCount,
+      favoriteItemType: 'pharmacy_item',
     );
   }
 }

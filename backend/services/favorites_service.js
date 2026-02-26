@@ -91,7 +91,7 @@ const FAVORITES_SELECT = {
           foodImage: true,
           isAvailable: true,
           rating: true,
-          reviewCount: true,
+          totalReviews: true,
           restaurant: {
             select: {
               id: true,

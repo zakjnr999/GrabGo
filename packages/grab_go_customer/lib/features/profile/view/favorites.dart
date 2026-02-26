@@ -4,6 +4,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
+import 'package:grab_go_customer/features/vendors/model/vendor_model.dart';
+import 'package:grab_go_customer/features/vendors/model/vendor_type.dart';
+import 'package:grab_go_customer/features/vendors/widgets/vendor_card.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
@@ -86,7 +89,17 @@ class _FavoritesPageState extends State<FavoritesPage>
     );
 
     if (shouldClearAll == true) {
-      debugPrint("clear favorites");
+      try {
+        await context.read<FavoritesProvider>().clearFavorites();
+      } catch (_) {
+        if (context.mounted) {
+          AppToastMessage.show(
+            context: context,
+            backgroundColor: context.appColors.error,
+            message: 'Could not clear favorites right now. Please try again.',
+          );
+        }
+      }
     }
   }
 
@@ -119,21 +132,51 @@ class _FavoritesPageState extends State<FavoritesPage>
                     Expanded(
                       child: Consumer<FavoritesProvider>(
                         builder: (context, favoritesProvider, child) {
-                          if (favoritesProvider.favoriteItems.isEmpty) {
+                          if (!favoritesProvider.hasAnyFavorites) {
                             return _buildEmptyState(colors, size);
                           }
 
-                          final filteredItems = _searchQuery.isEmpty
-                              ? favoritesProvider.favoriteItems.toList()
-                              : favoritesProvider.searchFavorites(_searchQuery);
+                          final isItemsTab = selectedTabIndex == 0;
+                          final filteredItems = isItemsTab
+                              ? (_searchQuery.isEmpty
+                                    ? favoritesProvider.favoriteItems.toList()
+                                    : favoritesProvider.searchFavorites(
+                                        _searchQuery,
+                                      ))
+                              : <FoodItem>[];
+                          final filteredVendors = isItemsTab
+                              ? <FavoriteVendor>[]
+                              : (_searchQuery.isEmpty
+                                    ? favoritesProvider.favoriteVendors
+                                    : favoritesProvider.searchFavoriteVendors(
+                                        _searchQuery,
+                                      ));
 
-                          if (filteredItems.isEmpty) {
-                            return _buildNoResultsState(colors, size);
+                          final activeListIsEmpty = isItemsTab
+                              ? filteredItems.isEmpty
+                              : filteredVendors.isEmpty;
+                          if (activeListIsEmpty) {
+                            if (_searchQuery.isNotEmpty) {
+                              return _buildNoResultsState(colors, size);
+                            }
+                            return _buildTabEmptyState(
+                              colors,
+                              size,
+                              isItemsTab: isItemsTab,
+                            );
                           }
 
-                          return _buildFavoritesList(
+                          if (isItemsTab) {
+                            return _buildFavoritesList(
+                              colors,
+                              filteredItems,
+                              size,
+                            );
+                          }
+
+                          return _buildFavoriteVendorsList(
                             colors,
-                            filteredItems,
+                            filteredVendors,
                             size,
                           );
                         },
@@ -462,52 +505,6 @@ class _FavoritesPageState extends State<FavoritesPage>
                 ),
               ),
             ),
-
-            // SizedBox(height: 40.h),
-
-            // GestureDetector(
-            //   onTap: () {
-            //     context.pop();
-            //     context.go('/homepage');
-            //     Provider.of<NavigationProvider>(context, listen: false).navigateToMenu();
-            //   },
-            //   child: Container(
-            //     padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 16.h),
-            //     decoration: BoxDecoration(
-            //       gradient: LinearGradient(
-            //         colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)],
-            //         begin: Alignment.centerLeft,
-            //         end: Alignment.centerRight,
-            //       ),
-            //       borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-            //       boxShadow: [
-            //         BoxShadow(
-            //           color: colors.accentOrange.withValues(alpha: 0.3),
-            //           spreadRadius: 0,
-            //           blurRadius: 12,
-            //           offset: const Offset(0, 4),
-            //         ),
-            //       ],
-            //     ),
-            //     child: Row(
-            //       mainAxisSize: MainAxisSize.min,
-            //       children: [
-            //         SvgPicture.asset(
-            //           Assets.icons.utensilsCrossed,
-            //           package: 'grab_go_shared',
-            //           height: 20.h,
-            //           width: 20.w,
-            //           colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-            //         ),
-            //         SizedBox(width: 10.w),
-            //         Text(
-            //           "Browse Foods",
-            //           style: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w800),
-            //         ),
-            //       ],
-            //     ),
-            //   ),
-            // ),
           ],
         ),
       ),
@@ -557,6 +554,50 @@ class _FavoritesPageState extends State<FavoritesPage>
     );
   }
 
+  Widget _buildTabEmptyState(
+    AppColorsExtension colors,
+    Size size, {
+    required bool isItemsTab,
+  }) {
+    return SingleChildScrollView(
+      controller: _scrollController,
+      physics: const AlwaysScrollableScrollPhysics(),
+      child: Padding(
+        padding: EdgeInsets.only(
+          top: UmbrellaHeaderMetrics.contentPaddingFor(size) + 24.h,
+          left: 40.w,
+          right: 40.w,
+          bottom: 40.h,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              isItemsTab ? "No Favorite Items" : "No Favorite Vendors",
+              style: TextStyle(
+                color: colors.textPrimary,
+                fontSize: 20.sp,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            SizedBox(height: 10.h),
+            Text(
+              isItemsTab
+                  ? "Save items you love and they will appear here."
+                  : "Save vendors you order from most and they will appear here.",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: colors.textSecondary,
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildFavoritesList(
     AppColorsExtension colors,
     List<FoodItem> items,
@@ -576,6 +617,69 @@ class _FavoritesPageState extends State<FavoritesPage>
         final item = items[index];
         return _buildFavoriteItem(colors, item);
       },
+    );
+  }
+
+  Widget _buildFavoriteVendorsList(
+    AppColorsExtension colors,
+    List<FavoriteVendor> vendors,
+    Size size,
+  ) {
+    return ListView.builder(
+      controller: _scrollController,
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.only(
+        top: UmbrellaHeaderMetrics.contentPaddingFor(size),
+        bottom: 8.h,
+      ),
+      itemBuilder: (context, index) {
+        final vendor = vendors[index];
+        return VendorCard(
+          vendor: _favoriteVendorToVendorModel(vendor),
+          onTap: () {},
+          showDistance: false,
+          showClosedOnImage: true,
+          margin: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
+        );
+      },
+      itemCount: vendors.length,
+    );
+  }
+
+  VendorModel _favoriteVendorToVendorModel(FavoriteVendor favorite) {
+    final vendorTypeEnum = switch (favorite.type) {
+      FavoriteVendorType.restaurant => VendorType.food,
+      FavoriteVendorType.groceryStore => VendorType.grocery,
+      FavoriteVendorType.pharmacyStore => VendorType.pharmacy,
+      FavoriteVendorType.grabMartStore => VendorType.grabmart,
+    };
+
+    return VendorModel(
+      id: favorite.id,
+      storeName: vendorTypeEnum == VendorType.food ? null : favorite.name,
+      restaurantName: vendorTypeEnum == VendorType.food ? favorite.name : null,
+      name: favorite.name,
+      logo: favorite.image.isNotEmpty ? favorite.image : null,
+      description: favorite.address,
+      phone: '',
+      email: '',
+      isOpen: favorite.isOpen,
+      isAcceptingOrders: favorite.isAcceptingOrders,
+      deliveryFee: 0,
+      minOrder: 0,
+      rating: 0,
+      totalReviews: 0,
+      categories: [favorite.typeLabel],
+      location: VendorLocation(
+        lat: 0,
+        lng: 0,
+        address: favorite.address ?? '',
+        city: favorite.city ?? '',
+        area: favorite.area,
+      ),
+      averageDeliveryTime: 30,
+      vendorType: vendorTypeEnum.id,
+      vendorTypeEnum: vendorTypeEnum,
     );
   }
 

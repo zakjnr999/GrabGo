@@ -171,6 +171,7 @@ class GrabMartItem implements CartItem {
       restaurantId: storeId,
       restaurantImage: storeLogo ?? '',
       orderCount: orderCount,
+      favoriteItemType: 'grabmart_item',
     );
   }
 }

@@ -4,7 +4,10 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
+import 'package:provider/provider.dart';
 import '../model/vendor_model.dart';
+import '../model/vendor_type.dart';
 
 class VendorCard extends StatelessWidget {
   final VendorModel vendor;
@@ -30,7 +33,9 @@ class VendorCard extends StatelessWidget {
     final size = MediaQuery.sizeOf(context);
     final cardWidth = width ?? (size.width - 40.w);
     final imageHeight = (cardWidth * 0.45).clamp(90.0, 125.0);
-    final reviewCountText = vendor.totalReviews > 0 ? " (${vendor.totalReviews})" : "";
+    final reviewCountText = vendor.totalReviews > 0
+        ? " (${vendor.totalReviews})"
+        : "";
 
     return Container(
       width: width ?? double.infinity,
@@ -51,7 +56,7 @@ class VendorCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildVendorImage(colors, imageHeight),
+                  _buildVendorImage(context, colors, imageHeight),
                   Padding(
                     padding: EdgeInsets.only(top: 10.r),
                     child: Column(
@@ -82,7 +87,10 @@ class VendorCard extends StatelessWidget {
                                   package: 'grab_go_shared',
                                   height: 13,
                                   width: 13.w,
-                                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                  colorFilter: ColorFilter.mode(
+                                    colors.accentOrange,
+                                    BlendMode.srcIn,
+                                  ),
                                 ),
                                 SizedBox(width: 4.w),
                                 Text(
@@ -127,7 +135,8 @@ class VendorCard extends StatelessWidget {
                                       fontWeight: FontWeight.w800,
                                     ),
                                   ),
-                                if (showDistance && vendor.distanceText.isNotEmpty)
+                                if (showDistance &&
+                                    vendor.distanceText.isNotEmpty)
                                   Text(
                                     vendor.distanceText,
                                     maxLines: 1,
@@ -144,7 +153,10 @@ class VendorCard extends StatelessWidget {
                             Container(
                               width: 3.w,
                               height: 3,
-                              decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: colors.textSecondary,
+                              ),
                             ),
                             SizedBox(width: 8.w),
                             SvgPicture.asset(
@@ -152,7 +164,10 @@ class VendorCard extends StatelessWidget {
                               package: 'grab_go_shared',
                               height: 12,
                               width: 12.w,
-                              colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                              colorFilter: ColorFilter.mode(
+                                colors.textSecondary,
+                                BlendMode.srcIn,
+                              ),
                             ),
                             SizedBox(width: 4.w),
                             Flexible(
@@ -186,7 +201,10 @@ class VendorCard extends StatelessWidget {
                                         package: 'grab_go_shared',
                                         height: 13,
                                         width: 13.w,
-                                        colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                                        colorFilter: ColorFilter.mode(
+                                          colors.textPrimary,
+                                          BlendMode.srcIn,
+                                        ),
                                       ),
                                       SizedBox(width: 4.w),
                                       Text(
@@ -202,7 +220,10 @@ class VendorCard extends StatelessWidget {
                                   if (vendor.minOrder > 0) ...[
                                     Text(
                                       "|",
-                                      style: TextStyle(color: colors.textTertiary, fontSize: 12.sp),
+                                      style: TextStyle(
+                                        color: colors.textTertiary,
+                                        fontSize: 12.sp,
+                                      ),
                                     ),
                                     Text(
                                       "Min:",
@@ -231,7 +252,9 @@ class VendorCard extends StatelessWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  color: vendor.isOpen ? colors.accentGreen : colors.error,
+                                  color: vendor.isOpen
+                                      ? colors.accentGreen
+                                      : colors.error,
                                   fontSize: 12.sp,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -251,7 +274,11 @@ class VendorCard extends StatelessWidget {
     );
   }
 
-  Widget _buildVendorImage(AppColorsExtension colors, double imageHeight) {
+  Widget _buildVendorImage(
+    BuildContext context,
+    AppColorsExtension colors,
+    double imageHeight,
+  ) {
     return Stack(
       children: [
         ClipRRect(
@@ -262,7 +289,10 @@ class VendorCard extends StatelessWidget {
             bottomRight: Radius.circular(KBorderSize.borderRadius4),
           ),
           child: CachedNetworkImage(
-            imageUrl: ImageOptimizer.getPreviewUrl(vendor.logo ?? '', width: 800),
+            imageUrl: ImageOptimizer.getPreviewUrl(
+              vendor.logo ?? '',
+              width: 800,
+            ),
             height: imageHeight,
             width: double.infinity,
             fit: BoxFit.cover,
@@ -274,7 +304,10 @@ class VendorCard extends StatelessWidget {
                 child: SvgPicture.asset(
                   Assets.icons.store,
                   package: 'grab_go_shared',
-                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                  colorFilter: ColorFilter.mode(
+                    colors.textSecondary,
+                    BlendMode.srcIn,
+                  ),
                   width: 30.w,
                   height: 30,
                 ),
@@ -288,7 +321,10 @@ class VendorCard extends StatelessWidget {
                 child: SvgPicture.asset(
                   Assets.icons.store,
                   package: 'grab_go_shared',
-                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                  colorFilter: ColorFilter.mode(
+                    colors.textSecondary,
+                    BlendMode.srcIn,
+                  ),
                   width: 30.w,
                   height: 30,
                 ),
@@ -304,7 +340,9 @@ class VendorCard extends StatelessWidget {
               width: 36.w,
               height: 36.w,
               decoration: BoxDecoration(
-                borderRadius: const BorderRadius.only(topRight: Radius.circular(KBorderSize.borderMedium)),
+                borderRadius: const BorderRadius.only(
+                  topRight: Radius.circular(KBorderSize.borderMedium),
+                ),
                 gradient: RadialGradient(
                   center: const Alignment(1.0, -1.0),
                   radius: 1.15,
@@ -322,15 +360,41 @@ class VendorCard extends StatelessWidget {
         Positioned(
           right: 6.r,
           top: 6.r,
-          child: GestureDetector(
-            onTap: () {},
-            child: SvgPicture.asset(
-              Assets.icons.heart,
-              package: 'grab_go_shared',
-              height: 24,
-              width: 24.w,
-              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-            ),
+          child: Consumer<FavoritesProvider>(
+            builder: (context, favoritesProvider, child) {
+              final favoriteVendor = _toFavoriteVendor(vendor);
+              final isFavorite = favoritesProvider.isVendorFavorite(
+                favoriteVendor,
+              );
+
+              return GestureDetector(
+                onTap: () async {
+                  try {
+                    await favoritesProvider.toggleVendorFavorite(
+                      favoriteVendor,
+                    );
+                  } catch (_) {
+                    if (context.mounted) {
+                      AppToastMessage.show(
+                        context: context,
+                        backgroundColor: context.appColors.error,
+                        message: 'Could not update favorite. Please try again.',
+                      );
+                    }
+                  }
+                },
+                child: SvgPicture.asset(
+                  isFavorite ? Assets.icons.heartSolid : Assets.icons.heart,
+                  package: 'grab_go_shared',
+                  height: 24,
+                  width: 24.w,
+                  colorFilter: const ColorFilter.mode(
+                    Colors.white,
+                    BlendMode.srcIn,
+                  ),
+                ),
+              );
+            },
           ),
         ),
         if (!vendor.isOpen && showClosedOnImage)
@@ -348,11 +412,60 @@ class VendorCard extends StatelessWidget {
               alignment: Alignment.center,
               child: Text(
                 "We're closed",
-                style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.w800),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
           ),
       ],
     );
+  }
+
+  FavoriteVendor _toFavoriteVendor(VendorModel vendor) {
+    return FavoriteVendor(
+      id: vendor.id,
+      name: vendor.displayName,
+      image: vendor.logo ?? '',
+      address: vendor.address.isNotEmpty ? vendor.address : null,
+      city: vendor.city.isNotEmpty ? vendor.city : null,
+      area: vendor.area,
+      status: 'approved',
+      isOpen: vendor.isOpen,
+      isAcceptingOrders: vendor.isAcceptingOrders,
+      type: _toFavoriteVendorType(vendor),
+    );
+  }
+
+  FavoriteVendorType _toFavoriteVendorType(VendorModel vendor) {
+    final rawType = vendor.vendorType?.trim().toLowerCase();
+    if (rawType != null && rawType.isNotEmpty) {
+      final normalizedType = rawType.replaceAll('-', '_').replaceAll(' ', '_');
+      if (normalizedType == 'restaurant' || normalizedType == 'food') {
+        return FavoriteVendorType.restaurant;
+      }
+      if (normalizedType == 'grocery' || normalizedType == 'grocery_store') {
+        return FavoriteVendorType.groceryStore;
+      }
+      if (normalizedType == 'pharmacy' || normalizedType == 'pharmacy_store') {
+        return FavoriteVendorType.pharmacyStore;
+      }
+      if (normalizedType == 'grabmart' || normalizedType == 'grabmart_store') {
+        return FavoriteVendorType.grabMartStore;
+      }
+    }
+
+    switch (vendor.vendorTypeEnum) {
+      case VendorType.food:
+        return FavoriteVendorType.restaurant;
+      case VendorType.grocery:
+        return FavoriteVendorType.groceryStore;
+      case VendorType.pharmacy:
+        return FavoriteVendorType.pharmacyStore;
+      case VendorType.grabmart:
+        return FavoriteVendorType.grabMartStore;
+    }
   }
 }

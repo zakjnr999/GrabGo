@@ -24,6 +24,7 @@ class FoodItem implements CartItem {
   final DateTime? lastOrderedAt;
   final bool isRestaurantOpen;
   final String estimatedDeliveryTime;
+  final String favoriteItemType;
 
   // CartItem interface implementations
   @override
@@ -70,6 +71,7 @@ class FoodItem implements CartItem {
     this.lastOrderedAt,
     this.isRestaurantOpen = true,
     this.estimatedDeliveryTime = '25-30 min',
+    this.favoriteItemType = 'food',
   });
 
   factory FoodItem.fromJson(Map<String, dynamic> json) {
@@ -259,6 +261,10 @@ class FoodItem implements CartItem {
       isRestaurantOpen: parseBool(rawOpen, defaultValue: true),
       estimatedDeliveryTime:
           json['estimatedDeliveryTime']?.toString() ?? '25-30 min',
+      favoriteItemType:
+          json['favoriteItemType']?.toString().trim().isNotEmpty == true
+          ? json['favoriteItemType'].toString().trim().toLowerCase()
+          : 'food',
     );
   }
 
@@ -285,6 +291,7 @@ class FoodItem implements CartItem {
     'discountPercentage': discountPercentage,
     'orderCount': orderCount,
     'lastOrderedAt': lastOrderedAt?.toIso8601String(),
+    'favoriteItemType': favoriteItemType,
   };
 
   @override

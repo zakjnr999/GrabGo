@@ -253,6 +253,7 @@ class GroceryItem implements CartItem {
       discountPercentage: discountPercentage,
       discountEndDate: discountEndDate,
       orderCount: orderCount, // Pass through the order count from backend
+      favoriteItemType: 'grocery',
     );
   }
 }
