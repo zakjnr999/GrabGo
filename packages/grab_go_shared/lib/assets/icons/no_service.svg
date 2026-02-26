@@ -1,0 +1,77 @@
+<svg viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg">
+  <!-- Floor Drop Shadow -->
+  <ellipse cx="120" cy="205" rx="85" ry="12" fill="rgba(231,111,81,0.06)" />
+
+  <!-- Floating Background Elements (Location Theme) -->
+  
+  <!-- Disconnected/Broken Route Dashed Line -->
+  <path d="M 30,170 Q 20,120 70,100 T 100,120" fill="none" stroke="#CBD5E1" stroke-width="3" stroke-dasharray="6 6" stroke-linecap="round" />
+
+  <!-- Floating Leaf -->
+  <g transform="translate(40, 95) rotate(35) scale(0.6)">
+    <!-- Shadow -->
+    <path d="M 5,5 C 20,-15 40,-5 45,15 C 30,35 10,25 5,5 Z" fill="rgba(128,185,24,0.2)" />
+    <!-- Base -->
+    <path d="M 0,0 C 15,-20 35,-10 40,10 C 25,30 5,20 0,0 Z" fill="#80B918" />
+  </g>
+
+  <!-- Floating Sparkle (Warning Orange) -->
+  <g transform="translate(200, 110) rotate(15) scale(0.6)">
+    <path d="M 5,-10 Q 5,5 20,5 Q 5,5 5,20 Q 5,5 -10,5 Q 5,5 5,-10 Z" fill="rgba(244,162,97,0.3)" />
+    <path d="M 0,-15 Q 0,0 15,0 Q 0,0 0,15 Q 0,0 -15,0 Q 0,0 0,-15 Z" fill="#F4A261" />
+  </g>
+
+  <!-- Floating 'X' Mark (Grey) -->
+  <g transform="translate(185, 175) rotate(-20) scale(0.8)">
+    <path d="M -6,-6 L 6,6 M -6,6 L 6,-6" stroke="#94A3B8" stroke-width="4" stroke-linecap="round" />
+  </g>
+
+  <!-- Centerpiece: Isometric Folded Map -->
+  <g transform="translate(0, 5)">
+    <!-- Map Drop Shadow -->
+    <polygon points="120,146 190,176 120,206 50,176" fill="rgba(71,85,105,0.08)" />
+    
+    <!-- Map Base Surface -->
+    <polygon points="120,140 190,170 120,200 50,170" fill="#FFFFFF" />
+    
+    <!-- Map Grid / Streets (Inner details) -->
+    <line x1="85" y1="155" x2="155" y2="185" stroke="#F1F5F9" stroke-width="4" stroke-linecap="round" />
+    <line x1="155" y1="155" x2="85" y2="185" stroke="#F1F5F9" stroke-width="4" stroke-linecap="round" />
+    <line x1="100" y1="148" x2="140" y2="191" stroke="#F1F5F9" stroke-width="4" stroke-linecap="round" />
+
+    <!-- Map Border -->
+    <polygon points="120,140 190,170 120,200 50,170" fill="none" stroke="#CBD5E1" stroke-width="4" stroke-linejoin="round" />
+    
+    <!-- Small Target/Ping on the map indicating the dropped location -->
+    <ellipse cx="120" cy="170" rx="16" ry="6" fill="rgba(230,57,70,0.15)" />
+    <ellipse cx="120" cy="170" rx="6" ry="2.5" fill="#E63946" />
+  </g>
+
+  <!-- The Main Location Pin -->
+  <g transform="translate(0, -5)">
+    <!-- Pin Drop Shadow hitting the map -->
+    <ellipse cx="120" cy="168" rx="14" ry="5" fill="rgba(42,157,143,0.25)" />
+
+    <!-- Pin Body (Teal) -->
+    <path d="M 84,80 A 36,36 0 1,1 156,80 C 156,110 135,145 120,162 C 105,145 84,110 84,80 Z" fill="#2A9D8F" />
+    
+    <!-- Left-side Highlight (Creates soft 2D volume) -->
+    <path d="M 84,80 A 36,36 0 0,1 120,44 L 120,162 C 105,145 84,110 84,80 Z" fill="#FFFFFF" opacity="0.15" />
+    
+    <!-- Pin Inner Hole -->
+    <circle cx="120" cy="80" r="14" fill="#F8FAFC" />
+  </g>
+
+  <!-- Alert Badge: Not Available / X -->
+  <g transform="translate(160, 65)">
+    <!-- Badge Shadow -->
+    <circle cx="0" cy="5" r="26" fill="rgba(230,57,70,0.15)" />
+    
+    <!-- Badge Background (Red) -->
+    <circle cx="0" cy="0" r="26" fill="#E63946" />
+    
+    <!-- Bold White 'X' -->
+    <path d="M -12,-12 L 12,12 M -12,12 L 12,-12" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" />
+  </g>
+
+</svg>

@@ -23,6 +23,8 @@
 - Advanced search and filtering capabilities
 - Delivery and pickup checkout modes with per-mode validation
 - Scheduled delivery slots with vendor availability checks
+- Multi-vendor cart with grouped checkout (single payment, multiple child orders)
+- Grouped checkout ETA UX (`All deliveries by` + per-vendor ETA)
 - Real-time order tracking with live GPS location updates, socket streaming, and fallback polling
 - Explicit tracking health states in UI (Live / Degraded / Offline)
 - In-app chat with riders (text, voice messages, images)
@@ -82,6 +84,10 @@
 
 - Distance-based delivery fees with min/max caps and dynamic service fees
 - Weather-aware rain surge fee via Tomorrow.io (configurable thresholds)
+- Mixed cart + mixed checkout backend rollout (feature-flagged)
+  - `MIXED_CART_ENABLED` for vendor-scoped cart groups
+  - `MIXED_CHECKOUT_ENABLED` for grouped checkout sessions
+  - New checkout-session payment orchestration (`/api/checkout-sessions/*`)
 - Credit hold flow to prevent double-spend while payments are pending
 - Paystack initialize/verify flow with customer payment confirmation screens
 - COD policy engine (eligibility, trust checks, no-show controls, and upfront/remaining split)
@@ -109,6 +115,8 @@ GrabGo/
 │   ├── routes/                   # RESTful API endpoints
 │   │   ├── auth.js              # Authentication (/api/users/*)
 │   │   ├── orders.js            # Order management
+│   │   ├── checkout_sessions.js # Grouped checkout session lifecycle
+│   │   ├── cart.js              # Cart + grouped cart endpoints
 │   │   ├── riders.js            # Rider operations & dispatch
 │   │   ├── restaurants.js       # Restaurant management
 │   │   ├── groceries.js         # Grocery store operations
@@ -121,6 +129,8 @@ GrabGo/
 │   │   └── tracking_routes.js   # Order tracking
 │   ├── services/                 # Business logic layer
 │   │   ├── dispatch_service.js  # Smart rider dispatch algorithm
+│   │   ├── checkout_session_service.js # Grouped checkout + payment orchestration
+│   │   ├── cart_service.js      # Vendor-scoped cart grouping logic
 │   │   ├── tracking_service.js  # Real-time order tracking & ETA
 │   │   ├── analytic_service.js  # Delivery analytics & metrics
 │   │   ├── cod_service.js       # COD eligibility and policy checks

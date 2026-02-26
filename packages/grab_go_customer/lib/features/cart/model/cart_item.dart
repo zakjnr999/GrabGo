@@ -177,7 +177,8 @@ class _CartItemState extends State<CartItem> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        AppStrings.cartDelete,
+                        isItemPending ? 'Removing' : AppStrings.cartDelete,
+                        textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 11.sp,

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:chopper/chopper.dart';
@@ -37,6 +38,7 @@ class CartProvider extends ChangeNotifier {
   String? _cartType;
   String _fulfillmentMode = 'delivery';
   Map<String, dynamic>? _scheduleAvailability;
+  final Map<String, _VendorGroupEta> _vendorGroupEtasByKey = {};
   final Map<String, String> _cartItemIdsByKey = {};
   final Set<String> _pendingItemOps = {};
   bool _giftOrderEnabled = false;
@@ -66,6 +68,8 @@ class CartProvider extends ChangeNotifier {
   bool get hasPendingCartOperations => _pendingItemOps.isNotEmpty;
   bool get isCartInteractionLocked => hasPendingCartOperations;
   String get fulfillmentMode => _fulfillmentMode;
+  Map<String, String> get vendorEtaLabelsByGroupKey => _vendorGroupEtasByKey
+      .map((key, value) => MapEntry(key, _formatEtaWindow(value)));
   int get providerCount => _cartItems.keys
       .map((item) => '${item.itemType}:${item.providerId}')
       .where((key) => key.trim().isNotEmpty)
@@ -81,6 +85,252 @@ class CartProvider extends ChangeNotifier {
   String get giftNoteDraft => _giftNoteDraft;
   bool isItemOperationPending(CartItem item) =>
       _pendingItemOps.contains(_itemKey(item));
+
+  String buildVendorGroupKey({
+    required String itemType,
+    required String providerId,
+    required String providerName,
+  }) {
+    final normalizedItemType = itemType.trim();
+    final normalizedProviderId = providerId.trim();
+    final normalizedProviderName = providerName.trim();
+    final providerKey = normalizedProviderId.isNotEmpty
+        ? normalizedProviderId
+        : '$normalizedItemType:${normalizedProviderName.toLowerCase()}';
+    return '$normalizedItemType:$providerKey';
+  }
+
+  String? etaLabelForVendorGroupKey(String groupKey) {
+    final eta = _vendorGroupEtasByKey[groupKey];
+    if (eta == null) return null;
+    return _formatEtaWindow(eta);
+  }
+
+  String? etaLabelForVendor({
+    required String itemType,
+    required String providerId,
+    required String providerName,
+  }) {
+    final key = buildVendorGroupKey(
+      itemType: itemType,
+      providerId: providerId,
+      providerName: providerName,
+    );
+    return etaLabelForVendorGroupKey(key);
+  }
+
+  String _formatEtaWindow(_VendorGroupEta eta) {
+    var min = eta.minMinutes;
+    var max = eta.maxMinutes;
+    if (min == max) {
+      const padding = 5;
+      min = math.max(5, min - padding);
+      max = max + padding;
+    }
+    return '$min-$max mins';
+  }
+
+  String? _mapCartTypeToItemType(String? cartType) {
+    final normalized = cartType?.trim().toLowerCase();
+    if (normalized == 'food') return 'Food';
+    if (normalized == 'grocery') return 'GroceryItem';
+    if (normalized == 'pharmacy') return 'PharmacyItem';
+    if (normalized == 'grabmart') return 'GrabMartItem';
+    return null;
+  }
+
+  String? _inferItemTypeFromRawGroup(Map<String, dynamic> group) {
+    final fromCartType = _mapCartTypeToItemType(group['cartType']?.toString());
+    if (fromCartType != null) return fromCartType;
+
+    final rawItems = group['items'];
+    if (rawItems is! List || rawItems.isEmpty) return null;
+    final firstRawItem = rawItems.first;
+    if (firstRawItem is! Map) return null;
+    final firstItem = Map<String, dynamic>.from(firstRawItem);
+    final directType = firstItem['itemType']?.toString();
+    if (directType != null && directType.trim().isNotEmpty) {
+      return directType.trim();
+    }
+    if (firstItem['food'] != null) return 'Food';
+    if (firstItem['groceryItem'] != null) return 'GroceryItem';
+    if (firstItem['pharmacyItem'] != null) return 'PharmacyItem';
+    if (firstItem['grabMartItem'] != null) return 'GrabMartItem';
+    return null;
+  }
+
+  _ProviderIdentity _extractProviderIdentityFromRawGroup(
+    Map<String, dynamic> group,
+    String itemType,
+  ) {
+    String providerId = '';
+    String providerName = 'Vendor';
+
+    final rawItems = group['items'];
+    Map<String, dynamic>? firstItem;
+    if (rawItems is List && rawItems.isNotEmpty && rawItems.first is Map) {
+      firstItem = Map<String, dynamic>.from(rawItems.first as Map);
+    }
+
+    if (itemType == 'Food') {
+      providerId = group['restaurantId']?.toString() ?? '';
+      final restaurant = group['restaurant'];
+      if (restaurant is Map) {
+        providerName =
+            restaurant['restaurantName']?.toString() ??
+            restaurant['restaurant_name']?.toString() ??
+            restaurant['name']?.toString() ??
+            providerName;
+      }
+
+      final itemDataRaw = firstItem?['itemId'] ?? firstItem?['food'];
+      if (itemDataRaw is Map) {
+        final itemData = Map<String, dynamic>.from(itemDataRaw);
+        final restaurantData = itemData['restaurant'];
+        if (restaurantData is Map) {
+          providerId = providerId.isNotEmpty
+              ? providerId
+              : (restaurantData['_id']?.toString() ??
+                    restaurantData['id']?.toString() ??
+                    '');
+          providerName =
+              restaurantData['restaurantName']?.toString() ??
+              restaurantData['restaurant_name']?.toString() ??
+              restaurantData['name']?.toString() ??
+              providerName;
+        } else if (restaurantData is String && providerId.isEmpty) {
+          providerId = restaurantData;
+        }
+        providerId = providerId.isNotEmpty
+            ? providerId
+            : (itemData['restaurantId']?.toString() ??
+                  firstItem?['restaurantId']?.toString() ??
+                  '');
+        providerName = itemData['restaurantName']?.toString() ?? providerName;
+      }
+    } else if (itemType == 'GroceryItem') {
+      providerId = group['groceryStoreId']?.toString() ?? '';
+      final store = group['groceryStore'];
+      if (store is Map) {
+        providerName =
+            store['storeName']?.toString() ??
+            store['store_name']?.toString() ??
+            store['name']?.toString() ??
+            providerName;
+      }
+
+      final itemDataRaw = firstItem?['itemId'] ?? firstItem?['groceryItem'];
+      if (itemDataRaw is Map) {
+        final itemData = Map<String, dynamic>.from(itemDataRaw);
+        final storeData = itemData['store'];
+        if (storeData is Map) {
+          providerId = providerId.isNotEmpty
+              ? providerId
+              : (storeData['_id']?.toString() ??
+                    storeData['id']?.toString() ??
+                    '');
+          providerName =
+              storeData['storeName']?.toString() ??
+              storeData['store_name']?.toString() ??
+              storeData['name']?.toString() ??
+              providerName;
+        } else if (storeData is String && providerId.isEmpty) {
+          providerId = storeData;
+        }
+        providerId = providerId.isNotEmpty
+            ? providerId
+            : (itemData['storeId']?.toString() ??
+                  firstItem?['groceryStoreId']?.toString() ??
+                  '');
+      }
+    } else if (itemType == 'PharmacyItem') {
+      providerId = group['pharmacyStoreId']?.toString() ?? '';
+      final store = group['pharmacyStore'];
+      if (store is Map) {
+        providerName =
+            store['storeName']?.toString() ??
+            store['store_name']?.toString() ??
+            store['name']?.toString() ??
+            providerName;
+      }
+
+      final itemDataRaw = firstItem?['itemId'] ?? firstItem?['pharmacyItem'];
+      if (itemDataRaw is Map) {
+        final itemData = Map<String, dynamic>.from(itemDataRaw);
+        final storeData = itemData['store'];
+        if (storeData is Map) {
+          providerId = providerId.isNotEmpty
+              ? providerId
+              : (storeData['_id']?.toString() ??
+                    storeData['id']?.toString() ??
+                    '');
+          providerName =
+              storeData['storeName']?.toString() ??
+              storeData['store_name']?.toString() ??
+              storeData['name']?.toString() ??
+              providerName;
+        } else if (storeData is String && providerId.isEmpty) {
+          providerId = storeData;
+        }
+        providerId = providerId.isNotEmpty
+            ? providerId
+            : (itemData['storeId']?.toString() ??
+                  firstItem?['pharmacyStoreId']?.toString() ??
+                  '');
+      }
+    } else if (itemType == 'GrabMartItem') {
+      providerId = group['grabMartStoreId']?.toString() ?? '';
+      final store = group['grabMartStore'];
+      if (store is Map) {
+        providerName =
+            store['storeName']?.toString() ??
+            store['store_name']?.toString() ??
+            store['name']?.toString() ??
+            providerName;
+      }
+
+      final itemDataRaw = firstItem?['itemId'] ?? firstItem?['grabMartItem'];
+      if (itemDataRaw is Map) {
+        final itemData = Map<String, dynamic>.from(itemDataRaw);
+        final storeData = itemData['store'];
+        if (storeData is Map) {
+          providerId = providerId.isNotEmpty
+              ? providerId
+              : (storeData['_id']?.toString() ??
+                    storeData['id']?.toString() ??
+                    '');
+          providerName =
+              storeData['storeName']?.toString() ??
+              storeData['store_name']?.toString() ??
+              storeData['name']?.toString() ??
+              providerName;
+        } else if (storeData is String && providerId.isEmpty) {
+          providerId = storeData;
+        }
+        providerId = providerId.isNotEmpty
+            ? providerId
+            : (itemData['storeId']?.toString() ??
+                  firstItem?['grabMartStoreId']?.toString() ??
+                  '');
+      }
+    }
+
+    providerName = providerName.trim().isNotEmpty
+        ? providerName.trim()
+        : 'Vendor';
+    providerId = providerId.trim();
+    return _ProviderIdentity(id: providerId, name: providerName);
+  }
+
+  _VendorGroupEta? _extractEtaFromPricing(dynamic rawPricing) {
+    if (rawPricing is! Map) return null;
+    final pricing = Map<String, dynamic>.from(rawPricing);
+    final minMinutes = (pricing['estimatedDeliveryMin'] as num?)?.toInt();
+    final maxMinutes = (pricing['estimatedDeliveryMax'] as num?)?.toInt();
+    if (minMinutes == null || maxMinutes == null) return null;
+    if (minMinutes <= 0 || maxMinutes <= 0) return null;
+    return _VendorGroupEta(minMinutes: minMinutes, maxMinutes: maxMinutes);
+  }
 
   String _normalizeFulfillmentMode(String? mode) {
     if (mode == null) return 'delivery';
@@ -179,6 +429,7 @@ class CartProvider extends ChangeNotifier {
   Future<bool> _syncFromBackendOnce() async {
     var syncSucceeded = false;
     final mutationVersionAtStart = _localMutationVersion;
+    final parsedVendorGroupEtas = <String, _VendorGroupEta>{};
 
     try {
       final previousOpenById = <String, bool>{};
@@ -215,6 +466,20 @@ class CartProvider extends ChangeNotifier {
             for (final rawGroup in rawGroups) {
               if (rawGroup is! Map) continue;
               final group = Map<String, dynamic>.from(rawGroup);
+              final groupItemType = _inferItemTypeFromRawGroup(group);
+              final groupEta = _extractEtaFromPricing(group['pricing']);
+              if (groupItemType != null && groupEta != null) {
+                final provider = _extractProviderIdentityFromRawGroup(
+                  group,
+                  groupItemType,
+                );
+                final groupKey = buildVendorGroupKey(
+                  itemType: groupItemType,
+                  providerId: provider.id,
+                  providerName: provider.name,
+                );
+                parsedVendorGroupEtas[groupKey] = groupEta;
+              }
               groupedFulfillmentMode =
                   groupedFulfillmentMode ??
                   group['fulfillmentMode']?.toString();
@@ -278,6 +543,7 @@ class CartProvider extends ChangeNotifier {
 
       if (cartData == null) {
         _scheduleAvailability = null;
+        _vendorGroupEtasByKey.clear();
         debugPrint('Error syncing cart from backend: $syncError');
         return syncSucceeded;
       }
@@ -285,6 +551,7 @@ class CartProvider extends ChangeNotifier {
       final rawItems = cartData['items'];
       if (rawItems is! List) {
         _scheduleAvailability = null;
+        _vendorGroupEtasByKey.clear();
         _cartItems.clear();
         _cartItemIdsByKey.clear();
         _cartType = null;
@@ -306,6 +573,9 @@ class CartProvider extends ChangeNotifier {
         _scheduleAvailability = _parseScheduleAvailability(
           cartData['scheduleAvailability'],
         );
+        _vendorGroupEtasByKey
+          ..clear()
+          ..addAll(parsedVendorGroupEtas);
         final previousMode = _normalizeFulfillmentMode(_fulfillmentMode);
         final previousItemOrderStableKeys = _cartItems.keys
             .map(_itemStableKey)
@@ -627,6 +897,7 @@ class CartProvider extends ChangeNotifier {
     _fulfillmentMode = normalizedMode;
     _cartItems.clear();
     _cartItemIdsByKey.clear();
+    _vendorGroupEtasByKey.clear();
     _cartType = null;
     _scheduleAvailability = null;
     _markLocalCartMutated();
@@ -677,6 +948,7 @@ class CartProvider extends ChangeNotifier {
 
     _cartItems.clear();
     _cartItemIdsByKey.clear();
+    _vendorGroupEtasByKey.clear();
     _cartType = null;
     _markLocalCartMutated();
     _applyPricing(null);
@@ -1430,17 +1702,6 @@ class CartProvider extends ChangeNotifier {
     _pendingItemOps.add(key);
 
     try {
-      final previousQuantity = _cartItems[item] ?? 1;
-      final previousCartType = _cartType;
-      _cartItems.remove(item);
-      if (_cartItems.isEmpty) {
-        _cartType = null;
-      }
-      _markLocalCartMutated();
-      _recalculateLocalPricing();
-      _saveCart();
-      _resetGiftOrderDraftIfCartIsEmpty(notify: false);
-      notifyListeners();
       var backendError = await _removeFromBackend(cartItemId);
       if (_isItemNotFoundInCartError(backendError)) {
         final freshCartItemId = await _ensureCartItemId(
@@ -1455,16 +1716,19 @@ class CartProvider extends ChangeNotifier {
         }
       }
       if (backendError != null) {
-        _cartItems[item] = previousQuantity;
-        _cartType = previousCartType;
-        _markLocalCartMutated();
-        _recalculateLocalPricing();
-        _saveCart();
-        _resetGiftOrderDraftIfCartIsEmpty(notify: false);
-        notifyListeners();
         await syncFromBackend();
         return;
       }
+
+      _cartItems.remove(item);
+      if (_cartItems.isEmpty) {
+        _cartType = null;
+      }
+      _markLocalCartMutated();
+      _recalculateLocalPricing();
+      _saveCart();
+      _resetGiftOrderDraftIfCartIsEmpty(notify: false);
+      notifyListeners();
       debugPrint('✅ Remove operation completed');
 
       await syncFromBackend();
@@ -1477,6 +1741,7 @@ class CartProvider extends ChangeNotifier {
     _cartItems.clear();
     _cartType = null;
     _cartItemIdsByKey.clear();
+    _vendorGroupEtasByKey.clear();
     _markLocalCartMutated();
     _applyPricing(null);
     _resetGiftOrderDraftIfCartIsEmpty(notify: false);
@@ -1512,4 +1777,18 @@ class CartProvider extends ChangeNotifier {
   }
 
   int get uniqueItemCount => _cartItems.length;
+}
+
+class _VendorGroupEta {
+  final int minMinutes;
+  final int maxMinutes;
+
+  const _VendorGroupEta({required this.minMinutes, required this.maxMinutes});
+}
+
+class _ProviderIdentity {
+  final String id;
+  final String name;
+
+  const _ProviderIdentity({required this.id, required this.name});
 }
