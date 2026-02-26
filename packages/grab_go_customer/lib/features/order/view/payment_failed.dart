@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
+import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
 class PaymentFailed extends StatefulWidget {
@@ -37,7 +38,8 @@ class PaymentFailed extends StatefulWidget {
   State<PaymentFailed> createState() => _PaymentFailedState();
 }
 
-class _PaymentFailedState extends State<PaymentFailed> with TickerProviderStateMixin {
+class _PaymentFailedState extends State<PaymentFailed>
+    with TickerProviderStateMixin {
   late AnimationController _animationController;
   late AnimationController _bounceController;
   late Animation<double> _fadeAnimation;
@@ -49,8 +51,14 @@ class _PaymentFailedState extends State<PaymentFailed> with TickerProviderStateM
   void initState() {
     super.initState();
 
-    _animationController = AnimationController(duration: const Duration(milliseconds: 1200), vsync: this);
-    _bounceController = AnimationController(duration: const Duration(milliseconds: 600), vsync: this);
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    );
+    _bounceController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
@@ -73,10 +81,9 @@ class _PaymentFailedState extends State<PaymentFailed> with TickerProviderStateM
       ),
     );
 
-    _bounceAnimation = Tween<double>(
-      begin: 0.8,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _bounceController, curve: Curves.elasticOut));
+    _bounceAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _bounceController, curve: Curves.elasticOut),
+    );
 
     _animationController.forward();
     HapticFeedback.mediumImpact();
@@ -111,7 +118,9 @@ class _PaymentFailedState extends State<PaymentFailed> with TickerProviderStateM
                     builder: (context, constraints) => SingleChildScrollView(
                       padding: EdgeInsets.symmetric(horizontal: 20.w),
                       child: ConstrainedBox(
-                        constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
+                        ),
                         child: Transform.translate(
                           offset: Offset(0, _slideAnimation.value),
                           child: FadeTransition(
@@ -126,7 +135,10 @@ class _PaymentFailedState extends State<PaymentFailed> with TickerProviderStateM
                                     width: 120.w,
                                     height: 120.h,
                                     margin: EdgeInsets.only(bottom: 32.h),
-                                    decoration: BoxDecoration(shape: BoxShape.circle, color: colors.error),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: colors.error,
+                                    ),
                                     child: AnimatedBuilder(
                                       animation: _bounceController,
                                       builder: (context, child) {
@@ -138,7 +150,11 @@ class _PaymentFailedState extends State<PaymentFailed> with TickerProviderStateM
                                               package: 'grab_go_shared',
                                               height: 52.h,
                                               width: 52.h,
-                                              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                              colorFilter:
+                                                  const ColorFilter.mode(
+                                                    Colors.white,
+                                                    BlendMode.srcIn,
+                                                  ),
                                             ),
                                           ),
                                         );
@@ -192,74 +208,144 @@ class _PaymentFailedState extends State<PaymentFailed> with TickerProviderStateM
 
   Widget _buildPaymentDetailsCard(AppColorsExtension colors) {
     final formattedTimestamp = _formatReceiptTimestamp(widget.timestamp);
+    final receiptBackgroundColor = colors.backgroundSecondary.withValues(
+      alpha: 0.6,
+    );
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
-      decoration: BoxDecoration(
-        color: colors.backgroundSecondary.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: UmbrellaHeader(
+            backgroundColor: receiptBackgroundColor,
+            curveDepth: 10,
+            numberOfCurves: 24,
+            curvesOnTop: true,
+            child: SizedBox(height: 20.h),
+          ),
+        ),
+        Container(
+          width: double.infinity,
+          color: receiptBackgroundColor,
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                "Payment Receipt",
-                style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+              Row(
+                children: [
+                  Text(
+                    "Payment Receipt",
+                    style: TextStyle(
+                      fontSize: 15.sp,
+                      fontWeight: FontWeight.w800,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (widget.orderNumber != null &&
+                      widget.orderNumber!.trim().isNotEmpty)
+                    Text(
+                      "#${widget.orderNumber}",
+                      style: TextStyle(
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w700,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                ],
               ),
-              const Spacer(),
-              if (widget.orderNumber != null && widget.orderNumber!.trim().isNotEmpty)
-                Text(
-                  "#${widget.orderNumber}",
-                  style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w700, color: colors.textSecondary),
+              SizedBox(height: 8.h),
+              Text(
+                widget.method,
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w700,
+                  color: colors.textPrimary,
                 ),
+              ),
+              if (formattedTimestamp.isNotEmpty) ...[
+                SizedBox(height: 2.h),
+                Text(
+                  formattedTimestamp,
+                  style: TextStyle(
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w500,
+                    color: colors.textSecondary,
+                  ),
+                ),
+              ],
+              SizedBox(height: 16.h),
+              _buildReceiptDivider(colors),
+              SizedBox(height: 16.h),
+
+              _buildEnhancedDetailRow(
+                "Subtotal",
+                "GHC ${widget.subTotal.toStringAsFixed(2)}",
+                colors,
+                false,
+              ),
+              SizedBox(height: 8.h),
+              _buildEnhancedDetailRow(
+                "Delivery Fee",
+                "GHC ${widget.deliveryFee.toStringAsFixed(2)}",
+                colors,
+                false,
+              ),
+              if (widget.serviceFee > 0) ...[
+                SizedBox(height: 8.h),
+                _buildEnhancedDetailRow(
+                  "Service Fee",
+                  " GHC ${widget.serviceFee.toStringAsFixed(2)}",
+                  colors,
+                  false,
+                ),
+              ],
+              if (widget.rainFee > 0) ...[
+                SizedBox(height: 8.h),
+                _buildEnhancedDetailRow(
+                  "Rain Fee",
+                  "GHC ${widget.rainFee.toStringAsFixed(2)}",
+                  colors,
+                  false,
+                ),
+              ],
+              if (widget.tip > 0) ...[
+                SizedBox(height: 8.h),
+                _buildEnhancedDetailRow(
+                  "Driver Tip",
+                  "GHC ${widget.tip.toStringAsFixed(2)}",
+                  colors,
+                  false,
+                ),
+              ],
+              SizedBox(height: 12.h),
+              DottedLine(
+                dashLength: 4,
+                dashGapLength: 3,
+                lineThickness: 1,
+                dashColor: colors.textSecondary.withValues(alpha: 0.35),
+              ),
+              SizedBox(height: 12.h),
+
+              _buildEnhancedDetailRow(
+                "Total Due",
+                "GHC ${widget.total.toStringAsFixed(2)}",
+                colors,
+                true,
+              ),
             ],
           ),
-          SizedBox(height: 8.h),
-          Text(
-            widget.method,
-            style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+        ),
+        SizedBox(
+          width: double.infinity,
+          child: UmbrellaHeader(
+            backgroundColor: receiptBackgroundColor,
+            curveDepth: 10,
+            numberOfCurves: 24,
+            child: SizedBox(height: 20.h),
           ),
-          if (formattedTimestamp.isNotEmpty) ...[
-            SizedBox(height: 2.h),
-            Text(
-              formattedTimestamp,
-              style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
-            ),
-          ],
-          SizedBox(height: 16.h),
-          _buildReceiptDivider(colors),
-          SizedBox(height: 16.h),
-
-          _buildEnhancedDetailRow("Subtotal", "GHC ${widget.subTotal.toStringAsFixed(2)}", colors, false),
-          SizedBox(height: 8.h),
-          _buildEnhancedDetailRow("Delivery Fee", "GHC ${widget.deliveryFee.toStringAsFixed(2)}", colors, false),
-          if (widget.serviceFee > 0) ...[
-            SizedBox(height: 8.h),
-            _buildEnhancedDetailRow("Service Fee", " GHC ${widget.serviceFee.toStringAsFixed(2)}", colors, false),
-          ],
-          if (widget.rainFee > 0) ...[
-            SizedBox(height: 8.h),
-            _buildEnhancedDetailRow("Rain Fee", "GHC ${widget.rainFee.toStringAsFixed(2)}", colors, false),
-          ],
-          if (widget.tip > 0) ...[
-            SizedBox(height: 8.h),
-            _buildEnhancedDetailRow("Driver Tip", "GHC ${widget.tip.toStringAsFixed(2)}", colors, false),
-          ],
-          SizedBox(height: 12.h),
-          DottedLine(
-            dashLength: 4,
-            dashGapLength: 3,
-            lineThickness: 1,
-            dashColor: colors.textSecondary.withValues(alpha: 0.35),
-          ),
-          SizedBox(height: 12.h),
-
-          _buildEnhancedDetailRow("Total Due", "GHC ${widget.total.toStringAsFixed(2)}", colors, true),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -301,10 +387,25 @@ class _PaymentFailedState extends State<PaymentFailed> with TickerProviderStateM
     final parsed = DateTime.tryParse(value.trim());
     if (parsed == null) return value;
 
-    const months = <String>["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const months = <String>[
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
 
     final local = parsed.toLocal();
-    final hour12 = local.hour == 0 ? 12 : (local.hour > 12 ? local.hour - 12 : local.hour);
+    final hour12 = local.hour == 0
+        ? 12
+        : (local.hour > 12 ? local.hour - 12 : local.hour);
     final minute = local.minute.toString().padLeft(2, "0");
     final period = local.hour >= 12 ? "PM" : "AM";
 
@@ -315,8 +416,13 @@ class _PaymentFailedState extends State<PaymentFailed> with TickerProviderStateM
     return Container(
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
-        borderRadius: BorderRadius.only(topLeft: Radius.circular(24.r), topRight: Radius.circular(24.r)),
-        border: Border(top: BorderSide(color: colors.backgroundSecondary, width: 1)),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(24.r),
+          topRight: Radius.circular(24.r),
+        ),
+        border: Border(
+          top: BorderSide(color: colors.backgroundSecondary, width: 1),
+        ),
       ),
       child: Padding(
         padding: EdgeInsets.only(
@@ -331,7 +437,11 @@ class _PaymentFailedState extends State<PaymentFailed> with TickerProviderStateM
               width: double.infinity,
               onPressed: () => context.go('/orders'),
               buttonText: "Go to Orders",
-              textStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800, color: Colors.white),
+              textStyle: TextStyle(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
               backgroundColor: colors.accentOrange,
               padding: EdgeInsets.symmetric(vertical: 16.h),
               borderRadius: KBorderSize.borderMedium,
@@ -342,7 +452,12 @@ class _PaymentFailedState extends State<PaymentFailed> with TickerProviderStateM
     );
   }
 
-  Widget _buildEnhancedDetailRow(String label, String value, AppColorsExtension colors, bool isTotal) {
+  Widget _buildEnhancedDetailRow(
+    String label,
+    String value,
+    AppColorsExtension colors,
+    bool isTotal,
+  ) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,

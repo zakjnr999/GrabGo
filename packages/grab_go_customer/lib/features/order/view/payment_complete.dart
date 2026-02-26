@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/features/order/service/order_service_wrapper.dart';
+import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -242,151 +243,174 @@ class _PaymentCompleteState extends State<PaymentComplete>
     final hasCodSplit = codRemainingCashAmount > 0;
     final orderGrandTotal =
         widget.orderGrandTotal ?? (widget.total + codRemainingCashAmount);
+    final receiptBackgroundColor = colors.backgroundSecondary.withValues(
+      alpha: 0.6,
+    );
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
-      decoration: BoxDecoration(
-        color: colors.backgroundSecondary.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: UmbrellaHeader(
+            backgroundColor: receiptBackgroundColor,
+            curveDepth: 10,
+            numberOfCurves: 24,
+            curvesOnTop: true,
+            child: SizedBox(height: 20.h),
+          ),
+        ),
+        Container(
+          width: double.infinity,
+          color: receiptBackgroundColor,
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Row(
+                children: [
+                  Text(
+                    "Payment Receipt",
+                    style: TextStyle(
+                      fontSize: 15.sp,
+                      fontWeight: FontWeight.w800,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (widget.orderNumber != null &&
+                      widget.orderNumber!.trim().isNotEmpty)
+                    Text(
+                      "#${widget.orderNumber}",
+                      style: TextStyle(
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w700,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                ],
+              ),
+              SizedBox(height: 8.h),
               Text(
-                "Payment Receipt",
+                widget.method,
                 style: TextStyle(
-                  fontSize: 15.sp,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w700,
                   color: colors.textPrimary,
                 ),
               ),
-              const Spacer(),
-              if (widget.orderNumber != null &&
-                  widget.orderNumber!.trim().isNotEmpty)
+              if (formattedTimestamp.isNotEmpty) ...[
+                SizedBox(height: 2.h),
                 Text(
-                  "#${widget.orderNumber}",
+                  formattedTimestamp,
                   style: TextStyle(
                     fontSize: 11.sp,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w500,
                     color: colors.textSecondary,
                   ),
                 ),
+              ],
+
+              SizedBox(height: 16.h),
+              _buildReceiptDivider(colors),
+              SizedBox(height: 16.h),
+
+              _buildEnhancedDetailRow(
+                "Subtotal",
+                "GHC ${widget.subTotal.toStringAsFixed(2)}",
+                colors,
+                false,
+              ),
+              SizedBox(height: 8.h),
+              _buildEnhancedDetailRow(
+                "Delivery Fee",
+                "GHC ${widget.deliveryFee.toStringAsFixed(2)}",
+                colors,
+                false,
+              ),
+              if (widget.serviceFee > 0) ...[
+                SizedBox(height: 8.h),
+                _buildEnhancedDetailRow(
+                  "Service Fee",
+                  " GHC ${widget.serviceFee.toStringAsFixed(2)}",
+                  colors,
+                  false,
+                ),
+              ],
+              if (widget.rainFee > 0) ...[
+                SizedBox(height: 8.h),
+                _buildEnhancedDetailRow(
+                  "Rain Fee",
+                  "GHC ${widget.rainFee.toStringAsFixed(2)}",
+                  colors,
+                  false,
+                ),
+              ],
+              if (widget.tip > 0) ...[
+                SizedBox(height: 8.h),
+                _buildEnhancedDetailRow(
+                  "Driver Tip",
+                  "GHC ${widget.tip.toStringAsFixed(2)}",
+                  colors,
+                  false,
+                ),
+              ],
+              SizedBox(height: 12.h),
+              DottedLine(
+                dashLength: 4,
+                dashGapLength: 3,
+                lineThickness: 1,
+                dashColor: colors.textSecondary.withValues(alpha: 0.35),
+              ),
+              SizedBox(height: 12.h),
+
+              if (hasCodSplit) ...[
+                _buildEnhancedDetailRow(
+                  "Paid Online",
+                  "GHC ${widget.total.toStringAsFixed(2)}",
+                  colors,
+                  false,
+                ),
+                SizedBox(height: 8.h),
+                _buildEnhancedDetailRow(
+                  "Cash at Delivery",
+                  "GHC ${codRemainingCashAmount.toStringAsFixed(2)}",
+                  colors,
+                  false,
+                ),
+                SizedBox(height: 12.h),
+                DottedLine(
+                  dashLength: 4,
+                  dashGapLength: 3,
+                  lineThickness: 1,
+                  dashColor: colors.textSecondary.withValues(alpha: 0.35),
+                ),
+                SizedBox(height: 12.h),
+                _buildEnhancedDetailRow(
+                  "Order Total",
+                  "GHC ${orderGrandTotal.toStringAsFixed(2)}",
+                  colors,
+                  true,
+                ),
+              ] else
+                _buildEnhancedDetailRow(
+                  "Total Paid",
+                  "GHC ${widget.total.toStringAsFixed(2)}",
+                  colors,
+                  true,
+                ),
             ],
           ),
-          SizedBox(height: 8.h),
-          Text(
-            widget.method,
-            style: TextStyle(
-              fontSize: 14.sp,
-              fontWeight: FontWeight.w700,
-              color: colors.textPrimary,
-            ),
+        ),
+        SizedBox(
+          width: double.infinity,
+          child: UmbrellaHeader(
+            backgroundColor: receiptBackgroundColor,
+            curveDepth: 10,
+            numberOfCurves: 24,
+            child: SizedBox(height: 20.h),
           ),
-          if (formattedTimestamp.isNotEmpty) ...[
-            SizedBox(height: 2.h),
-            Text(
-              formattedTimestamp,
-              style: TextStyle(
-                fontSize: 11.sp,
-                fontWeight: FontWeight.w500,
-                color: colors.textSecondary,
-              ),
-            ),
-          ],
-
-          SizedBox(height: 16.h),
-          _buildReceiptDivider(colors),
-          SizedBox(height: 16.h),
-
-          _buildEnhancedDetailRow(
-            "Subtotal",
-            "GHC ${widget.subTotal.toStringAsFixed(2)}",
-            colors,
-            false,
-          ),
-          SizedBox(height: 8.h),
-          _buildEnhancedDetailRow(
-            "Delivery Fee",
-            "GHC ${widget.deliveryFee.toStringAsFixed(2)}",
-            colors,
-            false,
-          ),
-          if (widget.serviceFee > 0) ...[
-            SizedBox(height: 8.h),
-            _buildEnhancedDetailRow(
-              "Service Fee",
-              " GHC ${widget.serviceFee.toStringAsFixed(2)}",
-              colors,
-              false,
-            ),
-          ],
-          if (widget.rainFee > 0) ...[
-            SizedBox(height: 8.h),
-            _buildEnhancedDetailRow(
-              "Rain Fee",
-              "GHC ${widget.rainFee.toStringAsFixed(2)}",
-              colors,
-              false,
-            ),
-          ],
-          if (widget.tip > 0) ...[
-            SizedBox(height: 8.h),
-            _buildEnhancedDetailRow(
-              "Driver Tip",
-              "GHC ${widget.tip.toStringAsFixed(2)}",
-              colors,
-              false,
-            ),
-          ],
-          SizedBox(height: 12.h),
-          DottedLine(
-            dashLength: 4,
-            dashGapLength: 3,
-            lineThickness: 1,
-            dashColor: colors.textSecondary.withValues(alpha: 0.35),
-          ),
-          SizedBox(height: 12.h),
-
-          if (hasCodSplit) ...[
-            _buildEnhancedDetailRow(
-              "Paid Online",
-              "GHC ${widget.total.toStringAsFixed(2)}",
-              colors,
-              false,
-            ),
-            SizedBox(height: 8.h),
-            _buildEnhancedDetailRow(
-              "Cash at Delivery",
-              "GHC ${codRemainingCashAmount.toStringAsFixed(2)}",
-              colors,
-              false,
-            ),
-            SizedBox(height: 12.h),
-            DottedLine(
-              dashLength: 4,
-              dashGapLength: 3,
-              lineThickness: 1,
-              dashColor: colors.textSecondary.withValues(alpha: 0.35),
-            ),
-            SizedBox(height: 12.h),
-            _buildEnhancedDetailRow(
-              "Order Total",
-              "GHC ${orderGrandTotal.toStringAsFixed(2)}",
-              colors,
-              true,
-            ),
-          ] else
-            _buildEnhancedDetailRow(
-              "Total Paid",
-              "GHC ${widget.total.toStringAsFixed(2)}",
-              colors,
-              true,
-            ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

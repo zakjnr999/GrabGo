@@ -11,6 +11,8 @@ import 'package:grab_go_shared/grub_go_shared.dart';
 class CartProvider extends ChangeNotifier {
   final Map<CartItem, int> _cartItems = {};
   bool _isSyncing = false;
+  bool _syncQueued = false;
+  int _localMutationVersion = 0;
   double? _subtotal;
   double _deliveryFee = 0.0;
   double _serviceFee = 0.0;
@@ -59,6 +61,8 @@ class CartProvider extends ChangeNotifier {
   String get giftRecipientNameDraft => _giftRecipientNameDraft;
   String get giftRecipientPhoneDraft => _giftRecipientPhoneDraft;
   String get giftNoteDraft => _giftNoteDraft;
+  bool isItemOperationPending(CartItem item) =>
+      _pendingItemOps.contains(_itemKey(item));
 
   String _normalizeFulfillmentMode(String? mode) {
     if (mode == null) return 'delivery';
@@ -121,8 +125,12 @@ class CartProvider extends ChangeNotifier {
 
   /// Sync cart from backend
   Future<bool> syncFromBackend() async {
-    if (_isSyncing) return true;
+    if (_isSyncing) {
+      _syncQueued = true;
+      return true;
+    }
     var syncSucceeded = false;
+    final mutationVersionAtStart = _localMutationVersion;
 
     try {
       _isSyncing = true;
@@ -149,6 +157,14 @@ class CartProvider extends ChangeNotifier {
         syncSucceeded = true;
         final cartData = response.body!['cart'];
         if (cartData != null && cartData['items'] != null) {
+          final shouldSkipApplyingSnapshot =
+              mutationVersionAtStart != _localMutationVersion ||
+              _pendingItemOps.isNotEmpty;
+          if (shouldSkipApplyingSnapshot) {
+            _syncQueued = true;
+            return syncSucceeded;
+          }
+
           _scheduleAvailability = _parseScheduleAvailability(
             cartData['scheduleAvailability'],
           );
@@ -255,6 +271,12 @@ class CartProvider extends ChangeNotifier {
     } finally {
       _isSyncing = false;
       notifyListeners();
+      if (_syncQueued) {
+        _syncQueued = false;
+        Future.microtask(() {
+          syncFromBackend();
+        });
+      }
     }
     return syncSucceeded;
   }
@@ -421,6 +443,7 @@ class CartProvider extends ChangeNotifier {
     _cartItemIdsByKey.clear();
     _cartType = null;
     _scheduleAvailability = null;
+    _markLocalCartMutated();
     _applyPricing(null);
     notifyListeners();
     await syncFromBackend();
@@ -469,6 +492,7 @@ class CartProvider extends ChangeNotifier {
     _cartItems.clear();
     _cartItemIdsByKey.clear();
     _cartType = null;
+    _markLocalCartMutated();
     _applyPricing(null);
     notifyListeners();
 
@@ -815,6 +839,10 @@ class CartProvider extends ChangeNotifier {
     }
   }
 
+  void _markLocalCartMutated() {
+    _localMutationVersion++;
+  }
+
   /// Add item to backend
   Future<String?> _addToBackend(CartItem item, int quantity) async {
     try {
@@ -936,10 +964,19 @@ class CartProvider extends ChangeNotifier {
     return 'Could not add item to cart. Please try again.';
   }
 
+  Future<String?> _ensureCartItemId(String key) async {
+    var cartItemId = _cartItemIdsByKey[key];
+    if (cartItemId != null) return cartItemId;
+
+    await syncFromBackend();
+    cartItemId = _cartItemIdsByKey[key];
+    return cartItemId;
+  }
+
   /// Update quantity on backend
-  Future<void> _updateQuantityOnBackend(String itemId, int quantity) async {
+  Future<String?> _updateQuantityOnBackend(String itemId, int quantity) async {
     try {
-      await cartApiService.updateCartItem(
+      final response = await cartApiService.updateCartItem(
         itemId,
         {'quantity': quantity},
         fulfillmentMode: _fulfillmentMode,
@@ -947,25 +984,41 @@ class CartProvider extends ChangeNotifier {
         lng: _deliveryLongitude,
         useCredits: _useCredits,
       );
+      if (!response.isSuccessful) {
+        return _extractCartApiErrorMessage(
+          response,
+          fallback: 'Failed to update cart item quantity.',
+        );
+      }
+      return null;
     } catch (e) {
       debugPrint('Error updating backend cart: $e');
+      return e.toString();
     }
   }
 
   /// Remove from backend
-  Future<void> _removeFromBackend(String itemId) async {
+  Future<String?> _removeFromBackend(String itemId) async {
     try {
       debugPrint('🔄 Calling backend remove API for item: $itemId');
-      await cartApiService.removeFromCart(
+      final response = await cartApiService.removeFromCart(
         itemId,
         fulfillmentMode: _fulfillmentMode,
         lat: _deliveryLatitude,
         lng: _deliveryLongitude,
         useCredits: _useCredits,
       );
+      if (!response.isSuccessful) {
+        return _extractCartApiErrorMessage(
+          response,
+          fallback: 'Failed to remove item from cart.',
+        );
+      }
       debugPrint('✅ Successfully removed from backend');
+      return null;
     } catch (e) {
       debugPrint('❌ Error removing from backend cart: $e');
+      return e.toString();
     }
   }
 
@@ -1028,6 +1081,7 @@ class CartProvider extends ChangeNotifier {
         _cartItems.clear();
         _cartItemIdsByKey.clear();
         _cartType = null;
+        _markLocalCartMutated();
         _saveCart();
       }
     }
@@ -1041,6 +1095,7 @@ class CartProvider extends ChangeNotifier {
         _cartItems[item] = 1;
       }
 
+      _markLocalCartMutated();
       _recalculateLocalPricing();
       _saveCart();
       notifyListeners();
@@ -1052,7 +1107,10 @@ class CartProvider extends ChangeNotifier {
       } else {
         final cartItemId = _cartItemIdsByKey[key];
         if (cartItemId != null) {
-          await _updateQuantityOnBackend(cartItemId, _cartItems[item]!);
+          addError = await _updateQuantityOnBackend(
+            cartItemId,
+            _cartItems[item]!,
+          );
         } else {
           addError = await _addToBackend(item, 1);
         }
@@ -1064,6 +1122,7 @@ class CartProvider extends ChangeNotifier {
         } else {
           _cartItems[item] = previousQuantity;
         }
+        _markLocalCartMutated();
         _recalculateLocalPricing();
         _saveCart();
         notifyListeners();
@@ -1090,36 +1149,52 @@ class CartProvider extends ChangeNotifier {
 
     final key = _itemKey(item);
     if (_pendingItemOps.contains(key)) return;
-    _pendingItemOps.add(key);
-
-    final cartItemId = _cartItemIdsByKey[key];
+    var cartItemId = _cartItemIdsByKey[key];
+    cartItemId ??= await _ensureCartItemId(key);
     if (cartItemId == null) {
-      try {
-        await syncFromBackend();
-      } finally {
-        _pendingItemOps.remove(key);
-      }
       return;
     }
+    _pendingItemOps.add(key);
 
     try {
+      final previousQuantity = _cartItems[item]!;
+      final previousCartType = _cartType;
+      String? backendError;
+
       if (_cartItems[item]! > 1) {
         _cartItems[item] = _cartItems[item]! - 1;
+        _markLocalCartMutated();
         _recalculateLocalPricing();
         _saveCart();
         _resetGiftOrderDraftIfCartIsEmpty(notify: false);
         notifyListeners();
-        await _updateQuantityOnBackend(cartItemId, _cartItems[item]!);
+        backendError = await _updateQuantityOnBackend(
+          cartItemId,
+          _cartItems[item]!,
+        );
       } else {
         _cartItems.remove(item);
         if (_cartItems.isEmpty) {
           _cartType = null;
         }
+        _markLocalCartMutated();
         _recalculateLocalPricing();
         _saveCart();
         _resetGiftOrderDraftIfCartIsEmpty(notify: false);
         notifyListeners();
-        await _removeFromBackend(cartItemId);
+        backendError = await _removeFromBackend(cartItemId);
+      }
+
+      if (backendError != null) {
+        _cartItems[item] = previousQuantity;
+        _cartType = previousCartType;
+        _markLocalCartMutated();
+        _recalculateLocalPricing();
+        _saveCart();
+        _resetGiftOrderDraftIfCartIsEmpty(notify: false);
+        notifyListeners();
+        await syncFromBackend();
+        return;
       }
 
       await syncFromBackend();
@@ -1137,28 +1212,37 @@ class CartProvider extends ChangeNotifier {
 
     final key = _itemKey(item);
     if (_pendingItemOps.contains(key)) return;
-    _pendingItemOps.add(key);
-
-    final cartItemId = _cartItemIdsByKey[key];
+    var cartItemId = _cartItemIdsByKey[key];
+    cartItemId ??= await _ensureCartItemId(key);
     if (cartItemId == null) {
-      try {
-        await syncFromBackend();
-      } finally {
-        _pendingItemOps.remove(key);
-      }
       return;
     }
+    _pendingItemOps.add(key);
 
     try {
+      final previousQuantity = _cartItems[item] ?? 1;
+      final previousCartType = _cartType;
       _cartItems.remove(item);
       if (_cartItems.isEmpty) {
         _cartType = null;
       }
+      _markLocalCartMutated();
       _recalculateLocalPricing();
       _saveCart();
       _resetGiftOrderDraftIfCartIsEmpty(notify: false);
       notifyListeners();
-      await _removeFromBackend(cartItemId);
+      final backendError = await _removeFromBackend(cartItemId);
+      if (backendError != null) {
+        _cartItems[item] = previousQuantity;
+        _cartType = previousCartType;
+        _markLocalCartMutated();
+        _recalculateLocalPricing();
+        _saveCart();
+        _resetGiftOrderDraftIfCartIsEmpty(notify: false);
+        notifyListeners();
+        await syncFromBackend();
+        return;
+      }
       debugPrint('✅ Remove operation completed');
 
       await syncFromBackend();
@@ -1171,6 +1255,7 @@ class CartProvider extends ChangeNotifier {
     _cartItems.clear();
     _cartType = null;
     _cartItemIdsByKey.clear();
+    _markLocalCartMutated();
     _applyPricing(null);
     _resetGiftOrderDraftIfCartIsEmpty(notify: false);
     _saveCart();

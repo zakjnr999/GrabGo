@@ -150,6 +150,50 @@ const buildScheduleAvailability = (cart) => {
     return null;
 };
 
+const mutationCartInclude = {
+    items: {
+        include: {
+            food: true,
+            groceryItem: true,
+            pharmacyItem: true,
+            grabMartItem: true
+        }
+    }
+};
+
+const refreshCartAggregates = async (cartId) => {
+    const items = await prisma.cartItem.findMany({
+        where: { cartId },
+        select: {
+            quantity: true,
+            price: true
+        }
+    });
+
+    const itemCount = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+    const totalAmount = items.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 0)), 0);
+
+    const updateData = {
+        itemCount,
+        totalAmount,
+        abandonmentNotificationSent: false,
+        abandonmentNotificationSentAt: null,
+        lastUpdatedAt: new Date()
+    };
+
+    if (itemCount === 0) {
+        updateData.restaurantId = null;
+        updateData.groceryStoreId = null;
+        updateData.pharmacyStoreId = null;
+        updateData.grabMartStoreId = null;
+    }
+
+    await prisma.cart.update({
+        where: { id: cartId },
+        data: updateData
+    });
+};
+
 const getOrCreateCart = async (userId, cartType = 'food', fulfillmentMode = 'delivery') => {
     const normalizedMode = normalizeFulfillmentMode(fulfillmentMode);
     let cart = await prisma.cart.findFirst({
@@ -398,29 +442,12 @@ const addToCart = async (userId, itemData) => {
         await prisma.cartItem.create({ data: createData });
     }
 
-    // Reset abandonment tracking
-    await prisma.cart.update({
-        where: { id: cart.id },
-        data: {
-            abandonmentNotificationSent: false,
-            abandonmentNotificationSentAt: null,
-            lastUpdatedAt: new Date()
-        }
-    });
+    await refreshCartAggregates(cart.id);
 
     // Return updated cart
     return prisma.cart.findUnique({
         where: { id: cart.id },
-        include: {
-            items: {
-                include: {
-                    food: true,
-                    groceryItem: true,
-                    pharmacyItem: true,
-                    grabMartItem: true
-                }
-            }
-        }
+        include: mutationCartInclude
     });
 };
 
@@ -433,56 +460,43 @@ const addToCart = async (userId, itemData) => {
  */
 const updateCartItem = async (userId, itemId, quantity, fulfillmentMode = 'delivery') => {
     const normalizedMode = normalizeFulfillmentMode(fulfillmentMode);
-    const cart = await prisma.cart.findFirst({
-        where: { userId, isActive: true, fulfillmentMode: normalizedMode },
-        include: { items: true }
+    const cartItem = await prisma.cartItem.findFirst({
+        where: {
+            id: itemId,
+            cart: {
+                userId,
+                isActive: true,
+                fulfillmentMode: normalizedMode
+            }
+        },
+        select: {
+            id: true,
+            cartId: true
+        }
     });
 
-    if (!cart) {
-        throw new Error('Cart not found');
-    }
-
-    const item = cart.items.find(i => i.id === itemId);
-
-    if (!item) {
+    if (!cartItem) {
         throw new Error('Item not found in cart');
     }
 
     if (quantity <= 0) {
         // Remove item
         await prisma.cartItem.delete({
-            where: { id: itemId }
+            where: { id: cartItem.id }
         });
     } else {
         // Update quantity
         await prisma.cartItem.update({
-            where: { id: itemId },
+            where: { id: cartItem.id },
             data: { quantity }
         });
     }
 
-    // Reset abandonment tracking
-    await prisma.cart.update({
-        where: { id: cart.id },
-        data: {
-            abandonmentNotificationSent: false,
-            abandonmentNotificationSentAt: null,
-            lastUpdatedAt: new Date()
-        }
-    });
+    await refreshCartAggregates(cartItem.cartId);
 
     return prisma.cart.findUnique({
-        where: { id: cart.id },
-        include: {
-            items: {
-                include: {
-                    food: true,
-                    groceryItem: true,
-                    pharmacyItem: true,
-                    grabMartItem: true
-                }
-            }
-        }
+        where: { id: cartItem.cartId },
+        include: mutationCartInclude
     });
 };
 
@@ -493,73 +507,35 @@ const updateCartItem = async (userId, itemId, quantity, fulfillmentMode = 'deliv
  * @returns {Promise<Object>} Updated cart
  */
 const removeFromCart = async (userId, itemId, fulfillmentMode = 'delivery') => {
-    console.log(`🗑️ Backend: Removing item ${itemId} from cart for user ${userId}`);
-
-    // Find ALL active carts
-    const carts = await prisma.cart.findMany({
-        where: { userId, isActive: true, fulfillmentMode: normalizeFulfillmentMode(fulfillmentMode) },
-        include: { items: true }
+    const normalizedMode = normalizeFulfillmentMode(fulfillmentMode);
+    const cartItem = await prisma.cartItem.findFirst({
+        where: {
+            id: itemId,
+            cart: {
+                userId,
+                isActive: true,
+                fulfillmentMode: normalizedMode
+            }
+        },
+        select: {
+            id: true,
+            cartId: true
+        }
     });
 
-    if (!carts || carts.length === 0) {
-        console.log('❌ No active carts found');
-        throw new Error('Cart not found');
-    }
-
-    // Find which cart contains the item
-    let cart = null;
-    for (const c of carts) {
-        const hasItem = c.items.some(item => item.id === itemId);
-        if (hasItem) {
-            cart = c;
-            break;
-        }
-    }
-
-    if (!cart) {
-        console.log('⚠️ Item not found in any cart');
+    if (!cartItem) {
         throw new Error('Item not found in cart');
     }
 
-    console.log(`📋 Cart details BEFORE removal:`, {
-        cartId: cart.id,
-        cartType: cart.cartType,
-        itemCount: cart.items.length
-    });
-
-    const initialLength = cart.items.length;
-
-    // Delete the cart item
     await prisma.cartItem.delete({
-        where: { id: itemId }
+        where: { id: cartItem.id }
     });
 
-    console.log(`📊 Items before: ${initialLength}, Items after: ${initialLength - 1}, Removed: 1`);
-
-    // Reset abandonment tracking
-    await prisma.cart.update({
-        where: { id: cart.id },
-        data: {
-            abandonmentNotificationSent: false,
-            abandonmentNotificationSentAt: null,
-            lastUpdatedAt: new Date()
-        }
-    });
-
-    console.log('✅ Cart saved successfully');
+    await refreshCartAggregates(cartItem.cartId);
 
     return prisma.cart.findUnique({
-        where: { id: cart.id },
-        include: {
-            items: {
-                include: {
-                    food: true,
-                    groceryItem: true,
-                    pharmacyItem: true,
-                    grabMartItem: true
-                }
-            }
-        }
+        where: { id: cartItem.cartId },
+        include: mutationCartInclude
     });
 };
 
@@ -570,36 +546,40 @@ const removeFromCart = async (userId, itemId, fulfillmentMode = 'delivery') => {
  */
 const clearCart = async (userId, fulfillmentMode = 'delivery') => {
     const normalizedMode = normalizeFulfillmentMode(fulfillmentMode);
-    const cart = await prisma.cart.findFirst({
-        where: { userId, isActive: true, fulfillmentMode: normalizedMode }
+    const carts = await prisma.cart.findMany({
+        where: { userId, isActive: true, fulfillmentMode: normalizedMode },
+        select: { id: true },
+        orderBy: { lastUpdatedAt: 'desc' }
     });
 
-    if (!cart) {
+    if (!carts || carts.length === 0) {
         throw new Error('Cart not found');
     }
 
-    // Delete all cart items
+    const cartIds = carts.map((cart) => cart.id);
     await prisma.cartItem.deleteMany({
-        where: { cartId: cart.id }
+        where: { cartId: { in: cartIds } }
     });
 
-    // Update cart
-    await prisma.cart.update({
-        where: { id: cart.id },
+    await prisma.cart.updateMany({
+        where: { id: { in: cartIds } },
         data: {
             restaurantId: null,
             groceryStoreId: null,
             pharmacyStoreId: null,
             grabMartStoreId: null,
+            totalAmount: 0,
+            itemCount: 0,
             abandonmentNotificationSent: false,
             abandonmentNotificationSentAt: null,
             lastUpdatedAt: new Date()
         }
     });
 
+    const primaryCartId = carts[0].id;
     return prisma.cart.findUnique({
-        where: { id: cart.id },
-        include: { items: true }
+        where: { id: primaryCartId },
+        include: mutationCartInclude
     });
 };
 
@@ -615,104 +595,117 @@ const getUserCart = async (userId, cartType = null, fulfillmentMode = 'delivery'
         where.cartType = cartType;
     }
 
-    const cart = await prisma.cart.findFirst({
-        where,
-        include: {
-            items: {
-                include: {
-                    food: {
-                        include: {
-                            restaurant: {
-                                select: {
-                                    id: true,
-                                    restaurantName: true,
-                                    logo: true,
-                                    isOpen: true,
-                                    status: true,
-                                    isAcceptingOrders: true,
-                                    isDeleted: true,
-                                    features: true,
-                                    openingHours: {
-                                        select: {
-                                            dayOfWeek: true,
-                                            openTime: true,
-                                            closeTime: true,
-                                            isClosed: true
-                                        }
+    const readInclude = {
+        items: {
+            include: {
+                food: {
+                    include: {
+                        restaurant: {
+                            select: {
+                                id: true,
+                                restaurantName: true,
+                                logo: true,
+                                isOpen: true,
+                                status: true,
+                                isAcceptingOrders: true,
+                                isDeleted: true,
+                                features: true,
+                                openingHours: {
+                                    select: {
+                                        dayOfWeek: true,
+                                        openTime: true,
+                                        closeTime: true,
+                                        isClosed: true
                                     }
                                 }
                             }
                         }
-                    },
-                    groceryItem: {
-                        include: {
-                            store: {
-                                select: {
-                                    id: true,
-                                    storeName: true,
-                                    logo: true,
-                                    isOpen: true,
-                                    status: true,
-                                    isAcceptingOrders: true,
-                                    isDeleted: true,
-                                    features: true,
-                                    openingHours: {
-                                        select: {
-                                            dayOfWeek: true,
-                                            openTime: true,
-                                            closeTime: true,
-                                            isClosed: true
-                                        }
+                    }
+                },
+                groceryItem: {
+                    include: {
+                        store: {
+                            select: {
+                                id: true,
+                                storeName: true,
+                                logo: true,
+                                isOpen: true,
+                                status: true,
+                                isAcceptingOrders: true,
+                                isDeleted: true,
+                                features: true,
+                                openingHours: {
+                                    select: {
+                                        dayOfWeek: true,
+                                        openTime: true,
+                                        closeTime: true,
+                                        isClosed: true
                                     }
                                 }
                             }
                         }
-                    },
-                    pharmacyItem: {
-                        include: {
-                            store: {
-                                select: {
-                                    id: true,
-                                    storeName: true,
-                                    logo: true,
-                                    isOpen: true,
-                                    status: true,
-                                    isAcceptingOrders: true,
-                                    isDeleted: true,
-                                    features: true,
-                                    openingHours: {
-                                        select: {
-                                            dayOfWeek: true,
-                                            openTime: true,
-                                            closeTime: true,
-                                            isClosed: true
-                                        }
+                    }
+                },
+                pharmacyItem: {
+                    include: {
+                        store: {
+                            select: {
+                                id: true,
+                                storeName: true,
+                                logo: true,
+                                isOpen: true,
+                                status: true,
+                                isAcceptingOrders: true,
+                                isDeleted: true,
+                                features: true,
+                                openingHours: {
+                                    select: {
+                                        dayOfWeek: true,
+                                        openTime: true,
+                                        closeTime: true,
+                                        isClosed: true
                                     }
                                 }
                             }
                         }
-                    },
-                    grabMartItem: {
-                        include: {
-                            store: {
-                                select: {
-                                    id: true,
-                                    storeName: true,
-                                    logo: true,
-                                    isOpen: true,
-                                    status: true,
-                                    isAcceptingOrders: true,
-                                    isDeleted: true,
-                                    features: true,
-                                    is24Hours: true
-                                }
+                    }
+                },
+                grabMartItem: {
+                    include: {
+                        store: {
+                            select: {
+                                id: true,
+                                storeName: true,
+                                logo: true,
+                                isOpen: true,
+                                status: true,
+                                isAcceptingOrders: true,
+                                isDeleted: true,
+                                features: true,
+                                is24Hours: true
                             }
                         }
                     }
                 }
             }
         }
-    });
+    };
+
+    let cart = null;
+    if (cartType) {
+        cart = await prisma.cart.findFirst({
+            where,
+            include: readInclude,
+            orderBy: { lastUpdatedAt: 'desc' }
+        });
+    } else {
+        const carts = await prisma.cart.findMany({
+            where,
+            include: readInclude,
+            orderBy: { lastUpdatedAt: 'desc' }
+        });
+        cart = carts.find((entry) => Array.isArray(entry.items) && entry.items.length > 0) || carts[0] || null;
+    }
 
     // Keep cart restaurant-open status aligned with food listing logic (opening hours aware)
     if (cart && cart.items) {

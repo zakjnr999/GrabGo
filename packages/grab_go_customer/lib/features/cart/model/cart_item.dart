@@ -39,7 +39,12 @@ class _CartItemState extends State<CartItem> {
               final index = entry.key;
               final cartItem = entry.value.key;
               final quantity = entry.value.value;
-              final bool isRestaurantClosed = cartItem is FoodItem ? !(cartItem).isRestaurantOpen : false;
+              final bool isRestaurantClosed = cartItem is FoodItem
+                  ? !(cartItem).isRestaurantOpen
+                  : false;
+              final bool isItemPending = provider.isItemOperationPending(
+                cartItem,
+              );
 
               return Column(
                 children: [
@@ -60,52 +65,90 @@ class _CartItemState extends State<CartItem> {
                           content: Container(
                             height: 118.h + 12.h,
                             width: 80.w,
-                            margin: EdgeInsets.only(right: 10.w, top: 6.h, bottom: 6.h),
+                            margin: EdgeInsets.only(
+                              right: 10.w,
+                              top: 6.h,
+                              bottom: 6.h,
+                            ),
                             decoration: BoxDecoration(
                               color: colors.error,
-                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                              borderRadius: BorderRadius.circular(
+                                KBorderSize.borderRadius15,
+                              ),
                             ),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Text(
                                   AppStrings.cartDelete,
-                                  style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.w700),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11.sp,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                               ],
                             ),
                           ),
-                          onTap: (handler) {
-                            provider.removeItemCompletely(cartItem);
+                          onTap: (handler) async {
+                            if (isItemPending) return;
+                            await provider.removeItemCompletely(cartItem);
+                            if (!context.mounted) return;
+                            final didRemove = !provider.cartItems.containsKey(
+                              cartItem,
+                            );
                             AppToastMessage.show(
                               context: context,
-                              message: AppStrings.cartRemoveItem,
-                              backgroundColor: colors.error,
+                              message: didRemove
+                                  ? AppStrings.cartRemoveItem
+                                  : 'Could not remove item. Please try again.',
+                              backgroundColor: didRemove
+                                  ? colors.error
+                                  : colors.textSecondary,
                             );
                           },
                         ),
                       ],
                       child: Container(
-                        margin: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
+                        margin: EdgeInsets.symmetric(
+                          horizontal: 20.w,
+                          vertical: 6.h,
+                        ),
                         padding: EdgeInsets.all(2.r),
                         decoration: BoxDecoration(
                           color: colors.backgroundPrimary,
-                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                          border: Border.all(color: colors.inputBorder.withValues(alpha: 0.5), width: 1),
+                          borderRadius: BorderRadius.circular(
+                            KBorderSize.borderRadius15,
+                          ),
+                          border: Border.all(
+                            color: colors.inputBorder.withValues(alpha: 0.5),
+                            width: 1,
+                          ),
                         ),
                         child: Row(
                           children: [
                             ClipRRect(
                               borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(KBorderSize.borderRadius15),
-                                bottomLeft: Radius.circular(KBorderSize.borderRadius15),
-                                bottomRight: Radius.circular(KBorderSize.borderRadius4),
-                                topRight: Radius.circular(KBorderSize.borderRadius4),
+                                topLeft: Radius.circular(
+                                  KBorderSize.borderRadius15,
+                                ),
+                                bottomLeft: Radius.circular(
+                                  KBorderSize.borderRadius15,
+                                ),
+                                bottomRight: Radius.circular(
+                                  KBorderSize.borderRadius4,
+                                ),
+                                topRight: Radius.circular(
+                                  KBorderSize.borderRadius4,
+                                ),
                               ),
                               child: Stack(
                                 children: [
                                   CachedNetworkImage(
-                                    imageUrl: ImageOptimizer.getPreviewUrl(cartItem.image, width: 300),
+                                    imageUrl: ImageOptimizer.getPreviewUrl(
+                                      cartItem.image,
+                                      width: 300,
+                                    ),
                                     height: imageSize,
                                     width: imageSize,
                                     fit: BoxFit.cover,
@@ -119,31 +162,40 @@ class _CartItemState extends State<CartItem> {
                                         child: SvgPicture.asset(
                                           Assets.icons.utensilsCrossed,
                                           package: 'grab_go_shared',
-                                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                          colorFilter: ColorFilter.mode(
+                                            colors.textSecondary,
+                                            BlendMode.srcIn,
+                                          ),
                                           width: 30.w,
                                           height: 30.h,
                                         ),
                                       ),
                                     ),
-                                    errorWidget: (context, url, error) => Container(
-                                      height: imageSize,
-                                      width: imageSize,
-                                      color: colors.inputBorder,
-                                      child: Center(
-                                        child: SvgPicture.asset(
-                                          Assets.icons.utensilsCrossed,
-                                          package: 'grab_go_shared',
-                                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                                          width: 30.w,
-                                          height: 30.h,
+                                    errorWidget: (context, url, error) =>
+                                        Container(
+                                          height: imageSize,
+                                          width: imageSize,
+                                          color: colors.inputBorder,
+                                          child: Center(
+                                            child: SvgPicture.asset(
+                                              Assets.icons.utensilsCrossed,
+                                              package: 'grab_go_shared',
+                                              colorFilter: ColorFilter.mode(
+                                                colors.textSecondary,
+                                                BlendMode.srcIn,
+                                              ),
+                                              width: 30.w,
+                                              height: 30.h,
+                                            ),
+                                          ),
                                         ),
-                                      ),
-                                    ),
                                   ),
                                   if (isRestaurantClosed)
                                     Positioned.fill(
                                       child: Container(
-                                        color: Colors.black.withValues(alpha: 0.5),
+                                        color: Colors.black.withValues(
+                                          alpha: 0.5,
+                                        ),
                                         alignment: Alignment.center,
                                         child: Text(
                                           "We're closed",
@@ -162,13 +214,18 @@ class _CartItemState extends State<CartItem> {
 
                             Expanded(
                               child: Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 12.r, vertical: 8.h),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 12.r,
+                                  vertical: 8.h,
+                                ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           cartItem.name,
@@ -188,11 +245,16 @@ class _CartItemState extends State<CartItem> {
                                               package: 'grab_go_shared',
                                               height: 13.h,
                                               width: 13.w,
-                                              colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                              colorFilter: ColorFilter.mode(
+                                                colors.accentOrange,
+                                                BlendMode.srcIn,
+                                              ),
                                             ),
                                             SizedBox(width: 4.w),
                                             Text(
-                                              cartItem.rating.toStringAsFixed(1),
+                                              cartItem.rating.toStringAsFixed(
+                                                1,
+                                              ),
                                               style: TextStyle(
                                                 fontSize: 12.sp,
                                                 color: colors.textPrimary,
@@ -223,13 +285,20 @@ class _CartItemState extends State<CartItem> {
                                     ),
                                     SizedBox(height: 10.h),
                                     Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
                                         Container(
-                                          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 10.w,
+                                            vertical: 6.h,
+                                          ),
                                           decoration: BoxDecoration(
-                                            color: colors.accentOrange.withValues(alpha: 0.15),
-                                            borderRadius: BorderRadius.circular(8.r),
+                                            color: colors.accentOrange
+                                                .withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(
+                                              8.r,
+                                            ),
                                           ),
                                           child: Text(
                                             "GHS ${cartItem.price.toStringAsFixed(2)}",
@@ -241,33 +310,50 @@ class _CartItemState extends State<CartItem> {
                                           ),
                                         ),
                                         Container(
-                                          padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 4.h),
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 4.w,
+                                            vertical: 4.h,
+                                          ),
                                           decoration: BoxDecoration(
                                             color: colors.backgroundSecondary,
-                                            border: Border.all(
-                                              color: colors.inputBorder.withValues(alpha: 0.5),
-                                              width: 1,
+                                            borderRadius: BorderRadius.circular(
+                                              10.r,
                                             ),
-                                            borderRadius: BorderRadius.circular(10.r),
                                           ),
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
                                               GestureDetector(
                                                 onTap: () {
-                                                  provider.removeFromCart(cartItem);
+                                                  if (isItemPending) return;
+                                                  provider.removeFromCart(
+                                                    cartItem,
+                                                  );
                                                 },
                                                 child: Container(
                                                   padding: EdgeInsets.all(4.r),
-                                                  decoration: const BoxDecoration(
-                                                    color: Colors.transparent,
-                                                    shape: BoxShape.circle,
+                                                  decoration:
+                                                      const BoxDecoration(
+                                                        color:
+                                                            Colors.transparent,
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                  child: Icon(
+                                                    Icons.remove,
+                                                    color: isItemPending
+                                                        ? colors.textSecondary
+                                                              .withValues(
+                                                                alpha: 0.45,
+                                                              )
+                                                        : colors.textSecondary,
+                                                    size: 18,
                                                   ),
-                                                  child: Icon(Icons.remove, color: colors.textSecondary, size: 18),
                                                 ),
                                               ),
                                               Container(
-                                                padding: EdgeInsets.symmetric(horizontal: 12.w),
+                                                padding: EdgeInsets.symmetric(
+                                                  horizontal: 12.w,
+                                                ),
                                                 child: Text(
                                                   quantity.toString(),
                                                   style: TextStyle(
@@ -279,15 +365,28 @@ class _CartItemState extends State<CartItem> {
                                               ),
                                               GestureDetector(
                                                 onTap: () {
-                                                  provider.addToCart(cartItem, context: context);
+                                                  if (isItemPending) return;
+                                                  provider.addToCart(
+                                                    cartItem,
+                                                    context: context,
+                                                  );
                                                 },
                                                 child: Container(
                                                   padding: EdgeInsets.all(4.r),
                                                   decoration: BoxDecoration(
-                                                    color: colors.accentOrange,
+                                                    color: isItemPending
+                                                        ? colors.accentOrange
+                                                              .withValues(
+                                                                alpha: 0.45,
+                                                              )
+                                                        : colors.accentOrange,
                                                     shape: BoxShape.circle,
                                                   ),
-                                                  child: const Icon(Icons.add, color: Colors.white, size: 18),
+                                                  child: const Icon(
+                                                    Icons.add,
+                                                    color: Colors.white,
+                                                    size: 18,
+                                                  ),
                                                 ),
                                               ),
                                             ],
@@ -306,7 +405,10 @@ class _CartItemState extends State<CartItem> {
                   ),
                   if (index < cartEntries.length - 1)
                     Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 5.h),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 20.w,
+                        vertical: 5.h,
+                      ),
                       child: DottedLine(
                         dashLength: 6,
                         dashGapLength: 4,

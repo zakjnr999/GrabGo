@@ -5,51 +5,106 @@ import 'package:grab_go_shared/grub_go_shared.dart';
 class UmbrellaClipper extends CustomClipper<Path> {
   final double curveDepth;
   final int numberOfCurves;
+  final bool curvesOnTop;
 
-  UmbrellaClipper({this.curveDepth = 20, this.numberOfCurves = 8});
+  UmbrellaClipper({
+    this.curveDepth = 20,
+    this.numberOfCurves = 8,
+    this.curvesOnTop = false,
+  });
 
   @override
   Path getClip(Size size) {
     final path = Path();
 
-    path.lineTo(0, 0);
-
-    path.lineTo(size.width, 0);
-
-    path.lineTo(size.width, size.height - curveDepth);
-
     final curveWidth = size.width / numberOfCurves;
 
-    for (int i = numberOfCurves - 1; i >= 0; i--) {
-      final startX = (i + 1) * curveWidth;
-      final endX = i * curveWidth;
-      final midX = (startX + endX) / 2;
+    if (curvesOnTop) {
+      path.moveTo(0, curveDepth);
+      path.lineTo(0, size.height);
+      path.lineTo(size.width, size.height);
+      path.lineTo(size.width, curveDepth);
 
-      final controlPoint1 = Offset(startX - curveWidth * 0.2, size.height - curveDepth * 0.5);
-      final controlPoint2 = Offset(midX + curveWidth * 0.1, size.height - curveDepth * 0.1);
-      final controlPoint3 = Offset(midX - curveWidth * 0.1, size.height - curveDepth * 0.1);
-      final controlPoint4 = Offset(endX + curveWidth * 0.2, size.height - curveDepth * 0.5);
+      for (int i = numberOfCurves - 1; i >= 0; i--) {
+        final startX = (i + 1) * curveWidth;
+        final endX = i * curveWidth;
+        final midX = (startX + endX) / 2;
 
-      path.cubicTo(
-        controlPoint1.dx,
-        controlPoint1.dy,
-        controlPoint2.dx,
-        controlPoint2.dy,
-        midX,
-        size.height - curveDepth * 0.2,
-      );
+        final controlPoint1 = Offset(
+          startX - curveWidth * 0.2,
+          curveDepth * 0.5,
+        );
+        final controlPoint2 = Offset(midX + curveWidth * 0.1, curveDepth * 0.1);
+        final controlPoint3 = Offset(midX - curveWidth * 0.1, curveDepth * 0.1);
+        final controlPoint4 = Offset(endX + curveWidth * 0.2, curveDepth * 0.5);
 
-      path.cubicTo(
-        controlPoint3.dx,
-        controlPoint3.dy,
-        controlPoint4.dx,
-        controlPoint4.dy,
-        endX,
-        size.height - curveDepth,
-      );
+        path.cubicTo(
+          controlPoint1.dx,
+          controlPoint1.dy,
+          controlPoint2.dx,
+          controlPoint2.dy,
+          midX,
+          curveDepth * 0.2,
+        );
+
+        path.cubicTo(
+          controlPoint3.dx,
+          controlPoint3.dy,
+          controlPoint4.dx,
+          controlPoint4.dy,
+          endX,
+          curveDepth,
+        );
+      }
+    } else {
+      path.lineTo(0, 0);
+      path.lineTo(size.width, 0);
+      path.lineTo(size.width, size.height - curveDepth);
+
+      for (int i = numberOfCurves - 1; i >= 0; i--) {
+        final startX = (i + 1) * curveWidth;
+        final endX = i * curveWidth;
+        final midX = (startX + endX) / 2;
+
+        final controlPoint1 = Offset(
+          startX - curveWidth * 0.2,
+          size.height - curveDepth * 0.5,
+        );
+        final controlPoint2 = Offset(
+          midX + curveWidth * 0.1,
+          size.height - curveDepth * 0.1,
+        );
+        final controlPoint3 = Offset(
+          midX - curveWidth * 0.1,
+          size.height - curveDepth * 0.1,
+        );
+        final controlPoint4 = Offset(
+          endX + curveWidth * 0.2,
+          size.height - curveDepth * 0.5,
+        );
+
+        path.cubicTo(
+          controlPoint1.dx,
+          controlPoint1.dy,
+          controlPoint2.dx,
+          controlPoint2.dy,
+          midX,
+          size.height - curveDepth * 0.2,
+        );
+
+        path.cubicTo(
+          controlPoint3.dx,
+          controlPoint3.dy,
+          controlPoint4.dx,
+          controlPoint4.dy,
+          endX,
+          size.height - curveDepth,
+        );
+      }
+
+      path.lineTo(0, 0);
     }
 
-    path.lineTo(0, 0);
     path.close();
 
     return path;
@@ -77,7 +132,8 @@ class UmbrellaHeaderMetrics {
     // Width-based fallback prevents very tall devices from producing oversized headers.
     final widthBased = width * 0.46;
     final tallScreenBlend = ((aspectRatio - 2.0) / 0.45).clamp(0.0, 1.0);
-    final blended = lerpDouble(heightBased, widthBased, tallScreenBlend) ?? heightBased;
+    final blended =
+        lerpDouble(heightBased, widthBased, tallScreenBlend) ?? heightBased;
 
     return blended.clamp(138.0, 188.0);
   }
@@ -92,8 +148,14 @@ class UmbrellaHeaderMetrics {
     return expandedHeight - overlap;
   }
 
-  static double contentPaddingFor(Size size, {double extra = 0, double gap = 12}) {
-    final resolvedGap = gap == 12 ? (size.height * 0.012).clamp(10.0, 16.0) : gap;
+  static double contentPaddingFor(
+    Size size, {
+    double extra = 0,
+    double gap = 12,
+  }) {
+    final resolvedGap = gap == 12
+        ? (size.height * 0.012).clamp(10.0, 16.0)
+        : gap;
     return expandedHeightFor(size, extra: extra) + resolvedGap;
   }
 }
@@ -104,6 +166,7 @@ class UmbrellaHeader extends StatelessWidget {
   final int numberOfCurves;
   final double? height;
   final Color? backgroundColor;
+  final bool curvesOnTop;
 
   const UmbrellaHeader({
     super.key,
@@ -112,6 +175,7 @@ class UmbrellaHeader extends StatelessWidget {
     this.numberOfCurves = 8,
     this.height,
     this.backgroundColor,
+    this.curvesOnTop = false,
   });
 
   @override
@@ -120,10 +184,16 @@ class UmbrellaHeader extends StatelessWidget {
     final resolvedCurveDepth = curveDepth.clamp(16.0, 24.0).toDouble();
 
     return ClipPath(
-      clipper: UmbrellaClipper(curveDepth: resolvedCurveDepth, numberOfCurves: numberOfCurves),
+      clipper: UmbrellaClipper(
+        curveDepth: resolvedCurveDepth,
+        numberOfCurves: numberOfCurves,
+        curvesOnTop: curvesOnTop,
+      ),
       child: Container(
         height: height,
-        decoration: BoxDecoration(color: backgroundColor ?? colors.accentOrange),
+        decoration: BoxDecoration(
+          color: backgroundColor ?? colors.accentOrange,
+        ),
         child: child,
       ),
     );
@@ -138,6 +208,7 @@ class UmbrellaHeaderWithShadow extends StatelessWidget {
   final double? height;
   final bool showShadow;
   final Color? backgroundColor;
+  final bool curvesOnTop;
 
   const UmbrellaHeaderWithShadow({
     super.key,
@@ -148,6 +219,7 @@ class UmbrellaHeaderWithShadow extends StatelessWidget {
     this.height,
     this.showShadow = true,
     this.backgroundColor,
+    this.curvesOnTop = false,
   });
 
   @override
@@ -161,7 +233,11 @@ class UmbrellaHeaderWithShadow extends StatelessWidget {
         if (showShadow)
           Positioned.fill(
             child: ClipPath(
-              clipper: UmbrellaClipper(curveDepth: resolvedCurveDepth, numberOfCurves: numberOfCurves),
+              clipper: UmbrellaClipper(
+                curveDepth: resolvedCurveDepth,
+                numberOfCurves: numberOfCurves,
+                curvesOnTop: curvesOnTop,
+              ),
               child: Container(
                 decoration: BoxDecoration(
                   boxShadow: [
@@ -181,6 +257,7 @@ class UmbrellaHeaderWithShadow extends StatelessWidget {
           numberOfCurves: numberOfCurves,
           height: height,
           backgroundColor: effectiveBackgroundColor,
+          curvesOnTop: curvesOnTop,
           child: child,
         ),
       ],

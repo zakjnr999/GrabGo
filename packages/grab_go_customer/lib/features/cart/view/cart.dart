@@ -57,6 +57,18 @@ class Cart extends StatelessWidget {
             final bool hasCredits = provider.availableCredits > 0;
             final bool useCredits = hasCredits && provider.useCredits;
             final bool isPickupMode = provider.fulfillmentMode == 'pickup' || isPickupTab;
+            final int itemCount = provider.cartItems.values.fold(0, (sum, quantity) => sum + quantity);
+            final List<String> providerNames = provider.cartItems.keys
+                .map((item) => item.providerName.trim())
+                .where((name) => name.isNotEmpty)
+                .toSet()
+                .toList();
+            final String providerLabel = providerNames.isEmpty
+                ? 'Unknown vendor'
+                : providerNames.length == 1
+                ? providerNames.first
+                : '${providerNames.length} vendors';
+            final String orderSubtitle = '$itemCount ${itemCount == 1 ? 'item' : 'items'} • $providerLabel';
 
             return Column(
               children: [
@@ -108,6 +120,35 @@ class Cart extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Padding(
+                            padding: EdgeInsets.fromLTRB(20.w, 10.h, 20.w, 6.h),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Your Order",
+                                  style: TextStyle(
+                                    fontFamily: "Lato",
+                                    package: 'grab_go_shared',
+                                    color: colors.textPrimary,
+                                    fontSize: 16.sp,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+
+                                Text(
+                                  orderSubtitle,
+                                  style: TextStyle(
+                                    fontFamily: "Lato",
+                                    package: 'grab_go_shared',
+                                    color: colors.textSecondary,
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                           const cart_widgets.CartItem(),
                           Padding(
                             padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
@@ -224,7 +265,21 @@ class Cart extends StatelessWidget {
                                 SizedBox(height: 16.h),
 
                                 Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
+                                    Padding(
+                                      padding: EdgeInsets.fromLTRB(0.w, 0.h, 20.w, 16.h),
+                                      child: Text(
+                                        "Order Summary",
+                                        style: TextStyle(
+                                          fontFamily: "Lato",
+                                          package: 'grab_go_shared',
+                                          color: colors.textPrimary,
+                                          fontSize: 16.sp,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ),
                                     _buildPriceRow(
                                       context,
                                       AppStrings.cartSubtotal,
@@ -526,12 +581,12 @@ class Cart extends StatelessWidget {
         children: [
           Text(
             "Total Amount",
-            style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w600),
+            style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
           ),
           const Spacer(),
           Text(
             "...",
-            style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w600),
+            style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
           ),
         ],
       );
@@ -543,7 +598,7 @@ class Cart extends StatelessWidget {
       children: [
         Text(
           "Total Amount",
-          style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w600),
+          style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
         ),
         const Spacer(),
         if (originalTotal != null)
@@ -565,7 +620,7 @@ class Cart extends StatelessWidget {
                 ),
                 TextSpan(
                   text: "${AppStrings.currencySymbol} ${total.toStringAsFixed(2)}",
-                  style: TextStyle(color: colors.textPrimary, fontSize: 13.sp, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
                 ),
               ],
             ),
@@ -573,7 +628,7 @@ class Cart extends StatelessWidget {
         else
           Text(
             "${AppStrings.currencySymbol} ${total.toStringAsFixed(2)}",
-            style: TextStyle(color: colors.textPrimary, fontSize: 13.sp, fontWeight: FontWeight.w600),
+            style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
           ),
       ],
     );
