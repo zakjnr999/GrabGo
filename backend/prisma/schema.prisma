@@ -352,8 +352,10 @@ model User {
   favoriteRestaurants    UserFavoriteRestaurant[]
   favoriteStores         UserFavoriteStore[]
   favoritePharmacies     UserFavoritePharmacy[]
+  favoriteGrabMartStores UserFavoriteGrabMartStore[]
   favoriteFoods          UserFavoriteFood[]
   favoriteGroceryItems   UserFavoriteGroceryItem[]
+  favoritePharmacyItems  UserFavoritePharmacyItem[]
   favoriteGrabMartItems  UserFavoriteGrabMartItem[]
   orders                 Order[]                    @relation("CustomerOrders")
   riderOrders            Order[]                    @relation("RiderOrders")
@@ -469,6 +471,19 @@ model UserFavoritePharmacy {
   @@map("user_favorite_pharmacies")
 }
 
+model UserFavoriteGrabMartStore {
+  id      String   @id @default(cuid())
+  userId  String
+  storeId String
+  addedAt DateTime @default(now())
+
+  user  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store GrabMartStore @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, storeId])
+  @@map("user_favorite_grabmart_stores")
+}
+
 model UserFavoriteFood {
   id      String   @id @default(cuid())
   userId  String
@@ -493,6 +508,19 @@ model UserFavoriteGroceryItem {
 
   @@unique([userId, groceryItemId])
   @@map("user_favorite_grocery_items")
+}
+
+model UserFavoritePharmacyItem {
+  id             String   @id @default(cuid())
+  userId         String
+  pharmacyItemId String
+  addedAt        DateTime @default(now())
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pharmacyItem PharmacyItem @relation(fields: [pharmacyItemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, pharmacyItemId])
+  @@map("user_favorite_pharmacy_items")
 }
 
 model UserFavoriteGrabMartItem {
@@ -1019,6 +1047,7 @@ model PharmacyItem {
   store      PharmacyStore     @relation(fields: [storeId], references: [id], onDelete: Cascade)
   orderItems OrderItem[]
   cartItems  CartItem[]
+  favoritedBy UserFavoritePharmacyItem[]
 
   @@index([storeId])
   @@index([categoryId])
@@ -1663,6 +1692,7 @@ model GrabMartStore {
   categories GrabMartCategory[]
   items      GrabMartItem[]
   orders     Order[]          @relation("GrabMartStoreOrders")
+  favoritedBy UserFavoriteGrabMartStore[]
 
   @@index([status])
   @@map("grabmart_stores")

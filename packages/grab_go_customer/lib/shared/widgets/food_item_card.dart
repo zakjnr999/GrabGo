@@ -223,6 +223,7 @@ class FoodItemCard extends StatelessWidget {
                           height: 3,
                           decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
                         ),
+                        SizedBox(width: 8.w),
                         Text(
                           "We're closed",
                           style: TextStyle(

@@ -7,12 +7,27 @@ const {
     removeFavoriteRestaurant,
     addFavoriteStore,
     removeFavoriteStore,
+    addFavoritePharmacy,
+    removeFavoritePharmacy,
+    addFavoriteGrabMartStore,
+    removeFavoriteGrabMartStore,
     addFavoriteFoodItem,
     removeFavoriteFoodItem,
     addFavoriteGroceryItem,
     removeFavoriteGroceryItem,
+    addFavoritePharmacyItem,
+    removeFavoritePharmacyItem,
+    addFavoriteGrabMartItem,
+    removeFavoriteGrabMartItem,
+    clearAllFavorites,
     syncFavorites
 } = require('../services/favorites_service');
+
+const getErrorStatus = (error) => {
+    const message = String(error?.message || '').toLowerCase();
+    if (message.includes('not found')) return 404;
+    return 500;
+};
 
 /**
  * @route   GET /api/favorites
@@ -52,8 +67,7 @@ router.post('/restaurant/:restaurantId', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Add favorite restaurant error:', error);
-        const statusCode = error.message.includes('not found') || error.message.includes('already') ? 400 : 500;
-        res.status(statusCode).json({
+        res.status(getErrorStatus(error)).json({
             success: false,
             message: error.message || 'Failed to add restaurant to favorites'
         });
@@ -76,7 +90,7 @@ router.delete('/restaurant/:restaurantId', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Remove favorite restaurant error:', error);
-        res.status(500).json({
+        res.status(getErrorStatus(error)).json({
             success: false,
             message: error.message || 'Failed to remove restaurant from favorites'
         });
@@ -99,8 +113,7 @@ router.post('/store/:storeId', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Add favorite store error:', error);
-        const statusCode = error.message.includes('not found') || error.message.includes('already') ? 400 : 500;
-        res.status(statusCode).json({
+        res.status(getErrorStatus(error)).json({
             success: false,
             message: error.message || 'Failed to add store to favorites'
         });
@@ -123,7 +136,7 @@ router.delete('/store/:storeId', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Remove favorite store error:', error);
-        res.status(500).json({
+        res.status(getErrorStatus(error)).json({
             success: false,
             message: error.message || 'Failed to remove store from favorites'
         });
@@ -146,8 +159,7 @@ router.post('/food/:foodId', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Add favorite food item error:', error);
-        const statusCode = error.message.includes('not found') || error.message.includes('already') ? 400 : 500;
-        res.status(statusCode).json({
+        res.status(getErrorStatus(error)).json({
             success: false,
             message: error.message || 'Failed to add food item to favorites'
         });
@@ -170,7 +182,7 @@ router.delete('/food/:foodId', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Remove favorite food item error:', error);
-        res.status(500).json({
+        res.status(getErrorStatus(error)).json({
             success: false,
             message: error.message || 'Failed to remove food item from favorites'
         });
@@ -193,10 +205,216 @@ router.post('/grocery/:groceryId', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Add favorite grocery item error:', error);
-        const statusCode = error.message.includes('not found') || error.message.includes('already') ? 400 : 500;
-        res.status(statusCode).json({
+        res.status(getErrorStatus(error)).json({
             success: false,
             message: error.message || 'Failed to add grocery item to favorites'
+        });
+    }
+});
+
+/**
+ * @route   POST /api/favorites/pharmacy/:pharmacyId
+ * @desc    Add pharmacy store to favorites
+ * @access  Private
+ */
+router.post('/pharmacy/:pharmacyId', protect, async (req, res) => {
+    try {
+        const favorites = await addFavoritePharmacy(req.user.id, req.params.pharmacyId);
+
+        res.json({
+            success: true,
+            message: 'Pharmacy store added to favorites',
+            data: favorites
+        });
+    } catch (error) {
+        console.error('Add favorite pharmacy store error:', error);
+        res.status(getErrorStatus(error)).json({
+            success: false,
+            message: error.message || 'Failed to add pharmacy store to favorites'
+        });
+    }
+});
+
+/**
+ * @route   DELETE /api/favorites/pharmacy/:pharmacyId
+ * @desc    Remove pharmacy store from favorites
+ * @access  Private
+ */
+router.delete('/pharmacy/:pharmacyId', protect, async (req, res) => {
+    try {
+        const favorites = await removeFavoritePharmacy(req.user.id, req.params.pharmacyId);
+
+        res.json({
+            success: true,
+            message: 'Pharmacy store removed from favorites',
+            data: favorites
+        });
+    } catch (error) {
+        console.error('Remove favorite pharmacy store error:', error);
+        res.status(getErrorStatus(error)).json({
+            success: false,
+            message: error.message || 'Failed to remove pharmacy store from favorites'
+        });
+    }
+});
+
+/**
+ * @route   POST /api/favorites/grabmart-store/:storeId
+ * @desc    Add GrabMart store to favorites
+ * @access  Private
+ */
+router.post('/grabmart-store/:storeId', protect, async (req, res) => {
+    try {
+        const favorites = await addFavoriteGrabMartStore(req.user.id, req.params.storeId);
+
+        res.json({
+            success: true,
+            message: 'GrabMart store added to favorites',
+            data: favorites
+        });
+    } catch (error) {
+        console.error('Add favorite GrabMart store error:', error);
+        res.status(getErrorStatus(error)).json({
+            success: false,
+            message: error.message || 'Failed to add GrabMart store to favorites'
+        });
+    }
+});
+
+/**
+ * @route   DELETE /api/favorites/grabmart-store/:storeId
+ * @desc    Remove GrabMart store from favorites
+ * @access  Private
+ */
+router.delete('/grabmart-store/:storeId', protect, async (req, res) => {
+    try {
+        const favorites = await removeFavoriteGrabMartStore(req.user.id, req.params.storeId);
+
+        res.json({
+            success: true,
+            message: 'GrabMart store removed from favorites',
+            data: favorites
+        });
+    } catch (error) {
+        console.error('Remove favorite GrabMart store error:', error);
+        res.status(getErrorStatus(error)).json({
+            success: false,
+            message: error.message || 'Failed to remove GrabMart store from favorites'
+        });
+    }
+});
+
+/**
+ * @route   POST /api/favorites/pharmacy-item/:pharmacyItemId
+ * @desc    Add pharmacy item to favorites
+ * @access  Private
+ */
+router.post('/pharmacy-item/:pharmacyItemId', protect, async (req, res) => {
+    try {
+        const favorites = await addFavoritePharmacyItem(req.user.id, req.params.pharmacyItemId);
+
+        res.json({
+            success: true,
+            message: 'Pharmacy item added to favorites',
+            data: favorites
+        });
+    } catch (error) {
+        console.error('Add favorite pharmacy item error:', error);
+        res.status(getErrorStatus(error)).json({
+            success: false,
+            message: error.message || 'Failed to add pharmacy item to favorites'
+        });
+    }
+});
+
+/**
+ * @route   DELETE /api/favorites/pharmacy-item/:pharmacyItemId
+ * @desc    Remove pharmacy item from favorites
+ * @access  Private
+ */
+router.delete('/pharmacy-item/:pharmacyItemId', protect, async (req, res) => {
+    try {
+        const favorites = await removeFavoritePharmacyItem(req.user.id, req.params.pharmacyItemId);
+
+        res.json({
+            success: true,
+            message: 'Pharmacy item removed from favorites',
+            data: favorites
+        });
+    } catch (error) {
+        console.error('Remove favorite pharmacy item error:', error);
+        res.status(getErrorStatus(error)).json({
+            success: false,
+            message: error.message || 'Failed to remove pharmacy item from favorites'
+        });
+    }
+});
+
+/**
+ * @route   POST /api/favorites/grabmart-item/:grabMartItemId
+ * @desc    Add GrabMart item to favorites
+ * @access  Private
+ */
+router.post('/grabmart-item/:grabMartItemId', protect, async (req, res) => {
+    try {
+        const favorites = await addFavoriteGrabMartItem(req.user.id, req.params.grabMartItemId);
+
+        res.json({
+            success: true,
+            message: 'GrabMart item added to favorites',
+            data: favorites
+        });
+    } catch (error) {
+        console.error('Add favorite GrabMart item error:', error);
+        res.status(getErrorStatus(error)).json({
+            success: false,
+            message: error.message || 'Failed to add GrabMart item to favorites'
+        });
+    }
+});
+
+/**
+ * @route   DELETE /api/favorites/grabmart-item/:grabMartItemId
+ * @desc    Remove GrabMart item from favorites
+ * @access  Private
+ */
+router.delete('/grabmart-item/:grabMartItemId', protect, async (req, res) => {
+    try {
+        const favorites = await removeFavoriteGrabMartItem(req.user.id, req.params.grabMartItemId);
+
+        res.json({
+            success: true,
+            message: 'GrabMart item removed from favorites',
+            data: favorites
+        });
+    } catch (error) {
+        console.error('Remove favorite GrabMart item error:', error);
+        res.status(getErrorStatus(error)).json({
+            success: false,
+            message: error.message || 'Failed to remove GrabMart item from favorites'
+        });
+    }
+});
+
+/**
+ * @route   DELETE /api/favorites
+ * @desc    Clear all favorites
+ * @access  Private
+ */
+router.delete('/', protect, async (req, res) => {
+    try {
+        const favorites = await clearAllFavorites(req.user.id);
+
+        res.json({
+            success: true,
+            message: 'All favorites cleared successfully',
+            data: favorites
+        });
+    } catch (error) {
+        console.error('Clear favorites error:', error);
+        res.status(getErrorStatus(error)).json({
+            success: false,
+            message: error.message || 'Failed to clear favorites'
         });
     }
 });
@@ -217,7 +435,7 @@ router.delete('/grocery/:groceryId', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Remove favorite grocery item error:', error);
-        res.status(500).json({
+        res.status(getErrorStatus(error)).json({
             success: false,
             message: error.message || 'Failed to remove grocery item from favorites'
         });
@@ -231,13 +449,29 @@ router.delete('/grocery/:groceryId', protect, async (req, res) => {
  */
 router.post('/sync', protect, async (req, res) => {
     try {
-        const { restaurants, stores, foodItems, groceryItems } = req.body;
+        const payload = req.body || {};
+        const {
+            restaurants,
+            stores,
+            groceryStores,
+            pharmacies,
+            pharmacyStores,
+            grabMartStores,
+            foodItems,
+            groceryItems,
+            pharmacyItems,
+            grabMartItems
+        } = payload;
 
         const localFavorites = {
             restaurants: restaurants || [],
-            stores: stores || [],
+            stores: stores || groceryStores || [],
+            pharmacies: pharmacies || pharmacyStores || [],
+            grabMartStores: grabMartStores || [],
             foodItems: foodItems || [],
-            groceryItems: groceryItems || []
+            groceryItems: groceryItems || [],
+            pharmacyItems: pharmacyItems || [],
+            grabMartItems: grabMartItems || []
         };
 
         const favorites = await syncFavorites(req.user.id, localFavorites);
@@ -249,7 +483,7 @@ router.post('/sync', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Sync favorites error:', error);
-        res.status(500).json({
+        res.status(getErrorStatus(error)).json({
             success: false,
             message: error.message || 'Failed to sync favorites'
         });
