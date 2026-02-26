@@ -1,5 +1,6 @@
 const { isRestaurantOpen } = require('./restaurant');
 const { calculateDistance, estimateDeliveryTime } = require('./distance');
+const { normalizeRatingResponse } = require('./rating_calculator');
 
 /**
  * Shared inclusion relations for food items across all endpoints
@@ -12,6 +13,7 @@ const FOOD_INCLUDE_RELATIONS = {
             restaurantName: true,
             logo: true,
             rating: true,
+            ratingCount: true,
             address: true,
             city: true,
             isOpen: true,
@@ -73,14 +75,33 @@ const formatFoodResponse = (foods, userLat, userLng) => {
         }
 
         // 2. Format Response
+        const foodRatingMeta = normalizeRatingResponse({
+            rating: food.rating,
+            totalReviews: food.totalReviews,
+        });
+        const restaurantRatingMeta = normalizeRatingResponse({
+            rating: food.restaurant?.rating,
+            ratingCount: food.restaurant?.ratingCount,
+        });
+
         return {
             ...food,
+            rating: foodRatingMeta.rating,
+            rawRating: foodRatingMeta.rawRating,
+            weightedRating: foodRatingMeta.weightedRating,
+            reviewCount: foodRatingMeta.reviewCount,
+            totalReviews: foodRatingMeta.totalReviews,
             food_image: food.foodImage, // backward compatibility
             image: food.foodImage,      // backward compatibility
             isRestaurantOpen: isRestaurantOpen(food.restaurant),
             estimatedDeliveryTime: `${minTime}-${maxTime} min`,
             restaurant: {
                 ...food.restaurant,
+                rating: restaurantRatingMeta.rating,
+                rawRating: restaurantRatingMeta.rawRating,
+                weightedRating: restaurantRatingMeta.weightedRating,
+                ratingCount: restaurantRatingMeta.ratingCount,
+                totalReviews: restaurantRatingMeta.totalReviews,
                 restaurant_name: food.restaurant?.restaurantName, // backward compatibility
                 image: food.restaurant?.logo                       // backward compatibility
             }

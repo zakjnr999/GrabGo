@@ -4,7 +4,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/restaurant/model/restaurants_model.dart';
-import 'package:grab_go_shared/shared/utils/image_optimizer.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:shimmer/shimmer.dart';
@@ -38,10 +37,7 @@ class _RestaurantListState extends State<RestaurantsNear> {
               children: List.generate(4, (index) {
                 return Container(
                   margin: EdgeInsets.only(left: 20.w, right: 20.w, bottom: 12.h),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: isDark ? Colors.grey.shade800 : Colors.grey.shade300, width: 0.5),
-                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                  ),
+                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(KBorderSize.borderRadius15)),
                   child: Row(
                     children: [
                       // Image placeholder
@@ -204,15 +200,6 @@ class _RestaurantListState extends State<RestaurantsNear> {
               decoration: BoxDecoration(
                 color: colors.backgroundPrimary,
                 borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 1.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
-                    spreadRadius: 0,
-                    blurRadius: 12,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
               ),
               child: Row(
                 children: [

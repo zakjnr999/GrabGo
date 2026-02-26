@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:chopper/chopper.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
@@ -12,6 +14,7 @@ class CartProvider extends ChangeNotifier {
   final Map<CartItem, int> _cartItems = {};
   bool _isSyncing = false;
   bool _syncQueued = false;
+  Completer<bool>? _syncCompleter;
   int _localMutationVersion = 0;
   double? _subtotal;
   double _deliveryFee = 0.0;
@@ -52,6 +55,8 @@ class CartProvider extends ChangeNotifier {
   int? get estimatedDeliveryMax => _estimatedDeliveryMax;
   bool get useCredits => _useCredits;
   bool get isPricingLoading => _isSyncing && !_hasPricingFromBackend;
+  bool get hasPendingCartOperations => _pendingItemOps.isNotEmpty;
+  bool get isCartInteractionLocked => hasPendingCartOperations;
   String get fulfillmentMode => _fulfillmentMode;
   Map<String, dynamic>? get scheduleAvailability =>
       _scheduleAvailability == null
@@ -127,14 +132,42 @@ class CartProvider extends ChangeNotifier {
   Future<bool> syncFromBackend() async {
     if (_isSyncing) {
       _syncQueued = true;
+      final currentSync = _syncCompleter;
+      if (currentSync != null) {
+        return currentSync.future;
+      }
       return true;
     }
+    _isSyncing = true;
+    final activeSyncCompleter = Completer<bool>();
+    _syncCompleter = activeSyncCompleter;
+    notifyListeners();
+
+    var anySyncSucceeded = false;
+
+    try {
+      do {
+        _syncQueued = false;
+        final syncSucceeded = await _syncFromBackendOnce();
+        anySyncSucceeded = anySyncSucceeded || syncSucceeded;
+      } while (_syncQueued);
+
+      return anySyncSucceeded;
+    } finally {
+      _isSyncing = false;
+      _syncCompleter = null;
+      if (!activeSyncCompleter.isCompleted) {
+        activeSyncCompleter.complete(anySyncSucceeded);
+      }
+      notifyListeners();
+    }
+  }
+
+  Future<bool> _syncFromBackendOnce() async {
     var syncSucceeded = false;
     final mutationVersionAtStart = _localMutationVersion;
 
     try {
-      _isSyncing = true;
-      notifyListeners();
       final previousOpenById = <String, bool>{};
       final previousOpenByProviderId = <String, bool>{};
       for (final item in _cartItems.keys) {
@@ -156,10 +189,34 @@ class CartProvider extends ChangeNotifier {
       if (response.isSuccessful && response.body != null) {
         syncSucceeded = true;
         final cartData = response.body!['cart'];
-        if (cartData != null && cartData['items'] != null) {
+        if (cartData == null || cartData is! Map) {
+          _scheduleAvailability = null;
+          _cartItems.clear();
+          _cartItemIdsByKey.clear();
+          _cartType = null;
+          _applyPricing(null);
+          _resetGiftOrderDraftIfCartIsEmpty(notify: false);
+          await _saveCart();
+          notifyListeners();
+          return syncSucceeded;
+        }
+
+        final rawItems = cartData['items'];
+        if (rawItems is! List) {
+          _scheduleAvailability = null;
+          _cartItems.clear();
+          _cartItemIdsByKey.clear();
+          _cartType = null;
+          _applyPricing(null);
+          _resetGiftOrderDraftIfCartIsEmpty(notify: false);
+          await _saveCart();
+          notifyListeners();
+          return syncSucceeded;
+        }
+
+        {
           final shouldSkipApplyingSnapshot =
-              mutationVersionAtStart != _localMutationVersion ||
-              _pendingItemOps.isNotEmpty;
+              mutationVersionAtStart != _localMutationVersion;
           if (shouldSkipApplyingSnapshot) {
             _syncQueued = true;
             return syncSucceeded;
@@ -168,13 +225,19 @@ class CartProvider extends ChangeNotifier {
           _scheduleAvailability = _parseScheduleAvailability(
             cartData['scheduleAvailability'],
           );
+          final previousMode = _normalizeFulfillmentMode(_fulfillmentMode);
+          final previousItemOrderStableKeys = _cartItems.keys
+              .map(_itemStableKey)
+              .toList(growable: false);
           _fulfillmentMode = _normalizeFulfillmentMode(
             cartData['fulfillmentMode']?.toString(),
           );
+          final parsedEntriesByStableKey = <String, MapEntry<CartItem, int>>{};
+          final parsedEntryStableKeysInOrder = <String>[];
           _cartItems.clear();
           _cartItemIdsByKey.clear();
 
-          for (var item in cartData['items']) {
+          for (var item in rawItems) {
             // Extract the populated item (Food/Grocery/Pharmacy)
             final itemData =
                 item['itemId'] ??
@@ -241,13 +304,30 @@ class CartProvider extends ChangeNotifier {
               continue; // Skip unknown types
             }
 
-            _cartItems[cartItem] = item['quantity'] as int;
+            final quantity = (item['quantity'] as num?)?.toInt() ?? 1;
+            final stableKey = _itemStableKey(cartItem);
+            parsedEntriesByStableKey[stableKey] = MapEntry(cartItem, quantity);
+            parsedEntryStableKeysInOrder.add(stableKey);
 
             final cartItemId = item['id']?.toString();
             final itemKey = _itemKeyFromBackend(itemType, itemData, item);
             if (cartItemId != null && itemKey != null) {
               _cartItemIdsByKey[itemKey] = cartItemId;
             }
+          }
+
+          final shouldPreserveOrder = previousMode == _fulfillmentMode;
+          if (shouldPreserveOrder) {
+            for (final stableKey in previousItemOrderStableKeys) {
+              final entry = parsedEntriesByStableKey.remove(stableKey);
+              if (entry == null) continue;
+              _cartItems[entry.key] = entry.value;
+            }
+          }
+          for (final stableKey in parsedEntryStableKeysInOrder) {
+            final entry = parsedEntriesByStableKey.remove(stableKey);
+            if (entry == null) continue;
+            _cartItems[entry.key] = entry.value;
           }
 
           _cartType = _inferCartType();
@@ -268,15 +348,6 @@ class CartProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error syncing cart from backend: $e');
       // Continue with local cache on error
-    } finally {
-      _isSyncing = false;
-      notifyListeners();
-      if (_syncQueued) {
-        _syncQueued = false;
-        Future.microtask(() {
-          syncFromBackend();
-        });
-      }
     }
     return syncSucceeded;
   }
@@ -397,11 +468,8 @@ class CartProvider extends ChangeNotifier {
   }
 
   String _itemKey(CartItem item) {
-    final id = item.id;
-    if (id.isNotEmpty) {
-      return '${item.itemType}:$id';
-    }
-    return '${item.itemType}:${item.name}:${item.providerId}';
+    final mode = _normalizeFulfillmentMode(_fulfillmentMode);
+    return '$mode:${_itemStableKey(item)}';
   }
 
   String? _itemKeyFromBackend(
@@ -420,7 +488,18 @@ class CartProvider extends ChangeNotifier {
         cartItem['itemId']?.toString();
 
     if (id == null || id.isEmpty) return null;
-    return '$itemType:$id';
+    final mode = _normalizeFulfillmentMode(
+      cartItem['fulfillmentMode']?.toString() ?? _fulfillmentMode,
+    );
+    return '$mode:$itemType:$id';
+  }
+
+  String _itemStableKey(CartItem item) {
+    final id = item.id;
+    if (id.isNotEmpty) {
+      return '${item.itemType}:$id';
+    }
+    return '${item.itemType}:${item.name}:${item.providerId}';
   }
 
   String? _inferCartType() {
@@ -964,7 +1043,18 @@ class CartProvider extends ChangeNotifier {
     return 'Could not add item to cart. Please try again.';
   }
 
-  Future<String?> _ensureCartItemId(String key) async {
+  bool _isItemNotFoundInCartError(String? rawError) {
+    if (rawError == null || rawError.trim().isEmpty) return false;
+    return rawError.toLowerCase().contains('item not found in cart');
+  }
+
+  Future<String?> _ensureCartItemId(
+    String key, {
+    bool forceRefresh = false,
+  }) async {
+    if (forceRefresh) {
+      await syncFromBackend();
+    }
     var cartItemId = _cartItemIdsByKey[key];
     if (cartItemId != null) return cartItemId;
 
@@ -1103,6 +1193,7 @@ class CartProvider extends ChangeNotifier {
       // Sync to backend async
       String? addError;
       if (previousQuantity == 0) {
+        _cartItemIdsByKey.remove(key);
         addError = await _addToBackend(item, 1);
       } else {
         final cartItemId = _cartItemIdsByKey[key];
@@ -1150,8 +1241,9 @@ class CartProvider extends ChangeNotifier {
     final key = _itemKey(item);
     if (_pendingItemOps.contains(key)) return;
     var cartItemId = _cartItemIdsByKey[key];
-    cartItemId ??= await _ensureCartItemId(key);
+    cartItemId ??= await _ensureCartItemId(key, forceRefresh: true);
     if (cartItemId == null) {
+      await syncFromBackend();
       return;
     }
     _pendingItemOps.add(key);
@@ -1172,6 +1264,19 @@ class CartProvider extends ChangeNotifier {
           cartItemId,
           _cartItems[item]!,
         );
+        if (_isItemNotFoundInCartError(backendError)) {
+          final freshCartItemId = await _ensureCartItemId(
+            key,
+            forceRefresh: true,
+          );
+          if (freshCartItemId != null) {
+            cartItemId = freshCartItemId;
+            backendError = await _updateQuantityOnBackend(
+              freshCartItemId,
+              _cartItems[item]!,
+            );
+          }
+        }
       } else {
         _cartItems.remove(item);
         if (_cartItems.isEmpty) {
@@ -1183,6 +1288,18 @@ class CartProvider extends ChangeNotifier {
         _resetGiftOrderDraftIfCartIsEmpty(notify: false);
         notifyListeners();
         backendError = await _removeFromBackend(cartItemId);
+        if (_isItemNotFoundInCartError(backendError)) {
+          final freshCartItemId = await _ensureCartItemId(
+            key,
+            forceRefresh: true,
+          );
+          if (freshCartItemId != null) {
+            cartItemId = freshCartItemId;
+            backendError = await _removeFromBackend(freshCartItemId);
+          } else {
+            backendError = null;
+          }
+        }
       }
 
       if (backendError != null) {
@@ -1213,8 +1330,9 @@ class CartProvider extends ChangeNotifier {
     final key = _itemKey(item);
     if (_pendingItemOps.contains(key)) return;
     var cartItemId = _cartItemIdsByKey[key];
-    cartItemId ??= await _ensureCartItemId(key);
+    cartItemId ??= await _ensureCartItemId(key, forceRefresh: true);
     if (cartItemId == null) {
+      await syncFromBackend();
       return;
     }
     _pendingItemOps.add(key);
@@ -1231,7 +1349,19 @@ class CartProvider extends ChangeNotifier {
       _saveCart();
       _resetGiftOrderDraftIfCartIsEmpty(notify: false);
       notifyListeners();
-      final backendError = await _removeFromBackend(cartItemId);
+      var backendError = await _removeFromBackend(cartItemId);
+      if (_isItemNotFoundInCartError(backendError)) {
+        final freshCartItemId = await _ensureCartItemId(
+          key,
+          forceRefresh: true,
+        );
+        if (freshCartItemId != null) {
+          cartItemId = freshCartItemId;
+          backendError = await _removeFromBackend(freshCartItemId);
+        } else {
+          backendError = null;
+        }
+      }
       if (backendError != null) {
         _cartItems[item] = previousQuantity;
         _cartType = previousCartType;

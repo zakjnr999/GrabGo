@@ -870,6 +870,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           vendors: vendors,
           isLoading: provider.isLoading,
           accentColor: accentColor,
+          showClosedOnImage: true,
           onItemTap: (vendor) => VendorDetailBottomSheet.show(context: context, vendor: vendor),
         );
       },
@@ -1376,7 +1377,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Widget _buildBuyAgainSection(ServiceProvider serviceProvider, GroceryProvider groceryProvider) {
-    if (!serviceProvider.isGroceryService || groceryProvider.buyAgainItems.isEmpty) return const SizedBox.shrink();
+    if (!serviceProvider.isGroceryService || groceryProvider.buyAgainItems.isEmpty) {
+      return const SizedBox.shrink();
+    }
     return Column(
       children: [
         OrderAgainSection(
@@ -1517,11 +1520,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           return Consumer<CartProvider>(
             builder: (context, provider, _) {
               final bool isInCart = provider.cartItems.containsKey(item);
+              final bool isItemPending = provider.isItemOperationPending(item);
               return FoodItemCard(
                 item: item,
                 onTap: () => context.push('/foodDetails', extra: item),
                 trailing: GestureDetector(
                   onTap: () {
+                    if (isItemPending) return;
                     if (isInCart) {
                       provider.removeItemCompletely(item);
                     } else {
@@ -1533,15 +1538,26 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: isInCart ? colors.accentOrange : colors.backgroundSecondary,
-                      border: Border.all(color: isInCart ? colors.accentOrange : colors.inputBorder, width: 1),
                     ),
-                    child: SvgPicture.asset(
-                      Assets.icons.cart,
-                      package: 'grab_go_shared',
-                      height: 16.h,
-                      width: 16.w,
-                      colorFilter: ColorFilter.mode(isInCart ? Colors.white : colors.textPrimary, BlendMode.srcIn),
-                    ),
+                    child: isItemPending
+                        ? SizedBox(
+                            width: 16.w,
+                            height: 16.w,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(isInCart ? Colors.white : colors.accentOrange),
+                            ),
+                          )
+                        : SvgPicture.asset(
+                            Assets.icons.cart,
+                            package: 'grab_go_shared',
+                            height: 16.h,
+                            width: 16.w,
+                            colorFilter: ColorFilter.mode(
+                              isInCart ? Colors.white : colors.textPrimary,
+                              BlendMode.srcIn,
+                            ),
+                          ),
                   ),
                 ),
               );

@@ -12,6 +12,7 @@ class VendorHorizontalSection extends StatelessWidget {
   final bool isLoading;
   final Color accentColor;
   final String? emptyText;
+  final bool showClosedOnImage;
 
   const VendorHorizontalSection({
     super.key,
@@ -22,6 +23,7 @@ class VendorHorizontalSection extends StatelessWidget {
     this.isLoading = false,
     required this.accentColor,
     this.emptyText,
+    this.showClosedOnImage = false,
   });
 
   @override
@@ -29,11 +31,17 @@ class VendorHorizontalSection extends StatelessWidget {
     if (!isLoading && vendors.isEmpty) return const SizedBox.shrink();
     final size = MediaQuery.sizeOf(context);
     final cardWidth = (size.width * 0.72).clamp(220.0, 300.0);
-    final cardHeight = (cardWidth * 0.75).clamp(180.0, 210.0);
+    final imageHeight = (cardWidth * 0.45).clamp(90.0, 125.0);
+    final cardHeight = (imageHeight + 120.h).clamp(210.0, 255.0);
 
     return Column(
       children: [
-        SectionHeader(title: title, sectionTotal: vendors.length, accentColor: accentColor, onSeeAll: () {}),
+        SectionHeader(
+          title: title,
+          sectionTotal: vendors.length,
+          accentColor: accentColor,
+          onSeeAll: () {},
+        ),
         SizedBox(height: 12.h),
 
         SizedBox(
@@ -52,6 +60,7 @@ class VendorHorizontalSection extends StatelessWidget {
                   onTap: () => onItemTap(vendor),
                   width: cardWidth,
                   margin: EdgeInsets.symmetric(vertical: 4.h),
+                  showClosedOnImage: showClosedOnImage,
                 ),
               );
             },

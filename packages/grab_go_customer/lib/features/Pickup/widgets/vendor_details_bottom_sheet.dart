@@ -15,13 +15,17 @@ import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';
 import 'package:grab_go_customer/shared/widgets/vertical_zigzag_tag.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
-import 'package:grab_go_shared/grub_go_shared.dart' hide FoodRepository, FoodService;
+import 'package:grab_go_shared/grub_go_shared.dart'
+    hide FoodRepository, FoodService;
 import 'package:provider/provider.dart';
 
 class VendorDetailBottomSheet extends StatefulWidget {
   final VendorModel vendor;
   const VendorDetailBottomSheet({super.key, required this.vendor});
-  static PersistentBottomSheetController show({required BuildContext context, required VendorModel vendor}) {
+  static PersistentBottomSheetController show({
+    required BuildContext context,
+    required VendorModel vendor,
+  }) {
     return Scaffold.of(context).showBottomSheet(
       (context) => VendorDetailBottomSheet(vendor: vendor),
       backgroundColor: Colors.transparent,
@@ -30,7 +34,8 @@ class VendorDetailBottomSheet extends StatefulWidget {
   }
 
   @override
-  State<VendorDetailBottomSheet> createState() => _VendorDetailBottomSheetState();
+  State<VendorDetailBottomSheet> createState() =>
+      _VendorDetailBottomSheetState();
 }
 
 class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
@@ -57,7 +62,9 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
 
       switch (vendorType) {
         case VendorType.food:
-          final items = await FoodRepository().fetchFoods(restaurantId: vendorId);
+          final items = await FoodRepository().fetchFoods(
+            restaurantId: vendorId,
+          );
           allVendorItems = items;
           break;
         case VendorType.grocery:
@@ -170,7 +177,8 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
     final size = MediaQuery.of(context).size;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final vendor = widget.vendor;
-    final vendorEtaMinutes = vendor.averagePreparationTime ?? vendor.averageDeliveryTime ?? 30;
+    final vendorEtaMinutes =
+        vendor.averagePreparationTime ?? vendor.averageDeliveryTime ?? 30;
     final sheetCardWidth = size.width * 0.4;
     final sheetImageHeight = (sheetCardWidth * 0.6).clamp(90.0, 120.0);
     final sheetCardHeight = (sheetImageHeight + 110.0).clamp(190.0, 230.0);
@@ -185,7 +193,9 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
             borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
             boxShadow: [
               BoxShadow(
-                color: isDark ? Colors.black.withAlpha(50) : Colors.black.withAlpha(20),
+                color: isDark
+                    ? Colors.black.withAlpha(50)
+                    : Colors.black.withAlpha(20),
                 blurRadius: 20,
                 offset: const Offset(0, -4),
               ),
@@ -220,7 +230,10 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                                   height: 80,
                                   width: 80,
                                   fit: BoxFit.cover,
-                                  imageUrl: ImageOptimizer.getPreviewUrl(vendor.logo ?? '', width: 200),
+                                  imageUrl: ImageOptimizer.getPreviewUrl(
+                                    vendor.logo ?? '',
+                                    width: 200,
+                                  ),
                                   memCacheWidth: 200,
                                   maxHeightDiskCache: 200,
                                   placeholder: (context, url) => Container(
@@ -232,38 +245,55 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                                       borderRadius: BorderRadius.circular(12.r),
                                     ),
                                     child: SvgPicture.asset(
-                                      vendor.vendorType == VendorType.food.toString()
+                                      vendor.vendorType ==
+                                              VendorType.food.toString()
                                           ? Assets.icons.chefHat
-                                          : vendor.vendorType == VendorType.grocery.toString()
+                                          : vendor.vendorType ==
+                                                VendorType.grocery.toString()
                                           ? Assets.icons.cart
-                                          : vendor.vendorType == VendorType.pharmacy.toString()
+                                          : vendor.vendorType ==
+                                                VendorType.pharmacy.toString()
                                           ? Assets.icons.pharmacyCrossCircle
                                           : Assets.icons.store,
                                       package: "grab_go_shared",
-                                      colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                      colorFilter: ColorFilter.mode(
+                                        colors.textSecondary,
+                                        BlendMode.srcIn,
+                                      ),
                                     ),
                                   ),
-                                  errorWidget: (context, url, error) => Container(
-                                    height: 80,
-                                    width: 80,
-                                    padding: EdgeInsets.all(20.w),
-                                    decoration: BoxDecoration(
-                                      color: colors.backgroundSecondary,
-                                      borderRadius: BorderRadius.circular(12.r),
-                                    ),
-                                    child: SvgPicture.asset(
-                                      vendor.vendorType == VendorType.food.toString()
-                                          ? Assets.icons.chefHat
-                                          : vendor.vendorType == VendorType.grocery.toString()
-                                          ? Assets.icons.cart
-                                          : vendor.vendorType == VendorType.pharmacy.toString()
-                                          ? Assets.icons.pharmacyCrossCircle
-                                          : Assets.icons.store,
-                                      package: "grab_go_shared",
+                                  errorWidget: (context, url, error) =>
+                                      Container(
+                                        height: 80,
+                                        width: 80,
+                                        padding: EdgeInsets.all(20.w),
+                                        decoration: BoxDecoration(
+                                          color: colors.backgroundSecondary,
+                                          borderRadius: BorderRadius.circular(
+                                            12.r,
+                                          ),
+                                        ),
+                                        child: SvgPicture.asset(
+                                          vendor.vendorType ==
+                                                  VendorType.food.toString()
+                                              ? Assets.icons.chefHat
+                                              : vendor.vendorType ==
+                                                    VendorType.grocery
+                                                        .toString()
+                                              ? Assets.icons.cart
+                                              : vendor.vendorType ==
+                                                    VendorType.pharmacy
+                                                        .toString()
+                                              ? Assets.icons.pharmacyCrossCircle
+                                              : Assets.icons.store,
+                                          package: "grab_go_shared",
 
-                                      colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                                    ),
-                                  ),
+                                          colorFilter: ColorFilter.mode(
+                                            colors.textSecondary,
+                                            BlendMode.srcIn,
+                                          ),
+                                        ),
+                                      ),
                                 ),
                               ),
                               _popularItems.isEmpty && _quickPickupItems.isEmpty
@@ -271,8 +301,12 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                                       height: 80,
                                       width: 80,
                                       decoration: BoxDecoration(
-                                        color: Colors.black.withValues(alpha: 0.6),
-                                        borderRadius: BorderRadius.circular(12.r),
+                                        color: Colors.black.withValues(
+                                          alpha: 0.6,
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          12.r,
+                                        ),
                                       ),
                                       child: Center(
                                         child: Text(
@@ -314,7 +348,10 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                                         package: 'grab_go_shared',
                                         height: 14.sp,
                                         width: 14.sp,
-                                        colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                        colorFilter: ColorFilter.mode(
+                                          colors.accentOrange,
+                                          BlendMode.srcIn,
+                                        ),
                                       ),
                                     ],
                                   ],
@@ -327,7 +364,10 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                                       package: 'grab_go_shared',
                                       height: 14.sp,
                                       width: 14.sp,
-                                      colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                      colorFilter: ColorFilter.mode(
+                                        colors.accentOrange,
+                                        BlendMode.srcIn,
+                                      ),
                                     ),
                                     SizedBox(width: 4.w),
                                     Text(
@@ -339,8 +379,15 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                                       ),
                                     ),
                                     Padding(
-                                      padding: EdgeInsets.symmetric(horizontal: 6.w),
-                                      child: Text('•', style: TextStyle(color: colors.textSecondary)),
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 6.w,
+                                      ),
+                                      child: Text(
+                                        '•',
+                                        style: TextStyle(
+                                          color: colors.textSecondary,
+                                        ),
+                                      ),
                                     ),
 
                                     SvgPicture.asset(
@@ -348,13 +395,19 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                                       package: 'grab_go_shared',
                                       height: 14.sp,
                                       width: 14.sp,
-                                      colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                      colorFilter: ColorFilter.mode(
+                                        colors.textSecondary,
+                                        BlendMode.srcIn,
+                                      ),
                                     ),
 
                                     SizedBox(width: 4.w),
                                     Text(
                                       '$vendorEtaMinutes mins',
-                                      style: TextStyle(color: colors.textSecondary, fontSize: 13.sp),
+                                      style: TextStyle(
+                                        color: colors.textSecondary,
+                                        fontSize: 13.sp,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -367,7 +420,9 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                                       height: 14.sp,
                                       width: 14.sp,
                                       colorFilter: ColorFilter.mode(
-                                        vendor.isOpen ? colors.accentGreen : colors.error,
+                                        vendor.isOpen
+                                            ? colors.accentGreen
+                                            : colors.error,
                                         BlendMode.srcIn,
                                       ),
                                     ),
@@ -376,7 +431,9 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                                     Text(
                                       _vendorAvailabilityText(vendor),
                                       style: TextStyle(
-                                        color: vendor.isOpen ? colors.accentGreen : colors.error,
+                                        color: vendor.isOpen
+                                            ? colors.accentGreen
+                                            : colors.error,
                                         fontSize: 13.sp,
                                         fontWeight: FontWeight.w500,
                                       ),
@@ -394,12 +451,19 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                     if (_isLoadingItems) ...[
                       _buildHeaderSkeleton(colors),
                       SizedBox(height: 12.h),
-                      SingleChildScrollView(scrollDirection: Axis.horizontal, child: _buildItemSkeleton(size, colors)),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: _buildItemSkeleton(size, colors),
+                      ),
                       SizedBox(height: 20.h),
                       _buildHeaderSkeleton(colors),
                       SizedBox(height: 12.h),
-                      SingleChildScrollView(scrollDirection: Axis.horizontal, child: _buildItemSkeleton(size, colors)),
-                    ] else if (_popularItems.isEmpty && _quickPickupItems.isEmpty) ...[
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: _buildItemSkeleton(size, colors),
+                      ),
+                    ] else if (_popularItems.isEmpty &&
+                        _quickPickupItems.isEmpty) ...[
                       SizedBox(
                         height: 250.h,
                         child: Center(
@@ -417,7 +481,12 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                               SizedBox(height: 4.h),
                               Text(
                                 'Check back later for fresh items',
-                                style: TextStyle(color: colors.textSecondary.withValues(alpha: 0.6), fontSize: 13.sp),
+                                style: TextStyle(
+                                  color: colors.textSecondary.withValues(
+                                    alpha: 0.6,
+                                  ),
+                                  fontSize: 13.sp,
+                                ),
                               ),
                             ],
                           ),
@@ -442,7 +511,11 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                             itemBuilder: (context, index) {
                               final item = _popularItems[index];
                               return Padding(
-                                padding: EdgeInsets.only(right: index == _popularItems.length - 1 ? 0 : 6.w),
+                                padding: EdgeInsets.only(
+                                  right: index == _popularItems.length - 1
+                                      ? 0
+                                      : 6.w,
+                                ),
                                 child: _buildItemCard(item, colors, size, true),
                               );
                             },
@@ -469,8 +542,17 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                             itemBuilder: (context, index) {
                               final item = _quickPickupItems[index];
                               return Padding(
-                                padding: EdgeInsets.only(right: index == _quickPickupItems.length - 1 ? 0 : 6.w),
-                                child: _buildItemCard(item, colors, size, false),
+                                padding: EdgeInsets.only(
+                                  right: index == _quickPickupItems.length - 1
+                                      ? 0
+                                      : 6.w,
+                                ),
+                                child: _buildItemCard(
+                                  item,
+                                  colors,
+                                  size,
+                                  false,
+                                ),
                               );
                             },
                           ),
@@ -565,7 +647,12 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
     );
   }
 
-  Widget _buildItemCard(FoodItem item, AppColorsExtension colors, Size size, bool isPopular) {
+  Widget _buildItemCard(
+    FoodItem item,
+    AppColorsExtension colors,
+    Size size,
+    bool isPopular,
+  ) {
     final cardWidth = size.width * 0.4;
     final imageHeight = (cardWidth * 0.6).clamp(90.0, 120.0);
     final pickupEtaText = _pickupEtaText(item);
@@ -580,7 +667,10 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-          border: Border.all(color: colors.inputBorder.withValues(alpha: 0.5), width: 1),
+          border: Border.all(
+            color: colors.inputBorder.withValues(alpha: 0.5),
+            width: 1,
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -596,7 +686,10 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                     bottomRight: Radius.circular(KBorderSize.borderRadius4),
                   ),
                   child: CachedNetworkImage(
-                    imageUrl: ImageOptimizer.getPreviewUrl(item.image, width: 400),
+                    imageUrl: ImageOptimizer.getPreviewUrl(
+                      item.image,
+                      width: 400,
+                    ),
                     height: imageHeight,
                     width: double.infinity,
                     fit: BoxFit.cover,
@@ -609,7 +702,10 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                         child: SvgPicture.asset(
                           Assets.icons.utensilsCrossed,
                           package: 'grab_go_shared',
-                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                          colorFilter: ColorFilter.mode(
+                            colors.textSecondary,
+                            BlendMode.srcIn,
+                          ),
                           width: 30.w,
                           height: 30.h,
                         ),
@@ -622,7 +718,10 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                         child: SvgPicture.asset(
                           Assets.icons.utensilsCrossed,
                           package: 'grab_go_shared',
-                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                          colorFilter: ColorFilter.mode(
+                            colors.textSecondary,
+                            BlendMode.srcIn,
+                          ),
                           width: 30.w,
                           height: 30.h,
                         ),
@@ -645,11 +744,16 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                           }
                         },
                         child: SvgPicture.asset(
-                          isFavorite ? Assets.icons.heartSolid : Assets.icons.heart,
+                          isFavorite
+                              ? Assets.icons.heartSolid
+                              : Assets.icons.heart,
                           package: 'grab_go_shared',
                           height: 24.h,
                           width: 24.w,
-                          colorFilter: ColorFilter.mode(isFavorite ? colors.error : Colors.white, BlendMode.srcIn),
+                          colorFilter: ColorFilter.mode(
+                            isFavorite ? colors.error : Colors.white,
+                            BlendMode.srcIn,
+                          ),
                         ),
                       ),
                     );
@@ -669,19 +773,27 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                 Consumer<CartProvider>(
                   builder: (context, cartProvider, _) {
                     final isInCart = cartProvider.cartItems.containsKey(item);
+                    final isItemPending = cartProvider.isItemOperationPending(
+                      item,
+                    );
                     return Positioned(
                       right: 8.w,
                       bottom: 8.h,
                       child: GestureDetector(
                         onTap: () async {
+                          if (isItemPending) return;
                           if (cartProvider.fulfillmentMode != 'pickup') {
                             await cartProvider.setFulfillmentMode('pickup');
                           }
-                          final isNowInCart = cartProvider.cartItems.containsKey(item);
+                          final isNowInCart = cartProvider.cartItems
+                              .containsKey(item);
                           if (isNowInCart) {
                             await cartProvider.removeItemCompletely(item);
                           } else {
-                            await cartProvider.addToCart(item, context: context);
+                            await cartProvider.addToCart(
+                              item,
+                              context: context,
+                            );
                           }
                         },
                         child: AnimatedContainer(
@@ -689,20 +801,43 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                           height: 32,
                           width: 32,
                           decoration: BoxDecoration(
-                            color: isInCart ? colors.accentOrange : colors.backgroundPrimary.withValues(alpha: 0.95),
-                            borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                            color: isInCart
+                                ? colors.accentOrange
+                                : colors.backgroundPrimary.withValues(
+                                    alpha: 0.95,
+                                  ),
+                            borderRadius: BorderRadius.circular(
+                              KBorderSize.borderMedium,
+                            ),
                           ),
                           child: Center(
-                            child: SvgPicture.asset(
-                              isInCart ? Assets.icons.check : Assets.icons.plus,
-                              package: 'grab_go_shared',
-                              height: 17,
-                              width: 17,
-                              colorFilter: ColorFilter.mode(
-                                isInCart ? Colors.white : colors.textPrimary,
-                                BlendMode.srcIn,
-                              ),
-                            ),
+                            child: isItemPending
+                                ? SizedBox(
+                                    width: 17.w,
+                                    height: 17.w,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        isInCart
+                                            ? Colors.white
+                                            : colors.accentOrange,
+                                      ),
+                                    ),
+                                  )
+                                : SvgPicture.asset(
+                                    isInCart
+                                        ? Assets.icons.check
+                                        : Assets.icons.plus,
+                                    package: 'grab_go_shared',
+                                    height: 17,
+                                    width: 17,
+                                    colorFilter: ColorFilter.mode(
+                                      isInCart
+                                          ? Colors.white
+                                          : colors.textPrimary,
+                                      BlendMode.srcIn,
+                                    ),
+                                  ),
                           ),
                         ),
                       ),
@@ -724,7 +859,11 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                           item.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                          style: TextStyle(
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w600,
+                            color: colors.textPrimary,
+                          ),
                         ),
                         SizedBox(height: 6.h),
                         Row(
@@ -734,7 +873,10 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                               package: 'grab_go_shared',
                               height: 12.h,
                               width: 12.w,
-                              colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                              colorFilter: ColorFilter.mode(
+                                colors.textSecondary,
+                                BlendMode.srcIn,
+                              ),
                             ),
                             SizedBox(width: 4.w),
                             Text(
@@ -749,14 +891,21 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                         ),
                         SizedBox(height: 6.h),
                         Container(
-                          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 8.w,
+                            vertical: 3.h,
+                          ),
                           decoration: BoxDecoration(
                             color: colors.accentOrange.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(8.r),
                           ),
                           child: Text(
                             "GHS ${item.price.toStringAsFixed(2)}",
-                            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w800, color: colors.accentOrange),
+                            style: TextStyle(
+                              fontSize: 13.sp,
+                              fontWeight: FontWeight.w800,
+                              color: colors.accentOrange,
+                            ),
                           ),
                         ),
                       ],

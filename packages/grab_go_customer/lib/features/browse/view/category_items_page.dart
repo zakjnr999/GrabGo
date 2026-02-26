@@ -205,6 +205,7 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
 
         final itemCount = cartProvider.totalQuantity;
         final totalAmount = cartProvider.total;
+        final isLocked = cartProvider.isCartInteractionLocked;
 
         final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
         return Column(
@@ -216,58 +217,81 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
                 height: 64.h,
                 child: ClipRRect(
                   borderRadius: BorderRadius.vertical(top: Radius.circular(18.r)),
-                  child: GestureDetector(
-                    onTap: () => context.push("/cart"),
-                    child: Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-                      decoration: BoxDecoration(
-                        color: colors.accentOrange,
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(18.r)),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(8.r),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: SvgPicture.asset(
-                              Assets.icons.cart,
-                              height: 18.h,
-                              width: 18.w,
-                              package: 'grab_go_shared',
-                              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                            ),
+                  child: IgnorePointer(
+                    ignoring: isLocked,
+                    child: GestureDetector(
+                      onTap: () => context.push("/cart"),
+                      child: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 180),
+                        opacity: isLocked ? 0.82 : 1,
+                        child: Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                          decoration: BoxDecoration(
+                            color: colors.accentOrange,
+                            borderRadius: BorderRadius.vertical(top: Radius.circular(18.r)),
                           ),
-                          SizedBox(width: 12.w),
-                          Expanded(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "View cart",
-                                  style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(8.r),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                  shape: BoxShape.circle,
                                 ),
-                                SizedBox(height: 2.h),
-                                Text(
-                                  "$itemCount ${itemCount == 1 ? "item" : "items"} in cart",
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.9),
-                                    fontSize: 12.sp,
-                                    fontWeight: FontWeight.w500,
+                                child: SvgPicture.asset(
+                                  Assets.icons.cart,
+                                  height: 18.h,
+                                  width: 18.w,
+                                  package: 'grab_go_shared',
+                                  colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                ),
+                              ),
+                              SizedBox(width: 12.w),
+                              Expanded(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      isLocked ? "Updating cart..." : "View cart",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14.sp,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    SizedBox(height: 2.h),
+                                    Text(
+                                      "$itemCount ${itemCount == 1 ? "item" : "items"} in cart",
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(alpha: 0.9),
+                                        fontSize: 12.sp,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (isLocked)
+                                Padding(
+                                  padding: EdgeInsets.only(right: 12.w),
+                                  child: SizedBox(
+                                    width: 18.w,
+                                    height: 18.w,
+                                    child: const CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    ),
                                   ),
                                 ),
-                              ],
-                            ),
+                              Text(
+                                "${AppStrings.currencySymbol} ${totalAmount.toStringAsFixed(2)}",
+                                style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w800),
+                              ),
+                            ],
                           ),
-                          Text(
-                            "${AppStrings.currencySymbol} ${totalAmount.toStringAsFixed(2)}",
-                            style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w800),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
@@ -383,7 +407,8 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
   }) {
     final size = MediaQuery.sizeOf(context);
     final cardWidth = (size.width * 0.78).clamp(230.0, 320.0);
-    final cardHeight = (cardWidth * 0.72).clamp(180.0, 230.0);
+    final imageHeight = (cardWidth * 0.45).clamp(90.0, 125.0);
+    final cardHeight = (imageHeight + 110.h).clamp(208.0, 250.0);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -524,13 +549,57 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate((context, index) {
               final item = items[index];
-              return Padding(
-                padding: EdgeInsets.only(bottom: 16.h),
-                child: FoodItemCard(
-                  item: item,
-                  margin: EdgeInsets.zero,
-                  onTap: () => context.push('/foodDetails', extra: item),
-                ),
+              return Consumer<CartProvider>(
+                builder: (context, provider, _) {
+                  final bool isInCart = provider.cartItems.containsKey(item);
+                  final bool isItemPending = provider.isItemOperationPending(item);
+                  return Padding(
+                    padding: EdgeInsets.only(bottom: 16.h),
+                    child: FoodItemCard(
+                      item: item,
+                      margin: EdgeInsets.zero,
+                      onTap: () => context.push('/foodDetails', extra: item),
+                      trailing: GestureDetector(
+                        onTap: () {
+                          if (isItemPending) return;
+                          if (isInCart) {
+                            provider.removeItemCompletely(item);
+                          } else {
+                            provider.addToCart(item, context: context);
+                          }
+                        },
+                        child: Container(
+                          padding: EdgeInsets.all(8.r),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isInCart ? colors.accentOrange : colors.backgroundSecondary,
+                          ),
+                          child: isItemPending
+                              ? SizedBox(
+                                  width: 16.w,
+                                  height: 16.w,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      isInCart ? Colors.white : colors.accentOrange,
+                                    ),
+                                  ),
+                                )
+                              : SvgPicture.asset(
+                                  Assets.icons.cart,
+                                  package: 'grab_go_shared',
+                                  height: 16.h,
+                                  width: 16.w,
+                                  colorFilter: ColorFilter.mode(
+                                    isInCart ? Colors.white : colors.textPrimary,
+                                    BlendMode.srcIn,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
               );
             }, childCount: items.length),
           ),

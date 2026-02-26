@@ -3,9 +3,11 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
+import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
 import 'package:grab_go_customer/shared/widgets/vertical_zigzag_tag.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:provider/provider.dart';
 
 class FoodItemCard extends StatelessWidget {
   final FoodItem item;
@@ -27,7 +29,6 @@ class FoodItemCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-          border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 1),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -74,16 +75,7 @@ class FoodItemCard extends StatelessWidget {
                     errorWidget: (context, url, error) => Container(
                       height: 120,
                       width: double.infinity,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            colors.inputBorder.withValues(alpha: 0.3),
-                            colors.inputBorder.withValues(alpha: 0.1),
-                          ],
-                        ),
-                      ),
+                      color: colors.inputBackground,
                       child: Center(
                         child: SvgPicture.asset(
                           Assets.icons.utensilsCrossed,
@@ -95,6 +87,32 @@ class FoodItemCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                ),
+
+                Consumer<FavoritesProvider>(
+                  builder: (context, favoriteProvider, child) {
+                    final bool isFavorite = favoriteProvider.isFavorite(item);
+                    return Positioned(
+                      right: 6.r,
+                      top: 6.r,
+                      child: GestureDetector(
+                        onTap: () {
+                          if (isFavorite) {
+                            favoriteProvider.removeFromFavorites(item);
+                          } else {
+                            favoriteProvider.addToFavorites(item);
+                          }
+                        },
+                        child: SvgPicture.asset(
+                          isFavorite ? Assets.icons.heartSolid : Assets.icons.heart,
+                          package: 'grab_go_shared',
+                          height: 24,
+                          width: 24.w,
+                          colorFilter: ColorFilter.mode(isFavorite ? colors.error : Colors.white, BlendMode.srcIn),
+                        ),
+                      ),
+                    );
+                  },
                 ),
                 if (item.discountPercentage > 0)
                   Positioned(
@@ -109,21 +127,40 @@ class FoodItemCard extends StatelessWidget {
               ],
             ),
             Padding(
-              padding: EdgeInsets.all(12.r),
+              padding: EdgeInsets.symmetric(vertical: 12.h),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Food Name
-                  Text(
-                    item.name,
-                    style: TextStyle(
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.w700,
-                      color: colors.textPrimary,
-                      height: 1.2,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.name,
+                          style: TextStyle(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w700,
+                            color: colors.textPrimary,
+                            height: 1.2,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+
+                      SvgPicture.asset(
+                        Assets.icons.starSolid,
+                        package: 'grab_go_shared',
+                        height: 13,
+                        width: 13.w,
+                        colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                      ),
+                      SizedBox(width: 4.w),
+                      Text(
+                        '${item.rating.toStringAsFixed(1)} (146)',
+                        style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
                   // Restaurant Name
@@ -142,32 +179,6 @@ class FoodItemCard extends StatelessWidget {
                         decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
                       ),
                       SizedBox(width: 8.w),
-                      Text(
-                        item.isRestaurantOpen ? "We're open" : "We're closed",
-                        style: TextStyle(
-                          fontSize: 12.sp,
-                          fontWeight: FontWeight.w600,
-                          color: item.isRestaurantOpen ? colors.accentGreen : colors.error,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  // Rating + ETA / Closed status
-                  Row(
-                    children: [
-                      SvgPicture.asset(
-                        Assets.icons.starSolid,
-                        package: 'grab_go_shared',
-                        height: 13,
-                        width: 13.w,
-                        colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                      ),
-                      SizedBox(width: 4.w),
-                      Text(
-                        item.rating.toStringAsFixed(1),
-                        style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
-                      ),
                       if (item.isRestaurantOpen) ...[
                         SizedBox(width: 8.w),
                         Container(
@@ -188,10 +199,19 @@ class FoodItemCard extends StatelessWidget {
                           deliveryTimeLabel ?? item.estimatedDeliveryTime,
                           style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
                         ),
+                      ] else ...[
+                        Text(
+                          "We're closed",
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w600,
+                            color: item.isRestaurantOpen ? colors.accentGreen : colors.error,
+                          ),
+                        ),
                       ],
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   // Price and Action Button
                   Row(
                     children: [
@@ -220,7 +240,6 @@ class FoodItemCard extends StatelessWidget {
                           ),
                         ),
                       const Spacer(),
-                      // Action Button
                       if (trailing != null) trailing!,
                     ],
                   ),

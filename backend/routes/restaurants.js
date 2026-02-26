@@ -8,6 +8,7 @@ const {
   uploadMultipleToCloudinary,
 } = require("../middleware/upload");
 const { isRestaurantOpen } = require("../utils/restaurant");
+const { normalizeRatingResponse } = require("../utils/rating_calculator");
 
 const router = express.Router();
 
@@ -18,8 +19,17 @@ const formatRestaurant = (restaurant) => {
   const computedIsOpen = Array.isArray(openingHours)
     ? isRestaurantOpen({ ...restaurant, openingHours })
     : restaurant.isOpen;
+  const ratingMeta = normalizeRatingResponse({
+    rating: restaurant.rating,
+    ratingCount: restaurant.ratingCount,
+    totalReviews: restaurant.totalReviews,
+  });
   return {
     ...rest,
+    rating: ratingMeta.rating,
+    rawRating: ratingMeta.rawRating,
+    weightedRating: ratingMeta.weightedRating,
+    ratingCount: ratingMeta.ratingCount,
     isOpen: computedIsOpen,
     location: {
       type: 'Point',
@@ -35,7 +45,8 @@ const formatRestaurant = (restaurant) => {
     is_open: computedIsOpen,
     delivery_fee: restaurant.deliveryFee,
     min_order: restaurant.minOrder,
-    totalReviews: restaurant.ratingCount || 0,
+    totalReviews: ratingMeta.totalReviews,
+    reviewCount: ratingMeta.reviewCount,
   };
 };
 

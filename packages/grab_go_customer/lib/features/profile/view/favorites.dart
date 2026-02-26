@@ -19,7 +19,8 @@ class FavoritesPage extends StatefulWidget {
   State<FavoritesPage> createState() => _FavoritesPageState();
 }
 
-class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateMixin {
+class _FavoritesPageState extends State<FavoritesPage>
+    with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   late TabController _tabController;
   late AnimationController _searchAnimationController;
@@ -29,8 +30,11 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
   bool _isSearchActive = false;
 
   final ScrollController _scrollController = ScrollController();
-  final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0.0);
-  static const double _collapsedHeight = 140.0; // Increased to show tabs when collapsed
+  final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(
+    0.0,
+  );
+  static const double _collapsedHeight =
+      140.0; // Increased to show tabs when collapsed
   static const double _scrollThreshold = 100.0;
 
   @override
@@ -45,7 +49,10 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
         });
       }
     });
-    _searchAnimationController = AnimationController(duration: const Duration(milliseconds: 300), vsync: this);
+    _searchAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
   }
 
   @override
@@ -93,7 +100,9 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
       statusBarColor: colors.backgroundPrimary,
       statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       systemNavigationBarColor: colors.backgroundPrimary,
-      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      systemNavigationBarIconBrightness: isDark
+          ? Brightness.light
+          : Brightness.dark,
     );
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -122,7 +131,11 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
                             return _buildNoResultsState(colors, size);
                           }
 
-                          return _buildFavoritesList(colors, filteredItems, size);
+                          return _buildFavoritesList(
+                            colors,
+                            filteredItems,
+                            size,
+                          );
                         },
                       ),
                     ),
@@ -130,7 +143,12 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
                 ),
 
                 // Collapsible Header
-                Positioned(top: 0, left: 0, right: 0, child: _buildCollapsibleFavoritesHeader(colors, size)),
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: _buildCollapsibleFavoritesHeader(colors, size),
+                ),
               ],
             ),
           ),
@@ -139,16 +157,24 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
     );
   }
 
-  Widget _buildCollapsibleFavoritesHeader(AppColorsExtension colors, Size size) {
+  Widget _buildCollapsibleFavoritesHeader(
+    AppColorsExtension colors,
+    Size size,
+  ) {
     final statusBarHeight = MediaQuery.of(context).padding.top;
     final dynamicCollapsedHeight = _collapsedHeight + statusBarHeight;
 
     return ValueListenableBuilder<double>(
       valueListenable: _scrollOffsetNotifier,
       builder: (context, scrollOffset, _) {
-        final collapseProgress = (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
+        final collapseProgress = (scrollOffset / _scrollThreshold).clamp(
+          0.0,
+          1.0,
+        );
         final expandedHeight = UmbrellaHeaderMetrics.expandedHeightFor(size);
-        final currentHeight = expandedHeight - ((expandedHeight - dynamicCollapsedHeight) * collapseProgress);
+        final currentHeight =
+            expandedHeight -
+            ((expandedHeight - dynamicCollapsedHeight) * collapseProgress);
         final contentOpacity = (1.0 - collapseProgress).clamp(0.0, 1.0);
 
         return SizedBox(
@@ -164,7 +190,9 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
               ),
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 200),
-                child: _isSearchActive ? _buildSearchBar(colors) : _buildStickyTabs(colors, contentOpacity),
+                child: _isSearchActive
+                    ? _buildSearchBar(colors)
+                    : _buildStickyTabs(colors, contentOpacity),
               ),
             ],
           ),
@@ -177,7 +205,12 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
     return Container(
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
-        border: Border(bottom: BorderSide(color: colors.inputBorder.withValues(alpha: 0.5), width: 1)),
+        border: Border(
+          bottom: BorderSide(
+            color: colors.inputBorder.withValues(alpha: 0.5),
+            width: 1,
+          ),
+        ),
       ),
       child: TabBar(
         controller: _tabController,
@@ -216,7 +249,11 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
         padding: EdgeInsets.fromLTRB(20.w, statusBarHeight, 20.w, 10.h),
         child: Row(
           children: [
-            _buildHeaderButton(icon: Assets.icons.navArrowLeft, onTap: () => context.pop(), colors: colors),
+            _buildHeaderButton(
+              icon: Assets.icons.navArrowLeft,
+              onTap: () => context.pop(),
+              colors: colors,
+            ),
             SizedBox(width: 16.w),
             Expanded(
               child: Text(
@@ -275,7 +312,10 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
                     _handleClearAllFavorites();
                 }
               },
-              child: _buildHeaderButton(icon: Assets.icons.moreVertical, colors: colors),
+              child: _buildHeaderButton(
+                icon: Assets.icons.moreVertical,
+                colors: colors,
+              ),
             ),
           ],
         ),
@@ -292,7 +332,10 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
     return Container(
       height: 44,
       width: 44,
-      decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
+      decoration: BoxDecoration(
+        color: colors.backgroundSecondary,
+        shape: BoxShape.circle,
+      ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -303,7 +346,10 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
             child: SvgPicture.asset(
               icon,
               package: 'grab_go_shared',
-              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(
+                colors.textPrimary,
+                BlendMode.srcIn,
+              ),
             ),
           ),
         ),
@@ -315,7 +361,10 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
     return Container(
       key: const ValueKey('search'),
       margin: EdgeInsets.symmetric(horizontal: 20.w),
-      decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(14.r)),
+      decoration: BoxDecoration(
+        color: colors.backgroundSecondary,
+        borderRadius: BorderRadius.circular(14.r),
+      ),
       child: TextField(
         controller: _searchController,
         focusNode: _searchFocus,
@@ -324,7 +373,11 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
             _searchQuery = value;
           });
         },
-        style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+        style: TextStyle(
+          color: colors.textPrimary,
+          fontSize: 14.sp,
+          fontWeight: FontWeight.w500,
+        ),
         cursorColor: Colors.white,
         decoration: InputDecoration(
           hintText: "Search your favorites...",
@@ -338,7 +391,10 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
             child: SvgPicture.asset(
               Assets.icons.search,
               package: 'grab_go_shared',
-              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(
+                colors.textPrimary,
+                BlendMode.srcIn,
+              ),
             ),
           ),
           suffixIcon: _searchQuery.isNotEmpty
@@ -354,12 +410,18 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
                     height: 18.h,
                     width: 18.w,
                     package: "grab_go_shared",
-                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                    colorFilter: ColorFilter.mode(
+                      colors.textPrimary,
+                      BlendMode.srcIn,
+                    ),
                   ),
                 )
               : null,
           border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: 16.w,
+            vertical: 12.h,
+          ),
         ),
       ),
     );
@@ -378,7 +440,11 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
           children: [
             Text(
               "No Favorites Yet",
-              style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w800),
+              style: TextStyle(
+                color: colors.textPrimary,
+                fontSize: 18.sp,
+                fontWeight: FontWeight.w800,
+              ),
             ),
 
             SizedBox(height: 12.h),
@@ -464,7 +530,11 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
           children: [
             Text(
               "No Results Found",
-              style: TextStyle(color: colors.textPrimary, fontSize: 22.sp, fontWeight: FontWeight.w800),
+              style: TextStyle(
+                color: colors.textPrimary,
+                fontSize: 22.sp,
+                fontWeight: FontWeight.w800,
+              ),
             ),
 
             SizedBox(height: 10.h),
@@ -474,7 +544,11 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
               child: Text(
                 "Try searching with different keywords",
                 textAlign: TextAlign.center,
-                style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  color: colors.textSecondary,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ],
@@ -483,7 +557,11 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
     );
   }
 
-  Widget _buildFavoritesList(AppColorsExtension colors, List<FoodItem> items, Size size) {
+  Widget _buildFavoritesList(
+    AppColorsExtension colors,
+    List<FoodItem> items,
+    Size size,
+  ) {
     return ListView.builder(
       controller: _scrollController,
       padding: EdgeInsets.only(
@@ -529,7 +607,10 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
                     package: 'grab_go_shared',
                     height: 16.h,
                     width: 16.w,
-                    colorFilter: ColorFilter.mode(colors.error, BlendMode.srcIn),
+                    colorFilter: ColorFilter.mode(
+                      colors.error,
+                      BlendMode.srcIn,
+                    ),
                   ),
                 ),
               );
@@ -539,9 +620,13 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
           Consumer<CartProvider>(
             builder: (context, cartProvider, child) {
               final bool isInCart = cartProvider.cartItems.containsKey(item);
+              final bool isItemPending = cartProvider.isItemOperationPending(
+                item,
+              );
 
               return GestureDetector(
                 onTap: () {
+                  if (isItemPending) return;
                   if (isInCart) {
                     cartProvider.removeItemCompletely(item);
                   } else {
@@ -552,16 +637,37 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
                   padding: EdgeInsets.all(8.r),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isInCart ? colors.accentOrange : colors.backgroundSecondary,
-                    border: Border.all(color: isInCart ? colors.accentOrange : colors.inputBorder, width: 1),
+                    color: isInCart
+                        ? colors.accentOrange
+                        : colors.backgroundSecondary,
+                    border: Border.all(
+                      color: isInCart
+                          ? colors.accentOrange
+                          : colors.inputBorder,
+                      width: 1,
+                    ),
                   ),
-                  child: SvgPicture.asset(
-                    Assets.icons.cart,
-                    package: 'grab_go_shared',
-                    height: 16.h,
-                    width: 16.w,
-                    colorFilter: ColorFilter.mode(isInCart ? Colors.white : colors.textPrimary, BlendMode.srcIn),
-                  ),
+                  child: isItemPending
+                      ? SizedBox(
+                          width: 16.w,
+                          height: 16.w,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              isInCart ? Colors.white : colors.accentOrange,
+                            ),
+                          ),
+                        )
+                      : SvgPicture.asset(
+                          Assets.icons.cart,
+                          package: 'grab_go_shared',
+                          height: 16.h,
+                          width: 16.w,
+                          colorFilter: ColorFilter.mode(
+                            isInCart ? Colors.white : colors.textPrimary,
+                            BlendMode.srcIn,
+                          ),
+                        ),
                 ),
               );
             },
@@ -597,15 +703,25 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
                 margin: EdgeInsets.only(top: 12.h, bottom: 8.h),
                 width: 40.w,
                 height: 4.h,
-                decoration: BoxDecoration(color: colors.inputBorder, borderRadius: BorderRadius.circular(2.r)),
+                decoration: BoxDecoration(
+                  color: colors.inputBorder,
+                  borderRadius: BorderRadius.circular(2.r),
+                ),
               ),
             ),
 
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: KSpacing.lg.w, vertical: KSpacing.md.h),
+              padding: EdgeInsets.symmetric(
+                horizontal: KSpacing.lg.w,
+                vertical: KSpacing.md.h,
+              ),
               child: Text(
                 'Sort Favorites',
-                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                style: TextStyle(
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.w700,
+                  color: colors.textPrimary,
+                ),
               ),
             ),
 
@@ -691,9 +807,16 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
                         height: 24.h,
                         width: 24.w,
                         package: 'grab_go_shared',
-                        colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
+                        colorFilter: ColorFilter.mode(
+                          iconColor,
+                          BlendMode.srcIn,
+                        ),
                       )
-                    : Icon(icon ?? Icons.settings, size: 24.h, color: iconColor),
+                    : Icon(
+                        icon ?? Icons.settings,
+                        size: 24.h,
+                        color: iconColor,
+                      ),
               ),
             ),
             SizedBox(width: 12.w),
@@ -704,12 +827,20 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
                 children: [
                   Text(
                     title,
-                    style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w600,
+                      color: colors.textPrimary,
+                    ),
                   ),
                   SizedBox(height: 2.h),
                   Text(
                     subtitle,
-                    style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w400, color: colors.textSecondary),
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w400,
+                      color: colors.textSecondary,
+                    ),
                   ),
                 ],
               ),
@@ -719,7 +850,10 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
               package: "grab_go_shared",
               height: 18.h,
               width: 18.w,
-              colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(
+                colors.textSecondary,
+                BlendMode.srcIn,
+              ),
             ),
           ],
         ),

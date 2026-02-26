@@ -380,6 +380,7 @@ class Cart extends StatelessWidget {
                     child: AppButton(
                       width: double.infinity,
                       onPressed: () async {
+                        if (provider.hasPendingCartOperations) return;
                         if (provider.cartItems.isEmpty) {
                           AppToastMessage.show(
                             context: context,
@@ -398,10 +399,17 @@ class Cart extends StatelessWidget {
                           context.push("/checkout");
                         }
                       },
-                      buttonText: isPickupMode ? "Proceed to Pickup Checkout" : "Proceed to Checkout",
+                      buttonText: provider.hasPendingCartOperations
+                          ? "Updating cart..."
+                          : (isPickupMode ? "Proceed to Pickup Checkout" : "Proceed to Checkout"),
                       textStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800),
-                      textColor: provider.cartItems.isEmpty ? colors.textSecondary : Colors.white,
+                      textColor: provider.cartItems.isEmpty || provider.hasPendingCartOperations
+                          ? colors.textSecondary
+                          : Colors.white,
                       padding: EdgeInsets.symmetric(vertical: 16.h),
+                      backgroundColor: provider.hasPendingCartOperations
+                          ? colors.accentOrange.withValues(alpha: 0.6)
+                          : colors.accentOrange,
                       borderRadius: KBorderSize.borderMedium,
                     ),
                   ),

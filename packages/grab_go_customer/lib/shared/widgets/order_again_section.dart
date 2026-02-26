@@ -47,15 +47,22 @@ class OrderAgainSection extends StatelessWidget {
             itemCount: recentOrders.length,
             itemBuilder: (context, index) {
               final item = recentOrders[index];
-              final originalItem = originalItems != null && index < originalItems!.length
+              final originalItem =
+                  originalItems != null && index < originalItems!.length
                   ? originalItems![index]
                   : null;
-              final daysAgo = item.lastOrderedAt != null ? DateTime.now().difference(item.lastOrderedAt!).inDays : 0;
+              final daysAgo = item.lastOrderedAt != null
+                  ? DateTime.now().difference(item.lastOrderedAt!).inDays
+                  : 0;
 
               return Consumer<CartProvider>(
                 builder: (context, cartProvider, child) {
                   final itemForCart = originalItem ?? item;
-                  final bool isInCart = cartProvider.cartItems.containsKey(itemForCart);
+                  final bool isInCart = cartProvider.cartItems.containsKey(
+                    itemForCart,
+                  );
+                  final bool isItemPending = cartProvider
+                      .isItemOperationPending(itemForCart);
                   return Padding(
                     padding: EdgeInsets.only(right: 15.w),
                     child: QuickReorderCard(
@@ -63,7 +70,9 @@ class OrderAgainSection extends StatelessWidget {
                       daysAgo: daysAgo,
                       onTap: () => onItemTap(item),
                       isInCart: isInCart,
+                      isLoading: isItemPending,
                       onAddToCart: () {
+                        if (isItemPending) return;
                         if (isInCart) {
                           cartProvider.removeItemCompletely(itemForCart);
                         } else {

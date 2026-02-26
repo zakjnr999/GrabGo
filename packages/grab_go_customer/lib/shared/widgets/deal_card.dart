@@ -52,7 +52,6 @@ class DealCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-          border: Border.all(color: colors.inputBorder.withValues(alpha: 0.5), width: 1),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -138,146 +137,172 @@ class DealCard extends StatelessWidget {
                   ),
               ],
             ),
-            // Content
             Padding(
-              padding: EdgeInsets.only(left: 10.r, right: 10.r, top: 10.r),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
+              padding: EdgeInsets.only(top: 10.r),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
                           item.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
                         ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            SvgPicture.asset(
-                              Assets.icons.starSolid,
-                              package: 'grab_go_shared',
-                              height: 13,
-                              width: 13.w,
-                              colorFilter: ColorFilter.mode(effectiveAccentColor, BlendMode.srcIn),
-                            ),
-                            SizedBox(width: 4.w),
-                            Text(
-                              item.rating.toStringAsFixed(1),
-                              style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
-                            ),
-                            SizedBox(width: 8.w),
-                            Container(
-                              width: 3.w,
-                              height: 3,
-                              decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
-                            ),
-                            SizedBox(width: 8.w),
-                            if (isOpen) ...[
-                              SvgPicture.asset(
-                                Assets.icons.timer,
-                                package: 'grab_go_shared',
-                                height: 12,
-                                width: 12.w,
-                                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                              ),
-                              SizedBox(width: 4.w),
-
-                              Text(
-                                timeText,
-                                style: TextStyle(
-                                  fontSize: 11.sp,
-                                  fontWeight: FontWeight.w500,
-                                  color: colors.textSecondary,
-                                ),
-                              ),
-                            ] else ...[
-                              Text(
-                                "We're closed",
-                                style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: colors.error),
-                              ),
-                            ],
-                          ],
+                      ),
+                      SvgPicture.asset(
+                        Assets.icons.starSolid,
+                        package: 'grab_go_shared',
+                        height: 13,
+                        width: 13.w,
+                        colorFilter: ColorFilter.mode(effectiveAccentColor, BlendMode.srcIn),
+                      ),
+                      SizedBox(width: 4.w),
+                      Text(
+                        '${item.rating.toStringAsFixed(1)} (146)',
+                        style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Text(
+                        item.sellerName,
+                        style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(width: 8.w),
+                      if (isOpen) ...[
+                        Container(
+                          width: 3.w,
+                          height: 3,
+                          decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
                         ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Container(
-                              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: effectiveAccentColor.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(8.r),
-                              ),
-                              child: Text(
-                                "GHS ${item.price.toStringAsFixed(2)}",
-                                style: TextStyle(
-                                  fontSize: 13.sp,
-                                  fontWeight: FontWeight.w700,
-                                  color: effectiveAccentColor,
-                                ),
-                              ),
-                            ),
-                            if (hasDiscount) ...[
-                              SizedBox(width: 8.w),
-                              Text(
-                                "GHS ${originalPrice.toStringAsFixed(2)}",
-                                style: TextStyle(
-                                  fontSize: 13.sp,
-                                  fontWeight: FontWeight.w500,
-                                  color: colors.textSecondary,
-                                  decoration: TextDecoration.lineThrough,
-                                ),
-                              ),
-                            ],
-                          ],
+                        SizedBox(width: 8.w),
+                        SvgPicture.asset(
+                          Assets.icons.timer,
+                          package: 'grab_go_shared',
+                          height: 12,
+                          width: 12.w,
+                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                        ),
+                        SizedBox(width: 4.w),
+                        Flexible(
+                          child: Text(
+                            timeText,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+                          ),
+                        ),
+                      ] else ...[
+                        Container(
+                          width: 3.w,
+                          height: 3,
+                          decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
+                        ),
+                        SizedBox(width: 8.w),
+                        Flexible(
+                          child: Text(
+                            "We're closed",
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: colors.error),
+                          ),
                         ),
                       ],
-                    ),
+                    ],
                   ),
-
-                  Consumer<CartProvider>(
-                    builder: (context, provider, _) {
-                      final itemForCart = cartItem ?? item;
-                      final bool isInCart = provider.cartItems.containsKey(itemForCart);
-                      return GestureDetector(
-                        onTap: () {
-                          if (isInCart) {
-                            provider.removeItemCompletely(itemForCart);
-                          } else {
-                            provider.addToCart(itemForCart, context: context);
-                          }
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeOut,
-                          padding: EdgeInsets.all(10.r),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isInCart ? effectiveAccentColor : colors.backgroundSecondary,
-                          ),
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 200),
-                            transitionBuilder: (child, animation) {
-                              return ScaleTransition(scale: animation, child: child);
-                            },
-                            child: SvgPicture.asset(
-                              isInCart ? Assets.icons.check : Assets.icons.cart,
-                              key: ValueKey(isInCart),
-                              package: 'grab_go_shared',
-                              height: 18,
-                              width: 18.w,
-                              colorFilter: ColorFilter.mode(
-                                isInCart ? Colors.white : colors.textPrimary,
-                                BlendMode.srcIn,
-                              ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: effectiveAccentColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
+                        child: Text(
+                          'GHS ${(item.price * (1 - discountPercent / 100)).toStringAsFixed(2)}',
+                          style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: effectiveAccentColor),
+                        ),
+                      ),
+                      SizedBox(width: 8.w),
+                      if (hasDiscount)
+                        Expanded(
+                          child: Text(
+                            "GHS ${originalPrice.toStringAsFixed(2)}",
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 13.sp,
+                              fontWeight: FontWeight.w500,
+                              color: colors.textSecondary,
+                              decoration: TextDecoration.lineThrough,
                             ),
                           ),
                         ),
-                      );
-                    },
+                      const Spacer(),
+                      Consumer<CartProvider>(
+                        builder: (context, provider, _) {
+                          final itemForCart = cartItem ?? item;
+                          final bool isInCart = provider.cartItems.containsKey(itemForCart);
+                          final bool isItemPending = provider.isItemOperationPending(itemForCart);
+                          return GestureDetector(
+                            onTap: () {
+                              if (isItemPending) return;
+                              if (isInCart) {
+                                provider.removeItemCompletely(itemForCart);
+                              } else {
+                                provider.addToCart(itemForCart, context: context);
+                              }
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeOut,
+                              padding: EdgeInsets.all(10.r),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isInCart ? effectiveAccentColor : colors.backgroundSecondary,
+                              ),
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 200),
+                                transitionBuilder: (child, animation) {
+                                  return ScaleTransition(scale: animation, child: child);
+                                },
+                                child: isItemPending
+                                    ? SizedBox(
+                                        key: const ValueKey('pending'),
+                                        width: 18.w,
+                                        height: 18.w,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation<Color>(
+                                            isInCart ? Colors.white : colors.accentOrange,
+                                          ),
+                                        ),
+                                      )
+                                    : SvgPicture.asset(
+                                        isInCart ? Assets.icons.check : Assets.icons.cart,
+                                        key: ValueKey(isInCart),
+                                        package: 'grab_go_shared',
+                                        height: 18,
+                                        width: 18.w,
+                                        colorFilter: ColorFilter.mode(
+                                          isInCart ? Colors.white : colors.textPrimary,
+                                          BlendMode.srcIn,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),

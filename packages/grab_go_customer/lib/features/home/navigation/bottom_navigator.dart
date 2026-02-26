@@ -140,58 +140,66 @@ class _BottomNavigatorState extends State<BottomNavigator> {
 
         final itemCount = cartProvider.totalQuantity;
         final totalAmount = cartProvider.total;
+        final isLocked = cartProvider.isCartInteractionLocked;
 
-        return GestureDetector(
-          onTap: () async {
-            final navigationProvider = Provider.of<NavigationProvider>(context, listen: false);
-            final targetMode = navigationProvider.selectedIndex == 1 ? 'pickup' : 'delivery';
-            await cartProvider.setFulfillmentMode(targetMode);
-            if (!context.mounted) return;
-            context.push("/cart");
-          },
-          child: Container(
-            width: double.infinity,
-            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-            decoration: BoxDecoration(color: colors.accentOrange),
-            child: Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(8.r),
-                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
-                  child: SvgPicture.asset(
-                    Assets.icons.cart,
-                    height: 18.h,
-                    width: 18.w,
-                    package: 'grab_go_shared',
-                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                  ),
-                ),
-                SizedBox(width: 12.w),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "View cart",
-                        style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
+        return IgnorePointer(
+          ignoring: isLocked,
+          child: GestureDetector(
+            onTap: () async {
+              final navigationProvider = Provider.of<NavigationProvider>(context, listen: false);
+              final targetMode = navigationProvider.selectedIndex == 1 ? 'pickup' : 'delivery';
+              await cartProvider.setFulfillmentMode(targetMode);
+              if (!context.mounted) return;
+              context.push("/cart");
+            },
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 180),
+              opacity: isLocked ? 0.82 : 1,
+              child: Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                decoration: BoxDecoration(color: colors.accentOrange),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(8.r),
+                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
+                      child: SvgPicture.asset(
+                        Assets.icons.cart,
+                        height: 18.h,
+                        width: 18.w,
+                        package: 'grab_go_shared',
+                        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                       ),
-                      SizedBox(height: 2.h),
-                      Text(
-                        "$itemCount ${itemCount == 1 ? "item" : "items"} in cart",
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          fontSize: 12.sp,
-                          fontWeight: FontWeight.w500,
-                        ),
+                    ),
+                    SizedBox(width: 12.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isLocked ? "Updating cart..." : "View cart",
+                            style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                          ),
+                          SizedBox(height: 2.h),
+                          Text(
+                            "$itemCount ${itemCount == 1 ? "item" : "items"} in cart",
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                    Text(
+                      "${AppStrings.currencySymbol} ${totalAmount.toStringAsFixed(2)}",
+                      style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w800),
+                    ),
+                  ],
                 ),
-                Text(
-                  "${AppStrings.currencySymbol} ${totalAmount.toStringAsFixed(2)}",
-                  style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w800),
-                ),
-              ],
+              ),
             ),
           ),
         );

@@ -43,7 +43,8 @@ class GroceryDetails extends StatefulWidget {
   State<GroceryDetails> createState() => _GroceryDetailsState();
 }
 
-class _GroceryDetailsState extends State<GroceryDetails> with TickerProviderStateMixin {
+class _GroceryDetailsState extends State<GroceryDetails>
+    with TickerProviderStateMixin {
   late ScrollController _scrollController;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -53,7 +54,10 @@ class _GroceryDetailsState extends State<GroceryDetails> with TickerProviderStat
   void initState() {
     super.initState();
     _scrollController = ScrollController();
-    _animationController = AnimationController(duration: const Duration(milliseconds: 800), vsync: this);
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
@@ -87,13 +91,17 @@ class _GroceryDetailsState extends State<GroceryDetails> with TickerProviderStat
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
         systemNavigationBarColor: colors.backgroundPrimary,
-        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        systemNavigationBarIconBrightness: isDark
+            ? Brightness.light
+            : Brightness.dark,
       ),
       child: Scaffold(
         backgroundColor: colors.backgroundSecondary,
         body: CustomScrollView(
           controller: _scrollController,
-          physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+          physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
+          ),
           slivers: <Widget>[
             GroceryDetailsAppBar(groceryItem: widget.groceryItem),
             SliverToBoxAdapter(
@@ -138,10 +146,15 @@ class _GroceryDetailsState extends State<GroceryDetails> with TickerProviderStat
                                     ),
                                     SizedBox(height: 6.h),
                                     Container(
-                                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 8.w,
+                                        vertical: 4.h,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: colors.inputBackground,
-                                        borderRadius: BorderRadius.circular(6.r),
+                                        borderRadius: BorderRadius.circular(
+                                          6.r,
+                                        ),
                                       ),
                                       child: Text(
                                         widget.groceryItem.unit,
@@ -191,14 +204,19 @@ class _GroceryDetailsState extends State<GroceryDetails> with TickerProviderStat
                             children: [
                               _buildInfoChip(
                                 icon: Assets.icons.star,
-                                text: widget.groceryItem.rating.toStringAsFixed(1),
+                                text: widget.groceryItem.rating.toStringAsFixed(
+                                  1,
+                                ),
                                 colors: colors,
                                 isDark: isDark,
                               ),
                               SizedBox(width: 8.w),
-                              if (widget.groceryItem.stock < 10 && widget.groceryItem.isAvailable) ...[
+                              if (widget.groceryItem.stock < 10 &&
+                                  widget.groceryItem.isAvailable) ...[
                                 _buildInfoChip(
-                                  icon: Assets.icons.infoCircle, // Replace with alert icon if available
+                                  icon: Assets
+                                      .icons
+                                      .infoCircle, // Replace with alert icon if available
                                   text: "Only ${widget.groceryItem.stock} left",
                                   colors: colors,
                                   isDark: isDark,
@@ -206,14 +224,18 @@ class _GroceryDetailsState extends State<GroceryDetails> with TickerProviderStat
                                 ),
                               ] else if (widget.groceryItem.isAvailable) ...[
                                 _buildInfoChip(
-                                  icon: Assets.icons.check, // Replace with check icon
+                                  icon: Assets
+                                      .icons
+                                      .check, // Replace with check icon
                                   text: "In Stock",
                                   colors: colors,
                                   isDark: isDark,
                                 ),
                               ] else ...[
                                 _buildInfoChip(
-                                  icon: Assets.icons.alarm, // Replace with close/unavailable icon
+                                  icon: Assets
+                                      .icons
+                                      .alarm, // Replace with close/unavailable icon
                                   text: "Out of Stock",
                                   colors: colors,
                                   isDark: isDark,
@@ -233,8 +255,13 @@ class _GroceryDetailsState extends State<GroceryDetails> with TickerProviderStat
                             padding: EdgeInsets.all(16.r),
                             decoration: BoxDecoration(
                               color: colors.backgroundPrimary,
-                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                              border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
+                              borderRadius: BorderRadius.circular(
+                                KBorderSize.borderRadius15,
+                              ),
+                              border: Border.all(
+                                color: colors.inputBorder.withOpacity(0.3),
+                                width: 0.5,
+                              ),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -285,19 +312,23 @@ class _GroceryDetailsState extends State<GroceryDetails> with TickerProviderStat
                             final similarItems = provider.items
                                 .where(
                                   (item) =>
-                                      item.categoryId == widget.groceryItem.categoryId &&
+                                      item.categoryId ==
+                                          widget.groceryItem.categoryId &&
                                       item.id != widget.groceryItem.id,
                                 )
                                 .take(5)
                                 .toList();
 
-                            if (similarItems.isEmpty) return const SizedBox.shrink();
+                            if (similarItems.isEmpty)
+                              return const SizedBox.shrink();
 
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 20.w),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 20.w,
+                                  ),
                                   child: Text(
                                     "Similar Items",
                                     style: TextStyle(
@@ -320,9 +351,15 @@ class _GroceryDetailsState extends State<GroceryDetails> with TickerProviderStat
                                         width: 160.w,
                                         child: GroceryItemCard(
                                           item: similarItems[index],
-                                          margin: EdgeInsets.only(right: 12.w, bottom: 10.h),
+                                          margin: EdgeInsets.only(
+                                            right: 12.w,
+                                            bottom: 10.h,
+                                          ),
                                           onTap: () {
-                                            context.push('/foodDetails', extra: similarItems[index]);
+                                            context.push(
+                                              '/foodDetails',
+                                              extra: similarItems[index],
+                                            );
                                           },
                                         ),
                                       );
@@ -373,6 +410,9 @@ class _GroceryDetailsState extends State<GroceryDetails> with TickerProviderStat
                   builder: (context, provider, _) {
                     final int qty = provider.cartItems[widget.groceryItem] ?? 0;
                     final bool isInCart = qty > 0;
+                    final bool isItemPending = provider.isItemOperationPending(
+                      widget.groceryItem,
+                    );
 
                     return Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
@@ -384,22 +424,46 @@ class _GroceryDetailsState extends State<GroceryDetails> with TickerProviderStat
                             padding: EdgeInsets.symmetric(horizontal: 10.w),
                             decoration: BoxDecoration(
                               color: colors.backgroundSecondary,
-                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                              border: Border.all(color: colors.inputBorder, width: 1.5),
+                              borderRadius: BorderRadius.circular(
+                                KBorderSize.borderRadius15,
+                              ),
+                              border: Border.all(
+                                color: colors.inputBorder,
+                                width: 1.5,
+                              ),
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 InkWell(
                                   onTap: () {
+                                    if (isItemPending) return;
                                     if (isInCart) {
-                                      provider.removeFromCart(widget.groceryItem);
+                                      provider.removeFromCart(
+                                        widget.groceryItem,
+                                      );
                                     }
                                   },
-                                  child: Icon(Icons.remove, color: colors.textSecondary, size: 20.sp),
+                                  child: isItemPending
+                                      ? SizedBox(
+                                          width: 20.w,
+                                          height: 20.w,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                  colors.textSecondary,
+                                                ),
+                                          ),
+                                        )
+                                      : Icon(
+                                          Icons.remove,
+                                          color: colors.textSecondary,
+                                          size: 20.sp,
+                                        ),
                                 ),
                                 Text(
-                                  qty.toString(),
+                                  isItemPending ? '...' : qty.toString(),
                                   style: TextStyle(
                                     fontSize: 16.sp,
                                     fontWeight: FontWeight.w600,
@@ -408,12 +472,36 @@ class _GroceryDetailsState extends State<GroceryDetails> with TickerProviderStat
                                 ),
                                 GestureDetector(
                                   onTap: () {
-                                    provider.addToCart(widget.groceryItem, context: context);
+                                    if (isItemPending) return;
+                                    provider.addToCart(
+                                      widget.groceryItem,
+                                      context: context,
+                                    );
                                   },
                                   child: Container(
                                     padding: EdgeInsets.all(2.r),
-                                    decoration: BoxDecoration(color: colors.accentOrange, shape: BoxShape.circle),
-                                    child: Icon(Icons.add, color: Colors.white, size: 20.sp),
+                                    decoration: BoxDecoration(
+                                      color: colors.accentOrange,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: isItemPending
+                                        ? SizedBox(
+                                            width: 20.w,
+                                            height: 20.w,
+                                            child:
+                                                const CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  valueColor:
+                                                      AlwaysStoppedAnimation<
+                                                        Color
+                                                      >(Colors.white),
+                                                ),
+                                          )
+                                        : Icon(
+                                            Icons.add,
+                                            color: Colors.white,
+                                            size: 20.sp,
+                                          ),
                                   ),
                                 ),
                               ],
@@ -429,9 +517,14 @@ class _GroceryDetailsState extends State<GroceryDetails> with TickerProviderStat
                             height: 50.h,
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
-                                colors: [colors.accentOrange, colors.accentOrange.withOpacity(0.8)],
+                                colors: [
+                                  colors.accentOrange,
+                                  colors.accentOrange.withOpacity(0.8),
+                                ],
                               ),
-                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius50),
+                              borderRadius: BorderRadius.circular(
+                                KBorderSize.borderRadius50,
+                              ),
                               boxShadow: [
                                 BoxShadow(
                                   color: colors.accentOrange.withOpacity(0.4),
@@ -443,22 +536,38 @@ class _GroceryDetailsState extends State<GroceryDetails> with TickerProviderStat
                             ),
                             child: ElevatedButton(
                               onPressed: () {
+                                if (isItemPending) return;
                                 if (isInCart) {
-                                  provider.removeItemCompletely(widget.groceryItem);
+                                  provider.removeItemCompletely(
+                                    widget.groceryItem,
+                                  );
                                 } else {
-                                  provider.addToCart(widget.groceryItem, context: context);
+                                  provider.addToCart(
+                                    widget.groceryItem,
+                                    context: context,
+                                  );
                                 }
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.transparent,
                                 shadowColor: Colors.transparent,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius50),
+                                  borderRadius: BorderRadius.circular(
+                                    KBorderSize.borderRadius50,
+                                  ),
                                 ),
                               ),
                               child: Text(
-                                isInCart ? "Remove from Cart" : "Add to Cart",
-                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 16.sp),
+                                isItemPending
+                                    ? "Updating..."
+                                    : (isInCart
+                                          ? "Remove from Cart"
+                                          : "Add to Cart"),
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16.sp,
+                                ),
                               ),
                             ),
                           ),
@@ -485,9 +594,14 @@ class _GroceryDetailsState extends State<GroceryDetails> with TickerProviderStat
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
       decoration: BoxDecoration(
-        color: isDark ? colors.backgroundPrimary.withOpacity(0.5) : colors.backgroundPrimary,
+        color: isDark
+            ? colors.backgroundPrimary.withOpacity(0.5)
+            : colors.backgroundPrimary,
         borderRadius: BorderRadius.circular(10.r),
-        border: Border.all(color: colors.inputBorder.withOpacity(0.3), width: 0.5),
+        border: Border.all(
+          color: colors.inputBorder.withOpacity(0.3),
+          width: 0.5,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -502,7 +616,11 @@ class _GroceryDetailsState extends State<GroceryDetails> with TickerProviderStat
           SizedBox(width: 5.w),
           Text(
             text,
-            style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: textColor ?? colors.textPrimary),
+            style: TextStyle(
+              fontSize: 11.sp,
+              fontWeight: FontWeight.w600,
+              color: textColor ?? colors.textPrimary,
+            ),
           ),
         ],
       ),

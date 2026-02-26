@@ -5,14 +5,26 @@ const { protect } = require('../middleware/auth');
 const { cacheMiddleware } = require('../middleware/cache');
 const cache = require('../utils/cache');
 const mlClient = require('../utils/ml_client');
+const { normalizeRatingResponse } = require("../utils/rating_calculator");
 
 /**
  * Helper to format grocery store for frontend compatibility
  */
 const formatStore = (store) => {
     if (!store) return null;
+    const ratingMeta = normalizeRatingResponse({
+        rating: store.rating,
+        ratingCount: store.ratingCount,
+        totalReviews: store.totalReviews,
+    });
     const formatted = {
         ...store,
+        rating: ratingMeta.rating,
+        rawRating: ratingMeta.rawRating,
+        weightedRating: ratingMeta.weightedRating,
+        ratingCount: ratingMeta.ratingCount,
+        totalReviews: ratingMeta.totalReviews,
+        reviewCount: ratingMeta.reviewCount,
         // Legacy support mapping
         store_name: store.storeName,
         is_open: store.isOpen,
@@ -39,8 +51,19 @@ const formatStore = (store) => {
  */
 const formatItem = (item) => {
     if (!item) return null;
+    const ratingMeta = normalizeRatingResponse({
+        rating: item.rating,
+        reviewCount: item.reviewCount,
+        totalReviews: item.totalReviews,
+    });
     const formatted = {
         ...item,
+        rating: ratingMeta.rating,
+        rawRating: ratingMeta.rawRating,
+        weightedRating: ratingMeta.weightedRating,
+        reviewCount: ratingMeta.reviewCount,
+        ratingCount: ratingMeta.ratingCount,
+        totalReviews: ratingMeta.totalReviews,
         // Ensure store is formatted if it exists and is an object
         store: (item.store && typeof item.store === 'object') ? formatStore(item.store) : item.store
     };

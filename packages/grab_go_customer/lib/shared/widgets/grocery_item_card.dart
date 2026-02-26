@@ -17,7 +17,6 @@ class GroceryItemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final bool hasDiscount = item.hasDiscount;
     final double displayPrice = item.discountedPrice;
@@ -30,15 +29,6 @@ class GroceryItemCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-          border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
-              spreadRadius: 0,
-              blurRadius: 12,
-              offset: const Offset(0, 2),
-            ),
-          ],
         ),
         child: Row(
           children: [
@@ -111,7 +101,7 @@ class GroceryItemCard extends StatelessWidget {
                               letterSpacing: 0.5,
                             ),
                           ),
-                        SizedBox(height: 2),
+                        const SizedBox(height: 2),
                         Text(
                           item.name,
                           style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
@@ -119,7 +109,7 @@ class GroceryItemCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
 
-                        SizedBox(height: 6),
+                        const SizedBox(height: 6),
 
                         // Rating and Unit
                         Row(
@@ -170,7 +160,7 @@ class GroceryItemCard extends StatelessWidget {
                       ],
                     ),
 
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
 
                     // Price Row
                     Row(

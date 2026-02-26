@@ -76,12 +76,7 @@ class _SearchPageState extends State<SearchPage> {
 
   static const int _searchItemsPageSize = 12;
   static const Duration _searchDebounceDuration = Duration(milliseconds: 280);
-  static const List<String> _quickFilters = [
-    'Fast delivery',
-    'Under ₵20',
-    'Top rated',
-    'On sale',
-  ];
+  static const List<String> _quickFilters = ['Fast delivery', 'Under ₵20', 'Top rated', 'On sale'];
   static const Map<String, List<String>> _tokenSynonyms = {
     'cheap': ['budget', 'affordable', 'low', 'discount'],
     'budget': ['cheap', 'affordable', 'low'],
@@ -225,13 +220,8 @@ class _SearchPageState extends State<SearchPage> {
     final serviceProvider = Provider.of<ServiceProvider>(context);
     final categoryMatches = _findCategoryMatches(serviceProvider);
     final itemMatches = _findItemMatches(serviceProvider);
-    final visibleItemCount = math.min(
-      _visibleSearchItemCount,
-      itemMatches.length,
-    );
-    final visibleItemMatches = itemMatches
-        .take(visibleItemCount)
-        .toList(growable: false);
+    final visibleItemCount = math.min(_visibleSearchItemCount, itemMatches.length);
+    final visibleItemMatches = itemMatches.take(visibleItemCount).toList(growable: false);
     final hasQuery = _searchQuery.isNotEmpty;
     final hasQuickFilter = _activeQuickFilter != null;
     final hasSearchContext = hasQuery || hasQuickFilter;
@@ -244,9 +234,7 @@ class _SearchPageState extends State<SearchPage> {
       statusBarColor: isDark ? colors.backgroundPrimary : colors.accentOrange,
       statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       systemNavigationBarColor: colors.backgroundPrimary,
-      systemNavigationBarIconBrightness: isDark
-          ? Brightness.light
-          : Brightness.dark,
+      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
     );
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -262,8 +250,7 @@ class _SearchPageState extends State<SearchPage> {
                 child: NotificationListener<ScrollNotification>(
                   onNotification: (notification) {
                     if (!hasSearchContext) return false;
-                    if (notification.metrics.pixels >=
-                        notification.metrics.maxScrollExtent - 220) {
+                    if (notification.metrics.pixels >= notification.metrics.maxScrollExtent - 220) {
                       _loadMoreSearchItems(itemMatches.length);
                     }
                     return false;
@@ -273,11 +260,7 @@ class _SearchPageState extends State<SearchPage> {
                     padding: EdgeInsets.only(bottom: 28.h),
                     children: [
                       if (_activeQuickFilter != null)
-                        _buildSectionHeader(
-                          colors,
-                          _activeQuickFilter!,
-                          'Showing matches for this quick filter',
-                        )
+                        _buildSectionHeader(colors, _activeQuickFilter!, 'Showing matches for this quick filter')
                       else if (_searchQuery.isNotEmpty)
                         _buildSectionHeader(
                           colors,
@@ -334,10 +317,7 @@ class _SearchPageState extends State<SearchPage> {
                                   label: Text(term),
                                   onPressed: () {
                                     _searchController.text = term;
-                                    _searchController.selection =
-                                        TextSelection.collapsed(
-                                          offset: term.length,
-                                        );
+                                    _searchController.selection = TextSelection.collapsed(offset: term.length);
                                     _applySearchQuery(term);
                                     _searchFocusNode.requestFocus();
                                   },
@@ -348,14 +328,8 @@ class _SearchPageState extends State<SearchPage> {
                                     fontWeight: FontWeight.w600,
                                   ),
                                   shape: RoundedRectangleBorder(
-                                    side: BorderSide(
-                                      color: colors.inputBorder.withValues(
-                                        alpha: 0.35,
-                                      ),
-                                    ),
-                                    borderRadius: BorderRadius.circular(
-                                      KBorderSize.border,
-                                    ),
+                                    side: BorderSide(color: colors.inputBorder.withValues(alpha: 0.35)),
+                                    borderRadius: BorderRadius.circular(KBorderSize.border),
                                   ),
                                 );
                               }).toList(),
@@ -367,11 +341,7 @@ class _SearchPageState extends State<SearchPage> {
                           padding: EdgeInsets.symmetric(horizontal: 20.w),
                           child: Text(
                             'Suggested for you',
-                            style: TextStyle(
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w700,
-                              color: colors.textPrimary,
-                            ),
+                            style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
                           ),
                         ),
                         SizedBox(height: 8.h),
@@ -384,49 +354,28 @@ class _SearchPageState extends State<SearchPage> {
                                 height: 22.h,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    colors.accentOrange,
-                                  ),
+                                  valueColor: AlwaysStoppedAnimation<Color>(colors.accentOrange),
                                 ),
                               ),
                             ),
                           )
                         else if (suggestedItems.isEmpty)
-                          _buildEmptyState(
-                            colors,
-                            'No items available to suggest yet.',
-                          )
+                          _buildEmptyState(colors, 'No items available to suggest yet.')
                         else
-                          ...suggestedItems.map(
-                            (item) => _buildItemSearchResult(
-                              colors,
-                              item,
-                              persistQuery: false,
-                            ),
-                          ),
+                          ...suggestedItems.map((item) => _buildItemSearchResult(colors, item, persistQuery: false)),
                       ] else if (!hasResults) ...[
-                        _buildSearchNoResultsState(
-                          colors,
-                          'No matches found. Try another term or quick filter.',
-                        ),
+                        _buildSearchNoResultsState(colors, 'No matches found. Try another term or quick filter.'),
                       ] else ...[
                         if (categoryMatches.isNotEmpty) ...[
                           Padding(
                             padding: EdgeInsets.symmetric(horizontal: 20.w),
                             child: Text(
                               'Categories',
-                              style: TextStyle(
-                                fontSize: 14.sp,
-                                fontWeight: FontWeight.w700,
-                                color: colors.textPrimary,
-                              ),
+                              style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
                             ),
                           ),
                           SizedBox(height: 8.h),
-                          ...categoryMatches.map(
-                            (category) =>
-                                _buildCategorySearchResult(colors, category),
-                          ),
+                          ...categoryMatches.map((category) => _buildCategorySearchResult(colors, category)),
                           SizedBox(height: 14.h),
                         ],
                         if (itemMatches.isNotEmpty) ...[
@@ -434,21 +383,11 @@ class _SearchPageState extends State<SearchPage> {
                             padding: EdgeInsets.symmetric(horizontal: 20.w),
                             child: Text(
                               'Items',
-                              style: TextStyle(
-                                fontSize: 14.sp,
-                                fontWeight: FontWeight.w700,
-                                color: colors.textPrimary,
-                              ),
+                              style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
                             ),
                           ),
                           SizedBox(height: 8.h),
-                          ...visibleItemMatches.map(
-                            (item) => _buildItemSearchResult(
-                              colors,
-                              item,
-                              persistQuery: true,
-                            ),
-                          ),
+                          ...visibleItemMatches.map((item) => _buildItemSearchResult(colors, item, persistQuery: true)),
                           if (_isLoadingMoreSearchItems)
                             Padding(
                               padding: EdgeInsets.only(top: 8.h),
@@ -458,24 +397,18 @@ class _SearchPageState extends State<SearchPage> {
                                   height: 20.h,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      colors.accentOrange,
-                                    ),
+                                    valueColor: AlwaysStoppedAnimation<Color>(colors.accentOrange),
                                   ),
                                 ),
                               ),
                             ),
-                          if (!_isLoadingMoreSearchItems &&
-                              visibleItemCount < itemMatches.length)
+                          if (!_isLoadingMoreSearchItems && visibleItemCount < itemMatches.length)
                             Padding(
                               padding: EdgeInsets.only(top: 8.h),
                               child: Center(
                                 child: Text(
                                   'Scroll to load more',
-                                  style: TextStyle(
-                                    fontSize: 12.sp,
-                                    color: colors.textSecondary,
-                                  ),
+                                  style: TextStyle(fontSize: 12.sp, color: colors.textSecondary),
                                 ),
                               ),
                             ),
@@ -503,10 +436,7 @@ class _SearchPageState extends State<SearchPage> {
     Future.delayed(const Duration(milliseconds: 120), () {
       if (!mounted) return;
       setState(() {
-        _visibleSearchItemCount = math.min(
-          _visibleSearchItemCount + _searchItemsPageSize,
-          totalCount,
-        );
+        _visibleSearchItemCount = math.min(_visibleSearchItemCount + _searchItemsPageSize, totalCount);
         _isLoadingMoreSearchItems = false;
       });
     });
@@ -515,22 +445,16 @@ class _SearchPageState extends State<SearchPage> {
   List<_SearchItemEntry> _buildSuggestedItems(List<_SearchItemEntry> allItems) {
     final sorted = [...allItems];
     sorted.sort((a, b) {
-      final availabilityCompare = (b.displayItem.isAvailable ? 1 : 0).compareTo(
-        a.displayItem.isAvailable ? 1 : 0,
-      );
+      final availabilityCompare = (b.displayItem.isAvailable ? 1 : 0).compareTo(a.displayItem.isAvailable ? 1 : 0);
       if (availabilityCompare != 0) return availabilityCompare;
-      final orderCompare = b.displayItem.orderCount.compareTo(
-        a.displayItem.orderCount,
-      );
+      final orderCompare = b.displayItem.orderCount.compareTo(a.displayItem.orderCount);
       if (orderCompare != 0) return orderCompare;
       return b.displayItem.rating.compareTo(a.displayItem.rating);
     });
     return sorted.take(8).toList(growable: false);
   }
 
-  List<_SearchItemEntry> _collectSearchableItems(
-    ServiceProvider serviceProvider,
-  ) {
+  List<_SearchItemEntry> _collectSearchableItems(ServiceProvider serviceProvider) {
     if (serviceProvider.isFoodService) {
       final provider = Provider.of<FoodProvider>(context, listen: false);
       final items = <_SearchItemEntry>[];
@@ -548,46 +472,23 @@ class _SearchPageState extends State<SearchPage> {
 
     if (serviceProvider.isGroceryService) {
       final provider = Provider.of<GroceryProvider>(context, listen: false);
-      return provider.items
-          .map(
-            (item) => _SearchItemEntry(
-              displayItem: item.toFoodItem(),
-              sourceItem: item,
-            ),
-          )
-          .toList();
+      return provider.items.map((item) => _SearchItemEntry(displayItem: item.toFoodItem(), sourceItem: item)).toList();
     }
 
     if (serviceProvider.isPharmacyService) {
       final provider = Provider.of<PharmacyProvider>(context, listen: false);
-      return provider.items
-          .map(
-            (item) => _SearchItemEntry(
-              displayItem: item.toFoodItem(),
-              sourceItem: item,
-            ),
-          )
-          .toList();
+      return provider.items.map((item) => _SearchItemEntry(displayItem: item.toFoodItem(), sourceItem: item)).toList();
     }
 
     if (serviceProvider.isStoresService) {
       final provider = Provider.of<GrabMartProvider>(context, listen: false);
-      return provider.items
-          .map(
-            (item) => _SearchItemEntry(
-              displayItem: item.toFoodItem(),
-              sourceItem: item,
-            ),
-          )
-          .toList();
+      return provider.items.map((item) => _SearchItemEntry(displayItem: item.toFoodItem(), sourceItem: item)).toList();
     }
 
     return [];
   }
 
-  List<_SearchCategoryEntry> _collectSearchableCategories(
-    ServiceProvider serviceProvider,
-  ) {
+  List<_SearchCategoryEntry> _collectSearchableCategories(ServiceProvider serviceProvider) {
     if (serviceProvider.isFoodService) {
       final provider = Provider.of<FoodProvider>(context, listen: false);
       return provider.categories
@@ -615,9 +516,7 @@ class _SearchPageState extends State<SearchPage> {
               emoji: category.emoji,
               serviceType: 'groceries',
               isFood: false,
-              itemCount: provider.items
-                  .where((item) => item.categoryId == category.id)
-                  .length,
+              itemCount: provider.items.where((item) => item.categoryId == category.id).length,
             ),
           )
           .where((category) => category.itemCount > 0)
@@ -634,9 +533,7 @@ class _SearchPageState extends State<SearchPage> {
               emoji: category.emoji,
               serviceType: 'pharmacy',
               isFood: false,
-              itemCount: provider.items
-                  .where((item) => item.categoryId == category.id)
-                  .length,
+              itemCount: provider.items.where((item) => item.categoryId == category.id).length,
             ),
           )
           .where((category) => category.itemCount > 0)
@@ -653,9 +550,7 @@ class _SearchPageState extends State<SearchPage> {
               emoji: category.emoji,
               serviceType: 'convenience',
               isFood: false,
-              itemCount: provider.items
-                  .where((item) => item.categoryId == category.id)
-                  .length,
+              itemCount: provider.items.where((item) => item.categoryId == category.id).length,
             ),
           )
           .where((category) => category.itemCount > 0)
@@ -665,9 +560,7 @@ class _SearchPageState extends State<SearchPage> {
     return [];
   }
 
-  List<_SearchCategoryEntry> _findCategoryMatches(
-    ServiceProvider serviceProvider,
-  ) {
+  List<_SearchCategoryEntry> _findCategoryMatches(ServiceProvider serviceProvider) {
     if (_searchQuery.isEmpty || _activeQuickFilter != null) {
       return [];
     }
@@ -677,23 +570,14 @@ class _SearchPageState extends State<SearchPage> {
     final scoredCategories = <_ScoredCategoryMatch>[];
 
     for (final category in _collectSearchableCategories(serviceProvider)) {
-      final score = _scoreCategoryMatch(
-        category: category,
-        normalizedQuery: normalizedQuery,
-        queryTokens: queryTokens,
-      );
+      final score = _scoreCategoryMatch(category: category, normalizedQuery: normalizedQuery, queryTokens: queryTokens);
       if (score > 0) {
-        scoredCategories.add(
-          _ScoredCategoryMatch(category: category, score: score),
-        );
+        scoredCategories.add(_ScoredCategoryMatch(category: category, score: score));
       }
     }
 
     scoredCategories.sort((a, b) => b.score.compareTo(a.score));
-    return scoredCategories
-        .take(12)
-        .map((match) => match.category)
-        .toList(growable: false);
+    return scoredCategories.take(12).map((match) => match.category).toList(growable: false);
   }
 
   List<_SearchItemEntry> _findItemMatches(ServiceProvider serviceProvider) {
@@ -729,62 +613,40 @@ class _SearchPageState extends State<SearchPage> {
     scoredMatches.sort((a, b) {
       final scoreCompare = b.score.compareTo(a.score);
       if (scoreCompare != 0) return scoreCompare;
-      return b.item.displayItem.orderCount.compareTo(
-        a.item.displayItem.orderCount,
-      );
+      return b.item.displayItem.orderCount.compareTo(a.item.displayItem.orderCount);
     });
 
-    return scoredMatches
-        .take(120)
-        .map((match) => match.item)
-        .toList(growable: false);
+    return scoredMatches.take(120).map((match) => match.item).toList(growable: false);
   }
 
-  List<_SearchItemEntry> _applyQuickFilter(
-    List<_SearchItemEntry> items,
-    String filterLabel,
-  ) {
+  List<_SearchItemEntry> _applyQuickFilter(List<_SearchItemEntry> items, String filterLabel) {
     List<_SearchItemEntry> filtered;
     switch (filterLabel) {
       case 'Fast delivery':
         filtered = items
-            .where(
-              (item) =>
-                  item.displayItem.deliveryTimeMinutes > 0 &&
-                  item.displayItem.deliveryTimeMinutes <= 30,
-            )
+            .where((item) => item.displayItem.deliveryTimeMinutes > 0 && item.displayItem.deliveryTimeMinutes <= 30)
             .toList();
         break;
       case 'Under ₵20':
         filtered = items.where((item) => item.displayItem.price <= 20).toList();
         break;
       case 'Top rated':
-        filtered = items
-            .where((item) => item.displayItem.rating >= 4.5)
-            .toList();
+        filtered = items.where((item) => item.displayItem.rating >= 4.5).toList();
         break;
       case 'On sale':
-        filtered = items
-            .where((item) => item.displayItem.discountPercentage > 0)
-            .toList();
+        filtered = items.where((item) => item.displayItem.discountPercentage > 0).toList();
         break;
       default:
         filtered = items;
         break;
     }
 
-    filtered.sort(
-      (a, b) => b.displayItem.orderCount.compareTo(a.displayItem.orderCount),
-    );
+    filtered.sort((a, b) => b.displayItem.orderCount.compareTo(a.displayItem.orderCount));
     return filtered;
   }
 
   String _normalizeText(String value) {
-    return value
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9\s]'), ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
+    return value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9\s]'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
   List<String> _expandedQueryTokens(String query) {
@@ -797,9 +659,7 @@ class _SearchPageState extends State<SearchPage> {
       expanded.add(token);
       final synonyms = _tokenSynonyms[token];
       if (synonyms != null) {
-        expanded.addAll(
-          synonyms.map(_normalizeText).where((value) => value.isNotEmpty),
-        );
+        expanded.addAll(synonyms.map(_normalizeText).where((value) => value.isNotEmpty));
       }
     }
     return expanded.toList(growable: false);
@@ -970,35 +830,25 @@ class _SearchPageState extends State<SearchPage> {
     return score >= 35 ? score : 0;
   }
 
-  Map<String, String> _buildCategoryNameLookup(
-    ServiceProvider serviceProvider,
-  ) {
+  Map<String, String> _buildCategoryNameLookup(ServiceProvider serviceProvider) {
     if (serviceProvider.isFoodService) {
       final provider = Provider.of<FoodProvider>(context, listen: false);
-      return {
-        for (final category in provider.categories) category.id: category.name,
-      };
+      return {for (final category in provider.categories) category.id: category.name};
     }
 
     if (serviceProvider.isGroceryService) {
       final provider = Provider.of<GroceryProvider>(context, listen: false);
-      return {
-        for (final category in provider.categories) category.id: category.name,
-      };
+      return {for (final category in provider.categories) category.id: category.name};
     }
 
     if (serviceProvider.isPharmacyService) {
       final provider = Provider.of<PharmacyProvider>(context, listen: false);
-      return {
-        for (final category in provider.categories) category.id: category.name,
-      };
+      return {for (final category in provider.categories) category.id: category.name};
     }
 
     if (serviceProvider.isStoresService) {
       final provider = Provider.of<GrabMartProvider>(context, listen: false);
-      return {
-        for (final category in provider.categories) category.id: category.name,
-      };
+      return {for (final category in provider.categories) category.id: category.name};
     }
 
     return const {};
@@ -1030,10 +880,7 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Widget _buildCategorySearchResult(
-    AppColorsExtension colors,
-    _SearchCategoryEntry category,
-  ) {
+  Widget _buildCategorySearchResult(AppColorsExtension colors, _SearchCategoryEntry category) {
     return GestureDetector(
       onTap: () => _openCategoryFromSearch(category),
       child: Container(
@@ -1041,10 +888,7 @@ class _SearchPageState extends State<SearchPage> {
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-          border: Border.all(
-            color: colors.inputBorder.withValues(alpha: 0.3),
-            width: 0.5,
-          ),
+          border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
         ),
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
@@ -1053,15 +897,9 @@ class _SearchPageState extends State<SearchPage> {
               Container(
                 width: 40.w,
                 height: 40.h,
-                decoration: BoxDecoration(
-                  color: colors.accentOrange.withValues(alpha: 0.14),
-                  shape: BoxShape.circle,
-                ),
+                decoration: BoxDecoration(color: colors.accentOrange.withValues(alpha: 0.14), shape: BoxShape.circle),
                 child: Center(
-                  child: Text(
-                    category.emoji.isNotEmpty ? category.emoji : '📦',
-                    style: TextStyle(fontSize: 16.sp),
-                  ),
+                  child: Text(category.emoji.isNotEmpty ? category.emoji : '📦', style: TextStyle(fontSize: 16.sp)),
                 ),
               ),
               SizedBox(width: 12.w),
@@ -1071,21 +909,14 @@ class _SearchPageState extends State<SearchPage> {
                   children: [
                     Text(
                       category.name,
-                      style: TextStyle(
-                        fontSize: 15.sp,
-                        fontWeight: FontWeight.w600,
-                        color: colors.textPrimary,
-                      ),
+                      style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     SizedBox(height: 4.h),
                     Text(
                       '${category.itemCount} items',
-                      style: TextStyle(
-                        fontSize: 12.sp,
-                        color: colors.textSecondary,
-                      ),
+                      style: TextStyle(fontSize: 12.sp, color: colors.textSecondary),
                     ),
                   ],
                 ),
@@ -1095,10 +926,7 @@ class _SearchPageState extends State<SearchPage> {
                 package: 'grab_go_shared',
                 width: 20.w,
                 height: 20.h,
-                colorFilter: ColorFilter.mode(
-                  colors.textSecondary,
-                  BlendMode.srcIn,
-                ),
+                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
               ),
             ],
           ),
@@ -1107,11 +935,7 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Widget _buildItemSearchResult(
-    AppColorsExtension colors,
-    _SearchItemEntry item, {
-    required bool persistQuery,
-  }) {
+  Widget _buildItemSearchResult(AppColorsExtension colors, _SearchItemEntry item, {required bool persistQuery}) {
     final source = item.sourceItem;
 
     void onTap() {
@@ -1165,16 +989,15 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Widget _buildSearchCardTrailing(
-    AppColorsExtension colors,
-    CartItem cartItem,
-  ) {
+  Widget _buildSearchCardTrailing(AppColorsExtension colors, CartItem cartItem) {
     return Consumer<CartProvider>(
       builder: (context, provider, _) {
         final isInCart = provider.cartItems.containsKey(cartItem);
+        final isItemPending = provider.isItemOperationPending(cartItem);
 
         return GestureDetector(
           onTap: () {
+            if (isItemPending) return;
             if (isInCart) {
               provider.removeItemCompletely(cartItem);
             } else {
@@ -1185,24 +1008,25 @@ class _SearchPageState extends State<SearchPage> {
             padding: EdgeInsets.all(8.r),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: isInCart
-                  ? colors.accentOrange
-                  : colors.backgroundSecondary,
-              border: Border.all(
-                color: isInCart ? colors.accentOrange : colors.inputBorder,
-                width: 1,
-              ),
+              color: isInCart ? colors.accentOrange : colors.backgroundSecondary,
+              border: Border.all(color: isInCart ? colors.accentOrange : colors.inputBorder, width: 1),
             ),
-            child: SvgPicture.asset(
-              isInCart ? Assets.icons.check : Assets.icons.cart,
-              package: 'grab_go_shared',
-              height: 16.h,
-              width: 16.h,
-              colorFilter: ColorFilter.mode(
-                isInCart ? Colors.white : colors.textPrimary,
-                BlendMode.srcIn,
-              ),
-            ),
+            child: isItemPending
+                ? SizedBox(
+                    width: 16.w,
+                    height: 16.w,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(isInCart ? Colors.white : colors.accentOrange),
+                    ),
+                  )
+                : SvgPicture.asset(
+                    isInCart ? Assets.icons.check : Assets.icons.cart,
+                    package: 'grab_go_shared',
+                    height: 16.h,
+                    width: 16.h,
+                    colorFilter: ColorFilter.mode(isInCart ? Colors.white : colors.textPrimary, BlendMode.srcIn),
+                  ),
           ),
         );
       },
@@ -1263,10 +1087,7 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Widget _buildSearchHeader(
-    AppColorsExtension colors,
-    ServiceProvider serviceProvider,
-  ) {
+  Widget _buildSearchHeader(AppColorsExtension colors, ServiceProvider serviceProvider) {
     return Container(
       color: colors.backgroundPrimary,
       padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 10.h),
@@ -1275,10 +1096,7 @@ class _SearchPageState extends State<SearchPage> {
           Container(
             height: 44,
             width: 44,
-            decoration: BoxDecoration(
-              color: colors.backgroundSecondary,
-              shape: BoxShape.circle,
-            ),
+            decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
             child: Material(
               color: Colors.transparent,
               child: InkWell(
@@ -1289,10 +1107,7 @@ class _SearchPageState extends State<SearchPage> {
                   child: SvgPicture.asset(
                     Assets.icons.navArrowLeft,
                     package: 'grab_go_shared',
-                    colorFilter: ColorFilter.mode(
-                      colors.textPrimary,
-                      BlendMode.srcIn,
-                    ),
+                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                   ),
                 ),
               ),
@@ -1314,10 +1129,7 @@ class _SearchPageState extends State<SearchPage> {
                     package: 'grab_go_shared',
                     width: 18.w,
                     height: 18.h,
-                    colorFilter: ColorFilter.mode(
-                      colors.textTertiary,
-                      BlendMode.srcIn,
-                    ),
+                    colorFilter: ColorFilter.mode(colors.textTertiary, BlendMode.srcIn),
                   ),
                   SizedBox(width: 8.w),
                   Expanded(
@@ -1328,31 +1140,19 @@ class _SearchPageState extends State<SearchPage> {
                       onChanged: _onSearchChanged,
                       onSubmitted: (value) => _persistSearchTerm(value),
                       textInputAction: TextInputAction.search,
-                      style: TextStyle(
-                        color: colors.textPrimary,
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
                       decoration: InputDecoration(
                         isCollapsed: true,
                         border: InputBorder.none,
-                        hintText:
-                            'Search ${_serviceLabel(serviceProvider).toLowerCase()}',
-                        hintStyle: TextStyle(
-                          color: colors.textTertiary,
-                          fontSize: 13.sp,
-                        ),
+                        hintText: 'Search ${_serviceLabel(serviceProvider).toLowerCase()}',
+                        hintStyle: TextStyle(color: colors.textTertiary, fontSize: 13.sp),
                       ),
                     ),
                   ),
                   if (_searchController.text.isNotEmpty)
                     GestureDetector(
                       onTap: _clearSearchInput,
-                      child: Icon(
-                        Icons.close,
-                        color: colors.textTertiary,
-                        size: 18.sp,
-                      ),
+                      child: Icon(Icons.close, color: colors.textTertiary, size: 18.sp),
                     ),
                 ],
               ),
@@ -1363,14 +1163,11 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Widget _buildSectionHeader(
-    AppColorsExtension colors,
-    String title,
-    String subtitle, {
-    String? highlightedText,
-  }) {
+  Widget _buildSectionHeader(AppColorsExtension colors, String title, String subtitle, {String? highlightedText}) {
     final titleStyle = TextStyle(
       fontSize: 18.sp,
+      fontFamily: 'Lato',
+      package: 'grab_go_shared',
       fontWeight: FontWeight.w700,
       color: colors.textPrimary,
     );
@@ -1416,14 +1213,12 @@ class _SearchPageState extends State<SearchPage> {
 
     final end = start + query.length;
     return [
-      if (start > 0)
-        TextSpan(text: title.substring(0, start), style: baseStyle),
+      if (start > 0) TextSpan(text: title.substring(0, start), style: baseStyle),
       TextSpan(
         text: title.substring(start, end),
         style: baseStyle.copyWith(color: highlightColor),
       ),
-      if (end < title.length)
-        TextSpan(text: title.substring(end), style: baseStyle),
+      if (end < title.length) TextSpan(text: title.substring(end), style: baseStyle),
     ];
   }
 
@@ -1435,11 +1230,7 @@ class _SearchPageState extends State<SearchPage> {
         children: [
           Text(
             'Quick filters',
-            style: TextStyle(
-              fontSize: 14.sp,
-              fontWeight: FontWeight.w700,
-              color: colors.textPrimary,
-            ),
+            style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
           ),
           SizedBox(height: 10.h),
           Wrap(
@@ -1451,15 +1242,9 @@ class _SearchPageState extends State<SearchPage> {
                 padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
                 onPressed: () => _setQuickFilter(label),
                 backgroundColor: colors.backgroundSecondary,
-                labelStyle: TextStyle(
-                  fontSize: 12.sp,
-                  color: colors.textPrimary,
-                  fontWeight: FontWeight.w600,
-                ),
+                labelStyle: TextStyle(fontSize: 12.sp, color: colors.textPrimary, fontWeight: FontWeight.w600),
                 shape: RoundedRectangleBorder(
-                  side: BorderSide(
-                    color: colors.inputBorder.withValues(alpha: 0.35),
-                  ),
+                  side: BorderSide(color: colors.inputBorder.withValues(alpha: 0.35)),
                   borderRadius: BorderRadius.circular(KBorderSize.border),
                 ),
               );
@@ -1475,12 +1260,7 @@ class _SearchPageState extends State<SearchPage> {
       padding: EdgeInsets.all(40.r),
       child: Column(
         children: [
-          SvgPicture.asset(
-            Assets.icons.emptySearchIcon,
-            package: 'grab_go_shared',
-            width: 180.w,
-            height: 180.h,
-          ),
+          SvgPicture.asset(Assets.icons.emptySearchIcon, package: 'grab_go_shared', width: 180.w, height: 180.h),
           SizedBox(height: 16.h),
           Text(
             message,
@@ -1493,9 +1273,7 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Widget _buildSearchNoResultsState(AppColorsExtension colors, String message) {
-    final minHeight = (MediaQuery.sizeOf(context).height * 0.58)
-        .clamp(300.0, 520.0)
-        .toDouble();
+    final minHeight = (MediaQuery.sizeOf(context).height * 0.58).clamp(300.0, 520.0).toDouble();
     return Container(
       constraints: BoxConstraints(minHeight: minHeight),
       alignment: Alignment.center,
@@ -1503,12 +1281,7 @@ class _SearchPageState extends State<SearchPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SvgPicture.asset(
-            Assets.icons.emptySearchIcon,
-            package: 'grab_go_shared',
-            width: 180.w,
-            height: 180.h,
-          ),
+          SvgPicture.asset(Assets.icons.emptySearchIcon, package: 'grab_go_shared', width: 180.w, height: 180.h),
           SizedBox(height: 16.h),
           Text(
             message,

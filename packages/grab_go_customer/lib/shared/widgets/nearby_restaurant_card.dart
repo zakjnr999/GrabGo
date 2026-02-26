@@ -3,7 +3,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:grab_go_customer/features/restaurant/model/restaurants_model.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:grab_go_shared/shared/utils/image_optimizer.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
@@ -25,9 +24,6 @@ class NearbyRestaurantCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withAlpha(10), spreadRadius: 1, blurRadius: 12, offset: const Offset(0, 4)),
-          ],
         ),
         child: Row(
           children: [
@@ -67,7 +63,7 @@ class NearbyRestaurantCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Row(
                       children: [
                         SvgPicture.asset(
@@ -84,7 +80,7 @@ class NearbyRestaurantCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Row(
                       children: [
                         Icon(Icons.location_on, size: 14.sp, color: colors.accentGreen),

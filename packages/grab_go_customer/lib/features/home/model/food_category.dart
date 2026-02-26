@@ -11,6 +11,7 @@ class FoodItem implements CartItem {
   final String restaurantId;
   final double price;
   final double rating;
+  final int reviewCount;
   final int prepTimeMinutes;
   final int calories;
   final List<String> dietaryTags;
@@ -55,6 +56,7 @@ class FoodItem implements CartItem {
     required this.restaurantId,
     required this.price,
     this.rating = 4.5,
+    this.reviewCount = 0,
     this.prepTimeMinutes = 15,
     this.calories = 300,
     this.dietaryTags = const [],
@@ -159,7 +161,10 @@ class FoodItem implements CartItem {
       restaurantId: restaurantId,
       restaurantImage: safeRestaurantImage,
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
-      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
+      rating: ((json['weightedRating'] ?? json['displayRating'] ?? json['rating']) as num?)?.toDouble() ?? 0.0,
+      reviewCount: (json['reviewCount'] as num? ?? json['totalReviews'] as num? ?? json['ratingCount'] as num?)
+              ?.toInt() ??
+          0,
       prepTimeMinutes: (json['prepTimeMinutes'] as num?)?.toInt() ?? 15,
       calories: (json['calories'] as num?)?.toInt() ?? 300,
       dietaryTags:
@@ -221,6 +226,7 @@ class FoodItem implements CartItem {
     'restaurantImage': restaurantImage,
     'price': price,
     'rating': rating,
+    'reviewCount': reviewCount,
     'prepTimeMinutes': prepTimeMinutes,
     'calories': calories,
     'dietaryTags': dietaryTags,

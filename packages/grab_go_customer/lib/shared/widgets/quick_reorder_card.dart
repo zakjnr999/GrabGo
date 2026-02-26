@@ -3,7 +3,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
-import 'package:grab_go_shared/shared/utils/image_optimizer.dart';
 import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -15,6 +14,7 @@ class QuickReorderCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onAddToCart;
   final bool isInCart;
+  final bool isLoading;
 
   const QuickReorderCard({
     super.key,
@@ -23,6 +23,7 @@ class QuickReorderCard extends StatelessWidget {
     required this.onTap,
     required this.onAddToCart,
     required this.isInCart,
+    this.isLoading = false,
   });
 
   @override
@@ -38,7 +39,6 @@ class QuickReorderCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-          border: Border.all(color: colors.inputBorder.withValues(alpha: 0.5), width: 1),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -150,7 +150,7 @@ class QuickReorderCard extends StatelessWidget {
                       ),
                       // Quick add button
                       GestureDetector(
-                        onTap: onAddToCart,
+                        onTap: isLoading ? null : onAddToCart,
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 300),
                           curve: Curves.easeOut,
@@ -164,17 +164,29 @@ class QuickReorderCard extends StatelessWidget {
                             transitionBuilder: (child, animation) {
                               return ScaleTransition(scale: animation, child: child);
                             },
-                            child: SvgPicture.asset(
-                              isInCart ? Assets.icons.check : Assets.icons.cart,
-                              key: ValueKey(isInCart),
-                              package: 'grab_go_shared',
-                              height: 18,
-                              width: 18.w,
-                              colorFilter: ColorFilter.mode(
-                                isInCart ? Colors.white : colors.textPrimary,
-                                BlendMode.srcIn,
-                              ),
-                            ),
+                            child: isLoading
+                                ? SizedBox(
+                                    key: const ValueKey('pending'),
+                                    width: 18.w,
+                                    height: 18.w,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        isInCart ? Colors.white : colors.accentOrange,
+                                      ),
+                                    ),
+                                  )
+                                : SvgPicture.asset(
+                                    isInCart ? Assets.icons.check : Assets.icons.cart,
+                                    key: ValueKey(isInCart),
+                                    package: 'grab_go_shared',
+                                    height: 18,
+                                    width: 18.w,
+                                    colorFilter: ColorFilter.mode(
+                                      isInCart ? Colors.white : colors.textPrimary,
+                                      BlendMode.srcIn,
+                                    ),
+                                  ),
                           ),
                         ),
                       ),

@@ -301,7 +301,8 @@ class VendorModel {
         : rawIsOpen is num
         ? rawIsOpen != 0
         : true;
-    final totalReviewsValue = json['totalReviews'] ?? json['total_reviews'] ?? 0;
+    final totalReviewsValue =
+        json['totalReviews'] ?? json['total_reviews'] ?? json['reviewCount'] ?? json['ratingCount'] ?? 0;
     final int parsedTotalReviews = totalReviewsValue is num
         ? totalReviewsValue.toInt()
         : int.tryParse(totalReviewsValue.toString()) ?? 0;
@@ -319,7 +320,7 @@ class VendorModel {
       isAcceptingOrders: json['isAcceptingOrders'] as bool? ?? true,
       deliveryFee: (json['deliveryFee'] ?? json['delivery_fee'] ?? 0.0).toDouble(),
       minOrder: (json['minOrder'] ?? json['min_order'] ?? 0.0).toDouble(),
-      rating: (json['rating'] ?? 0.0).toDouble(),
+      rating: (json['weightedRating'] ?? json['displayRating'] ?? json['rating'] ?? 0.0).toDouble(),
       totalReviews: parsedTotalReviews,
       categories: parseStringList(json['categories']),
       foodType: json['foodType']?.toString() ?? json['food_type']?.toString(),

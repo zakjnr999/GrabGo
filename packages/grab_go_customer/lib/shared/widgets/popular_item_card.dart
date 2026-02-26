@@ -50,7 +50,6 @@ class PopularItemCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-          border: Border.all(color: colors.inputBorder.withValues(alpha: 0.5), width: 1),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -143,7 +142,7 @@ class PopularItemCard extends StatelessWidget {
               ],
             ),
             Padding(
-              padding: EdgeInsets.fromLTRB(10.r, 10.r, 10.r, 6.r),
+              padding: EdgeInsets.only(top: 10.h),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -157,36 +156,54 @@ class PopularItemCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
                         ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            if (showDeliveryTime) ...[
-                              if (isOpen) ...[
-                                SvgPicture.asset(
-                                  Assets.icons.timer,
-                                  package: 'grab_go_shared',
-                                  height: 12,
-                                  width: 12.w,
-                                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                                ),
-                                SizedBox(width: 4.w),
-                                Text(
-                                  deliveryTime ?? '25-30 min',
-                                  style: TextStyle(
-                                    fontSize: 11.sp,
-                                    fontWeight: FontWeight.w500,
-                                    color: colors.textSecondary,
-                                  ),
-                                ),
-                              ] else ...[
-                                Text(
+                        const SizedBox(height: 6),
+                        if (showDeliveryTime)
+                          isOpen
+                              ? Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        item.providerName,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 11.sp,
+                                          fontWeight: FontWeight.w500,
+                                          color: colors.textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(width: 6.w),
+                                    Container(
+                                      width: 3.w,
+                                      height: 3,
+                                      decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
+                                    ),
+                                    SizedBox(width: 6.w),
+                                    SvgPicture.asset(
+                                      Assets.icons.starSolid,
+                                      package: 'grab_go_shared',
+                                      height: 11,
+                                      width: 11.w,
+                                      colorFilter: ColorFilter.mode(effectiveAccentColor, BlendMode.srcIn),
+                                    ),
+                                    SizedBox(width: 3.w),
+                                    Text(
+                                      item.rating.toStringAsFixed(1),
+                                      style: TextStyle(
+                                        fontSize: 11.sp,
+                                        fontWeight: FontWeight.w600,
+                                        color: colors.textPrimary,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Text(
                                   "We're closed",
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: colors.error),
                                 ),
-                              ],
-                            ],
-                          ],
-                        ),
                         const SizedBox(height: 8),
                         Container(
                           padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4),
@@ -205,8 +222,10 @@ class PopularItemCard extends StatelessWidget {
                   Consumer<CartProvider>(
                     builder: (context, provider, _) {
                       final bool isInCart = provider.cartItems.containsKey(item);
+                      final bool isItemPending = provider.isItemOperationPending(item);
                       return GestureDetector(
                         onTap: () {
+                          if (isItemPending) return;
                           if (isInCart) {
                             provider.removeItemCompletely(item);
                           } else {
@@ -226,17 +245,29 @@ class PopularItemCard extends StatelessWidget {
                             transitionBuilder: (child, animation) {
                               return ScaleTransition(scale: animation, child: child);
                             },
-                            child: SvgPicture.asset(
-                              isInCart ? Assets.icons.check : Assets.icons.cart,
-                              key: ValueKey(isInCart),
-                              package: 'grab_go_shared',
-                              height: 18,
-                              width: 18.w,
-                              colorFilter: ColorFilter.mode(
-                                isInCart ? Colors.white : colors.textPrimary,
-                                BlendMode.srcIn,
-                              ),
-                            ),
+                            child: isItemPending
+                                ? SizedBox(
+                                    key: const ValueKey('pending'),
+                                    width: 18.w,
+                                    height: 18.w,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        isInCart ? Colors.white : colors.accentOrange,
+                                      ),
+                                    ),
+                                  )
+                                : SvgPicture.asset(
+                                    isInCart ? Assets.icons.check : Assets.icons.cart,
+                                    key: ValueKey(isInCart),
+                                    package: 'grab_go_shared',
+                                    height: 18,
+                                    width: 18.w,
+                                    colorFilter: ColorFilter.mode(
+                                      isInCart ? Colors.white : colors.textPrimary,
+                                      BlendMode.srcIn,
+                                    ),
+                                  ),
                           ),
                         ),
                       );
