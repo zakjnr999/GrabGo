@@ -7,19 +7,23 @@ import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
 
 class ItemReviewsPage extends StatefulWidget {
-  const ItemReviewsPage({super.key});
+  const ItemReviewsPage({super.key, this.rating = 0.0, this.reviewCount = 0});
+
+  final double rating;
+  final int reviewCount;
 
   @override
   State<ItemReviewsPage> createState() => _ItemReviewsPageState();
 }
 
-class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProviderStateMixin {
+class _ItemReviewsPageState extends State<ItemReviewsPage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
   }
 
   @override
@@ -39,7 +43,9 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
       statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       systemNavigationBarColor: colors.backgroundPrimary,
       systemNavigationBarDividerColor: Colors.transparent,
-      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      systemNavigationBarIconBrightness: isDark
+          ? Brightness.light
+          : Brightness.dark,
     );
 
     SystemChrome.setSystemUIOverlayStyle(systemUiOverlayStyle);
@@ -52,7 +58,12 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
           children: [
             // Header
             Padding(
-              padding: EdgeInsets.only(top: padding.top + 10, left: 20.w, right: 20.w, bottom: 16.h),
+              padding: EdgeInsets.only(
+                top: padding.top + 10,
+                left: 20.w,
+                right: 20.w,
+                bottom: 16.h,
+              ),
               child: Row(
                 children: [
                   Container(
@@ -61,7 +72,10 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
                     decoration: BoxDecoration(
                       color: colors.backgroundSecondary,
                       shape: BoxShape.circle,
-                      border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+                      border: Border.all(
+                        color: colors.inputBorder.withValues(alpha: 0.3),
+                        width: 0.5,
+                      ),
                     ),
                     child: Material(
                       color: Colors.transparent,
@@ -73,7 +87,10 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
                           child: SvgPicture.asset(
                             Assets.icons.navArrowLeft,
                             package: 'grab_go_shared',
-                            colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                            colorFilter: ColorFilter.mode(
+                              colors.textPrimary,
+                              BlendMode.srcIn,
+                            ),
                           ),
                         ),
                       ),
@@ -109,14 +126,21 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
                         package: 'grab_go_shared',
                         height: 36.h,
                         width: 36.w,
-                        colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                        colorFilter: ColorFilter.mode(
+                          colors.accentOrange,
+                          BlendMode.srcIn,
+                        ),
                       ),
                     ),
                   ),
                   SizedBox(width: 10.w),
                   Text(
-                    '5.0',
-                    style: TextStyle(color: colors.textPrimary, fontSize: 24.sp, fontWeight: FontWeight.bold),
+                    widget.rating.toStringAsFixed(1),
+                    style: TextStyle(
+                      color: colors.textPrimary,
+                      fontSize: 24.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
@@ -125,8 +149,12 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 20.w),
               child: Text(
-                'Based on 49 reviews',
-                style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w400),
+                'Based on ${widget.reviewCount} ${widget.reviewCount == 1 ? 'review' : 'reviews'}',
+                style: TextStyle(
+                  color: colors.textSecondary,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w400,
+                ),
               ),
             ),
 
@@ -135,7 +163,12 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
             // TabBar
             Container(
               decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: colors.inputBorder.withValues(alpha: 0.5), width: 1)),
+                border: Border(
+                  bottom: BorderSide(
+                    color: colors.inputBorder.withValues(alpha: 0.5),
+                    width: 1,
+                  ),
+                ),
               ),
               child: TabBar(
                 controller: _tabController,
@@ -171,7 +204,10 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
               child: TabBarView(
                 controller: _tabController,
                 physics: const AlwaysScrollableScrollPhysics(),
-                children: [_buildReviewsList(colors, 'popular'), _buildReviewsList(colors, 'latest')],
+                children: [
+                  _buildReviewsList(colors, 'popular'),
+                  _buildReviewsList(colors, 'latest'),
+                ],
               ),
             ),
           ],
@@ -186,9 +222,10 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
       type == 'my' ? 2 : 10,
       (index) => {
         'name': type == 'my' ? 'You' : 'User ${index + 1}',
-        'rating': 5.0,
+        'rating': widget.rating,
         'date': '2 days ago',
-        'comment': 'Amazing food! The taste was incredible and delivery was super fast. Highly recommend!',
+        'comment':
+            'Amazing food! The taste was incredible and delivery was super fast. Highly recommend!',
       },
     );
 
@@ -196,7 +233,11 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
       return Center(
         child: Text(
           type == 'my' ? 'No reviews yet' : 'No reviews available',
-          style: TextStyle(color: colors.textSecondary, fontSize: 16.sp, fontWeight: FontWeight.w600),
+          style: TextStyle(
+            color: colors.textSecondary,
+            fontSize: 16.sp,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       );
     }
@@ -205,8 +246,13 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
       padding: EdgeInsets.symmetric(vertical: 10.h),
       physics: const AlwaysScrollableScrollPhysics(),
       itemCount: reviews.length,
-      separatorBuilder: (context, index) =>
-          Divider(color: colors.backgroundSecondary, height: 1, thickness: 1, indent: 20, endIndent: 20),
+      separatorBuilder: (context, index) => Divider(
+        color: colors.backgroundSecondary,
+        height: 1,
+        thickness: 1,
+        indent: 20,
+        endIndent: 20,
+      ),
       itemBuilder: (context, index) {
         final review = reviews[index];
         return _buildReviewCard(colors, review);
@@ -214,10 +260,16 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
     );
   }
 
-  Widget _buildReviewCard(AppColorsExtension colors, Map<String, dynamic> review) {
+  Widget _buildReviewCard(
+    AppColorsExtension colors,
+    Map<String, dynamic> review,
+  ) {
     return Container(
       padding: EdgeInsets.all(16.r),
-      decoration: BoxDecoration(color: colors.backgroundPrimary, borderRadius: BorderRadius.circular(12.r)),
+      decoration: BoxDecoration(
+        color: colors.backgroundPrimary,
+        borderRadius: BorderRadius.circular(12.r),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -231,39 +283,68 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
                     package: 'grab_go_shared',
                     height: 14.h,
                     width: 14.w,
-                    colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                    colorFilter: ColorFilter.mode(
+                      colors.accentOrange,
+                      BlendMode.srcIn,
+                    ),
                   ),
                 ),
               ),
               SizedBox(width: 12.w),
               Text(
                 review['name'],
-                style: TextStyle(color: colors.textPrimary, fontSize: 13.sp, fontWeight: FontWeight.w400),
+                style: TextStyle(
+                  color: colors.textPrimary,
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w400,
+                ),
               ),
               SizedBox(width: 6.h),
               Container(
                 height: 4.h,
                 width: 4.w,
-                decoration: BoxDecoration(color: colors.textPrimary, shape: BoxShape.circle),
+                decoration: BoxDecoration(
+                  color: colors.textPrimary,
+                  shape: BoxShape.circle,
+                ),
               ),
               SizedBox(width: 6.h),
               Text(
                 review['date'],
-                style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w400),
+                style: TextStyle(
+                  color: colors.textSecondary,
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w400,
+                ),
               ),
             ],
           ),
 
           Text(
             review['comment'],
-            style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w400, height: 1.5),
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w400,
+              height: 1.5,
+            ),
           ),
           SizedBox(height: 12.h),
           Row(
             children: [
-              _buildReactSection(colors, Assets.icons.thumbsUp, 'Was Helpful (10)', () {}),
+              _buildReactSection(
+                colors,
+                Assets.icons.thumbsUp,
+                'Was Helpful (10)',
+                () {},
+              ),
               SizedBox(width: 25.w),
-              _buildReactSection(colors, Assets.icons.thumbsDown, 'Not Helpful (10)', () {}),
+              _buildReactSection(
+                colors,
+                Assets.icons.thumbsDown,
+                'Not Helpful (10)',
+                () {},
+              ),
             ],
           ),
         ],
@@ -272,7 +353,12 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
   }
 }
 
-Widget _buildReactSection(AppColorsExtension colors, String icon, String text, GestureTapCallback ontap) {
+Widget _buildReactSection(
+  AppColorsExtension colors,
+  String icon,
+  String text,
+  GestureTapCallback ontap,
+) {
   return GestureDetector(
     onTap: ontap,
     child: Row(
@@ -287,7 +373,11 @@ Widget _buildReactSection(AppColorsExtension colors, String icon, String text, G
         SizedBox(width: 10.w),
         Text(
           text,
-          style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
+          style: TextStyle(
+            color: colors.textSecondary,
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w400,
+          ),
         ),
       ],
     ),

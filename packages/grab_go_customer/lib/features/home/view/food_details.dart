@@ -172,6 +172,13 @@ class _FoodDetailsState extends State<FoodDetails>
     return widget.foodItem!.rating;
   }
 
+  int get itemReviewCount {
+    if (widget.isGrocery) return widget.groceryItem!.reviewCount;
+    if (isPharmacy) return widget.pharmacyItem!.reviewCount;
+    if (isGrabMart) return widget.grabMartItem!.reviewCount;
+    return widget.foodItem?.reviewCount ?? 0;
+  }
+
   String get itemIngredients {
     try {
       if (widget.isGrocery || isPharmacy || isGrabMart) {
@@ -436,7 +443,7 @@ class _FoodDetailsState extends State<FoodDetails>
                                               ),
                                               SizedBox(width: 4.w),
                                               Text(
-                                                '5.0',
+                                                itemRating.toStringAsFixed(1),
                                                 style: TextStyle(
                                                   fontSize: 13.sp,
                                                   color: colors.textPrimary,
@@ -445,7 +452,7 @@ class _FoodDetailsState extends State<FoodDetails>
                                               ),
                                               SizedBox(width: 4.w),
                                               Text(
-                                                '(142 reviews)',
+                                                '($itemReviewCount ${itemReviewCount == 1 ? 'review' : 'reviews'})',
                                                 style: TextStyle(
                                                   fontSize: 13.sp,
                                                   color: colors.textSecondary,
@@ -458,7 +465,11 @@ class _FoodDetailsState extends State<FoodDetails>
                                                   context,
                                                   MaterialPageRoute(
                                                     builder: (context) =>
-                                                        const ItemReviewsPage(),
+                                                        ItemReviewsPage(
+                                                          rating: itemRating,
+                                                          reviewCount:
+                                                              itemReviewCount,
+                                                        ),
                                                   ),
                                                 ),
                                                 child: SvgPicture.asset(

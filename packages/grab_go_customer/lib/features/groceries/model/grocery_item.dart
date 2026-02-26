@@ -7,7 +7,12 @@ class NutritionInfo {
   final double carbs;
   final double fat;
 
-  NutritionInfo({required this.calories, required this.protein, required this.carbs, required this.fat});
+  NutritionInfo({
+    required this.calories,
+    required this.protein,
+    required this.carbs,
+    required this.fat,
+  });
 
   factory NutritionInfo.fromJson(Map<String, dynamic> json) {
     return NutritionInfo(
@@ -19,7 +24,12 @@ class NutritionInfo {
   }
 
   Map<String, dynamic> toJson() {
-    return {'calories': calories, 'protein': protein, 'carbs': carbs, 'fat': fat};
+    return {
+      'calories': calories,
+      'protein': protein,
+      'carbs': carbs,
+      'fat': fat,
+    };
   }
 }
 
@@ -120,9 +130,11 @@ class GroceryItem implements CartItem {
     String? categoryEmoji;
 
     if (json['category'] is Map) {
-      categoryId = json['category']['_id'] ?? '';
-      categoryName = json['category']['name'];
-      categoryEmoji = json['category']['emoji'];
+      final category = Map<String, dynamic>.from(json['category']);
+      categoryId =
+          category['_id']?.toString() ?? category['id']?.toString() ?? '';
+      categoryName = category['name']?.toString();
+      categoryEmoji = category['emoji']?.toString();
     } else if (json['category'] is String) {
       categoryId = json['category'];
     }
@@ -133,15 +145,22 @@ class GroceryItem implements CartItem {
     String? storeLogo;
 
     if (json['store'] is Map) {
-      storeId = json['store']['_id'] ?? '';
-      storeName = json['store']['store_name'];
-      storeLogo = json['store']['logo'];
+      final store = Map<String, dynamic>.from(json['store']);
+      storeId = store['_id']?.toString() ?? store['id']?.toString() ?? '';
+      storeName =
+          store['store_name']?.toString() ?? store['storeName']?.toString();
+      storeLogo = store['logo']?.toString() ?? store['image']?.toString();
     } else if (json['store'] is String) {
       storeId = json['store'];
     }
 
+    final dynamic rawRating =
+        json['weightedRating'] ?? json['displayRating'] ?? json['rating'];
+    final dynamic rawReviewCount =
+        json['reviewCount'] ?? json['totalReviews'] ?? json['ratingCount'];
+
     return GroceryItem(
-      id: json['_id'] ?? '',
+      id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
       name: json['name'] ?? '',
       description: json['description'] ?? '',
       image: json['image'] ?? '',
@@ -157,11 +176,21 @@ class GroceryItem implements CartItem {
       stock: json['stock'] ?? 0,
       isAvailable: json['isAvailable'] ?? true,
       discountPercentage: (json['discountPercentage'] ?? 0).toDouble(),
-      discountEndDate: json['discountEndDate'] != null ? DateTime.parse(json['discountEndDate']) : null,
-      nutritionInfo: json['nutritionInfo'] != null ? NutritionInfo.fromJson(json['nutritionInfo']) : null,
-      tags: (json['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
-      rating: (json['rating'] ?? 0).toDouble(),
-      reviewCount: json['reviewCount'] ?? 0,
+      discountEndDate: json['discountEndDate'] != null
+          ? DateTime.parse(json['discountEndDate'])
+          : null,
+      nutritionInfo: json['nutritionInfo'] != null
+          ? NutritionInfo.fromJson(json['nutritionInfo'])
+          : null,
+      tags:
+          (json['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
+          [],
+      rating: rawRating is num
+          ? rawRating.toDouble()
+          : double.tryParse(rawRating.toString()) ?? 0,
+      reviewCount: rawReviewCount is num
+          ? rawReviewCount.toInt()
+          : int.tryParse(rawReviewCount.toString()) ?? 0,
       orderCount: json['orderCount'] ?? 0, // Parse orderCount from backend
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
@@ -215,6 +244,7 @@ class GroceryItem implements CartItem {
       restaurantImage: storeLogo ?? '',
       price: price,
       rating: rating,
+      reviewCount: reviewCount,
       prepTimeMinutes: 0, // Not applicable for groceries usually
       calories: nutritionInfo?.calories.round() ?? 0,
       dietaryTags: tags,

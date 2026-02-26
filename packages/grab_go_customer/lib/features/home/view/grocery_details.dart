@@ -27,6 +27,7 @@ extension GroceryItemToFood on GroceryItem {
       restaurantImage: storeLogo ?? '',
       price: price,
       rating: rating,
+      reviewCount: reviewCount,
       discountPercentage: discountPercentage,
       discountEndDate: discountEndDate,
       isAvailable: isAvailable,

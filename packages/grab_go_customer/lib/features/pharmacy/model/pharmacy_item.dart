@@ -68,31 +68,64 @@ class PharmacyItem implements CartItem {
   });
 
   factory PharmacyItem.fromJson(Map<String, dynamic> json) {
+    final dynamic rawRating =
+        json['weightedRating'] ?? json['displayRating'] ?? json['rating'];
+    final dynamic rawReviewCount =
+        json['reviewCount'] ?? json['totalReviews'] ?? json['ratingCount'];
+
     return PharmacyItem(
-      id: json['_id'] ?? '',
+      id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
       name: json['name'] ?? '',
       description: json['description'] ?? '',
       image: json['image'] ?? '',
       price: (json['price'] ?? 0).toDouble(),
       unit: json['unit'] ?? 'piece',
-      categoryId: json['category'] is Map ? json['category']['_id'] ?? '' : json['category'] ?? '',
-      categoryName: json['category'] is Map ? json['category']['name'] : null,
-      categoryEmoji: json['category'] is Map ? json['category']['emoji'] : null,
-      storeId: json['store'] is Map ? json['store']['_id'] ?? '' : json['store'] ?? '',
-      storeName: json['store'] is Map ? json['store']['store_name'] : null,
-      storeLogo: json['store'] is Map ? json['store']['logo'] : null,
+      categoryId: json['category'] is Map
+          ? (json['category']['_id']?.toString() ??
+                json['category']['id']?.toString() ??
+                '')
+          : json['category']?.toString() ?? '',
+      categoryName: json['category'] is Map
+          ? json['category']['name']?.toString()
+          : null,
+      categoryEmoji: json['category'] is Map
+          ? json['category']['emoji']?.toString()
+          : null,
+      storeId: json['store'] is Map
+          ? (json['store']['_id']?.toString() ??
+                json['store']['id']?.toString() ??
+                '')
+          : json['store']?.toString() ?? '',
+      storeName: json['store'] is Map
+          ? json['store']['store_name']?.toString() ??
+                json['store']['storeName']?.toString()
+          : null,
+      storeLogo: json['store'] is Map
+          ? json['store']['logo']?.toString() ??
+                json['store']['image']?.toString()
+          : null,
       brand: json['brand'] ?? '',
       stock: json['stock'] ?? 0,
       isAvailable: json['isAvailable'] ?? true,
       requiresPrescription: json['requiresPrescription'] ?? false,
       discountPercentage: (json['discountPercentage'] ?? 0).toDouble(),
-      discountEndDate: json['discountEndDate'] != null ? DateTime.parse(json['discountEndDate']) : null,
-      expiryDate: json['expiryDate'] != null ? DateTime.parse(json['expiryDate']) : null,
+      discountEndDate: json['discountEndDate'] != null
+          ? DateTime.parse(json['discountEndDate'])
+          : null,
+      expiryDate: json['expiryDate'] != null
+          ? DateTime.parse(json['expiryDate'])
+          : null,
       tags: json['tags'] != null ? List<String>.from(json['tags']) : [],
-      rating: (json['rating'] ?? 0).toDouble(),
-      reviewCount: json['reviewCount'] ?? 0,
+      rating: rawRating is num
+          ? rawRating.toDouble()
+          : double.tryParse(rawRating.toString()) ?? 0,
+      reviewCount: rawReviewCount is num
+          ? rawReviewCount.toInt()
+          : int.tryParse(rawReviewCount.toString()) ?? 0,
       orderCount: json['orderCount'] ?? 0,
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
+          : DateTime.now(),
     );
   }
 
@@ -128,7 +161,9 @@ class PharmacyItem implements CartItem {
     return price;
   }
 
-  bool get hasDiscount => discountPercentage > 0 && (discountEndDate == null || discountEndDate!.isAfter(DateTime.now()));
+  bool get hasDiscount =>
+      discountPercentage > 0 &&
+      (discountEndDate == null || discountEndDate!.isAfter(DateTime.now()));
 
   FoodItem toFoodItem() {
     return FoodItem(
@@ -139,6 +174,7 @@ class PharmacyItem implements CartItem {
       discountPercentage: discountPercentage,
       image: image,
       rating: rating,
+      reviewCount: reviewCount,
       deliveryTimeMinutes: 30, // Default for pharmacy
       sellerName: storeName ?? 'Pharmacy',
       sellerId: storeId.hashCode % 1000000,

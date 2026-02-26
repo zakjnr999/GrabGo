@@ -87,11 +87,17 @@ class FoodCategoryProvider extends ChangeNotifier with CacheMixin {
   /// Fetch foods for a specific category
   Future<void> fetchFoodsForCategory(String categoryId) async {
     try {
-      final categoryFoods = await _repository.fetchFoods(categoryId: categoryId);
+      final categoryFoods = await _repository.fetchFoods(
+        categoryId: categoryId,
+      );
 
-      final categoryIndex = _state.categories.indexWhere((cat) => cat.id == categoryId);
+      final categoryIndex = _state.categories.indexWhere(
+        (cat) => cat.id == categoryId,
+      );
       if (categoryIndex >= 0) {
-        final updatedCategories = List<FoodCategoryModel>.from(_state.categories);
+        final updatedCategories = List<FoodCategoryModel>.from(
+          _state.categories,
+        );
         updatedCategories[categoryIndex] = FoodCategoryModel(
           id: updatedCategories[categoryIndex].id,
           name: updatedCategories[categoryIndex].name,
@@ -103,7 +109,11 @@ class FoodCategoryProvider extends ChangeNotifier with CacheMixin {
         _updateState(_state.copyWith(categories: updatedCategories));
       }
     } catch (e) {
-      _updateState(_state.copyWith(error: 'Failed to load foods for category: ${e.toString()}'));
+      _updateState(
+        _state.copyWith(
+          error: 'Failed to load foods for category: ${e.toString()}',
+        ),
+      );
       if (kDebugMode) {
         print('Error fetching foods for category $categoryId: $e');
       }
@@ -112,7 +122,9 @@ class FoodCategoryProvider extends ChangeNotifier with CacheMixin {
 
   /// Fetch from API
   Future<void> _fetchFromApi() async {
-    _updateState(_state.copyWith(isLoading: true, error: null, hasAttemptedFetch: true));
+    _updateState(
+      _state.copyWith(isLoading: true, error: null, hasAttemptedFetch: true),
+    );
     try {
       final locationData = CacheService.getUserLocation();
       final userLat = locationData?['latitude']?.toDouble();
@@ -124,8 +136,16 @@ class FoodCategoryProvider extends ChangeNotifier with CacheMixin {
       );
 
       // Enhance food items with restaurant details
-      final enhancedCategories = await _enhanceFoodItemsWithRestaurantDetails(categories);
-      _updateState(_state.copyWith(categories: enhancedCategories, isLoading: false, error: null));
+      final enhancedCategories = await _enhanceFoodItemsWithRestaurantDetails(
+        categories,
+      );
+      _updateState(
+        _state.copyWith(
+          categories: enhancedCategories,
+          isLoading: false,
+          error: null,
+        ),
+      );
       await _saveToCache();
     } catch (e) {
       if (_state.categories.isEmpty) {
@@ -139,18 +159,30 @@ class FoodCategoryProvider extends ChangeNotifier with CacheMixin {
             userLng: userLng,
           );
           _updateState(
-            _state.copyWith(categories: categories, isLoading: false, error: 'Loaded categories without items'),
+            _state.copyWith(
+              categories: categories,
+              isLoading: false,
+              error: 'Loaded categories without items',
+            ),
           );
         } catch (fallbackError) {
           // Try loading from cache as last resort
           await _loadFromCache();
           _updateState(
-            _state.copyWith(isLoading: false, error: 'Failed to load categories: ${fallbackError.toString()}'),
+            _state.copyWith(
+              isLoading: false,
+              error: 'Failed to load categories: ${fallbackError.toString()}',
+            ),
           );
         }
       } else {
         // Keep existing data, just update loading state and error
-        _updateState(_state.copyWith(isLoading: false, error: 'Failed to refresh: ${e.toString()}'));
+        _updateState(
+          _state.copyWith(
+            isLoading: false,
+            error: 'Failed to refresh: ${e.toString()}',
+          ),
+        );
       }
     }
   }
@@ -159,7 +191,9 @@ class FoodCategoryProvider extends ChangeNotifier with CacheMixin {
   Future<void> _loadFromCache() async {
     try {
       final cachedCategories = CacheService.getFoodCategories();
-      final categories = cachedCategories.map((json) => FoodCategoryModel.fromJson(json)).toList();
+      final categories = cachedCategories
+          .map((json) => FoodCategoryModel.fromJson(json))
+          .toList();
       _updateState(_state.copyWith(categories: categories));
     } catch (e) {
       if (kDebugMode) {
@@ -171,7 +205,9 @@ class FoodCategoryProvider extends ChangeNotifier with CacheMixin {
   /// Private: Save to cache
   Future<void> _saveToCache() async {
     try {
-      final categoriesJson = _state.categories.map((category) => category.toJson()).toList();
+      final categoriesJson = _state.categories
+          .map((category) => category.toJson())
+          .toList();
       CacheService.saveFoodCategories(categoriesJson);
     } catch (e) {
       if (kDebugMode) {
@@ -181,7 +217,9 @@ class FoodCategoryProvider extends ChangeNotifier with CacheMixin {
   }
 
   /// Private: Enhance food items with restaurant details
-  Future<List<FoodCategoryModel>> _enhanceFoodItemsWithRestaurantDetails(List<FoodCategoryModel> categories) async {
+  Future<List<FoodCategoryModel>> _enhanceFoodItemsWithRestaurantDetails(
+    List<FoodCategoryModel> categories,
+  ) async {
     if (categories.isEmpty) return categories;
 
     try {
@@ -196,9 +234,13 @@ class FoodCategoryProvider extends ChangeNotifier with CacheMixin {
 
         for (final foodItem in category.items) {
           // Check if food item needs restaurant details
-          if (foodItem.sellerName == 'Loading Restaurant...' && foodItem.restaurantId.isNotEmpty) {
+          if (foodItem.sellerName == 'Loading Restaurant...' &&
+              foodItem.restaurantId.isNotEmpty) {
             // Fetch restaurant details
-            final restaurantDetails = await RestaurantDetailService.getRestaurantDetails(foodItem.restaurantId);
+            final restaurantDetails =
+                await RestaurantDetailService.getRestaurantDetails(
+                  foodItem.restaurantId,
+                );
 
             if (restaurantDetails != null) {
               // Create updated food item with restaurant details
@@ -207,23 +249,34 @@ class FoodCategoryProvider extends ChangeNotifier with CacheMixin {
                 name: foodItem.name,
                 image: foodItem.image,
                 description: foodItem.description,
-                sellerName: restaurantDetails['restaurant_name'] ?? foodItem.sellerName,
+                sellerName:
+                    restaurantDetails['restaurant_name'] ?? foodItem.sellerName,
                 sellerId: foodItem.sellerId,
                 restaurantId: foodItem.restaurantId,
-                restaurantImage: restaurantDetails['logo'] ?? foodItem.restaurantImage,
+                restaurantImage:
+                    restaurantDetails['logo'] ?? foodItem.restaurantImage,
                 price: foodItem.price,
                 rating: foodItem.rating,
+                reviewCount: foodItem.reviewCount,
                 prepTimeMinutes: foodItem.prepTimeMinutes,
                 calories: foodItem.calories,
                 dietaryTags: foodItem.dietaryTags,
+                ingredients: foodItem.ingredients,
                 deliveryTimeMinutes: foodItem.deliveryTimeMinutes,
                 isAvailable: foodItem.isAvailable,
+                isRestaurantOpen: foodItem.isRestaurantOpen,
                 discountPercentage: foodItem.discountPercentage,
+                discountEndDate: foodItem.discountEndDate,
+                orderCount: foodItem.orderCount,
+                lastOrderedAt: foodItem.lastOrderedAt,
+                estimatedDeliveryTime: foodItem.estimatedDeliveryTime,
               );
               enhancedItems.add(enhancedItem);
 
               if (kDebugMode) {
-                print('Enhanced ${foodItem.name} with restaurant: ${restaurantDetails['restaurant_name']}');
+                print(
+                  'Enhanced ${foodItem.name} with restaurant: ${restaurantDetails['restaurant_name']}',
+                );
               }
             } else {
               enhancedItems.add(foodItem);

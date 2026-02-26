@@ -3,11 +3,14 @@ import 'package:grab_go_customer/core/api/api_client.dart';
 import 'package:grab_go_customer/features/restaurant/service/restaurant_service.dart';
 
 class RestaurantDetailService {
-  static final RestaurantService _restaurantService = chopperClient.getService<RestaurantService>();
+  static final RestaurantService _restaurantService = chopperClient
+      .getService<RestaurantService>();
   static final Map<String, Map<String, dynamic>> _cache = {};
 
   /// Fetch restaurant details by ID with caching
-  static Future<Map<String, dynamic>?> getRestaurantDetails(String restaurantId) async {
+  static Future<Map<String, dynamic>?> getRestaurantDetails(
+    String restaurantId,
+  ) async {
     if (restaurantId.isEmpty) return null;
 
     // Return cached data if available
@@ -21,17 +24,19 @@ class RestaurantDetailService {
       }
 
       final response = await _restaurantService.getRestaurants();
-      
+
       if (kDebugMode) {
         print('🏪 Restaurant API response status: ${response.statusCode}');
-        print('🏪 Restaurant API response successful: ${response.isSuccessful}');
+        print(
+          '🏪 Restaurant API response successful: ${response.isSuccessful}',
+        );
       }
-      
+
       if (response.isSuccessful && response.body != null) {
         final responseData = response.body!;
         if (responseData['success'] == true) {
           final List<dynamic> restaurants = responseData['data'] ?? [];
-          
+
           // Find the restaurant with matching ID
           final restaurant = restaurants.firstWhere(
             (r) => r['_id'] == restaurantId,
@@ -39,12 +44,27 @@ class RestaurantDetailService {
           );
 
           if (restaurant != null) {
+            final dynamic rawRating =
+                restaurant['weightedRating'] ??
+                restaurant['displayRating'] ??
+                restaurant['rating'];
+            final dynamic rawReviewCount =
+                restaurant['totalReviews'] ??
+                restaurant['total_reviews'] ??
+                restaurant['reviewCount'] ??
+                restaurant['ratingCount'];
+
             final restaurantDetails = {
               '_id': restaurant['_id'],
-              'restaurant_name': restaurant['restaurant_name'] ?? restaurant['name'] ?? '',
+              'restaurant_name':
+                  restaurant['restaurant_name'] ?? restaurant['name'] ?? '',
               'logo': restaurant['logo'] ?? restaurant['image'] ?? '',
-              'rating': restaurant['rating'] ?? 4.5,
-              'totalReviews': restaurant['totalReviews'] ?? 100,
+              'rating': rawRating is num
+                  ? rawRating.toDouble()
+                  : double.tryParse(rawRating.toString()) ?? 0.0,
+              'totalReviews': rawReviewCount is num
+                  ? rawReviewCount.toInt()
+                  : int.tryParse(rawReviewCount.toString()) ?? 0,
               'address': restaurant['address'] ?? 'Address not available',
               'phone': restaurant['phone'] ?? '',
               'description': restaurant['description'] ?? '',
@@ -52,11 +72,13 @@ class RestaurantDetailService {
 
             // Cache the result
             _cache[restaurantId] = restaurantDetails;
-            
+
             if (kDebugMode) {
-              print('✅ Found restaurant: ${restaurantDetails['restaurant_name']}');
+              print(
+                '✅ Found restaurant: ${restaurantDetails['restaurant_name']}',
+              );
             }
-            
+
             return restaurantDetails;
           }
         }
@@ -66,7 +88,6 @@ class RestaurantDetailService {
         print('⚠️ Restaurant not found for ID: $restaurantId');
       }
       return null;
-      
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error fetching restaurant details: $e');
@@ -76,13 +97,17 @@ class RestaurantDetailService {
   }
 
   /// Update food item with restaurant details
-  static Future<void> updateFoodItemWithRestaurantDetails(Map<String, dynamic> foodItemJson) async {
+  static Future<void> updateFoodItemWithRestaurantDetails(
+    Map<String, dynamic> foodItemJson,
+  ) async {
     final restaurantId = foodItemJson['restaurantId'] ?? '';
     if (restaurantId.isEmpty) return;
 
     // Skip if restaurant details are already populated
     final currentSellerName = foodItemJson['sellerName'] ?? '';
-    if (currentSellerName.isNotEmpty && currentSellerName != 'Loading Restaurant...' && currentSellerName != 'Unknown Restaurant') {
+    if (currentSellerName.isNotEmpty &&
+        currentSellerName != 'Loading Restaurant...' &&
+        currentSellerName != 'Unknown Restaurant') {
       return;
     }
 
@@ -90,9 +115,11 @@ class RestaurantDetailService {
     if (restaurantDetails != null) {
       foodItemJson['sellerName'] = restaurantDetails['restaurant_name'];
       foodItemJson['restaurantImage'] = restaurantDetails['logo'];
-      
+
       if (kDebugMode) {
-        print('🔄 Updated food item with restaurant: ${restaurantDetails['restaurant_name']}');
+        print(
+          '🔄 Updated food item with restaurant: ${restaurantDetails['restaurant_name']}',
+        );
       }
     }
   }

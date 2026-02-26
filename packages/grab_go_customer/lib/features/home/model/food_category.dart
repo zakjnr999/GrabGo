@@ -75,6 +75,18 @@ class FoodItem implements CartItem {
   factory FoodItem.fromJson(Map<String, dynamic> json) {
     final id = json['_id']?.toString() ?? json['id']?.toString() ?? '';
     final restaurant = json['restaurant'];
+    double parseDouble(dynamic value, {double defaultValue = 0.0}) {
+      if (value is num) return value.toDouble();
+      if (value is String) return double.tryParse(value) ?? defaultValue;
+      return defaultValue;
+    }
+
+    int parseInt(dynamic value, {int defaultValue = 0}) {
+      if (value is num) return value.toInt();
+      if (value is String) return int.tryParse(value) ?? defaultValue;
+      return defaultValue;
+    }
+
     bool parseBool(dynamic value, {bool defaultValue = true}) {
       if (value is bool) return value;
       if (value is num) return value != 0;
@@ -96,7 +108,10 @@ class FoodItem implements CartItem {
             restaurant['name']?.toString() ??
             '';
         restaurantId = restaurant['_id']?.toString() ?? '';
-        restaurantImage = restaurant['logo']?.toString() ?? restaurant['image']?.toString() ?? '';
+        restaurantImage =
+            restaurant['logo']?.toString() ??
+            restaurant['image']?.toString() ??
+            '';
       } else {
         // Case 2: Restaurant is a string ID (your server format)
         restaurantId = restaurant.toString();
@@ -107,19 +122,34 @@ class FoodItem implements CartItem {
 
     // Fallback for missing restaurant data
     if (restaurantId.isEmpty) {
-      restaurantId = json['restaurantId']?.toString() ?? json['sellerId']?.toString() ?? '';
+      restaurantId =
+          json['restaurantId']?.toString() ??
+          json['sellerId']?.toString() ??
+          '';
     }
     if (restaurantName.isEmpty) {
-      restaurantName = json['sellerName']?.toString() ?? json['restaurant_name']?.toString() ?? '';
+      restaurantName =
+          json['sellerName']?.toString() ??
+          json['restaurant_name']?.toString() ??
+          '';
     }
     if (restaurantImage.isEmpty) {
-      restaurantImage = json['restaurantImage']?.toString() ?? json['restaurant_logo']?.toString() ?? '';
+      restaurantImage =
+          json['restaurantImage']?.toString() ??
+          json['restaurant_logo']?.toString() ??
+          '';
     }
 
     int sellerIdInt = 0;
     if (restaurantId.isNotEmpty) {
       try {
-        sellerIdInt = int.tryParse(restaurantId.substring(restaurantId.length > 6 ? restaurantId.length - 6 : 0)) ?? 0;
+        sellerIdInt =
+            int.tryParse(
+              restaurantId.substring(
+                restaurantId.length > 6 ? restaurantId.length - 6 : 0,
+              ),
+            ) ??
+            0;
       } catch (e) {
         sellerIdInt = restaurantId.hashCode % 1000000;
       }
@@ -129,7 +159,11 @@ class FoodItem implements CartItem {
     final nameStr = json['name']?.toString() ?? '';
     final name = nameStr.isEmpty ? 'Unknown Food' : nameStr;
 
-    final imageStr = json['food_image']?.toString() ?? json['foodImage']?.toString() ?? json['image']?.toString() ?? '';
+    final imageStr =
+        json['food_image']?.toString() ??
+        json['foodImage']?.toString() ??
+        json['image']?.toString() ??
+        '';
     final image = imageStr.isEmpty ? '' : imageStr;
 
     final description = json['description']?.toString() ?? '';
@@ -142,7 +176,8 @@ class FoodItem implements CartItem {
     final dynamic rawOpen = () {
       if (json.containsKey('isRestaurantOpen')) return json['isRestaurantOpen'];
       if (restaurant is Map) {
-        if (restaurant.containsKey('isRestaurantOpen')) return restaurant['isRestaurantOpen'];
+        if (restaurant.containsKey('isRestaurantOpen'))
+          return restaurant['isRestaurantOpen'];
         if (restaurant.containsKey('isOpen')) return restaurant['isOpen'];
         if (restaurant.containsKey('is_open')) return restaurant['is_open'];
       }
@@ -160,11 +195,13 @@ class FoodItem implements CartItem {
       sellerId: sellerIdInt,
       restaurantId: restaurantId,
       restaurantImage: safeRestaurantImage,
-      price: (json['price'] as num?)?.toDouble() ?? 0.0,
-      rating: ((json['weightedRating'] ?? json['displayRating'] ?? json['rating']) as num?)?.toDouble() ?? 0.0,
-      reviewCount: (json['reviewCount'] as num? ?? json['totalReviews'] as num? ?? json['ratingCount'] as num?)
-              ?.toInt() ??
-          0,
+      price: parseDouble(json['price']),
+      rating: parseDouble(
+        json['weightedRating'] ?? json['displayRating'] ?? json['rating'],
+      ),
+      reviewCount: parseInt(
+        json['reviewCount'] ?? json['totalReviews'] ?? json['ratingCount'],
+      ),
       prepTimeMinutes: (json['prepTimeMinutes'] as num?)?.toInt() ?? 15,
       calories: (json['calories'] as num?)?.toInt() ?? 300,
       dietaryTags:
@@ -194,10 +231,14 @@ class FoodItem implements CartItem {
               .map((e) => e?.toString() ?? '')
               .where((e) => e.isNotEmpty)
               .toList();
-          print('✅ SUCCESS - Parsed ${parsed.length} ingredients for ${json['name']}: $parsed');
+          print(
+            '✅ SUCCESS - Parsed ${parsed.length} ingredients for ${json['name']}: $parsed',
+          );
           return parsed;
         } catch (e) {
-          print('❌ ERROR - Failed to parse ingredients for ${json['name']}: $e');
+          print(
+            '❌ ERROR - Failed to parse ingredients for ${json['name']}: $e',
+          );
           return <String>[];
         }
       }(),
@@ -205,12 +246,19 @@ class FoodItem implements CartItem {
       isAvailable: json['isAvailable'] is bool
           ? json['isAvailable'] as bool
           : (json['isAvailable']?.toString().toLowerCase() == 'true'),
-      discountPercentage: (json['discountPercentage'] as num?)?.toDouble() ?? 0.0,
-      discountEndDate: json['discountEndDate'] != null ? DateTime.tryParse(json['discountEndDate'].toString()) : null,
-      orderCount: (json['orderCount'] as num?)?.toInt() ?? 0, // Parse from backend
-      lastOrderedAt: json['lastOrderedAt'] != null ? DateTime.tryParse(json['lastOrderedAt'].toString()) : null,
+      discountPercentage:
+          (json['discountPercentage'] as num?)?.toDouble() ?? 0.0,
+      discountEndDate: json['discountEndDate'] != null
+          ? DateTime.tryParse(json['discountEndDate'].toString())
+          : null,
+      orderCount:
+          (json['orderCount'] as num?)?.toInt() ?? 0, // Parse from backend
+      lastOrderedAt: json['lastOrderedAt'] != null
+          ? DateTime.tryParse(json['lastOrderedAt'].toString())
+          : null,
       isRestaurantOpen: parseBool(rawOpen, defaultValue: true),
-      estimatedDeliveryTime: json['estimatedDeliveryTime']?.toString() ?? '25-30 min',
+      estimatedDeliveryTime:
+          json['estimatedDeliveryTime']?.toString() ?? '25-30 min',
     );
   }
 
@@ -248,7 +296,9 @@ class FoodItem implements CartItem {
       return other.id == id;
     }
 
-    return other.name == name && other.sellerId == sellerId && other.sellerName == sellerName;
+    return other.name == name &&
+        other.sellerId == sellerId &&
+        other.sellerName == sellerName;
   }
 
   @override
@@ -278,7 +328,11 @@ class FoodCategoryModel {
   });
 
   factory FoodCategoryModel.fromJson(Map<String, dynamic> json) {
-    var itemsList = (json['items'] as List<dynamic>?)?.map((item) => FoodItem.fromJson(item)).toList() ?? [];
+    var itemsList =
+        (json['items'] as List<dynamic>?)
+            ?.map((item) => FoodItem.fromJson(item))
+            .toList() ??
+        [];
 
     return FoodCategoryModel(
       id: json['_id']?.toString() ?? json['id']?.toString() ?? '',

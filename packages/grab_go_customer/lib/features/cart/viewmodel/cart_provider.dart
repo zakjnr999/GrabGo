@@ -732,7 +732,20 @@ class CartProvider extends ChangeNotifier {
           itemData['image']?.toString() ??
           itemData['foodImage']?.toString() ??
           '',
-      rating: (itemData['rating'] as num?)?.toDouble() ?? 4.5,
+      rating:
+          ((itemData['weightedRating'] ??
+                      itemData['displayRating'] ??
+                      itemData['rating'])
+                  as num?)
+              ?.toDouble() ??
+          0.0,
+      reviewCount:
+          ((itemData['reviewCount'] ??
+                      itemData['totalReviews'] ??
+                      itemData['ratingCount'])
+                  as num?)
+              ?.toInt() ??
+          0,
       description: itemData['description']?.toString() ?? '',
       sellerName: restaurantName,
       sellerId: restaurantId.isNotEmpty ? restaurantId.hashCode % 1000000 : 0,
@@ -794,8 +807,16 @@ class CartProvider extends ChangeNotifier {
       'discountEndDate': itemData['discountEndDate'],
       'nutritionInfo': itemData['nutritionInfo'],
       'tags': itemData['tags'] ?? [],
-      'rating': itemData['rating'] ?? 0.0,
-      'reviewCount': itemData['reviewCount'] ?? 0,
+      'rating':
+          itemData['weightedRating'] ??
+          itemData['displayRating'] ??
+          itemData['rating'] ??
+          0.0,
+      'reviewCount':
+          itemData['reviewCount'] ??
+          itemData['totalReviews'] ??
+          itemData['ratingCount'] ??
+          0,
       'orderCount': itemData['orderCount'] ?? 0,
       'createdAt': itemData['createdAt'],
     });

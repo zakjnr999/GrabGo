@@ -98,7 +98,6 @@ class _PromotionalBannerCarouselState extends State<PromotionalBannerCarousel> w
           Container(
             width: double.infinity,
             margin: EdgeInsets.symmetric(horizontal: 20.w),
-
             child: ClipPath(
               clipper: WavyBannerClipper(waveHeight: 8, waveCount: 12, cornerRadius: 16),
               child: Container(
