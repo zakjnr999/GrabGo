@@ -1,0 +1,94 @@
+{
+  "portionOptions": [
+    {
+      "id": "small",
+      "label": "Small",
+      "price": 22,
+      "isDefault": true,
+      "isActive": true
+    },
+    {
+      "id": "medium",
+      "label": "Medium",
+      "price": 30,
+      "isActive": true
+    },
+    {
+      "id": "large",
+      "label": "Large",
+      "price": 38,
+      "isActive": true
+    }
+  ],
+  "preferenceGroups": [
+    {
+      "id": "protein",
+      "label": "Choose Protein",
+      "required": true,
+      "minSelections": 1,
+      "maxSelections": 1,
+      "options": [
+        {
+          "id": "chicken",
+          "label": "Chicken",
+          "priceDelta": 4,
+          "isActive": true
+        },
+        {
+          "id": "fish",
+          "label": "Fish",
+          "priceDelta": 0,
+          "isActive": true,
+          "sizeOptions": [
+            {
+              "id": "small",
+              "label": "Small",
+              "priceDelta": 4,
+              "isActive": true
+            },
+            {
+              "id": "medium",
+              "label": "Medium",
+              "priceDelta": 6,
+              "isActive": true,
+              "isDefault": true
+            },
+            {
+              "id": "large",
+              "label": "Large",
+              "priceDelta": 9,
+              "isActive": true
+            }
+          ]
+        },
+        {
+          "id": "goat_meat",
+          "label": "Goat Meat",
+          "priceDelta": 8,
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "id": "extras",
+      "label": "Extras",
+      "required": false,
+      "minSelections": 0,
+      "maxSelections": 2,
+      "options": [
+        {
+          "id": "extra_stew",
+          "label": "Extra Stew",
+          "priceDelta": 3,
+          "isActive": true
+        },
+        {
+          "id": "boiled_egg",
+          "label": "Boiled Egg",
+          "priceDelta": 2,
+          "isActive": true
+        }
+      ]
+    }
+  ]
+}

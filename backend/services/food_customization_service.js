@@ -1,5 +1,6 @@
 const MAX_ITEM_NOTE_LENGTH = 200;
 const MAX_SELECTIONS_PER_GROUP = 99;
+const PREFERENCE_SELECTION_DELIMITER = '::';
 
 const normalizeText = (value) => {
   if (value === null || value === undefined) return '';
@@ -39,33 +40,127 @@ const asArray = (value) => {
   return [parsed];
 };
 
+const buildPreferenceSelectionToken = (optionId, sizeOptionId = null) => {
+  const normalizedOptionId = normalizeId(optionId);
+  if (!normalizedOptionId) return null;
+
+  const normalizedSizeId = normalizeId(sizeOptionId);
+  if (!normalizedSizeId) return normalizedOptionId;
+
+  return `${normalizedOptionId}${PREFERENCE_SELECTION_DELIMITER}${normalizedSizeId}`;
+};
+
+const parseSelectedPreferenceToken = (token) => {
+  const normalizedToken = normalizeId(token);
+  if (!normalizedToken) return null;
+
+  const delimiterIndex = normalizedToken.indexOf(PREFERENCE_SELECTION_DELIMITER);
+  if (delimiterIndex <= 0) {
+    return {
+      rawToken: normalizedToken,
+      optionId: normalizedToken,
+      sizeOptionId: null,
+    };
+  }
+
+  const optionId = normalizeId(normalizedToken.slice(0, delimiterIndex));
+  const sizeOptionId = normalizeId(
+    normalizedToken.slice(delimiterIndex + PREFERENCE_SELECTION_DELIMITER.length)
+  );
+  if (!optionId) return null;
+
+  return {
+    rawToken: normalizedToken,
+    optionId,
+    sizeOptionId,
+  };
+};
+
 const normalizeSelectedPreferenceOptionIds = (value) => {
   const parsed = parseJsonIfString(value);
+  const collected = [];
 
-  if (Array.isArray(parsed)) {
-    return parsed
-      .map((entry) => normalizeId(entry))
-      .filter(Boolean);
-  }
+  const collectSelectionTokens = (entry) => {
+    if (entry === null || entry === undefined) return;
 
-  if (parsed && typeof parsed === 'object') {
-    const ids = [];
-    Object.values(parsed).forEach((entry) => {
-      if (Array.isArray(entry)) {
-        entry.forEach((item) => {
-          const id = normalizeId(item);
-          if (id) ids.push(id);
-        });
-      } else {
-        const id = normalizeId(entry);
-        if (id) ids.push(id);
+    if (Array.isArray(entry)) {
+      entry.forEach((item) => collectSelectionTokens(item));
+      return;
+    }
+
+    if (typeof entry === 'object') {
+      const optionId = normalizeId(
+        entry.optionId ?? entry.id ?? entry.option ?? entry.value
+      );
+      if (optionId) {
+        const sizeOptionId = normalizeId(
+          entry.sizeOptionId ?? entry.sizeId ?? entry.tierId ?? entry.variantId
+        );
+        const token = buildPreferenceSelectionToken(optionId, sizeOptionId);
+        if (token) {
+          collected.push(token);
+        }
+        return;
       }
-    });
-    return ids;
+
+      Object.values(entry).forEach((item) => collectSelectionTokens(item));
+      return;
+    }
+
+    const id = normalizeId(entry);
+    if (id) {
+      collected.push(id);
+    }
+  };
+
+  collectSelectionTokens(parsed);
+  return [...new Set(collected)];
+};
+
+const normalizePreferenceSizeOptions = (sizeOptions, { strict = false, optionId } = {}) => {
+  const seenIds = new Set();
+
+  const normalized = asArray(sizeOptions)
+    .map((sizeOption) => {
+      if (!sizeOption || typeof sizeOption !== 'object') return null;
+
+      const id = normalizeId(sizeOption.id || sizeOption.code || sizeOption.value);
+      if (!id) return null;
+      if (seenIds.has(id)) {
+        if (strict) {
+          throw new Error(`size options for '${optionId}' contain duplicate id '${id}'`);
+        }
+        return null;
+      }
+      seenIds.add(id);
+
+      const label = normalizeText(sizeOption.label || sizeOption.name || sizeOption.title || id) || id;
+      const isActive = sizeOption.isActive !== false;
+      const priceDelta = toSafeNumber(sizeOption.priceDelta ?? sizeOption.additionalPrice ?? sizeOption.price, 0);
+
+      return {
+        id,
+        label,
+        isActive,
+        isDefault: sizeOption.isDefault === true,
+        priceDelta,
+      };
+    })
+    .filter(Boolean);
+
+  if (strict && normalized.length > 0) {
+    const activeOptions = normalized.filter((entry) => entry.isActive);
+    const activeDefaultCount = activeOptions.filter((entry) => entry.isDefault).length;
+
+    if (activeOptions.length === 0) {
+      throw new Error(`size options for '${optionId}' must include at least one active option`);
+    }
+    if (activeDefaultCount > 1) {
+      throw new Error(`size options for '${optionId}' can only have one default active option`);
+    }
   }
 
-  const one = normalizeId(parsed);
-  return one ? [one] : [];
+  return normalized;
 };
 
 const normalizePortionOptions = (portionOptions, { strict = false } = {}) => {
@@ -172,6 +267,10 @@ const normalizePreferenceGroups = (preferenceGroups, { strict = false } = {}) =>
           const label = normalizeText(option.label || option.name || option.title || id) || id;
           const isActive = option.isActive !== false;
           const priceDelta = toSafeNumber(option.priceDelta ?? option.additionalPrice ?? option.price, 0);
+          const sizeOptions = normalizePreferenceSizeOptions(
+            option.sizeOptions ?? option.sizes ?? option.priceTiers ?? option.variants,
+            { strict, optionId: id }
+          );
 
           return {
             id,
@@ -179,6 +278,7 @@ const normalizePreferenceGroups = (preferenceGroups, { strict = false } = {}) =>
             isActive,
             isDefault: option.isDefault === true,
             priceDelta,
+            sizeOptions,
           };
         })
         .filter(Boolean);
@@ -254,7 +354,9 @@ const resolveFoodCustomization = ({
   const preferenceGroups = normalizePreferenceGroups(food?.preferenceGroups, { strict: false });
 
   const normalizedPortionId = normalizeId(selectedPortionId);
-  const normalizedPreferenceIds = normalizeSelectedPreferenceOptionIds(selectedPreferenceOptionIds);
+  const normalizedPreferenceSelections = normalizeSelectedPreferenceOptionIds(selectedPreferenceOptionIds)
+    .map((entry) => parseSelectedPreferenceToken(entry))
+    .filter(Boolean);
   const normalizedNote = normalizeItemNote(itemNote);
 
   const resolvedBasePrice = toSafeNumber(basePrice ?? food?.price, 0);
@@ -301,15 +403,52 @@ const resolveFoodCustomization = ({
     });
   });
 
-  const selectedEntries = normalizedPreferenceIds.map((id) => {
-    const option = optionById.get(id);
+  const selectedEntries = normalizedPreferenceSelections.map((selection) => {
+    const option = optionById.get(selection.optionId);
     if (!option) {
-      throw new Error(`Selected preference option '${id}' is invalid for this item`);
+      throw new Error(`Selected preference option '${selection.optionId}' is invalid for this item`);
     }
     if (option.isActive === false) {
-      throw new Error(`Selected preference option '${id}' is currently unavailable`);
+      throw new Error(`Selected preference option '${selection.optionId}' is currently unavailable`);
     }
-    return option;
+
+    const hasSizeOptions = Array.isArray(option.sizeOptions) && option.sizeOptions.length > 0;
+    let selectedSizeOption = null;
+    let resolvedSelectionToken = selection.rawToken;
+    let resolvedPriceDelta = toSafeNumber(option.priceDelta, 0);
+
+    if (hasSizeOptions) {
+      const activeSizeOptions = option.sizeOptions.filter((entry) => entry.isActive);
+
+      if (activeSizeOptions.length === 0) {
+        throw new Error(`Selected preference option '${selection.optionId}' is currently unavailable`);
+      }
+
+      if (selection.sizeOptionId) {
+        selectedSizeOption = activeSizeOptions.find((entry) => entry.id === selection.sizeOptionId);
+        if (!selectedSizeOption) {
+          throw new Error(`Selected size '${selection.sizeOptionId}' is invalid for ${option.label}`);
+        }
+      } else {
+        selectedSizeOption = activeSizeOptions.find((entry) => entry.isDefault)
+          || (activeSizeOptions.length === 1 ? activeSizeOptions[0] : null);
+        if (!selectedSizeOption) {
+          throw new Error(`Please choose a size for ${option.label}`);
+        }
+      }
+
+      resolvedSelectionToken = buildPreferenceSelectionToken(option.id, selectedSizeOption.id);
+      resolvedPriceDelta += toSafeNumber(selectedSizeOption.priceDelta, 0);
+    } else if (selection.sizeOptionId) {
+      throw new Error(`Selected preference option '${selection.optionId}' does not support size selection`);
+    }
+
+    return {
+      ...option,
+      selectedSizeOption,
+      resolvedSelectionToken,
+      resolvedPriceDelta,
+    };
   });
 
   const selectedByGroup = new Map();
@@ -337,9 +476,18 @@ const resolveFoodCustomization = ({
     .map((entry) => ({
       groupId: entry.groupId,
       groupLabel: entry.groupLabel,
-      optionId: entry.id,
-      optionLabel: entry.label,
-      priceDelta: toSafeNumber(entry.priceDelta, 0),
+      optionId: entry.resolvedSelectionToken,
+      optionBaseId: entry.id,
+      optionLabel: entry.selectedSizeOption
+        ? `${entry.label} (${entry.selectedSizeOption.label})`
+        : entry.label,
+      sizeOptionId: entry.selectedSizeOption?.id || null,
+      sizeOptionLabel: entry.selectedSizeOption?.label || null,
+      basePriceDelta: toSafeNumber(entry.priceDelta, 0),
+      sizePriceDelta: entry.selectedSizeOption
+        ? toSafeNumber(entry.selectedSizeOption.priceDelta, 0)
+        : 0,
+      priceDelta: toSafeNumber(entry.resolvedPriceDelta, 0),
     }))
     .sort((a, b) => {
       if (a.groupId === b.groupId) return a.optionId.localeCompare(b.optionId);
@@ -390,6 +538,9 @@ const validateFoodCustomizationConfig = ({ portionOptions, preferenceGroups } = 
 module.exports = {
   MAX_ITEM_NOTE_LENGTH,
   MAX_SELECTIONS_PER_GROUP,
+  PREFERENCE_SELECTION_DELIMITER,
+  buildPreferenceSelectionToken,
+  parseSelectedPreferenceToken,
   normalizeSelectedPreferenceOptionIds,
   buildCustomizationKey,
   resolveFoodCustomization,

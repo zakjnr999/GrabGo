@@ -44,6 +44,9 @@ class FoodDetails extends StatefulWidget {
 }
 
 class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin {
+  static const String _preferenceSelectionDelimiter = '::';
+  static const String _removePreferenceSelectionSentinel = '__REMOVE_PREFERENCE_SELECTION__';
+
   late FoodCategoryModel selectedCategory;
   int _restaurantItemsToShow = 3;
   final int _itemsPerPage = 3;
@@ -168,7 +171,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                 _parseBool(option['isDefault'], defaultValue: false) &&
                 _parseBool(option['isActive'], defaultValue: true),
           )
-          .map(_readOptionId)
+          .map(_buildDefaultPreferenceSelectionKey)
           .whereType<String>()
           .toList(growable: false);
       if (defaults.isNotEmpty) {
@@ -204,6 +207,102 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
     if (value is num) return value.toDouble();
     if (value is String) return double.tryParse(value) ?? 0;
     return 0;
+  }
+
+  List<Map<String, dynamic>> _readPreferenceSizeOptions(Map<String, dynamic> option) {
+    final raw = option['sizeOptions'] ?? option['sizes'] ?? option['priceTiers'] ?? option['variants'];
+    if (raw is! List) return const <Map<String, dynamic>>[];
+
+    return raw
+        .whereType<Map>()
+        .map((entry) => Map<String, dynamic>.from(entry))
+        .where((entry) => _parseBool(entry['isActive'], defaultValue: true))
+        .toList(growable: false);
+  }
+
+  String _buildPreferenceSelectionKey(String optionId, {String? sizeOptionId}) {
+    final normalizedOptionId = optionId.trim();
+    final normalizedSizeId = sizeOptionId?.trim();
+    if (normalizedSizeId == null || normalizedSizeId.isEmpty) return normalizedOptionId;
+    return '$normalizedOptionId$_preferenceSelectionDelimiter$normalizedSizeId';
+  }
+
+  Map<String, String?> _parsePreferenceSelectionKey(String selectionKey) {
+    final normalized = selectionKey.trim();
+    if (normalized.isEmpty) {
+      return {'optionId': null, 'sizeOptionId': null};
+    }
+
+    final delimiterIndex = normalized.indexOf(_preferenceSelectionDelimiter);
+    if (delimiterIndex <= 0) {
+      return {'optionId': normalized, 'sizeOptionId': null};
+    }
+
+    final optionId = normalized.substring(0, delimiterIndex).trim();
+    final sizeOptionId = normalized.substring(delimiterIndex + _preferenceSelectionDelimiter.length).trim();
+
+    return {'optionId': optionId.isEmpty ? null : optionId, 'sizeOptionId': sizeOptionId.isEmpty ? null : sizeOptionId};
+  }
+
+  String? _findSelectedPreferenceKeyForOption({required String groupId, required String optionId}) {
+    final selected = _selectedPreferenceOptionIdsByGroup[groupId];
+    if (selected == null || selected.isEmpty) return null;
+
+    for (final selectionKey in selected) {
+      final parsed = _parsePreferenceSelectionKey(selectionKey);
+      if (parsed['optionId'] == optionId) {
+        return selectionKey;
+      }
+    }
+    return null;
+  }
+
+  Map<String, dynamic>? _resolveDefaultSizeOption(List<Map<String, dynamic>> sizeOptions) {
+    if (sizeOptions.isEmpty) return null;
+
+    return sizeOptions.firstWhere(
+      (entry) =>
+          _parseBool(entry['isDefault'], defaultValue: false) && _parseBool(entry['isActive'], defaultValue: true),
+      orElse: () => sizeOptions.length == 1 ? sizeOptions.first : <String, dynamic>{},
+    );
+  }
+
+  Map<String, dynamic>? _resolveSelectedSizeOption({
+    required List<Map<String, dynamic>> sizeOptions,
+    String? selectedSizeOptionId,
+  }) {
+    if (sizeOptions.isEmpty) return null;
+
+    if (selectedSizeOptionId != null && selectedSizeOptionId.trim().isNotEmpty) {
+      for (final size in sizeOptions) {
+        if (_readOptionId(size) == selectedSizeOptionId.trim()) {
+          return size;
+        }
+      }
+    }
+
+    final fallback = _resolveDefaultSizeOption(sizeOptions);
+    if (fallback != null && fallback.isNotEmpty) {
+      return fallback;
+    }
+    return null;
+  }
+
+  String? _buildDefaultPreferenceSelectionKey(Map<String, dynamic> option) {
+    final optionId = _readOptionId(option);
+    if (optionId == null) return null;
+
+    final sizeOptions = _readPreferenceSizeOptions(option);
+    if (sizeOptions.isEmpty) return optionId;
+
+    final defaultSizeOption = _resolveDefaultSizeOption(sizeOptions);
+    if (defaultSizeOption == null || defaultSizeOption.isEmpty) {
+      return null;
+    }
+
+    final sizeOptionId = _readOptionId(defaultSizeOption);
+    if (sizeOptionId == null) return null;
+    return _buildPreferenceSelectionKey(optionId, sizeOptionId: sizeOptionId);
   }
 
   Map<String, dynamic>? _resolveSelectedPortionSnapshot() {
@@ -246,23 +345,52 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
       final groupLabel = _readOptionLabel(group, fallback: groupId).trim().isEmpty
           ? groupId
           : _readOptionLabel(group, fallback: groupId);
-      final selectedIds = _selectedPreferenceOptionIdsByGroup[groupId] ?? {};
-      if (selectedIds.isEmpty) continue;
+      final selectedKeys = _selectedPreferenceOptionIdsByGroup[groupId] ?? {};
+      if (selectedKeys.isEmpty) continue;
 
       final options = ((group['options'] as List?) ?? const [])
           .whereType<Map>()
           .map((entry) => Map<String, dynamic>.from(entry))
           .toList(growable: false);
 
-      for (final option in options) {
-        final optionId = _readOptionId(option);
-        if (optionId == null || !selectedIds.contains(optionId)) continue;
+      for (final selectionKey in selectedKeys) {
+        final parsedSelection = _parsePreferenceSelectionKey(selectionKey);
+        final optionId = parsedSelection['optionId'];
+        if (optionId == null) continue;
+
+        final option = options.firstWhere(
+          (entry) => _readOptionId(entry) == optionId,
+          orElse: () => const <String, dynamic>{},
+        );
+        if (option.isEmpty) continue;
+
+        final sizeOptions = _readPreferenceSizeOptions(option);
+        final selectedSize = _resolveSelectedSizeOption(
+          sizeOptions: sizeOptions,
+          selectedSizeOptionId: parsedSelection['sizeOptionId'],
+        );
+
+        final selectedSizeId = selectedSize == null ? null : _readOptionId(selectedSize);
+        final basePriceDelta = _readOptionPriceDelta(option);
+        final sizePriceDelta = selectedSize == null ? 0 : _readOptionPriceDelta(selectedSize);
+        final totalPriceDelta = basePriceDelta + sizePriceDelta;
+        final resolvedSelectionKey = _buildPreferenceSelectionKey(optionId, sizeOptionId: selectedSizeId);
+        final optionLabel = _readOptionLabel(option, fallback: optionId);
+        final selectedSizeLabel = selectedSize == null ? null : _readOptionLabel(selectedSize, fallback: '');
+
         selected.add({
           'groupId': groupId,
           'groupLabel': groupLabel,
-          'optionId': optionId,
-          'optionLabel': _readOptionLabel(option, fallback: optionId),
-          'priceDelta': _readOptionPriceDelta(option),
+          'optionId': resolvedSelectionKey,
+          'optionBaseId': optionId,
+          'optionLabel': selectedSizeLabel != null && selectedSizeLabel.isNotEmpty
+              ? '$optionLabel ($selectedSizeLabel)'
+              : optionLabel,
+          'sizeOptionId': selectedSizeId,
+          'sizeOptionLabel': selectedSizeLabel,
+          'basePriceDelta': basePriceDelta,
+          'sizePriceDelta': sizePriceDelta,
+          'priceDelta': totalPriceDelta,
         });
       }
     }
@@ -425,32 +553,59 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
     await provider.addToCart(item, context: context);
   }
 
-  void _togglePreferenceOption({
+  void _removePreferenceSelection({
+    required String groupId,
+    required String selectionKey,
+    required int minSelections,
+    required String groupLabel,
+  }) {
+    final selected = _selectedPreferenceOptionIdsByGroup[groupId];
+    if (selected == null || !selected.contains(selectionKey)) return;
+
+    if (selected.length <= minSelections) {
+      AppToastMessage.show(
+        context: context,
+        backgroundColor: context.appColors.error,
+        message: minSelections == 1
+            ? '$groupLabel requires one selection.'
+            : '$groupLabel requires at least $minSelections selections.',
+        maxLines: 2,
+      );
+      return;
+    }
+
+    selected.remove(selectionKey);
+    if (selected.isEmpty) {
+      _selectedPreferenceOptionIdsByGroup.remove(groupId);
+    }
+    setState(() {});
+  }
+
+  void _setPreferenceSelection({
     required String groupId,
     required String optionId,
+    required String selectionKey,
     required int minSelections,
     required int maxSelections,
     required String groupLabel,
   }) {
     final selected = _selectedPreferenceOptionIdsByGroup.putIfAbsent(groupId, () => <String>{});
-    final isSelected = selected.contains(optionId);
+    final existingSelectionKey = _findSelectedPreferenceKeyForOption(groupId: groupId, optionId: optionId);
+    final isExactSelection = existingSelectionKey == selectionKey;
 
-    if (isSelected) {
-      if (selected.length <= minSelections) {
-        AppToastMessage.show(
-          context: context,
-          backgroundColor: context.appColors.error,
-          message: minSelections == 1
-              ? '$groupLabel requires one selection.'
-              : '$groupLabel requires at least $minSelections selections.',
-          maxLines: 2,
-        );
-        return;
-      }
-      selected.remove(optionId);
-      if (selected.isEmpty) {
-        _selectedPreferenceOptionIdsByGroup.remove(groupId);
-      }
+    if (isExactSelection) {
+      _removePreferenceSelection(
+        groupId: groupId,
+        selectionKey: selectionKey,
+        minSelections: minSelections,
+        groupLabel: groupLabel,
+      );
+      return;
+    }
+
+    if (existingSelectionKey != null) {
+      selected.remove(existingSelectionKey);
+      selected.add(selectionKey);
       setState(() {});
       return;
     }
@@ -458,7 +613,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
     if (maxSelections <= 1) {
       selected
         ..clear()
-        ..add(optionId);
+        ..add(selectionKey);
       setState(() {});
       return;
     }
@@ -473,8 +628,140 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
       return;
     }
 
-    selected.add(optionId);
+    selected.add(selectionKey);
     setState(() {});
+  }
+
+  Future<String?> _showPreferenceSizeBottomSheet({
+    required String optionLabel,
+    required List<Map<String, dynamic>> sizeOptions,
+    required String? selectedSizeOptionId,
+    required bool showRemoveAction,
+  }) async {
+    final colors = context.appColors;
+
+    return showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: colors.backgroundPrimary,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16.r))),
+      builder: (sheetContext) {
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 18.h),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Choose size for $optionLabel',
+                  style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                ),
+                SizedBox(height: 10.h),
+                ...sizeOptions.map((sizeOption) {
+                  final sizeOptionId = _readOptionId(sizeOption);
+                  if (sizeOptionId == null) return const SizedBox.shrink();
+                  final sizeLabel = _readOptionLabel(sizeOption, fallback: sizeOptionId);
+                  final priceDelta = _readOptionPriceDelta(sizeOption);
+                  final isSelected = selectedSizeOptionId == sizeOptionId;
+
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    onTap: () => Navigator.pop(sheetContext, sizeOptionId),
+                    title: Text(
+                      sizeLabel,
+                      style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                    ),
+                    subtitle: Text(
+                      _formatDeltaLabel(priceDelta),
+                      style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: colors.textSecondary),
+                    ),
+                    trailing: isSelected
+                        ? Icon(Icons.check_circle, color: colors.accentOrange, size: 18.sp)
+                        : Icon(Icons.circle_outlined, color: colors.inputBorder, size: 18.sp),
+                  );
+                }),
+                if (showRemoveAction) ...[
+                  SizedBox(height: 8.h),
+                  TextButton(
+                    onPressed: () => Navigator.pop(sheetContext, _removePreferenceSelectionSentinel),
+                    style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                    child: Text(
+                      'Remove selection',
+                      style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: colors.error),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _handlePreferenceOptionTap({
+    required String groupId,
+    required String groupLabel,
+    required Map<String, dynamic> option,
+    required int minSelections,
+    required int maxSelections,
+  }) async {
+    final optionId = _readOptionId(option);
+    if (optionId == null) return;
+
+    final sizeOptions = _readPreferenceSizeOptions(option);
+    if (sizeOptions.isEmpty) {
+      _setPreferenceSelection(
+        groupId: groupId,
+        optionId: optionId,
+        selectionKey: optionId,
+        minSelections: minSelections,
+        maxSelections: maxSelections,
+        groupLabel: groupLabel,
+      );
+      return;
+    }
+
+    final existingSelectionKey = _findSelectedPreferenceKeyForOption(groupId: groupId, optionId: optionId);
+    final parsedExistingSelection = existingSelectionKey == null
+        ? const <String, String?>{'optionId': null, 'sizeOptionId': null}
+        : _parsePreferenceSelectionKey(existingSelectionKey);
+    final selectedSizeOptionId = parsedExistingSelection['sizeOptionId'];
+
+    final pickedSizeOptionId = await _showPreferenceSizeBottomSheet(
+      optionLabel: _readOptionLabel(option, fallback: optionId),
+      sizeOptions: sizeOptions,
+      selectedSizeOptionId: selectedSizeOptionId,
+      showRemoveAction: existingSelectionKey != null,
+    );
+
+    if (pickedSizeOptionId == null) return;
+
+    if (pickedSizeOptionId == _removePreferenceSelectionSentinel) {
+      _removePreferenceSelection(
+        groupId: groupId,
+        selectionKey: existingSelectionKey!,
+        minSelections: minSelections,
+        groupLabel: groupLabel,
+      );
+      return;
+    }
+
+    final selectionKey = _buildPreferenceSelectionKey(optionId, sizeOptionId: pickedSizeOptionId);
+    if (existingSelectionKey != null && existingSelectionKey == selectionKey) {
+      return;
+    }
+    _setPreferenceSelection(
+      groupId: groupId,
+      optionId: optionId,
+      selectionKey: selectionKey,
+      minSelections: minSelections,
+      maxSelections: maxSelections,
+      groupLabel: groupLabel,
+    );
   }
 
   Widget _buildCustomizationSection(AppColorsExtension colors) {
@@ -589,17 +876,41 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                         .map((option) {
                           final optionId = _readOptionId(option);
                           if (optionId == null) return const SizedBox.shrink();
-                          final isSelected = selected.contains(optionId);
+                          final sizeOptions = _readPreferenceSizeOptions(option);
+                          final selectedSelectionKey = _findSelectedPreferenceKeyForOption(
+                            groupId: groupId,
+                            optionId: optionId,
+                          );
+                          final isSelected = selectedSelectionKey != null && selected.contains(selectedSelectionKey);
+                          final parsedSelection = selectedSelectionKey == null
+                              ? const <String, String?>{'optionId': null, 'sizeOptionId': null}
+                              : _parsePreferenceSelectionKey(selectedSelectionKey);
+                          final selectedSize = _resolveSelectedSizeOption(
+                            sizeOptions: sizeOptions,
+                            selectedSizeOptionId: parsedSelection['sizeOptionId'],
+                          );
                           final optionLabel = _readOptionLabel(option, fallback: optionId);
-                          final deltaLabel = _formatDeltaLabel(_readOptionPriceDelta(option));
+                          final baseDelta = _readOptionPriceDelta(option);
+                          final selectedSizeLabel = selectedSize == null
+                              ? null
+                              : _readOptionLabel(selectedSize, fallback: '');
+                          final selectedSizeDelta = selectedSize == null ? 0 : _readOptionPriceDelta(selectedSize);
+                          final deltaLabel = sizeOptions.isEmpty
+                              ? _formatDeltaLabel(baseDelta)
+                              : isSelected
+                              ? [
+                                  if (selectedSizeLabel != null && selectedSizeLabel.isNotEmpty) selectedSizeLabel,
+                                  _formatDeltaLabel(baseDelta + selectedSizeDelta),
+                                ].join(' • ')
+                              : 'Custom';
 
                           return GestureDetector(
-                            onTap: () => _togglePreferenceOption(
+                            onTap: () => _handlePreferenceOptionTap(
                               groupId: groupId,
-                              optionId: optionId,
+                              groupLabel: groupLabel,
+                              option: option,
                               minSelections: minSelections,
                               maxSelections: maxSelections,
-                              groupLabel: groupLabel,
                             ),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 180),
@@ -751,7 +1062,6 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
         return ingredients.join(', ');
       }
     } catch (e) {
-      // Handle any unexpected errors gracefully
       return '';
     }
     return '';
@@ -992,8 +1302,8 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                               SvgPicture.asset(
                                                 Assets.icons.timer,
                                                 package: 'grab_go_shared',
-                                                height: 18.h,
-                                                width: 18.w,
+                                                height: 16.h,
+                                                width: 16.w,
                                                 colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                                               ),
                                               SizedBox(width: 4.w),
@@ -1005,7 +1315,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                                   fontFamily: 'Lato',
                                                   package: 'grab_go_shared',
                                                   color: colors.accentOrange,
-                                                  fontSize: 14.sp,
+                                                  fontSize: 13.sp,
                                                 ),
                                               ),
                                               SizedBox(width: 10.w),
@@ -1330,121 +1640,113 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                 ),
               ],
             ),
-            child: ClipRRect(
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(KBorderSize.border),
-                topRight: Radius.circular(KBorderSize.border),
-              ),
-              child: Container(
-                height: size.height * 0.10,
-                padding: EdgeInsets.all(14.r),
-                decoration: BoxDecoration(color: colors.backgroundPrimary),
-                child: Consumer<CartProvider>(
-                  builder: (context, provider, _) {
-                    final CartItem actionableCartItem = widget.foodItem != null ? _buildFoodCartItem() : cartItem;
-                    final int qty = provider.cartItems[actionableCartItem] ?? 0;
-                    final bool isInCart = qty > 0;
-                    final bool isItemPending = provider.isItemOperationPending(actionableCartItem);
+            child: Container(
+              height: size.height * 0.10,
+              padding: EdgeInsets.all(14.r),
+              decoration: BoxDecoration(color: colors.backgroundPrimary),
+              child: Consumer<CartProvider>(
+                builder: (context, provider, _) {
+                  final CartItem actionableCartItem = widget.foodItem != null ? _buildFoodCartItem() : cartItem;
+                  final int qty = provider.cartItems[actionableCartItem] ?? 0;
+                  final bool isInCart = qty > 0;
+                  final bool isItemPending = provider.isItemOperationPending(actionableCartItem);
 
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        isInCart
-                            ? Expanded(
-                                child: Container(
-                                  height: size.height * 0.06,
-                                  margin: EdgeInsets.only(right: KSpacing.md.w),
-                                  padding: EdgeInsets.symmetric(horizontal: 10.w),
-                                  decoration: BoxDecoration(
-                                    color: colors.backgroundSecondary,
-                                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                                    border: Border.all(color: colors.inputBorder, width: 1.5),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      InkWell(
-                                        onTap: () {
-                                          if (isItemPending) return;
-                                          if (isInCart) {
-                                            provider.removeFromCart(actionableCartItem);
-                                          }
-                                        },
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      isInCart
+                          ? Expanded(
+                              child: Container(
+                                height: size.height * 0.06,
+                                margin: EdgeInsets.only(right: KSpacing.md.w),
+                                padding: EdgeInsets.symmetric(horizontal: 10.w),
+                                decoration: BoxDecoration(
+                                  color: colors.backgroundSecondary,
+                                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                                  border: Border.all(color: colors.inputBorder, width: 1.5),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    InkWell(
+                                      onTap: () {
+                                        if (isItemPending) return;
+                                        if (isInCart) {
+                                          provider.removeFromCart(actionableCartItem);
+                                        }
+                                      },
+                                      child: isItemPending
+                                          ? SizedBox(
+                                              width: 20.w,
+                                              height: 20.w,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                valueColor: AlwaysStoppedAnimation<Color>(colors.textSecondary),
+                                              ),
+                                            )
+                                          : Icon(Icons.remove, color: colors.textSecondary, size: 20),
+                                    ),
+                                    Text(
+                                      isItemPending ? '...' : qty.toString(),
+                                      style: TextStyle(
+                                        fontSize: 12.sp,
+                                        fontWeight: FontWeight.w400,
+                                        color: colors.textPrimary,
+                                      ),
+                                    ),
+                                    GestureDetector(
+                                      onTap: () {
+                                        if (isItemPending) return;
+                                        _handleAddToCart(provider, actionableCartItem);
+                                      },
+                                      child: Container(
+                                        padding: EdgeInsets.all(2.r),
+                                        decoration: BoxDecoration(color: colors.accentOrange, shape: BoxShape.circle),
                                         child: isItemPending
                                             ? SizedBox(
                                                 width: 20.w,
                                                 height: 20.w,
-                                                child: CircularProgressIndicator(
+                                                child: const CircularProgressIndicator(
                                                   strokeWidth: 2,
-                                                  valueColor: AlwaysStoppedAnimation<Color>(colors.textSecondary),
+                                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                                 ),
                                               )
-                                            : Icon(Icons.remove, color: colors.textSecondary, size: 20),
+                                            : const Icon(Icons.add, color: Colors.white, size: 20),
                                       ),
-                                      Text(
-                                        isItemPending ? '...' : qty.toString(),
-                                        style: TextStyle(
-                                          fontSize: 12.sp,
-                                          fontWeight: FontWeight.w400,
-                                          color: colors.textPrimary,
-                                        ),
-                                      ),
-                                      GestureDetector(
-                                        onTap: () {
-                                          if (isItemPending) return;
-                                          _handleAddToCart(provider, actionableCartItem);
-                                        },
-                                        child: Container(
-                                          padding: EdgeInsets.all(2.r),
-                                          decoration: BoxDecoration(color: colors.accentOrange, shape: BoxShape.circle),
-                                          child: isItemPending
-                                              ? SizedBox(
-                                                  width: 20.w,
-                                                  height: 20.w,
-                                                  child: const CircularProgressIndicator(
-                                                    strokeWidth: 2,
-                                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                                  ),
-                                                )
-                                              : const Icon(Icons.add, color: Colors.white, size: 20),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
-                              )
-                            : const SizedBox.shrink(),
+                              ),
+                            )
+                          : const SizedBox.shrink(),
 
-                        Expanded(
-                          flex: 2,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: colors.accentOrange,
-                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                            ),
-                            child: AppButton(
-                              onPressed: () {
-                                if (isItemPending) return;
-                                if (isInCart) {
-                                  provider.removeItemCompletely(actionableCartItem);
-                                } else {
-                                  _handleAddToCart(provider, actionableCartItem);
-                                }
-                              },
-                              backgroundColor: Colors.transparent,
-                              borderRadius: KBorderSize.borderRadius50,
-                              buttonText: isItemPending
-                                  ? "Updating..."
-                                  : (isInCart ? "Remove from Cart" : "Add to Cart"),
-                              textStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                            ),
+                      Expanded(
+                        flex: 2,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: colors.accentOrange,
+                            borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                          ),
+                          child: AppButton(
+                            onPressed: () {
+                              if (isItemPending) return;
+                              if (isInCart) {
+                                provider.removeItemCompletely(actionableCartItem);
+                              } else {
+                                _handleAddToCart(provider, actionableCartItem);
+                              }
+                            },
+                            backgroundColor: Colors.transparent,
+                            borderRadius: KBorderSize.borderRadius50,
+                            buttonText: isItemPending ? "Updating..." : (isInCart ? "Remove from Cart" : "Add to Cart"),
+                            textStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                           ),
                         ),
-                      ],
-                    );
-                  },
-                ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           ),
