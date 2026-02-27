@@ -5,21 +5,11 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
-import 'package:grab_go_customer/features/grabmart/model/grabmart_category.dart';
-import 'package:grab_go_customer/features/grabmart/model/grabmart_item.dart';
-import 'package:grab_go_customer/features/groceries/model/grocery_category.dart';
-import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
-import 'package:grab_go_customer/features/groceries/viewmodel/grocery_provider.dart';
-import 'package:grab_go_customer/features/pharmacy/model/pharmacy_category.dart';
-import 'package:grab_go_customer/features/pharmacy/model/pharmacy_item.dart';
-import 'package:grab_go_customer/features/pharmacy/viewmodel/pharmacy_provider.dart';
-import 'package:grab_go_customer/features/grabmart/viewmodel/grabmart_provider.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_banner_provider.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_deals_provider.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_discovery_provider.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/native_location_provider.dart';
-import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_customer/shared/widgets/area_unavailable_screen.dart';
 import 'package:grab_go_customer/shared/widgets/all_categories_sheet.dart';
 import 'package:grab_go_customer/shared/widgets/category_skeleton.dart';
@@ -39,12 +29,8 @@ import 'package:grab_go_customer/shared/widgets/order_again_section.dart';
 import 'package:grab_go_customer/shared/widgets/popular_section.dart';
 import 'package:grab_go_customer/shared/widgets/promo_section.dart';
 import 'package:grab_go_customer/shared/widgets/top_rated_section.dart';
-import 'package:grab_go_customer/shared/widgets/fresh_arrivals_section.dart';
-import 'package:grab_go_customer/shared/widgets/browse_all_groceries_section.dart';
-import 'package:grab_go_customer/shared/widgets/browse_items_grid.dart';
 import 'package:grab_go_customer/shared/widgets/promotional_banner_carousel.dart';
 import 'package:grab_go_customer/features/home/model/promotional_banner.dart';
-import 'package:grab_go_customer/shared/viewmodels/service_provider.dart';
 import 'package:grab_go_customer/shared/widgets/home_page_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/location_accuracy_popup.dart';
 import 'package:grab_go_customer/shared/widgets/no_internet_screen.dart';
@@ -65,7 +51,6 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   FoodCategoryModel? _selectedCategory;
-  GroceryCategory? _selectedGroceryCategory;
 
   late ScrollController _scrollController;
   late AnimationController _fabAnimationController;
@@ -73,14 +58,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   bool _isFabVisible = true;
   double _lastScrollOffset = 0.0;
   FilterModel _activeFilter = FilterModel();
-  int _previousCartCount = 0;
   bool _hasNoInternet = false;
   bool _isRefreshingLocation = false;
   bool _isSwipeRefreshing = false;
   bool _isRetrying = false;
   double? _lastLat;
   double? _lastLng;
-  VendorType? _previousVendorType;
   int _unreadNotificationCount = 0;
   bool _isOpeningServiceHub = false;
 
@@ -205,20 +188,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       Provider.of<NativeLocationProvider>(context, listen: false).fetchAddress();
 
       final vendorProvider = Provider.of<VendorProvider>(context, listen: false);
-      final serviceProvider = Provider.of<ServiceProvider>(context, listen: false);
       final locationProvider = Provider.of<NativeLocationProvider>(context, listen: false);
       final foodProvider = Provider.of<FoodProvider>(context, listen: false);
-      final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
-      final pharmacyProvider = Provider.of<PharmacyProvider>(context, listen: false);
-      final grabMartProvider = Provider.of<GrabMartProvider>(context, listen: false);
-
-      serviceProvider.resetToDefault();
-
-      final hasCachedData =
-          foodProvider.categories.isNotEmpty ||
-          groceryProvider.items.isNotEmpty ||
-          pharmacyProvider.items.isNotEmpty ||
-          grabMartProvider.items.isNotEmpty;
+      final hasCachedData = foodProvider.categories.isNotEmpty;
 
       final hasInternet = await ConnectivityService.hasInternetConnection();
 
@@ -246,14 +218,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       }
 
       foodProvider.refreshAll();
-      groceryProvider.refreshAll();
-      pharmacyProvider.refreshAll();
-      grabMartProvider.refreshAll();
 
       if (locationProvider.latitude != null && locationProvider.longitude != null) {
-        final vendorType = _getVendorTypeFromService(serviceProvider.currentService.id);
-        _previousVendorType = vendorType;
-        vendorProvider.fetchVendors(vendorType, lat: locationProvider.latitude, lng: locationProvider.longitude);
+        vendorProvider.fetchVendors(VendorType.food, lat: locationProvider.latitude, lng: locationProvider.longitude);
       }
     });
   }
@@ -273,7 +240,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       });
     }
 
-    final serviceProvider = Provider.of<ServiceProvider>(context, listen: false);
     final locationProvider = Provider.of<NativeLocationProvider>(context, listen: false);
     final vendorProvider = Provider.of<VendorProvider>(context, listen: false);
 
@@ -281,41 +247,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       print('[HOME] Refreshing data (all services: $refreshAllServices)...');
       final locationData = CacheService.getUserLocation();
       print('[HOME] Current location: ${locationData?['latitude']}, ${locationData?['longitude']}');
-      print('[HOME] Active service: ${serviceProvider.currentService}');
+      print('[HOME] Active feed: food');
     }
 
     try {
-      if (refreshAllServices) {
-        final foodProvider = Provider.of<FoodProvider>(context, listen: false);
-        final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
-        final pharmacyProvider = Provider.of<PharmacyProvider>(context, listen: false);
-        final grabMartProvider = Provider.of<GrabMartProvider>(context, listen: false);
-
-        await Future.wait([
-          foodProvider.refreshAll(forceRefresh: true),
-          groceryProvider.refreshAll(forceRefresh: true),
-          pharmacyProvider.refreshAll(forceRefresh: true),
-          grabMartProvider.refreshAll(forceRefresh: true),
-        ]);
-      } else if (serviceProvider.isFoodService) {
-        final provider = Provider.of<FoodProvider>(context, listen: false);
-        await provider.refreshAll(forceRefresh: true);
-      } else if (serviceProvider.isGroceryService) {
-        final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
-        await groceryProvider.refreshAll(forceRefresh: true);
-      } else if (serviceProvider.isPharmacyService) {
-        final pharmacyProvider = Provider.of<PharmacyProvider>(context, listen: false);
-        await pharmacyProvider.refreshAll(forceRefresh: true);
-      } else if (serviceProvider.isStoresService) {
-        final grabMartProvider = Provider.of<GrabMartProvider>(context, listen: false);
-        await grabMartProvider.refreshAll(forceRefresh: true);
-      }
+      final provider = Provider.of<FoodProvider>(context, listen: false);
+      await provider.refreshAll(forceRefresh: true);
 
       if (locationProvider.latitude != null && locationProvider.longitude != null) {
-        final vendorType = _getVendorTypeFromService(serviceProvider.currentService.id);
-        _previousVendorType = vendorType;
         await vendorProvider.fetchVendors(
-          vendorType,
+          VendorType.food,
           lat: locationProvider.latitude,
           lng: locationProvider.longitude,
           forceRefresh: true,
@@ -366,10 +307,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     final locationProvider = Provider.of<NativeLocationProvider>(context);
     final foodProvider = Provider.of<FoodProvider>(context);
-    final serviceProvider = Provider.of<ServiceProvider>(context);
-    final groceryProvider = Provider.of<GroceryProvider>(context);
-    final pharmacyProvider = Provider.of<PharmacyProvider>(context);
-    final grabMartProvider = Provider.of<GrabMartProvider>(context);
 
     bool shouldShowSkeleton = false;
     bool shouldShowEmptyState = false;
@@ -378,34 +315,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final bool hasNoFood = foodProvider.categories.isEmpty;
     final bool isFoodUnavailable = !isFoodLoading && hasNoFood && foodProvider.hasAttemptedFetch;
 
-    if (isFoodLoading) {
+    if (isFoodLoading || !foodProvider.hasAttemptedFetch) {
       shouldShowSkeleton = true;
     } else if (isFoodUnavailable) {
       shouldShowEmptyState = true;
-    } else {
-      if (serviceProvider.isGroceryService) {
-        shouldShowSkeleton =
-            (groceryProvider.isLoadingItems || !groceryProvider.hasAttemptedFetch) && groceryProvider.items.isEmpty;
-        shouldShowEmptyState =
-            !groceryProvider.isLoadingItems && groceryProvider.categories.isEmpty && groceryProvider.hasAttemptedFetch;
-      } else if (serviceProvider.isPharmacyService) {
-        shouldShowSkeleton =
-            (pharmacyProvider.isLoadingItems || !pharmacyProvider.hasAttemptedFetch) && pharmacyProvider.items.isEmpty;
-        shouldShowEmptyState =
-            !pharmacyProvider.isLoadingItems &&
-            pharmacyProvider.categories.isEmpty &&
-            pharmacyProvider.hasAttemptedFetch;
-      } else if (serviceProvider.isStoresService) {
-        shouldShowSkeleton =
-            (grabMartProvider.isLoadingItems || !grabMartProvider.hasAttemptedFetch) && grabMartProvider.items.isEmpty;
-        shouldShowEmptyState =
-            !grabMartProvider.isLoadingItems &&
-            grabMartProvider.categories.isEmpty &&
-            grabMartProvider.hasAttemptedFetch;
-      } else if (serviceProvider.isFoodService) {
-        shouldShowSkeleton = (isFoodLoading || !foodProvider.hasAttemptedFetch) && hasNoFood;
-        shouldShowEmptyState = hasNoFood && foodProvider.hasAttemptedFetch;
-      }
     }
 
     if (_isRefreshingLocation || _isSwipeRefreshing || _isRetrying) {
@@ -444,7 +357,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     children: [
                       AppRefreshIndicator(
                         onRefresh: _refreshData,
-                        iconPath: serviceProvider.isFoodService ? Assets.icons.utensilsCrossed : Assets.icons.cart,
+                        iconPath: Assets.icons.utensilsCrossed,
                         bgColor: colors.accentOrange,
                         child: CustomScrollView(
                           controller: _scrollController,
@@ -459,13 +372,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   hasScrollBody: false,
                                   child: Center(
                                     child: AreaUnavailableScreen(
-                                      serviceName: serviceProvider.isFoodService
-                                          ? "Foods"
-                                          : serviceProvider.isGroceryService
-                                          ? "Groceries"
-                                          : serviceProvider.isPharmacyService
-                                          ? "Pharmacy"
-                                          : "GrabMart",
+                                      serviceName: "Foods",
                                       isAreaUnavailable: isFoodUnavailable,
                                     ),
                                   ),
@@ -512,45 +419,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                                   );
                                                 },
                                                 child: Column(
-                                                  key: ValueKey<bool>(serviceProvider.isFoodService),
+                                                  key: const ValueKey<String>('home_food_feed'),
                                                   crossAxisAlignment: CrossAxisAlignment.start,
                                                   children: [
-                                                    _buildCategories(
-                                                      serviceProvider,
-                                                      foodProvider,
-                                                      groceryProvider,
-                                                      isDark,
-                                                      size,
-                                                      colors,
-                                                    ),
-                                                    SizedBox(height: KSpacing.md.h),
-                                                    if (serviceProvider.isFoodService ||
-                                                        serviceProvider.isGroceryService) ...[
-                                                      _buildDealsSection(serviceProvider, groceryProvider),
-                                                      _buildFreshArrivalsSection(serviceProvider, groceryProvider),
-                                                      _buildPopularSection(serviceProvider, foodProvider),
-                                                      _buildOrderAgainSection(serviceProvider),
-                                                      _buildNearbyVendorsSection(serviceProvider, locationProvider),
-                                                      SizedBox(height: KSpacing.md.h),
-                                                      _buildBuyAgainSection(serviceProvider, groceryProvider),
-                                                      _buildPromoBanners(serviceProvider),
-                                                      _buildTopRatedSection(serviceProvider, foodProvider),
-                                                      _buildBrowseAllGroceriesSection(serviceProvider, groceryProvider),
-                                                    ] else if (serviceProvider.isPharmacyService) ...[
-                                                      _buildPharmacyOnSaleSection(),
-                                                      _buildPharmacyPopularSection(),
-                                                      _buildNearbyVendorsSection(serviceProvider, locationProvider),
-                                                      SizedBox(height: KSpacing.md.h),
-                                                      _buildPharmacyTopRatedSection(),
-                                                      _buildPharmacyItemsGrid(),
-                                                    ] else if (serviceProvider.isStoresService) ...[
-                                                      _buildGrabMartSpecialOffersSection(),
-                                                      _buildGrabMartQuickPicksSection(),
-                                                      _buildNearbyVendorsSection(serviceProvider, locationProvider),
-                                                      SizedBox(height: KSpacing.md.h),
-                                                      _buildGrabMartTopRatedSection(),
-                                                      _buildGrabMartItemsGrid(),
-                                                    ],
+                                                    _buildFoodCategories(foodProvider, isDark, size, colors),
+                                                    _buildDealsSection(),
+                                                    _buildPopularSection(foodProvider),
+                                                    _buildOrderAgainSection(),
+                                                    _buildNearbyVendorsSection(locationProvider),
+                                                    _buildPromoBanners(),
+                                                    _buildTopRatedSection(foodProvider),
                                                   ],
                                                 ),
                                               ),
@@ -560,7 +438,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                 ),
                               ),
                             if (!shouldShowSkeleton)
-                              ..._buildRecommendedSectionSlivers(serviceProvider, foodProvider, colors, size, isDark),
+                              ..._buildRecommendedSectionSlivers(foodProvider, colors, size, isDark),
 
                             SliverToBoxAdapter(child: SizedBox(height: bottomContentPadding)),
                           ],
@@ -587,7 +465,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           final collapseProgress = (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
                           final opacity = (1.0 - (collapseProgress * 2)).clamp(0.0, 1.0);
 
-                          if (opacity == 0 || !locationProvider.shouldShowAccuracyPopup) return const SizedBox.shrink();
+                          if (opacity == 0 || !locationProvider.shouldShowAccuracyPopup) {
+                            return const SizedBox.shrink();
+                          }
 
                           return Positioned(
                             top: MediaQuery.of(context).padding.top + 45.h,
@@ -725,8 +605,45 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 );
               },
             ),
+            SizedBox(height: KSpacing.lg.h),
           ],
         );
+      },
+    );
+  }
+
+  Widget _buildServiceSelector() {
+    const nonFoodServices = [
+      AppServices.groceries,
+      AppServices.pharmacy,
+      AppServices.convenience,
+      ServiceModel(id: 'more', name: 'More', emoji: '✨', colorHex: '#8D6E63'),
+    ];
+
+    return ServiceSelector(
+      services: nonFoodServices,
+      showSelection: false,
+      triggerInitialSelection: false,
+      onServiceSelected: (ServiceModel service) {
+        if (_isOpeningServiceHub) return;
+
+        if (service.id == 'more') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('More services coming soon'),
+              duration: Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          return;
+        }
+
+        _isOpeningServiceHub = true;
+        context.push('/serviceHub/${service.id}').whenComplete(() {
+          if (mounted) {
+            _isOpeningServiceHub = false;
+          }
+        });
       },
     );
   }
@@ -775,76 +692,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildServiceSelector() {
-    const nonFoodServices = [
-      AppServices.groceries,
-      AppServices.pharmacy,
-      AppServices.convenience,
-      ServiceModel(id: 'more', name: 'More', emoji: '✨', colorHex: '#8D6E63'),
-    ];
-
-    return ServiceSelector(
-      services: nonFoodServices,
-      showSelection: false,
-      triggerInitialSelection: false,
-      onServiceSelected: (ServiceModel service) {
-        if (_isOpeningServiceHub) return;
-
-        if (service.id == 'more') {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('More services coming soon'),
-              duration: Duration(seconds: 2),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-          return;
-        }
-
-        _isOpeningServiceHub = true;
-        context.push('/serviceHub/${service.id}').whenComplete(() {
-          if (mounted) {
-            _isOpeningServiceHub = false;
-          }
-        });
-      },
-    );
-  }
-
-  VendorType _getVendorTypeFromService(String serviceId) {
-    switch (serviceId) {
-      case 'food':
-        return VendorType.food;
-      case 'groceries':
-        return VendorType.grocery;
-      case 'pharmacy':
-        return VendorType.pharmacy;
-      case 'convenience':
-        return VendorType.grabmart;
-      default:
-        return VendorType.food;
-    }
-  }
-
-  String _nearbyTitleForService(String serviceId) {
-    switch (serviceId) {
-      case 'food':
-        return 'Restaurants Near You';
-      case 'groceries':
-        return 'Groceries Near You';
-      case 'pharmacy':
-        return 'Pharmacies Near You';
-      case 'convenience':
-        return 'GrabMart Near You';
-      default:
-        return 'Restaurants Near You';
-    }
-  }
-
-  Widget _buildNearbyVendorsSection(ServiceProvider serviceProvider, NativeLocationProvider locationProvider) {
+  Widget _buildNearbyVendorsSection(NativeLocationProvider locationProvider) {
     if (!locationProvider.hasLocation) return const SizedBox.shrink();
 
-    final vendorType = _getVendorTypeFromService(serviceProvider.currentService.id);
+    const vendorType = VendorType.food;
     final accentColor = Color(vendorType.color);
 
     return Consumer<VendorProvider>(
@@ -855,7 +706,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
             if (locationProvider.latitude == null || locationProvider.longitude == null) return;
-            _previousVendorType = vendorType;
             provider.fetchVendors(vendorType, lat: locationProvider.latitude, lng: locationProvider.longitude);
           });
           return const SizedBox.shrink();
@@ -864,14 +714,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         final vendors = provider.nearestVendors.take(10).toList();
         if (!provider.isLoading && vendors.isEmpty) return const SizedBox.shrink();
 
-        return VendorHorizontalSection(
-          title: _nearbyTitleForService(serviceProvider.currentService.id),
-          icon: Assets.icons.mapPin,
-          vendors: vendors,
-          isLoading: provider.isLoading,
-          accentColor: accentColor,
-          showClosedOnImage: true,
-          onItemTap: (vendor) => VendorDetailBottomSheet.show(context: context, vendor: vendor),
+        return Column(
+          children: [
+            VendorHorizontalSection(
+              title: 'Restaurants Near You',
+              icon: Assets.icons.mapPin,
+              vendors: vendors,
+              isLoading: provider.isLoading,
+              accentColor: accentColor,
+              showClosedOnImage: true,
+              onItemTap: (vendor) => VendorDetailBottomSheet.show(context: context, vendor: vendor),
+            ),
+            SizedBox(height: KSpacing.lg.h),
+          ],
         );
       },
     );
@@ -1048,269 +903,28 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildGroceryCategories(GroceryProvider groceryProvider, bool isDark, Size size, AppColorsExtension colors) {
-    final categoriesWithType = [...groceryProvider.categories];
-
-    if (groceryProvider.isLoadingCategories) {
-      return CategorySkeleton(colors: colors, isDark: isDark, size: size);
-    }
-
-    if (groceryProvider.categories.isNotEmpty) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SectionHeader(
-            title: "Categories",
-            accentColor: colors.accentOrange,
-            sectionTotal: groceryProvider.categories.length.toInt(),
-            onSeeAll: () {
-              AllCategoriesSheet.show<GroceryCategory>(
-                context: context,
-                title: "All Grocery Categories",
-                categories: categoriesWithType,
-                getName: (cat) => cat.name,
-                getEmoji: (cat) => cat.emoji,
-                getId: (cat) => cat.id,
-                selectedCategoryId: _selectedGroceryCategory?.id,
-                accentColor: colors.accentOrange,
-                onCategorySelected: (category) {
-                  setState(() {
-                    _selectedGroceryCategory = category;
-                  });
-                },
-              );
-            },
-          ),
-          SizedBox(height: 10.h),
-          ServiceCategoryList<GroceryCategory>(
-            categories: categoriesWithType,
-            getName: (cat) => cat.name,
-            getEmoji: (cat) => cat.emoji,
-            getId: (cat) => cat.id,
-            initialSelectedCategory: _selectedGroceryCategory,
-            onCategorySelected: (category) {
-              setState(() {
-                _selectedGroceryCategory = category;
-              });
-            },
-          ),
-        ],
-      );
-    }
-
-    return const SizedBox.shrink();
-  }
-
-  Widget _buildPharmacyCategories(bool isDark, Size size, AppColorsExtension colors) {
-    return Consumer<PharmacyProvider>(
-      builder: (context, pharmacyProvider, _) {
-        if (pharmacyProvider.isLoadingCategories) {
-          return CategorySkeleton(colors: colors, isDark: isDark, size: size);
-        }
-
-        if (pharmacyProvider.categories.isNotEmpty) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SectionHeader(
-                title: "Categories",
-                accentColor: colors.accentOrange,
-                sectionTotal: pharmacyProvider.categories.length.toInt(),
-                onSeeAll: () {
-                  AllCategoriesSheet.show<PharmacyCategory>(
-                    context: context,
-                    title: "All Pharmacy Categories",
-                    categories: pharmacyProvider.categories,
-                    getName: (cat) => cat.name,
-                    getEmoji: (cat) => cat.emoji,
-                    getId: (cat) => cat.id,
-                    accentColor: colors.accentOrange,
-                    onCategorySelected: (category) {
-                      context.push(
-                        '/categoryItems/${category.id}',
-                        extra: {
-                          'categoryId': category.id,
-                          'categoryName': category.name,
-                          'categoryEmoji': category.emoji,
-                          'serviceType': 'pharmacy',
-                        },
-                      );
-                    },
-                  );
-                },
-              ),
-              SizedBox(height: 10.h),
-              ServiceCategoryList<PharmacyCategory>(
-                categories: pharmacyProvider.categories,
-                getName: (cat) => cat.name,
-                getEmoji: (cat) => cat.emoji,
-                getId: (cat) => cat.id,
-                initialSelectedCategory: null,
-                autoNotify: false,
-                onCategorySelected: (category) {
-                  context.push(
-                    '/categoryItems/${category.id}',
-                    extra: {
-                      'categoryId': category.id,
-                      'categoryName': category.name,
-                      'categoryEmoji': category.emoji,
-                      'serviceType': 'pharmacy',
-                    },
-                  );
-                },
-              ),
-            ],
-          );
-        }
-
-        return const SizedBox.shrink();
-      },
-    );
-  }
-
-  Widget _buildGrabMartCategories(bool isDark, Size size, AppColorsExtension colors) {
-    return Consumer<GrabMartProvider>(
-      builder: (context, grabMartProvider, _) {
-        if (grabMartProvider.isLoadingCategories) {
-          return CategorySkeleton(colors: colors, isDark: isDark, size: size);
-        }
-
-        if (grabMartProvider.categories.isNotEmpty) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SectionHeader(
-                title: "Categories",
-                accentColor: colors.accentOrange,
-                sectionTotal: grabMartProvider.categories.length.toInt(),
-                onSeeAll: () {
-                  AllCategoriesSheet.show<GrabMartCategory>(
-                    context: context,
-                    title: "All GrabMart Categories",
-                    categories: grabMartProvider.categories,
-                    getName: (cat) => cat.name,
-                    getEmoji: (cat) => cat.emoji,
-                    getId: (cat) => cat.id,
-                    accentColor: colors.accentOrange,
-                    onCategorySelected: (category) {
-                      context.push(
-                        '/categoryItems/${category.id}',
-                        extra: {
-                          'categoryId': category.id,
-                          'categoryName': category.name,
-                          'categoryEmoji': category.emoji,
-                          'serviceType': 'convenience',
-                        },
-                      );
-                    },
-                  );
-                },
-              ),
-              SizedBox(height: 10.h),
-              ServiceCategoryList<GrabMartCategory>(
-                categories: grabMartProvider.categories,
-                getName: (cat) => cat.name,
-                getEmoji: (cat) => cat.emoji,
-                getId: (cat) => cat.id,
-                initialSelectedCategory: null,
-                autoNotify: false,
-                onCategorySelected: (category) {
-                  context.push(
-                    '/categoryItems/${category.id}',
-                    extra: {
-                      'categoryId': category.id,
-                      'categoryName': category.name,
-                      'categoryEmoji': category.emoji,
-                      'serviceType': 'convenience',
-                    },
-                  );
-                },
-              ),
-            ],
-          );
-        }
-
-        return const SizedBox.shrink();
-      },
-    );
-  }
-
-  Widget _buildCategories(
-    ServiceProvider serviceProvider,
-    FoodProvider foodProvider,
-    GroceryProvider groceryProvider,
-    bool isDark,
-    Size size,
-    AppColorsExtension colors,
-  ) {
-    if (serviceProvider.isFoodService) {
-      return _buildFoodCategories(foodProvider, isDark, size, colors);
-    } else if (serviceProvider.isGroceryService) {
-      return _buildGroceryCategories(groceryProvider, isDark, size, colors);
-    } else if (serviceProvider.isPharmacyService) {
-      return _buildPharmacyCategories(isDark, size, colors);
-    } else if (serviceProvider.isStoresService) {
-      return _buildGrabMartCategories(isDark, size, colors);
-    }
-    return const SizedBox.shrink();
-  }
-
-  Widget _buildDealsSection(ServiceProvider serviceProvider, GroceryProvider groceryProvider) {
+  Widget _buildDealsSection() {
     return Column(
       children: [
-        if (serviceProvider.isFoodService)
-          Consumer<FoodDealsProvider>(
-            builder: (context, provider, _) {
-              return DealsSection(
-                dealItems: provider.dealItems.take(10).toList(),
-                onSeeAll: () {},
-                onItemTap: (item) {
-                  context.push('/foodDetails', extra: item);
-                },
-                isLoading: provider.isLoadingDeals,
-                useVerticalZigzagTag: true,
-              );
-            },
-          )
-        else
-          DealsSection(
-            dealItems: groceryProvider.deals.take(10).map((e) => e.toFoodItem()).toList(),
-            originalItems: groceryProvider.deals.take(10).toList(),
-            onSeeAll: () {},
-            onItemTap: (item) {
-              final gp = Provider.of<GroceryProvider>(context, listen: false);
-              GroceryItem? originalItem;
-              try {
-                originalItem = gp.deals.firstWhere((g) => g.id == item.id);
-              } catch (_) {}
-              context.push('/foodDetails', extra: originalItem ?? item);
-            },
-            isLoading: groceryProvider.isLoadingDeals,
-          ),
-        SizedBox(height: KSpacing.lg.h),
-      ],
-    );
-  }
-
-  Widget _buildFreshArrivalsSection(ServiceProvider serviceProvider, GroceryProvider groceryProvider) {
-    if (!serviceProvider.isGroceryService) return const SizedBox.shrink();
-    return Column(
-      children: [
-        FreshArrivalsSection(
-          items: groceryProvider.freshArrivals.take(10).toList(),
-          onSeeAll: () {},
-          onItemTap: (item) {
-            context.push('/foodDetails', extra: item);
+        Consumer<FoodDealsProvider>(
+          builder: (context, provider, _) {
+            return DealsSection(
+              dealItems: provider.dealItems.take(10).toList(),
+              onSeeAll: () {},
+              onItemTap: (item) {
+                context.push('/foodDetails', extra: item);
+              },
+              isLoading: provider.isLoadingDeals,
+              useVerticalZigzagTag: true,
+            );
           },
-          isLoading: groceryProvider.isLoadingFreshArrivals,
         ),
         SizedBox(height: KSpacing.lg.h),
       ],
     );
   }
 
-  Widget _buildOrderAgainSection(ServiceProvider serviceProvider) {
-    if (!serviceProvider.isFoodService) return const SizedBox.shrink();
+  Widget _buildOrderAgainSection() {
     return Consumer<FoodDiscoveryProvider>(
       builder: (context, provider, _) {
         if (provider.orderHistoryItems.isEmpty) return const SizedBox.shrink();
@@ -1331,126 +945,29 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildPopularSection(ServiceProvider serviceProvider, FoodProvider foodProvider) {
-    return Builder(
-      builder: (context) {
-        List<FoodItem> popularItems = [];
-        List<dynamic>? originalPopularItems;
-        bool isLoading = false;
-
-        if (serviceProvider.isFoodService) {
-          popularItems = foodProvider.popularItems;
-          isLoading = foodProvider.isLoadingPopular;
-        } else {
-          final groceryProvider = Provider.of<GroceryProvider>(context);
-          popularItems = groceryProvider.popularItems.map((e) => e.toFoodItem()).toList();
-          originalPopularItems = groceryProvider.popularItems;
-          isLoading = groceryProvider.isLoadingPopular;
-        }
-
-        return Column(
-          children: [
-            PopularSection(
-              popularItems: popularItems,
-              originalItems: originalPopularItems,
-              useVerticalZigzagTag: serviceProvider.isFoodService,
-              onSeeAll: () {},
-              onItemTap: (item) {
-                if (serviceProvider.isGroceryService) {
-                  final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
-                  GroceryItem? originalItem;
-                  try {
-                    originalItem = groceryProvider.popularItems.firstWhere((g) => g.id == item.id);
-                  } catch (_) {}
-                  context.push('/foodDetails', extra: originalItem ?? item);
-                } else {
-                  context.push('/foodDetails', extra: item);
-                }
-              },
-              isLoading: isLoading,
-            ),
-            SizedBox(height: KSpacing.lg.h),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildBuyAgainSection(ServiceProvider serviceProvider, GroceryProvider groceryProvider) {
-    if (!serviceProvider.isGroceryService || groceryProvider.buyAgainItems.isEmpty) {
-      return const SizedBox.shrink();
-    }
+  Widget _buildPopularSection(FoodProvider foodProvider) {
     return Column(
       children: [
-        OrderAgainSection(
-          recentOrders: groceryProvider.buyAgainItems.take(10).map((item) => item.toFoodItem()).toList(),
-          originalItems: groceryProvider.buyAgainItems.take(10).toList(),
+        PopularSection(
+          popularItems: foodProvider.popularItems,
+          useVerticalZigzagTag: true,
           onSeeAll: () {},
-          onItemTap: (foodItem) {
-            GroceryItem? groceryItem;
-            try {
-              groceryItem = groceryProvider.buyAgainItems.firstWhere((item) => item.id == foodItem.id);
-            } catch (_) {}
-            context.push('/foodDetails', extra: groceryItem ?? foodItem);
+          onItemTap: (item) {
+            context.push('/foodDetails', extra: item);
           },
-          isLoading: groceryProvider.isLoadingBuyAgain,
+          isLoading: foodProvider.isLoadingPopular,
         ),
         SizedBox(height: KSpacing.lg.h),
       ],
     );
   }
 
-  Widget _buildPromoBanners(ServiceProvider serviceProvider) {
-    if (!serviceProvider.isFoodService) return const SizedBox.shrink();
+  Widget _buildPromoBanners() {
     return Consumer<FoodBannerProvider>(
       builder: (context, provider, _) {
-        return PromoSection(
-          banners: provider.promotionalBanners,
-          onSeeAll: () {},
-          isLoading: provider.isLoadingBanners,
-        );
-      },
-    );
-  }
-
-  Widget _buildTopRatedSection(ServiceProvider serviceProvider, FoodProvider foodProvider) {
-    return Builder(
-      builder: (context) {
-        List<FoodItem> topRatedItems = [];
-        List<dynamic>? originalTopRatedItems;
-        bool isLoading = false;
-
-        if (serviceProvider.isFoodService) {
-          topRatedItems = foodProvider.topRatedItems;
-          isLoading = foodProvider.isLoadingTopRated;
-        } else {
-          final groceryProvider = Provider.of<GroceryProvider>(context);
-          topRatedItems = groceryProvider.topRatedItems.map((e) => e.toFoodItem()).toList();
-          originalTopRatedItems = groceryProvider.topRatedItems;
-          isLoading = groceryProvider.isLoadingTopRated;
-        }
-
         return Column(
           children: [
-            TopRatedSection(
-              topRatedItems: topRatedItems,
-              originalItems: originalTopRatedItems,
-              useVerticalZigzagTag: serviceProvider.isFoodService,
-              onSeeAll: () {},
-              onItemTap: (item) {
-                if (serviceProvider.isGroceryService) {
-                  final groceryProvider = Provider.of<GroceryProvider>(context, listen: false);
-                  GroceryItem? originalItem;
-                  try {
-                    originalItem = groceryProvider.topRatedItems.firstWhere((g) => g.id == item.id);
-                  } catch (_) {}
-                  context.push('/foodDetails', extra: originalItem ?? item);
-                } else {
-                  context.push('/foodDetails', extra: item);
-                }
-              },
-              isLoading: isLoading,
-            ),
+            PromoSection(banners: provider.promotionalBanners, onSeeAll: () {}, isLoading: provider.isLoadingBanners),
             SizedBox(height: KSpacing.lg.h),
           ],
         );
@@ -1458,14 +975,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildBrowseAllGroceriesSection(ServiceProvider serviceProvider, GroceryProvider groceryProvider) {
-    if (!serviceProvider.isGroceryService) return const SizedBox.shrink();
+  Widget _buildTopRatedSection(FoodProvider foodProvider) {
     return Column(
       children: [
-        BrowseAllGroceriesSection(
-          items: groceryProvider.items,
+        TopRatedSection(
+          topRatedItems: foodProvider.topRatedItems,
+          useVerticalZigzagTag: true,
+          onSeeAll: () {},
           onItemTap: (item) => context.push('/foodDetails', extra: item),
-          isLoading: groceryProvider.isLoadingItems,
+          isLoading: foodProvider.isLoadingTopRated,
         ),
         SizedBox(height: KSpacing.lg.h),
       ],
@@ -1473,13 +991,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   List<Widget> _buildRecommendedSectionSlivers(
-    ServiceProvider serviceProvider,
     FoodProvider foodProvider,
     AppColorsExtension colors,
     Size size,
     bool isDark,
   ) {
-    if (!serviceProvider.isFoodService) return [];
     if (foodProvider.recommendedItems.isEmpty) return [];
 
     return [
@@ -1584,330 +1100,5 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ),
         ),
     ];
-  }
-
-  Widget _buildPharmacyOnSaleSection() {
-    return Consumer<PharmacyProvider>(
-      builder: (context, provider, _) {
-        if (provider.onSaleItems.isEmpty) return const SizedBox.shrink();
-
-        final dealItems = provider.onSaleItems.take(10).map((item) {
-          return FoodItem(
-            id: item.id,
-            name: item.name,
-            description: item.description,
-            price: item.price,
-            discountPercentage: item.discountPercentage,
-            image: item.image,
-            rating: item.rating,
-            reviewCount: item.reviewCount,
-            deliveryTimeMinutes: 30,
-            sellerName: item.storeName ?? 'Pharmacy',
-            sellerId: item.storeId.hashCode % 1000000,
-            restaurantId: item.storeId,
-            restaurantImage: item.storeLogo ?? '',
-            orderCount: item.orderCount,
-          );
-        }).toList();
-
-        return Column(
-          children: [
-            DealsSection(
-              title: "Exclusive Medical Deals",
-              icon: Assets.icons.tag,
-              dealItems: dealItems,
-              onSeeAll: () => Provider.of<NavigationProvider>(context, listen: false).setIndex(1),
-              onItemTap: (item) {
-                final originalItem = provider.items.firstWhere((i) => i.id == item.id);
-                context.push('/foodDetails', extra: originalItem);
-              },
-              isLoading: provider.isLoadingItems,
-            ),
-            SizedBox(height: KSpacing.lg.h),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildPharmacyPopularSection() {
-    return Consumer<PharmacyProvider>(
-      builder: (context, provider, _) {
-        if (provider.popularItems.isEmpty) return const SizedBox.shrink();
-
-        final popularItems = provider.popularItems.take(10).map((item) {
-          return FoodItem(
-            id: item.id,
-            name: item.name,
-            description: item.description,
-            price: item.price,
-            discountPercentage: item.discountPercentage,
-            image: item.image,
-            rating: item.rating,
-            reviewCount: item.reviewCount,
-            deliveryTimeMinutes: 30,
-            sellerName: item.storeName ?? 'Pharmacy',
-            sellerId: item.storeId.hashCode % 1000000,
-            restaurantId: item.storeId,
-            restaurantImage: item.storeLogo ?? '',
-            orderCount: item.orderCount,
-          );
-        }).toList();
-
-        return Column(
-          children: [
-            PopularSection(
-              title: "Daily Health Needs",
-              icon: Assets.icons.pharmacyCrossCircle,
-              popularItems: popularItems,
-              onSeeAll: () => Provider.of<NavigationProvider>(context, listen: false).setIndex(1),
-              onItemTap: (item) {
-                PharmacyItem? originalItem;
-                try {
-                  originalItem = provider.popularItems.firstWhere((i) => i.id == item.id);
-                } catch (_) {}
-                context.push('/foodDetails', extra: originalItem ?? item);
-              },
-              isLoading: provider.isLoadingItems,
-            ),
-            SizedBox(height: KSpacing.lg.h),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildPharmacyTopRatedSection() {
-    return Consumer<PharmacyProvider>(
-      builder: (context, provider, _) {
-        if (provider.topRatedItems.isEmpty) return const SizedBox.shrink();
-
-        final topRatedItems = provider.topRatedItems.take(10).map((item) {
-          return FoodItem(
-            id: item.id,
-            name: item.name,
-            description: item.description,
-            price: item.price,
-            discountPercentage: item.discountPercentage,
-            image: item.image,
-            rating: item.rating,
-            reviewCount: item.reviewCount,
-            deliveryTimeMinutes: 30,
-            sellerName: item.storeName ?? 'Pharmacy',
-            sellerId: item.storeId.hashCode % 1000000,
-            restaurantId: item.storeId,
-            restaurantImage: item.storeLogo ?? '',
-            orderCount: item.orderCount,
-          );
-        }).toList();
-
-        return Column(
-          children: [
-            TopRatedSection(
-              title: "Highly Rated Wellness",
-              icon: Assets.icons.star,
-              topRatedItems: topRatedItems,
-              onSeeAll: () => Provider.of<NavigationProvider>(context, listen: false).setIndex(1),
-              onItemTap: (item) {
-                PharmacyItem? originalItem;
-                try {
-                  originalItem = provider.topRatedItems.firstWhere((i) => i.id == item.id);
-                } catch (_) {}
-                context.push('/foodDetails', extra: originalItem ?? item);
-              },
-              isLoading: provider.isLoadingItems,
-            ),
-            SizedBox(height: KSpacing.lg.h),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildPharmacyItemsGrid() {
-    return Consumer<PharmacyProvider>(
-      builder: (context, provider, _) {
-        if (provider.items.isEmpty && !provider.isLoadingItems) {
-          return const SizedBox.shrink();
-        }
-
-        return Column(
-          children: [
-            BrowseItemsGrid(
-              title: "Browse All Pharmacy",
-              icon: Assets.icons.squareMenu,
-              items: provider.items,
-              onItemTap: (item) => context.push('/foodDetails', extra: item),
-              isLoading: provider.isLoadingItems && provider.items.isEmpty,
-              accentColor: context.appColors.accentOrange,
-            ),
-            SizedBox(height: KSpacing.lg.h),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildGrabMartSpecialOffersSection() {
-    return Consumer<GrabMartProvider>(
-      builder: (context, provider, _) {
-        if (provider.specialOffers.isEmpty) return const SizedBox.shrink();
-
-        final dealItems = provider.specialOffers.take(10).map((item) {
-          return FoodItem(
-            id: item.id,
-            name: item.name,
-            description: item.description,
-            price: item.price,
-            discountPercentage: item.discountPercentage,
-            image: item.image,
-            rating: item.rating,
-            reviewCount: item.reviewCount,
-            deliveryTimeMinutes: 20,
-            sellerName: item.storeName ?? 'GrabMart',
-            sellerId: item.storeId.hashCode % 1000000,
-            restaurantId: item.storeId,
-            restaurantImage: item.storeLogo ?? '',
-            orderCount: item.orderCount,
-          );
-        }).toList();
-
-        return Column(
-          children: [
-            DealsSection(
-              title: "Groceries & More Deals",
-              icon: Assets.icons.tag,
-              dealItems: dealItems,
-              onSeeAll: () => Provider.of<NavigationProvider>(context, listen: false).setIndex(1),
-              onItemTap: (item) {
-                GrabMartItem? originalItem;
-                try {
-                  originalItem = provider.specialOffers.firstWhere((i) => i.id == item.id);
-                } catch (_) {}
-                context.push('/foodDetails', extra: originalItem ?? item);
-              },
-              isLoading: provider.isLoadingItems,
-            ),
-            SizedBox(height: KSpacing.lg.h),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildGrabMartQuickPicksSection() {
-    return Consumer<GrabMartProvider>(
-      builder: (context, provider, _) {
-        if (provider.quickPicks.isEmpty) return const SizedBox.shrink();
-
-        final quickPickItems = provider.quickPicks.take(10).map((item) {
-          return FoodItem(
-            id: item.id,
-            name: item.name,
-            description: item.description,
-            price: item.price,
-            discountPercentage: item.discountPercentage,
-            image: item.image,
-            rating: item.rating,
-            reviewCount: item.reviewCount,
-            deliveryTimeMinutes: 20,
-            sellerName: item.storeName ?? 'GrabMart',
-            sellerId: item.storeId.hashCode % 1000000,
-            restaurantId: item.storeId,
-            restaurantImage: item.storeLogo ?? '',
-            orderCount: item.orderCount,
-          );
-        }).toList();
-
-        return Column(
-          children: [
-            PopularSection(
-              title: "Essentials Quick Picks",
-              icon: Assets.icons.cart,
-              popularItems: quickPickItems,
-              onSeeAll: () => Provider.of<NavigationProvider>(context, listen: false).setIndex(1),
-              onItemTap: (item) {
-                GrabMartItem? originalItem;
-                try {
-                  originalItem = provider.quickPicks.firstWhere((i) => i.id == item.id);
-                } catch (_) {}
-                context.push('/foodDetails', extra: originalItem ?? item);
-              },
-              isLoading: provider.isLoadingItems,
-            ),
-            SizedBox(height: KSpacing.lg.h),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildGrabMartTopRatedSection() {
-    return Consumer<GrabMartProvider>(
-      builder: (context, provider, _) {
-        if (provider.topRatedItems.isEmpty) return const SizedBox.shrink();
-
-        final topRatedItems = provider.topRatedItems.take(10).map((item) {
-          return FoodItem(
-            id: item.id,
-            name: item.name,
-            description: item.description,
-            price: item.price,
-            discountPercentage: item.discountPercentage,
-            image: item.image,
-            rating: item.rating,
-            reviewCount: item.reviewCount,
-            deliveryTimeMinutes: 20,
-            sellerName: item.storeName ?? 'GrabMart',
-            sellerId: item.storeId.hashCode % 1000000,
-            restaurantId: item.storeId,
-            restaurantImage: item.storeLogo ?? '',
-            orderCount: item.orderCount,
-          );
-        }).toList();
-
-        return Column(
-          children: [
-            TopRatedSection(
-              title: "Top Rated Essentials",
-              icon: Assets.icons.star,
-              topRatedItems: topRatedItems,
-              onSeeAll: () => Provider.of<NavigationProvider>(context, listen: false).setIndex(1),
-              onItemTap: (item) {
-                GrabMartItem? originalItem;
-                try {
-                  originalItem = provider.topRatedItems.firstWhere((i) => i.id == item.id);
-                } catch (_) {}
-                context.push('/foodDetails', extra: originalItem ?? item);
-              },
-              isLoading: provider.isLoadingItems,
-            ),
-            SizedBox(height: KSpacing.lg.h),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildGrabMartItemsGrid() {
-    return Consumer<GrabMartProvider>(
-      builder: (context, provider, _) {
-        if (provider.items.isEmpty && !provider.isLoadingItems) return const SizedBox.shrink();
-
-        return Column(
-          children: [
-            BrowseItemsGrid(
-              title: "Browse All GrabMart",
-              icon: Assets.icons.squareMenu,
-              items: provider.items,
-              onItemTap: (item) => context.push('/foodDetails', extra: item),
-              isLoading: provider.isLoadingItems && provider.items.isEmpty,
-              accentColor: context.appColors.accentBlue,
-            ),
-            SizedBox(height: KSpacing.lg.h),
-          ],
-        );
-      },
-    );
   }
 }

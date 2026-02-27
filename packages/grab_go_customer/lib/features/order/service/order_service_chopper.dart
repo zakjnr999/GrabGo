@@ -145,12 +145,18 @@ class OrderItem {
   final int quantity;
   final double price;
   final String itemType; // 'food' or 'grocery'
+  final String? selectedPortionId;
+  final List<String>? selectedPreferenceOptionIds;
+  final String? itemNote;
 
   OrderItem({
     required this.food,
     required this.quantity,
     required this.price,
     required this.itemType,
+    this.selectedPortionId,
+    this.selectedPreferenceOptionIds,
+    this.itemNote,
   });
 
   Map<String, dynamic> toJson() => _$OrderItemToJson(this);

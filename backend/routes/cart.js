@@ -131,7 +131,18 @@ router.get('/', protect, async (req, res) => {
  */
 router.post('/add', protect, async (req, res) => {
     try {
-        const { itemId, itemType, quantity, restaurantId, groceryStoreId, pharmacyStoreId, grabMartStoreId } = req.body;
+        const {
+            itemId,
+            itemType,
+            quantity,
+            restaurantId,
+            groceryStoreId,
+            pharmacyStoreId,
+            grabMartStoreId,
+            selectedPortionId,
+            selectedPreferenceOptionIds,
+            itemNote,
+        } = req.body;
         const fulfillmentMode = normalizeFulfillmentMode(req.query.fulfillmentMode ?? req.body.fulfillmentMode);
         const lat = Number(req.query.lat ?? req.body.lat);
         const lng = Number(req.query.lng ?? req.body.lng);
@@ -161,6 +172,9 @@ router.post('/add', protect, async (req, res) => {
             groceryStoreId,
             pharmacyStoreId,
             grabMartStoreId,
+            selectedPortionId,
+            selectedPreferenceOptionIds,
+            itemNote,
             fulfillmentMode
         });
 
@@ -180,6 +194,9 @@ router.post('/add', protect, async (req, res) => {
             error.message.includes('inactive') ||
             error.message.includes('closed') ||
             error.message.includes('accepting orders') ||
+            error.message.includes('portion') ||
+            error.message.includes('preference option') ||
+            error.message.includes('customization') ||
             error.message.includes('out of stock') ||
             error.message.includes('not enough stock') ||
             error.message.includes('insufficient stock') ||

@@ -62,6 +62,43 @@ class FoodProvider with ChangeNotifier {
     return sellerItems;
   }
 
+  /// Get items from the same restaurant with strict ID matching first.
+  List<FoodItem> getItemsFromRestaurant({
+    required String restaurantId,
+    int? sellerId,
+    String? sellerName,
+    String? excludeItemId,
+    int? limit,
+  }) {
+    final allFoods = getAllFoods();
+    final normalizedRestaurantId = restaurantId.trim();
+    final normalizedSellerName = sellerName?.trim().toLowerCase();
+
+    bool matches(FoodItem item) {
+      if (excludeItemId != null && item.id == excludeItemId) return false;
+
+      if (normalizedRestaurantId.isNotEmpty) {
+        return item.restaurantId.trim() == normalizedRestaurantId;
+      }
+
+      if (sellerId != null && sellerId != 0) {
+        return item.sellerId == sellerId;
+      }
+
+      if (normalizedSellerName != null && normalizedSellerName.isNotEmpty) {
+        return item.sellerName.trim().toLowerCase() == normalizedSellerName;
+      }
+
+      return false;
+    }
+
+    final restaurantItems = allFoods.where(matches).toList();
+    if (limit != null && restaurantItems.length > limit) {
+      return restaurantItems.take(limit).toList();
+    }
+    return restaurantItems;
+  }
+
   /// Get similar items from the same category, excluding the current item
   List<FoodItem> getSimilarItems(String categoryId, {String? excludeItemId, int limit = 5}) {
     for (var category in categories) {

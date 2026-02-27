@@ -89,6 +89,12 @@ OrderItem _$OrderItemFromJson(Map<String, dynamic> json) => OrderItem(
   quantity: (json['quantity'] as num).toInt(),
   price: (json['price'] as num).toDouble(),
   itemType: json['itemType'] as String,
+  selectedPortionId: json['selectedPortionId'] as String?,
+  selectedPreferenceOptionIds:
+      (json['selectedPreferenceOptionIds'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList(),
+  itemNote: json['itemNote'] as String?,
 );
 
 Map<String, dynamic> _$OrderItemToJson(OrderItem instance) => <String, dynamic>{
@@ -96,6 +102,9 @@ Map<String, dynamic> _$OrderItemToJson(OrderItem instance) => <String, dynamic>{
   'quantity': instance.quantity,
   'price': instance.price,
   'itemType': instance.itemType,
+  'selectedPortionId': instance.selectedPortionId,
+  'selectedPreferenceOptionIds': instance.selectedPreferenceOptionIds,
+  'itemNote': instance.itemNote,
 };
 
 OrderPricing _$OrderPricingFromJson(Map<String, dynamic> json) => OrderPricing(

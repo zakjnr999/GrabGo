@@ -15,6 +15,24 @@ const router = express.Router();
 
 const { FOOD_INCLUDE_RELATIONS, formatFoodResponse } = require('../utils/food_helpers');
 
+const parseOptionalJsonField = (value, fieldName) => {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    try {
+      return JSON.parse(trimmed);
+    } catch (_) {
+      throw new Error(`${fieldName} must be valid JSON`);
+    }
+  }
+
+  if (typeof value === 'object') return value;
+  throw new Error(`${fieldName} must be a JSON object or array`);
+};
+
 // Get all foods with caching (5 minutes)
 router.get("/", cacheMiddleware(cache.CACHE_KEYS.FOOD_CATEGORIES, 300), async (req, res) => {
   try {
@@ -716,7 +734,21 @@ router.post(
         totalReviews,
         isAvailable,
         ingredients,
+        portionOptions,
+        preferenceGroups,
       } = req.body;
+
+      let parsedPortionOptions;
+      let parsedPreferenceGroups;
+      try {
+        parsedPortionOptions = parseOptionalJsonField(portionOptions, 'portionOptions');
+        parsedPreferenceGroups = parseOptionalJsonField(preferenceGroups, 'preferenceGroups');
+      } catch (parseError) {
+        return res.status(400).json({
+          success: false,
+          message: parseError.message || 'Invalid customization configuration',
+        });
+      }
 
       // Verify category exists
       const categoryDoc = await prisma.category.findUnique({
@@ -744,26 +776,31 @@ router.post(
         req.file?.cloudinaryUrl ||
         (req.file ? getFileUrl(req.file.filename) : null);
 
+      const createData = {
+        name,
+        description: description || null,
+        price: parseFloat(price),
+        categoryId: category,
+        restaurantId: restaurant,
+        foodImage,
+        isAvailable:
+          isAvailable !== undefined
+            ? isAvailable === "true" || isAvailable === true
+            : true,
+        ingredients: ingredients
+          ? Array.isArray(ingredients)
+            ? ingredients
+            : [ingredients]
+          : [],
+        rating: rating ? parseFloat(rating) : 0,
+        totalReviews: totalReviews ? parseInt(totalReviews) : 0,
+      };
+
+      if (parsedPortionOptions !== undefined) createData.portionOptions = parsedPortionOptions;
+      if (parsedPreferenceGroups !== undefined) createData.preferenceGroups = parsedPreferenceGroups;
+
       const food = await prisma.food.create({
-        data: {
-          name,
-          description: description || null,
-          price: parseFloat(price),
-          categoryId: category,
-          restaurantId: restaurant,
-          foodImage,
-          isAvailable:
-            isAvailable !== undefined
-              ? isAvailable === "true" || isAvailable === true
-              : true,
-          ingredients: ingredients
-            ? Array.isArray(ingredients)
-              ? ingredients
-              : [ingredients]
-            : [],
-          rating: rating ? parseFloat(rating) : 0,
-          totalReviews: totalReviews ? parseInt(totalReviews) : 0,
-        },
+        data: createData,
         include: {
           category: {
             select: { id: true, name: true }
@@ -862,6 +899,8 @@ router.put(
         rating,
         totalReviews,
         ingredients,
+        portionOptions,
+        preferenceGroups,
       } = req.body;
 
       const updateData = {};
@@ -879,6 +918,18 @@ router.put(
       if (rating !== undefined) updateData.rating = parseFloat(rating);
       if (totalReviews !== undefined)
         updateData.totalReviews = parseInt(totalReviews);
+
+      try {
+        const parsedPortionOptions = parseOptionalJsonField(portionOptions, 'portionOptions');
+        const parsedPreferenceGroups = parseOptionalJsonField(preferenceGroups, 'preferenceGroups');
+        if (parsedPortionOptions !== undefined) updateData.portionOptions = parsedPortionOptions;
+        if (parsedPreferenceGroups !== undefined) updateData.preferenceGroups = parsedPreferenceGroups;
+      } catch (parseError) {
+        return res.status(400).json({
+          success: false,
+          message: parseError.message || 'Invalid customization configuration',
+        });
+      }
 
       if (req.file) {
         if (food.foodImage && food.foodImage.includes("cloudinary.com")) {

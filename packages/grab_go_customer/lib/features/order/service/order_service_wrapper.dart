@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:chopper/chopper.dart';
 import 'package:flutter/foundation.dart';
+import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/features/order/service/order_service_chopper.dart';
 import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
@@ -169,6 +170,15 @@ class OrderServiceWrapper {
       final items = cartItems.entries.map((entry) {
         final itemId = entry.key.id;
         final itemType = _normalizeOrderItemType(entry.key.itemType);
+        final selectedPortionId = entry.key is FoodItem
+            ? (entry.key as FoodItem).selectedPortionId
+            : null;
+        final selectedPreferenceOptionIds = entry.key is FoodItem
+            ? (entry.key as FoodItem).selectedPreferenceOptionIds
+            : const <String>[];
+        final itemNote = entry.key is FoodItem
+            ? (entry.key as FoodItem).itemNote?.trim()
+            : null;
 
         if (itemId.isEmpty) {
           throw Exception(
@@ -181,6 +191,11 @@ class OrderServiceWrapper {
           quantity: entry.value,
           price: entry.key.price,
           itemType: itemType,
+          selectedPortionId: selectedPortionId,
+          selectedPreferenceOptionIds: selectedPreferenceOptionIds.isEmpty
+              ? null
+              : selectedPreferenceOptionIds,
+          itemNote: (itemNote != null && itemNote.isNotEmpty) ? itemNote : null,
         );
       }).toList();
 

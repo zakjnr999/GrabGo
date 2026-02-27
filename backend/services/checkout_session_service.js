@@ -164,6 +164,17 @@ const validateCartItemState = (cartItem) => {
         status: 400,
       });
     }
+    if (Array.isArray(cartItem.food.portionOptions) && cartItem.food.portionOptions.length > 0) {
+      const selectedPortionId = cartItem.selectedPortion && typeof cartItem.selectedPortion === 'object'
+        ? cartItem.selectedPortion.id
+        : null;
+      if (!selectedPortionId) {
+        throw new CheckoutSessionError(`Please re-add ${cartItem.name || 'this item'} with a portion selection`, {
+          code: 'CHECKOUT_ITEM_CUSTOMIZATION_REQUIRED',
+          status: 400,
+        });
+      }
+    }
     return;
   }
 
@@ -222,6 +233,10 @@ const toOrderItemCreate = (cartItem) => {
     quantity: cartItem.quantity,
     price: cartItem.price,
     image: cartItem.imageUrl || null,
+    selectedPortion: cartItem.selectedPortion || null,
+    selectedPreferences: cartItem.selectedPreferences || null,
+    itemNote: cartItem.itemNote || null,
+    customizationKey: cartItem.customizationKey || null,
   };
 
   if (cartItem.itemType === 'Food') data.foodId = cartItem.foodId;

@@ -50,6 +50,7 @@ const {
   evaluateCodEligibility,
   isCodDispatchAllowedStatus,
 } = require("../services/cod_service");
+const { resolveFoodCustomization } = require("../services/food_customization_service");
 
 const router = express.Router();
 
@@ -380,6 +381,24 @@ router.post(
     body("items")
       .isArray({ min: 1 })
       .withMessage("At least one item is required"),
+    body("items.*.selectedPortionId")
+      .optional({ nullable: true })
+      .isString()
+      .withMessage("items.*.selectedPortionId must be a string"),
+    body("items.*.selectedPreferenceOptionIds")
+      .optional({ nullable: true })
+      .custom((value) => {
+        if (value === null || value === undefined) return true;
+        if (Array.isArray(value)) return true;
+        if (typeof value === "object") return true;
+        if (typeof value === "string") return true;
+        return false;
+      })
+      .withMessage("items.*.selectedPreferenceOptionIds must be an array, object, or string"),
+    body("items.*.itemNote")
+      .optional({ nullable: true })
+      .isString()
+      .withMessage("items.*.itemNote must be a string"),
     body("deliveryAddress").optional(),
     body("pickupContactName").optional({ nullable: true }).isString().withMessage("pickupContactName must be a string"),
     body("pickupContactPhone").optional({ nullable: true }).isString().withMessage("pickupContactPhone must be a string"),
@@ -614,6 +633,7 @@ router.post(
                 prepTimeMinutes: food.prepTimeMinutes,
                 idField: "foodId",
                 idValue: food.id,
+                sourceItem: food,
               };
               break;
             }
@@ -728,6 +748,38 @@ router.post(
         resolvedOrderType = matchedItem.orderType;
         resolvedVendorId = matchedItem.vendorId;
 
+        let itemCustomization = {
+          selectedPortion: null,
+          selectedPreferences: null,
+          itemNote: null,
+          customizationKey: null,
+        };
+
+        if (matchedItem.itemType === "Food") {
+          let customization;
+          try {
+            customization = resolveFoodCustomization({
+              food: matchedItem.sourceItem,
+              selectedPortionId: item.selectedPortionId,
+              selectedPreferenceOptionIds: item.selectedPreferenceOptionIds,
+              itemNote: item.itemNote,
+              basePrice: matchedItem.price,
+            });
+          } catch (customizationError) {
+            return res.status(400).json({
+              success: false,
+              message: customizationError?.message || "Invalid item customization",
+            });
+          }
+          matchedItem.price = customization.unitPrice;
+          itemCustomization = customization;
+        } else if (item.selectedPortionId || item.selectedPreferenceOptionIds || item.itemNote) {
+          return res.status(400).json({
+            success: false,
+            message: "Item customizations are only supported for food items",
+          });
+        }
+
         const itemTotal = matchedItem.price * quantity;
         subtotal += itemTotal;
         if (Number.isFinite(matchedItem.prepTimeMinutes) && matchedItem.prepTimeMinutes > maxItemPrepMinutes) {
@@ -740,6 +792,13 @@ router.post(
           quantity,
           price: matchedItem.price,
           image: matchedItem.image,
+          selectedPortion: itemCustomization.selectedPortion,
+          selectedPreferences:
+            Array.isArray(itemCustomization.selectedPreferences) && itemCustomization.selectedPreferences.length > 0
+              ? itemCustomization.selectedPreferences
+              : null,
+          itemNote: itemCustomization.itemNote,
+          customizationKey: itemCustomization.customizationKey,
         };
         orderItemData[matchedItem.idField] = matchedItem.idValue;
         orderItemsData.push(orderItemData);

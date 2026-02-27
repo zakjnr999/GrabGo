@@ -96,6 +96,7 @@ class QuickReorderCard extends StatelessWidget {
                       width: 36.w,
                       height: 36.w,
                       decoration: BoxDecoration(
+                        borderRadius: const BorderRadius.only(topRight: Radius.circular(KBorderSize.borderMedium)),
                         gradient: RadialGradient(
                           center: const Alignment(1.0, -1.0),
                           radius: 1.15,

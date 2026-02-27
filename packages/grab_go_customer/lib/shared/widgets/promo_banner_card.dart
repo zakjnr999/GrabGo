@@ -172,7 +172,7 @@ class PromoBannerCard extends StatelessWidget {
                   child: _UmbrellaDiscountBadge(
                     value: discount,
                     diameter: 46.w.clamp(40.0, 54.0).toDouble(),
-                    fillColor: Colors.white.withValues(alpha: 0.95),
+                    fillColor: Colors.white,
                     textColor: colors.accentOrange,
                   ),
                 ),
@@ -279,7 +279,7 @@ class _UmbrellaDiscountBadge extends StatelessWidget {
               child: Container(
                 width: scallopRadius * 2,
                 height: scallopRadius * 2,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: fillColor.withValues(alpha: 0.65)),
+                decoration: BoxDecoration(shape: BoxShape.circle, color: fillColor),
               ),
             );
           }),

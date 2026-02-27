@@ -704,6 +704,8 @@ model Food {
   isAvailable        Boolean   @default(true)
   prepTimeMinutes    Int       @default(0)
   ingredients        String[]  @default([])
+  portionOptions     Json?
+  preferenceGroups   Json?
   rating             Float     @default(0)
   totalReviews       Int       @default(0)
   discountPercentage Int       @default(0)
@@ -1250,6 +1252,10 @@ model OrderItem {
   price          Float
   image          String?
   unit           String?
+  selectedPortion Json?
+  selectedPreferences Json?
+  itemNote       String?
+  customizationKey String?
 
   order        Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
   food         Food?         @relation(fields: [foodId], references: [id])
@@ -1314,6 +1320,10 @@ model CartItem {
   price          Float
   quantity       Int      @default(1)
   imageUrl       String?
+  selectedPortion Json?
+  selectedPreferences Json?
+  itemNote       String?
+  customizationKey String?
   addedAt        DateTime @default(now())
 
   cart         Cart          @relation(fields: [cartId], references: [id], onDelete: Cascade)

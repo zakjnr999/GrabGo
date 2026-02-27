@@ -868,10 +868,20 @@ class CartProvider extends ChangeNotifier {
     final mode = _normalizeFulfillmentMode(
       cartItem['fulfillmentMode']?.toString() ?? _fulfillmentMode,
     );
+    final customizationKey = cartItem['customizationKey']?.toString();
+    if (customizationKey != null && customizationKey.trim().isNotEmpty) {
+      return '$mode:$itemType:$id:${customizationKey.trim()}';
+    }
     return '$mode:$itemType:$id';
   }
 
   String _itemStableKey(CartItem item) {
+    if (item is FoodItem) {
+      final customizationKey = item.cartCustomizationKey?.trim();
+      if (customizationKey != null && customizationKey.isNotEmpty) {
+        return '${item.itemType}:${item.id}:$customizationKey';
+      }
+    }
     final id = item.id;
     if (id.isNotEmpty) {
       return '${item.itemType}:$id';
@@ -1105,7 +1115,10 @@ class CartProvider extends ChangeNotifier {
           cartItem['foodId']?.toString() ??
           '',
       name: itemData['name']?.toString() ?? '',
-      price: (itemData['price'] as num?)?.toDouble() ?? 0.0,
+      price:
+          (cartItem['price'] as num?)?.toDouble() ??
+          (itemData['price'] as num?)?.toDouble() ??
+          0.0,
       image:
           itemData['food_image']?.toString() ??
           itemData['image']?.toString() ??
@@ -1132,6 +1145,24 @@ class CartProvider extends ChangeNotifier {
       restaurantImage: restaurantImage,
       prepTimeMinutes: (itemData['prepTimeMinutes'] as num?)?.toInt() ?? 15,
       calories: (itemData['calories'] as num?)?.toInt() ?? 300,
+      portionOptions: ((itemData['portionOptions'] as List?) ?? const [])
+          .whereType<Map>()
+          .map((entry) => Map<String, dynamic>.from(entry))
+          .toList(growable: false),
+      preferenceGroups: ((itemData['preferenceGroups'] as List?) ?? const [])
+          .whereType<Map>()
+          .map((entry) => Map<String, dynamic>.from(entry))
+          .toList(growable: false),
+      selectedPortion: cartItem['selectedPortion'] is Map
+          ? Map<String, dynamic>.from(cartItem['selectedPortion'])
+          : null,
+      selectedPreferences:
+          ((cartItem['selectedPreferences'] as List?) ?? const [])
+              .whereType<Map>()
+              .map((entry) => Map<String, dynamic>.from(entry))
+              .toList(growable: false),
+      itemNote: cartItem['itemNote']?.toString(),
+      cartCustomizationKey: cartItem['customizationKey']?.toString(),
       deliveryTimeMinutes:
           (itemData['deliveryTimeMinutes'] as num?)?.toInt() ?? 30,
       isAvailable: effectiveItemAvailable,
@@ -1340,6 +1371,19 @@ class CartProvider extends ChangeNotifier {
 
       if (item.itemType == 'Food') {
         body['restaurantId'] = item.providerId;
+        if (item is FoodItem) {
+          final selectedPortionId = item.selectedPortionId;
+          if (selectedPortionId != null && selectedPortionId.isNotEmpty) {
+            body['selectedPortionId'] = selectedPortionId;
+          }
+          if (item.selectedPreferenceOptionIds.isNotEmpty) {
+            body['selectedPreferenceOptionIds'] = item.selectedPreferenceOptionIds;
+          }
+          final note = item.itemNote?.trim();
+          if (note != null && note.isNotEmpty) {
+            body['itemNote'] = note;
+          }
+        }
       } else if (item.itemType == 'GroceryItem') {
         body['groceryStoreId'] = item.providerId;
       } else if (item.itemType == 'PharmacyItem') {
@@ -1439,6 +1483,12 @@ class CartProvider extends ChangeNotifier {
     }
     if (normalized.contains('unavailable')) {
       return 'This item is currently unavailable.';
+    }
+    if (normalized.contains('portion')) {
+      return 'Please select a portion size before adding to cart.';
+    }
+    if (normalized.contains('preference')) {
+      return 'Please review your food preferences and try again.';
     }
     return 'Could not add item to cart. Please try again.';
   }

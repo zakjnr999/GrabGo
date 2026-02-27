@@ -94,6 +94,11 @@ class _RestaurantDetailsState extends State<RestaurantDetails>
     final allFoodItems = foodProvider.categories
         .expand((category) => category.items)
         .where((item) {
+          final currentRestaurantBackendId = widget.restaurant.backendId.trim();
+          if (currentRestaurantBackendId.isNotEmpty) {
+            return item.restaurantId.trim() == currentRestaurantBackendId;
+          }
+
           final itemSellerName = item.sellerName
               .trim()
               .toLowerCase()
@@ -107,15 +112,8 @@ class _RestaurantDetailsState extends State<RestaurantDetails>
               item.sellerId != 0 &&
               widget.restaurant.id != 0 &&
               item.sellerId == widget.restaurant.id;
-          final matchesByContains =
-              itemSellerName.contains(restaurantName) ||
-              restaurantName.contains(itemSellerName);
 
-          return matchesByName ||
-              matchesById ||
-              (matchesByContains &&
-                  itemSellerName.length > 3 &&
-                  restaurantName.length > 3);
+          return matchesByName || matchesById;
         })
         .toList();
 

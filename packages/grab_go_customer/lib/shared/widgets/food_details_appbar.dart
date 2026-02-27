@@ -21,13 +21,16 @@ class FoodDetailsAppBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    Size size = MediaQuery.sizeOf(context);
+    final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final Size size = MediaQuery.sizeOf(context);
+    final double topPadding = MediaQuery.paddingOf(context).top;
+    final double expandedHeight = size.height * 0.20;
     final bool isRestaurantClosed = foodItem is FoodItem ? !(foodItem as FoodItem).isRestaurantOpen : false;
 
     return SliverAppBar(
-      expandedHeight: size.height * 0.20,
-      backgroundColor: Colors.black,
-      surfaceTintColor: colors.backgroundPrimary,
+      expandedHeight: expandedHeight,
+      backgroundColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
       systemOverlayStyle: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
@@ -37,72 +40,93 @@ class FoodDetailsAppBar extends StatelessWidget {
       pinned: true,
       stretch: false,
       automaticallyImplyLeading: false,
-      flexibleSpace: FlexibleSpaceBar(
-        background: Stack(
-          fit: StackFit.expand,
-          children: [
-            CachedNetworkImage(
-              imageUrl: ImageOptimizer.getFullUrl(foodItem.image, width: 1200),
-              fit: BoxFit.cover,
-              memCacheWidth: 800,
-              maxHeightDiskCache: 600,
-              placeholder: (context, url) => Container(
-                height: size.height * 0.30,
-                width: double.infinity,
-                color: colors.inputBorder,
-                padding: EdgeInsets.all(80.r),
-                child: SvgPicture.asset(
-                  foodItem is FoodItem ? Assets.icons.utensilsCrossed : Assets.icons.package,
-                  package: 'grab_go_shared',
-                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                ),
-              ),
-              errorWidget: (context, url, error) => Container(
-                height: size.height * 0.30,
-                width: double.infinity,
-                color: colors.inputBorder,
-                padding: EdgeInsets.all(80.r),
-                child: SvgPicture.asset(
-                  foodItem is FoodItem ? Assets.icons.utensilsCrossed : Assets.icons.package,
-                  package: 'grab_go_shared',
-                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                ),
-              ),
+      flexibleSpace: LayoutBuilder(
+        builder: (context, constraints) {
+          final double collapsedHeight = kToolbarHeight + topPadding;
+          final double totalRange = (expandedHeight - collapsedHeight).clamp(1.0, double.infinity);
+          final double collapseT = (1 - ((constraints.maxHeight - collapsedHeight) / totalRange)).clamp(0.0, 1.0);
+
+          final Color collapsingToolbarColor = Color.lerp(
+            Colors.transparent,
+            colors.backgroundPrimary.withValues(alpha: 0.96),
+            collapseT,
+          )!;
+          final bool useDarkStatusIcons = !isDarkMode && collapseT > 0.72;
+
+          return AnnotatedRegion<SystemUiOverlayStyle>(
+            value: SystemUiOverlayStyle(
+              statusBarColor: Colors.transparent,
+              statusBarIconBrightness: useDarkStatusIcons ? Brightness.dark : Brightness.light,
+              statusBarBrightness: useDarkStatusIcons ? Brightness.light : Brightness.dark,
             ),
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.5),
-                    Colors.black.withValues(alpha: 0.2),
-                    Colors.transparent,
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.4),
-                  ],
-                  stops: const [0.0, 0.15, 0.4, 0.7, 1.0],
-                ),
-              ),
-            ),
-            if (isRestaurantClosed)
-              Positioned.fill(
-                child: Container(
-                  color: Colors.black.withValues(alpha: 0.45),
-                  alignment: Alignment.center,
-                  child: Text(
-                    "We're closed",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w700,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                CachedNetworkImage(
+                  imageUrl: ImageOptimizer.getFullUrl(foodItem.image, width: 1200),
+                  fit: BoxFit.cover,
+                  memCacheWidth: 800,
+                  maxHeightDiskCache: 600,
+                  placeholder: (context, url) => Container(
+                    height: size.height * 0.30,
+                    width: double.infinity,
+                    color: colors.inputBorder,
+                    padding: EdgeInsets.all(80.r),
+                    child: SvgPicture.asset(
+                      foodItem is FoodItem ? Assets.icons.utensilsCrossed : Assets.icons.package,
+                      package: 'grab_go_shared',
+                      colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    height: size.height * 0.30,
+                    width: double.infinity,
+                    color: colors.inputBorder,
+                    padding: EdgeInsets.all(80.r),
+                    child: SvgPicture.asset(
+                      foodItem is FoodItem ? Assets.icons.utensilsCrossed : Assets.icons.package,
+                      package: 'grab_go_shared',
+                      colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                     ),
                   ),
                 ),
-              ),
-          ],
-        ),
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Color.lerp(
+                            Colors.black.withValues(alpha: 0.56),
+                            Colors.black.withValues(alpha: 0.24),
+                            collapseT,
+                          )!,
+                          Color.lerp(Colors.black.withValues(alpha: 0.18), Colors.transparent, collapseT)!,
+                          Colors.transparent,
+                        ],
+                        stops: const [0.0, 0.35, 1.0],
+                      ),
+                    ),
+                  ),
+                ),
+                if (isRestaurantClosed)
+                  Positioned.fill(
+                    child: Container(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      alignment: Alignment.center,
+                      child: Text(
+                        "We're closed",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                Positioned.fill(child: ColoredBox(color: collapsingToolbarColor)),
+              ],
+            ),
+          );
+        },
       ),
       bottom: PreferredSize(
         preferredSize: Size.fromHeight(24.h),
@@ -115,8 +139,8 @@ class FoodDetailsAppBar extends StatelessWidget {
           ),
           child: Container(
             margin: EdgeInsets.only(top: 8.h),
-            width: 50.w,
-            height: 5.h,
+            width: 40.w,
+            height: 4.h,
             decoration: BoxDecoration(
               color: colors.textSecondary.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(10.r),
@@ -226,9 +250,9 @@ class FoodDetailsAppBar extends StatelessWidget {
         decoration: const BoxDecoration(shape: BoxShape.circle),
         child: ClipOval(
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            filter: ImageFilter.blur(sigmaX: 9, sigmaY: 9),
             child: Container(
-              decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.2), shape: BoxShape.circle),
+              decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.22), shape: BoxShape.circle),
               child: Center(child: icon),
             ),
           ),

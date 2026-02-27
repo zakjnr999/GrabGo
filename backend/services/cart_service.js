@@ -2,6 +2,7 @@ const prisma = require('../config/prisma');
 const featureFlags = require('../config/feature_flags');
 const { isRestaurantOpen } = require('../utils/restaurant');
 const { isVendorAcceptingScheduledOrders } = require('../utils/scheduled_orders');
+const { resolveFoodCustomization } = require('./food_customization_service');
 
 /**
  * Get or create cart for user
@@ -458,6 +459,9 @@ const addToCart = async (userId, itemData) => {
         groceryStoreId,
         pharmacyStoreId,
         grabMartStoreId,
+        selectedPortionId,
+        selectedPreferenceOptionIds,
+        itemNote,
         fulfillmentMode = 'delivery'
     } = itemData;
 
@@ -476,15 +480,33 @@ const addToCart = async (userId, itemData) => {
     let price;
     let itemName;
     let imageUrl;
+    let selectedPortion = null;
+    let selectedPreferences = null;
+    let customizationKey = null;
+    let normalizedItemNote = null;
 
     if (itemTypeEnum === 'Food') {
         item = await prisma.food.findUnique({ where: { id: itemId } });
         if (!item) throw new Error('Item not found');
         if (!item.isAvailable) throw new Error('Item is currently unavailable');
-        price = item.price;
+        const customization = resolveFoodCustomization({
+            food: item,
+            selectedPortionId,
+            selectedPreferenceOptionIds,
+            itemNote,
+            basePrice: item.price,
+        });
+        price = customization.unitPrice;
         itemName = item.name;
         imageUrl = item.foodImage;
+        selectedPortion = customization.selectedPortion;
+        selectedPreferences = customization.selectedPreferences;
+        customizationKey = customization.customizationKey;
+        normalizedItemNote = customization.itemNote;
     } else if (itemTypeEnum === 'GroceryItem') {
+        if (selectedPortionId || selectedPreferenceOptionIds || itemNote) {
+            throw new Error('Item customizations are only supported for food items');
+        }
         item = await prisma.groceryItem.findUnique({ where: { id: itemId } });
         if (!item) throw new Error('Item not found');
         if (!item.isAvailable) throw new Error('Item is currently unavailable');
@@ -492,6 +514,9 @@ const addToCart = async (userId, itemData) => {
         itemName = item.name;
         imageUrl = item.image;
     } else if (itemTypeEnum === 'PharmacyItem') {
+        if (selectedPortionId || selectedPreferenceOptionIds || itemNote) {
+            throw new Error('Item customizations are only supported for food items');
+        }
         item = await prisma.pharmacyItem.findUnique({ where: { id: itemId } });
         if (!item) throw new Error('Item not found');
         if (!item.isAvailable) throw new Error('Item is currently unavailable');
@@ -499,6 +524,9 @@ const addToCart = async (userId, itemData) => {
         itemName = item.name;
         imageUrl = item.image;
     } else if (itemTypeEnum === 'GrabMartItem') {
+        if (selectedPortionId || selectedPreferenceOptionIds || itemNote) {
+            throw new Error('Item customizations are only supported for food items');
+        }
         item = await prisma.grabMartItem.findUnique({ where: { id: itemId } });
         if (!item) throw new Error('Item not found');
         if (!item.isAvailable) throw new Error('Item is currently unavailable');
@@ -584,7 +612,9 @@ const addToCart = async (userId, itemData) => {
 
     // Check if item already in cart
     const existingItem = cart.items.find(cartItem => {
-        if (itemTypeEnum === 'Food') return cartItem.foodId === itemId;
+        if (itemTypeEnum === 'Food') {
+            return cartItem.foodId === itemId && (cartItem.customizationKey || null) === (customizationKey || null);
+        }
         if (itemTypeEnum === 'GroceryItem') return cartItem.groceryItemId === itemId;
         if (itemTypeEnum === 'PharmacyItem') return cartItem.pharmacyItemId === itemId;
         if (itemTypeEnum === 'GrabMartItem') return cartItem.grabMartItemId === itemId;
@@ -613,7 +643,15 @@ const addToCart = async (userId, itemData) => {
             imageUrl
         };
 
-        if (itemTypeEnum === 'Food') createData.foodId = itemId;
+        if (itemTypeEnum === 'Food') {
+            createData.foodId = itemId;
+            createData.selectedPortion = selectedPortion;
+            createData.selectedPreferences = Array.isArray(selectedPreferences) && selectedPreferences.length > 0
+                ? selectedPreferences
+                : null;
+            createData.itemNote = normalizedItemNote;
+            createData.customizationKey = customizationKey;
+        }
         else if (itemTypeEnum === 'GroceryItem') createData.groceryItemId = itemId;
         else if (itemTypeEnum === 'PharmacyItem') createData.pharmacyItemId = itemId;
         else if (itemTypeEnum === 'GrabMartItem') createData.grabMartItemId = itemId;

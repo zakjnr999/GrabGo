@@ -16,6 +16,12 @@ class FoodItem implements CartItem {
   final int calories;
   final List<String> dietaryTags;
   final List<String> ingredients;
+  final List<Map<String, dynamic>> portionOptions;
+  final List<Map<String, dynamic>> preferenceGroups;
+  final Map<String, dynamic>? selectedPortion;
+  final List<Map<String, dynamic>> selectedPreferences;
+  final String? itemNote;
+  final String? cartCustomizationKey;
   final int deliveryTimeMinutes;
   final bool isAvailable;
   final double discountPercentage;
@@ -38,6 +44,13 @@ class FoodItem implements CartItem {
 
   @override
   String get providerImage => restaurantImage;
+
+  String? get selectedPortionId => selectedPortion?['id']?.toString();
+
+  List<String> get selectedPreferenceOptionIds => selectedPreferences
+      .map((entry) => entry['optionId']?.toString() ?? '')
+      .where((value) => value.isNotEmpty)
+      .toList(growable: false);
 
   // Getter for original price before discount
   double get originalPrice {
@@ -62,6 +75,12 @@ class FoodItem implements CartItem {
     this.calories = 300,
     this.dietaryTags = const [],
     this.ingredients = const [],
+    this.portionOptions = const [],
+    this.preferenceGroups = const [],
+    this.selectedPortion,
+    this.selectedPreferences = const [],
+    this.itemNote,
+    this.cartCustomizationKey,
     this.deliveryTimeMinutes = 30,
     this.isAvailable = true,
     this.discountPercentage = 0.0,
@@ -188,6 +207,21 @@ class FoodItem implements CartItem {
       return null;
     }();
 
+    List<Map<String, dynamic>> parseMapList(dynamic value) {
+      if (value is List) {
+        return value
+            .whereType<Map>()
+            .map((entry) => Map<String, dynamic>.from(entry))
+            .toList(growable: false);
+      }
+      return const <Map<String, dynamic>>[];
+    }
+
+    Map<String, dynamic>? parseMap(dynamic value) {
+      if (value is Map) return Map<String, dynamic>.from(value);
+      return null;
+    }
+
     return FoodItem(
       id: id,
       name: name,
@@ -253,6 +287,12 @@ class FoodItem implements CartItem {
       discountEndDate: json['discountEndDate'] != null
           ? DateTime.tryParse(json['discountEndDate'].toString())
           : null,
+      portionOptions: parseMapList(json['portionOptions']),
+      preferenceGroups: parseMapList(json['preferenceGroups']),
+      selectedPortion: parseMap(json['selectedPortion']),
+      selectedPreferences: parseMapList(json['selectedPreferences']),
+      itemNote: json['itemNote']?.toString(),
+      cartCustomizationKey: json['customizationKey']?.toString(),
       orderCount:
           (json['orderCount'] as num?)?.toInt() ?? 0, // Parse from backend
       lastOrderedAt: json['lastOrderedAt'] != null
@@ -265,6 +305,47 @@ class FoodItem implements CartItem {
           json['favoriteItemType']?.toString().trim().isNotEmpty == true
           ? json['favoriteItemType'].toString().trim().toLowerCase()
           : 'food',
+    );
+  }
+
+  FoodItem withCartCustomization({
+    Map<String, dynamic>? selectedPortion,
+    List<Map<String, dynamic>> selectedPreferences = const [],
+    String? itemNote,
+    String? cartCustomizationKey,
+    double? priceOverride,
+  }) {
+    return FoodItem(
+      id: id,
+      name: name,
+      image: image,
+      description: description,
+      sellerName: sellerName,
+      sellerId: sellerId,
+      restaurantId: restaurantId,
+      restaurantImage: restaurantImage,
+      price: priceOverride ?? price,
+      rating: rating,
+      reviewCount: reviewCount,
+      prepTimeMinutes: prepTimeMinutes,
+      calories: calories,
+      dietaryTags: dietaryTags,
+      ingredients: ingredients,
+      portionOptions: portionOptions,
+      preferenceGroups: preferenceGroups,
+      selectedPortion: selectedPortion,
+      selectedPreferences: selectedPreferences,
+      itemNote: itemNote,
+      cartCustomizationKey: cartCustomizationKey,
+      deliveryTimeMinutes: deliveryTimeMinutes,
+      isAvailable: isAvailable,
+      discountPercentage: discountPercentage,
+      discountEndDate: discountEndDate,
+      orderCount: orderCount,
+      lastOrderedAt: lastOrderedAt,
+      isRestaurantOpen: isRestaurantOpen,
+      estimatedDeliveryTime: estimatedDeliveryTime,
+      favoriteItemType: favoriteItemType,
     );
   }
 
@@ -286,6 +367,12 @@ class FoodItem implements CartItem {
     'dietaryTags': dietaryTags,
     'ingredients': ingredients,
     'deliveryTimeMinutes': deliveryTimeMinutes,
+    'portionOptions': portionOptions,
+    'preferenceGroups': preferenceGroups,
+    'selectedPortion': selectedPortion,
+    'selectedPreferences': selectedPreferences,
+    'itemNote': itemNote,
+    'customizationKey': cartCustomizationKey,
     'isAvailable': isAvailable,
     'isRestaurantOpen': isRestaurantOpen,
     'discountPercentage': discountPercentage,
@@ -299,6 +386,13 @@ class FoodItem implements CartItem {
     if (identical(this, other)) return true;
     if (other is! FoodItem) return false;
 
+    final thisCustomizationKey = cartCustomizationKey?.trim();
+    final otherCustomizationKey = other.cartCustomizationKey?.trim();
+    if ((thisCustomizationKey?.isNotEmpty ?? false) ||
+        (otherCustomizationKey?.isNotEmpty ?? false)) {
+      return other.id == id && otherCustomizationKey == thisCustomizationKey;
+    }
+
     if (id.isNotEmpty && other.id.isNotEmpty) {
       return other.id == id;
     }
@@ -310,6 +404,10 @@ class FoodItem implements CartItem {
 
   @override
   int get hashCode {
+    final normalizedCustomizationKey = cartCustomizationKey?.trim();
+    if (normalizedCustomizationKey != null && normalizedCustomizationKey.isNotEmpty) {
+      return id.hashCode ^ normalizedCustomizationKey.hashCode;
+    }
     if (id.isNotEmpty) {
       return id.hashCode;
     }

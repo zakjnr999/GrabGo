@@ -68,8 +68,6 @@ class Cart extends StatelessWidget {
                 : providerNames.length == 1
                 ? providerNames.first
                 : '${providerNames.length} vendors';
-            final String orderSubtitle = '$itemCount ${itemCount == 1 ? 'item' : 'items'} • $providerLabel';
-
             return Column(
               children: [
                 Padding(
@@ -136,15 +134,36 @@ class Cart extends StatelessWidget {
                                   ),
                                 ),
 
-                                Text(
-                                  orderSubtitle,
-                                  style: TextStyle(
-                                    fontFamily: "Lato",
-                                    package: 'grab_go_shared',
-                                    color: colors.textSecondary,
-                                    fontSize: 13.sp,
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                                Row(
+                                  children: [
+                                    Text(
+                                      "$itemCount ${itemCount == 1 ? 'item' : 'items'}",
+                                      style: TextStyle(
+                                        fontFamily: "Lato",
+                                        package: 'grab_go_shared',
+                                        color: colors.textSecondary,
+                                        fontSize: 13.sp,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    SizedBox(width: 8.w),
+                                    Container(
+                                      width: 3.w,
+                                      height: 3,
+                                      decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
+                                    ),
+                                    SizedBox(width: 8.w),
+                                    Text(
+                                      providerLabel,
+                                      style: TextStyle(
+                                        fontFamily: "Lato",
+                                        package: 'grab_go_shared',
+                                        color: colors.textSecondary,
+                                        fontSize: 13.sp,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),

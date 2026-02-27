@@ -1,0 +1,78 @@
+<svg viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg">
+  <!-- Organic Soft Background Blob (Darkened for white background contrast) -->
+  <path d="M196.2,185.1 C176.5,212.4 133.7,222.9 97.4,213.3 C61.1,203.7 30.6,172.5 20.3,135.5 C10.1,98.5 21.3,55.9 48.6,31.7 C75.9,7.5 118.7,-2.9 155,6.6 C191.3,16.2 221.8,47.4 232.1,84.4 C242.3,121.4 215.9,157.8 196.2,185.1 Z" fill="#FFE4DF" />
+
+  <!-- Left Cutlery (Fork) resting under the plate -->
+  <g transform="translate(45, 140) rotate(-25)">
+    <!-- Cutlery Shadow -->
+    <g transform="translate(-4, 6)" fill="rgba(71,85,105,0.15)">
+      <path d="M -4,-25 L 4,-25 L 4,40 A 4 4 0 0 1 -4 40 Z" />
+      <path d="M -12,-40 L -12,-20 A 12 12 0 0 0 12,-20 L 12,-40" fill="none" stroke="rgba(71,85,105,0.15)" stroke-width="5" stroke-linecap="round" />
+      <line x1="0" y1="-40" x2="0" y2="-15" stroke="rgba(71,85,105,0.15)" stroke-width="5" stroke-linecap="round" />
+    </g>
+    <!-- Fork Base -->
+    <path d="M -4,-25 L 4,-25 L 4,40 A 4 4 0 0 1 -4 40 Z" fill="#94A3B8" />
+    <path d="M -12,-40 L -12,-20 A 12 12 0 0 0 12,-20 L 12,-40" fill="none" stroke="#94A3B8" stroke-width="5" stroke-linecap="round" />
+    <line x1="0" y1="-40" x2="0" y2="-15" stroke="#94A3B8" stroke-width="5" stroke-linecap="round" />
+  </g>
+
+  <!-- Right Cutlery (Knife) resting under the plate -->
+  <g transform="translate(195, 140) rotate(25)">
+    <!-- Cutlery Shadow -->
+    <g transform="translate(4, 6)" fill="rgba(71,85,105,0.15)">
+      <path d="M -4,0 L 4,0 L 4,40 A 4 4 0 0 1 -4 40 Z" />
+      <path d="M -4,0 L -4,-40 C 6,-40 8,-20 4,0 Z" />
+    </g>
+    <!-- Knife Base -->
+    <path d="M -4,0 L 4,0 L 4,40 A 4 4 0 0 1 -4 40 Z" fill="#94A3B8" />
+    <path d="M -4,0 L -4,-40 C 6,-40 8,-20 4,0 Z" fill="#94A3B8" />
+  </g>
+
+  <!-- Centerpiece: The Heart-Shaped Plate -->
+  <g transform="translate(120, 115)">
+    <!-- Outer Plate Shadow -->
+    <path d="M 0,65 C 0,65 -75,0 -75,-40 C -75,-85 -25,-85 0,-50 C 25,-85 75,-85 75,-40 C 75,0 0,65 0,65 Z" fill="rgba(71,85,105,0.15)" transform="translate(0, 12)" />
+
+    <!-- Plate Rim Edge (Creates thickness) -->
+    <path d="M 0,65 C 0,65 -75,0 -75,-40 C -75,-85 -25,-85 0,-50 C 25,-85 75,-85 75,-40 C 75,0 0,65 0,65 Z" fill="#CBD5E1" transform="translate(0, 5)" />
+
+    <!-- Plate Rim (Off-White for contrast against pure white backgrounds) -->
+    <path d="M 0,65 C 0,65 -75,0 -75,-40 C -75,-85 -25,-85 0,-50 C 25,-85 75,-85 75,-40 C 75,0 0,65 0,65 Z" fill="#F8FAFC" />
+
+    <!-- Inner Plate Dip (Soft Grey to create depth) -->
+    <path d="M 0,52 C 0,52 -60,0 -60,-32 C -60,-68 -20,-68 0,-40 C 20,-68 60,-68 60,-32 C 60,0 0,52 0,52 Z" fill="#E2E8F0" transform="translate(0, -3)" />
+
+    <!-- Inner Plate Base (White flat area) -->
+    <path d="M 0,39 C 0,39 -45,0 -45,-24 C -45,-51 -15,-51 0,-30 C 15,-51 45,-51 45,-24 C 45,0 0,39 0,39 Z" fill="#FFFFFF" transform="translate(0, -6)" />
+
+    <!-- Dashed Empty State Indicator inside the plate -->
+    <circle cx="0" cy="-8" r="16" fill="none" stroke="#94A3B8" stroke-width="3" stroke-dasharray="6 6" stroke-linecap="round" />
+  </g>
+
+  <!-- Floating Background Elements -->
+  
+  <!-- Floating Leaf -->
+  <g transform="translate(60, 55) rotate(35) scale(0.6)">
+    <path d="M 5,5 C 20,-15 40,-5 45,15 C 30,35 10,25 5,5 Z" fill="rgba(128,185,24,0.2)" />
+    <path d="M 0,0 C 15,-20 35,-10 40,10 C 25,30 5,20 0,0 Z" fill="#80B918" />
+  </g>
+
+  <!-- Floating Sparkle (Warning Orange) -->
+  <g transform="translate(195, 155) rotate(-15) scale(0.5)">
+    <path d="M 5,-10 Q 5,5 20,5 Q 5,5 5,20 Q 5,5 -10,5 Q 5,5 5,-10 Z" fill="rgba(244,162,97,0.3)" />
+    <path d="M 0,-15 Q 0,0 15,0 Q 0,0 0,15 Q 0,0 -15,0 Q 0,0 0,-15 Z" fill="#F4A261" />
+  </g>
+
+  <!-- Alert Badge: "Add" (+) Button Hovering above the plate -->
+  <g transform="translate(160, 65)">
+    <!-- Badge Shadow -->
+    <circle cx="0" cy="8" r="22" fill="rgba(230,57,70,0.2)" />
+    
+    <!-- Badge Background (Red) -->
+    <circle cx="0" cy="0" r="22" fill="#E63946" />
+    
+    <!-- Bold White '+' -->
+    <path d="M -10,0 L 10,0 M 0,-10 L 0,10" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" />
+  </g>
+
+</svg>
