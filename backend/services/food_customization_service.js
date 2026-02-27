@@ -1,4 +1,5 @@
 const MAX_ITEM_NOTE_LENGTH = 200;
+const MAX_SELECTIONS_PER_GROUP = 99;
 
 const normalizeText = (value) => {
   if (value === null || value === undefined) return '';
@@ -12,6 +13,11 @@ const normalizeId = (value) => {
 
 const toSafeNumber = (value, fallback = 0) => {
   const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const toSafeInt = (value, fallback = 0) => {
+  const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
@@ -62,13 +68,22 @@ const normalizeSelectedPreferenceOptionIds = (value) => {
   return one ? [one] : [];
 };
 
-const normalizePortionOptions = (portionOptions) => {
-  return asArray(portionOptions)
+const normalizePortionOptions = (portionOptions, { strict = false } = {}) => {
+  const seenIds = new Set();
+
+  const normalized = asArray(portionOptions)
     .map((option) => {
       if (!option || typeof option !== 'object') return null;
 
       const id = normalizeId(option.id || option.code || option.value);
       if (!id) return null;
+      if (seenIds.has(id)) {
+        if (strict) {
+          throw new Error(`portionOptions contains duplicate option id '${id}'`);
+        }
+        return null;
+      }
+      seenIds.add(id);
 
       const label = normalizeText(option.label || option.name || option.title || id);
       const quantityLabel = normalizeText(option.quantityLabel || option.quantity || option.size || '');
@@ -92,25 +107,68 @@ const normalizePortionOptions = (portionOptions) => {
       };
     })
     .filter(Boolean);
+
+  if (strict && normalized.length > 0) {
+    const activeOptions = normalized.filter((entry) => entry.isActive);
+    const activeDefaultCount = activeOptions.filter((entry) => entry.isDefault).length;
+
+    if (activeOptions.length === 0) {
+      throw new Error('portionOptions must include at least one active option');
+    }
+    if (activeDefaultCount > 1) {
+      throw new Error('portionOptions can only have one default active option');
+    }
+    if (activeOptions.length > 1 && activeDefaultCount === 0) {
+      throw new Error('portionOptions must define one default active option when multiple options are active');
+    }
+  }
+
+  return normalized;
 };
 
-const normalizePreferenceGroups = (preferenceGroups) => {
+const normalizePreferenceGroups = (preferenceGroups, { strict = false } = {}) => {
+  const seenGroupIds = new Set();
+
   return asArray(preferenceGroups)
     .map((group) => {
       if (!group || typeof group !== 'object') return null;
 
       const groupId = normalizeId(group.id || group.code || group.key);
       if (!groupId) return null;
+      if (seenGroupIds.has(groupId)) {
+        if (strict) {
+          throw new Error(`preferenceGroups contains duplicate group id '${groupId}'`);
+        }
+        return null;
+      }
+      seenGroupIds.add(groupId);
 
       const groupLabel = normalizeText(group.label || group.name || group.title || groupId) || groupId;
       const required = group.required === true;
-      const maxSelections = Math.max(1, Number.parseInt(group.maxSelections, 10) || (group.multiSelect ? 99 : 1));
+      const maxSelectionsInput = toSafeInt(group.maxSelections, group.multiSelect ? MAX_SELECTIONS_PER_GROUP : 1);
+      let maxSelections = Math.max(1, Math.min(MAX_SELECTIONS_PER_GROUP, maxSelectionsInput));
 
+      const hasExplicitMin = group.minSelections !== undefined && group.minSelections !== null && group.minSelections !== '';
+      const defaultMin = required ? 1 : 0;
+      const minSelectionsInput = toSafeInt(group.minSelections, defaultMin);
+      let minSelections = Math.max(0, Math.min(MAX_SELECTIONS_PER_GROUP, minSelectionsInput));
+      if (required && minSelections === 0) {
+        minSelections = 1;
+      }
+
+      const seenOptionIds = new Set();
       const options = asArray(group.options)
         .map((option) => {
           if (!option || typeof option !== 'object') return null;
           const id = normalizeId(option.id || option.code || option.value);
           if (!id) return null;
+          if (seenOptionIds.has(id)) {
+            if (strict) {
+              throw new Error(`preferenceGroups.${groupId} contains duplicate option id '${id}'`);
+            }
+            return null;
+          }
+          seenOptionIds.add(id);
           const label = normalizeText(option.label || option.name || option.title || id) || id;
           const isActive = option.isActive !== false;
           const priceDelta = toSafeNumber(option.priceDelta ?? option.additionalPrice ?? option.price, 0);
@@ -125,10 +183,38 @@ const normalizePreferenceGroups = (preferenceGroups) => {
         })
         .filter(Boolean);
 
+      const activeOptionCount = options.filter((option) => option.isActive).length;
+
+      if (strict) {
+        if (options.length === 0) {
+          throw new Error(`preferenceGroups.${groupId} must include at least one option`);
+        }
+        if (activeOptionCount === 0) {
+          throw new Error(`preferenceGroups.${groupId} must include at least one active option`);
+        }
+        if (minSelections > maxSelections) {
+          throw new Error(`preferenceGroups.${groupId} minSelections cannot exceed maxSelections`);
+        }
+        if (minSelections > activeOptionCount) {
+          throw new Error(`preferenceGroups.${groupId} minSelections cannot exceed active options`);
+        }
+      } else {
+        if (activeOptionCount === 0) {
+          return null;
+        }
+        if (minSelections > maxSelections) {
+          minSelections = maxSelections;
+        }
+        if (minSelections > activeOptionCount) {
+          minSelections = activeOptionCount;
+        }
+      }
+
       return {
         id: groupId,
         label: groupLabel,
         required,
+        minSelections: hasExplicitMin || required ? minSelections : 0,
         maxSelections,
         options,
       };
@@ -164,8 +250,8 @@ const resolveFoodCustomization = ({
   itemNote,
   basePrice,
 }) => {
-  const portionOptions = normalizePortionOptions(food?.portionOptions);
-  const preferenceGroups = normalizePreferenceGroups(food?.preferenceGroups);
+  const portionOptions = normalizePortionOptions(food?.portionOptions, { strict: false });
+  const preferenceGroups = normalizePreferenceGroups(food?.preferenceGroups, { strict: false });
 
   const normalizedPortionId = normalizeId(selectedPortionId);
   const normalizedPreferenceIds = normalizeSelectedPreferenceOptionIds(selectedPreferenceOptionIds);
@@ -235,9 +321,11 @@ const resolveFoodCustomization = ({
 
   preferenceGroups.forEach((group) => {
     const selectedInGroup = selectedByGroup.get(group.id) || [];
-
-    if (group.required && selectedInGroup.length === 0) {
-      throw new Error(`Please choose an option for ${group.label}`);
+    if (selectedInGroup.length < group.minSelections) {
+      if (group.minSelections <= 1) {
+        throw new Error(`Please choose an option for ${group.label}`);
+      }
+      throw new Error(`Please choose at least ${group.minSelections} option(s) for ${group.label}`);
     }
 
     if (selectedInGroup.length > group.maxSelections) {
@@ -277,9 +365,33 @@ const resolveFoodCustomization = ({
   };
 };
 
+const validateFoodCustomizationConfig = ({ portionOptions, preferenceGroups } = {}) => {
+  const normalized = {};
+
+  if (portionOptions !== undefined) {
+    if (portionOptions === null) {
+      normalized.portionOptions = null;
+    } else {
+      normalized.portionOptions = normalizePortionOptions(portionOptions, { strict: true });
+    }
+  }
+
+  if (preferenceGroups !== undefined) {
+    if (preferenceGroups === null) {
+      normalized.preferenceGroups = null;
+    } else {
+      normalized.preferenceGroups = normalizePreferenceGroups(preferenceGroups, { strict: true });
+    }
+  }
+
+  return normalized;
+};
+
 module.exports = {
   MAX_ITEM_NOTE_LENGTH,
+  MAX_SELECTIONS_PER_GROUP,
   normalizeSelectedPreferenceOptionIds,
   buildCustomizationKey,
   resolveFoodCustomization,
+  validateFoodCustomizationConfig,
 };

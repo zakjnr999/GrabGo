@@ -10,6 +10,7 @@ const {
 const { cacheMiddleware, invalidateCache } = require("../middleware/cache");
 const cache = require("../utils/cache");
 const mlClient = require("../utils/ml_client");
+const { validateFoodCustomizationConfig } = require("../services/food_customization_service");
 
 const router = express.Router();
 
@@ -740,9 +741,14 @@ router.post(
 
       let parsedPortionOptions;
       let parsedPreferenceGroups;
+      let normalizedCustomizationConfig = {};
       try {
         parsedPortionOptions = parseOptionalJsonField(portionOptions, 'portionOptions');
         parsedPreferenceGroups = parseOptionalJsonField(preferenceGroups, 'preferenceGroups');
+        normalizedCustomizationConfig = validateFoodCustomizationConfig({
+          portionOptions: parsedPortionOptions,
+          preferenceGroups: parsedPreferenceGroups,
+        });
       } catch (parseError) {
         return res.status(400).json({
           success: false,
@@ -796,8 +802,12 @@ router.post(
         totalReviews: totalReviews ? parseInt(totalReviews) : 0,
       };
 
-      if (parsedPortionOptions !== undefined) createData.portionOptions = parsedPortionOptions;
-      if (parsedPreferenceGroups !== undefined) createData.preferenceGroups = parsedPreferenceGroups;
+      if (normalizedCustomizationConfig.portionOptions !== undefined) {
+        createData.portionOptions = normalizedCustomizationConfig.portionOptions;
+      }
+      if (normalizedCustomizationConfig.preferenceGroups !== undefined) {
+        createData.preferenceGroups = normalizedCustomizationConfig.preferenceGroups;
+      }
 
       const food = await prisma.food.create({
         data: createData,
@@ -922,8 +932,16 @@ router.put(
       try {
         const parsedPortionOptions = parseOptionalJsonField(portionOptions, 'portionOptions');
         const parsedPreferenceGroups = parseOptionalJsonField(preferenceGroups, 'preferenceGroups');
-        if (parsedPortionOptions !== undefined) updateData.portionOptions = parsedPortionOptions;
-        if (parsedPreferenceGroups !== undefined) updateData.preferenceGroups = parsedPreferenceGroups;
+        const normalizedCustomizationConfig = validateFoodCustomizationConfig({
+          portionOptions: parsedPortionOptions,
+          preferenceGroups: parsedPreferenceGroups,
+        });
+        if (normalizedCustomizationConfig.portionOptions !== undefined) {
+          updateData.portionOptions = normalizedCustomizationConfig.portionOptions;
+        }
+        if (normalizedCustomizationConfig.preferenceGroups !== undefined) {
+          updateData.preferenceGroups = normalizedCustomizationConfig.preferenceGroups;
+        }
       } catch (parseError) {
         return res.status(400).json({
           success: false,

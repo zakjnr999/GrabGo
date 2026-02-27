@@ -16,10 +16,10 @@ class FoodItem implements CartItem {
   final int calories;
   final List<String> dietaryTags;
   final List<String> ingredients;
-  final List<Map<String, dynamic>> portionOptions;
-  final List<Map<String, dynamic>> preferenceGroups;
+  final List<Map<String, dynamic>>? _portionOptions;
+  final List<Map<String, dynamic>>? _preferenceGroups;
   final Map<String, dynamic>? selectedPortion;
-  final List<Map<String, dynamic>> selectedPreferences;
+  final List<Map<String, dynamic>>? _selectedPreferences;
   final String? itemNote;
   final String? cartCustomizationKey;
   final int deliveryTimeMinutes;
@@ -44,6 +44,15 @@ class FoodItem implements CartItem {
 
   @override
   String get providerImage => restaurantImage;
+
+  List<Map<String, dynamic>> get portionOptions =>
+      _portionOptions ?? const <Map<String, dynamic>>[];
+
+  List<Map<String, dynamic>> get preferenceGroups =>
+      _preferenceGroups ?? const <Map<String, dynamic>>[];
+
+  List<Map<String, dynamic>> get selectedPreferences =>
+      _selectedPreferences ?? const <Map<String, dynamic>>[];
 
   String? get selectedPortionId => selectedPortion?['id']?.toString();
 
@@ -75,10 +84,10 @@ class FoodItem implements CartItem {
     this.calories = 300,
     this.dietaryTags = const [],
     this.ingredients = const [],
-    this.portionOptions = const [],
-    this.preferenceGroups = const [],
+    List<Map<String, dynamic>>? portionOptions,
+    List<Map<String, dynamic>>? preferenceGroups,
     this.selectedPortion,
-    this.selectedPreferences = const [],
+    List<Map<String, dynamic>>? selectedPreferences,
     this.itemNote,
     this.cartCustomizationKey,
     this.deliveryTimeMinutes = 30,
@@ -91,7 +100,10 @@ class FoodItem implements CartItem {
     this.isRestaurantOpen = true,
     this.estimatedDeliveryTime = '25-30 min',
     this.favoriteItemType = 'food',
-  });
+  }) : _portionOptions = portionOptions ?? const <Map<String, dynamic>>[],
+       _preferenceGroups = preferenceGroups ?? const <Map<String, dynamic>>[],
+       _selectedPreferences =
+           selectedPreferences ?? const <Map<String, dynamic>>[];
 
   factory FoodItem.fromJson(Map<String, dynamic> json) {
     final id = json['_id']?.toString() ?? json['id']?.toString() ?? '';
@@ -405,7 +417,8 @@ class FoodItem implements CartItem {
   @override
   int get hashCode {
     final normalizedCustomizationKey = cartCustomizationKey?.trim();
-    if (normalizedCustomizationKey != null && normalizedCustomizationKey.isNotEmpty) {
+    if (normalizedCustomizationKey != null &&
+        normalizedCustomizationKey.isNotEmpty) {
       return id.hashCode ^ normalizedCustomizationKey.hashCode;
     }
     if (id.isNotEmpty) {

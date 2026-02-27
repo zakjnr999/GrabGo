@@ -7,6 +7,7 @@ import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
 import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
+import 'package:grab_go_customer/shared/widgets/food_customization_chips.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
@@ -19,7 +20,8 @@ import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
 import 'package:grab_go_customer/features/pharmacy/model/pharmacy_item.dart';
 import 'package:grab_go_customer/features/grabmart/model/grabmart_item.dart';
 import 'package:grab_go_customer/features/order/service/order_service_wrapper.dart';
-import 'package:grab_go_customer/shared/services/paystack_service.dart' as paystack;
+import 'package:grab_go_customer/shared/services/paystack_service.dart'
+    as paystack;
 import 'package:provider/provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:shimmer/shimmer.dart';
@@ -66,14 +68,21 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
   bool _showCustomTip = false;
   double _tipAmount = 0.0;
 
-  final TextEditingController _restaurantInstructionController = TextEditingController();
-  final TextEditingController _deliveryInstructionController = TextEditingController();
-  final TextEditingController _pickupContactNameController = TextEditingController();
-  final TextEditingController _pickupContactPhoneController = TextEditingController();
-  final TextEditingController _giftRecipientNameController = TextEditingController();
-  final TextEditingController _giftRecipientPhoneController = TextEditingController();
+  final TextEditingController _restaurantInstructionController =
+      TextEditingController();
+  final TextEditingController _deliveryInstructionController =
+      TextEditingController();
+  final TextEditingController _pickupContactNameController =
+      TextEditingController();
+  final TextEditingController _pickupContactPhoneController =
+      TextEditingController();
+  final TextEditingController _giftRecipientNameController =
+      TextEditingController();
+  final TextEditingController _giftRecipientPhoneController =
+      TextEditingController();
   final TextEditingController _giftNoteController = TextEditingController();
-  final TextEditingController _giftAddressDetailsController = TextEditingController();
+  final TextEditingController _giftAddressDetailsController =
+      TextEditingController();
   bool _pickupNoShowAccepted = false;
 
   @override
@@ -122,7 +131,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
       setState(() {
         _userPhone = formatted;
         if (_pickupContactPhoneController.text.isEmpty && formatted != null) {
-          _pickupContactPhoneController.text = _pickupPhoneLocalFromAny(formatted);
+          _pickupContactPhoneController.text = _pickupPhoneLocalFromAny(
+            formatted,
+          );
         }
       });
     } catch (e) {
@@ -178,7 +189,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
   void _hydrateGiftDraftFromProvider() {
     final provider = context.read<CartProvider>();
     _isHydratingGiftDraft = true;
-    _isGiftOrder = provider.fulfillmentMode == 'pickup' ? false : provider.isGiftOrderDraftEnabled;
+    _isGiftOrder = provider.fulfillmentMode == 'pickup'
+        ? false
+        : provider.isGiftOrderDraftEnabled;
     _giftRecipientNameController.text = provider.giftRecipientNameDraft;
     _giftRecipientPhoneController.text = provider.giftRecipientPhoneDraft;
     _giftNoteController.text = provider.giftNoteDraft;
@@ -240,7 +253,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         if (entry is Map<String, dynamic>) {
           addresses.add(AddressModel.fromJson(entry));
         } else if (entry is Map) {
-          addresses.add(AddressModel.fromJson(Map<String, dynamic>.from(entry)));
+          addresses.add(
+            AddressModel.fromJson(Map<String, dynamic>.from(entry)),
+          );
         }
       }
       return _CachedAddresses(addresses: addresses, isStale: isStale);
@@ -258,7 +273,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         'cachedAt': DateTime.now().toIso8601String(),
         'items': addresses.map((address) => address.toJson()).toList(),
       };
-      await CacheService.saveData(_addressCacheKey(userId), jsonEncode(payload));
+      await CacheService.saveData(
+        _addressCacheKey(userId),
+        jsonEncode(payload),
+      );
     } catch (e) {
       debugPrint('❌ Checkout: Failed to cache addresses: $e');
     }
@@ -277,13 +295,21 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
   void _applyAddresses(List<AddressModel> addresses) {
     AddressModel? selectedAddress = _findSelectedAddress(addresses);
     selectedAddress ??= addresses.isNotEmpty
-        ? addresses.firstWhere((address) => address.isDefault, orElse: () => addresses.first)
+        ? addresses.firstWhere(
+            (address) => address.isDefault,
+            orElse: () => addresses.first,
+          )
         : null;
-    final String? selectedKey = selectedAddress != null ? _addressSelectionKey(selectedAddress) : null;
+    final String? selectedKey = selectedAddress != null
+        ? _addressSelectionKey(selectedAddress)
+        : null;
     final int selectedIndex = selectedKey == null
         ? -1
-        : addresses.indexWhere((address) => _addressSelectionKey(address) == selectedKey);
-    final bool shouldExpandForSelection = selectedIndex >= _collapsedAddressCount;
+        : addresses.indexWhere(
+            (address) => _addressSelectionKey(address) == selectedKey,
+          );
+    final bool shouldExpandForSelection =
+        selectedIndex >= _collapsedAddressCount;
 
     if (!mounted) return;
     setState(() {
@@ -305,7 +331,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     });
 
     if (selectedAddress != null) {
-      _updateDeliveryLocation(selectedAddress.latitude, selectedAddress.longitude);
+      _updateDeliveryLocation(
+        selectedAddress.latitude,
+        selectedAddress.longitude,
+      );
     }
   }
 
@@ -344,7 +373,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
           if (entry is Map<String, dynamic>) {
             addresses.add(AddressModel.fromJson(entry));
           } else if (entry is Map) {
-            addresses.add(AddressModel.fromJson(Map<String, dynamic>.from(entry)));
+            addresses.add(
+              AddressModel.fromJson(Map<String, dynamic>.from(entry)),
+            );
           }
         }
       }
@@ -364,7 +395,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
   void _updateDeliveryLocation(double? latitude, double? longitude) {
     if (latitude == null || longitude == null) return;
     final cartProvider = context.read<CartProvider>();
-    cartProvider.updateDeliveryLocation(latitude: latitude, longitude: longitude);
+    cartProvider.updateDeliveryLocation(
+      latitude: latitude,
+      longitude: longitude,
+    );
   }
 
   Future<void> _openAddressPickerFromCheckout() async {
@@ -372,7 +406,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     if (!mounted) return;
 
     if (changed == true) {
-      final confirmedAddress = context.read<NativeLocationProvider>().confirmedAddress;
+      final confirmedAddress = context
+          .read<NativeLocationProvider>()
+          .confirmedAddress;
       if (confirmedAddress != null) {
         setState(() {
           _selectedAddressId = _addressSelectionKey(confirmedAddress);
@@ -381,7 +417,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
           _selectedLatitude = confirmedAddress.latitude;
           _selectedLongitude = confirmedAddress.longitude;
         });
-        _updateDeliveryLocation(confirmedAddress.latitude, confirmedAddress.longitude);
+        _updateDeliveryLocation(
+          confirmedAddress.latitude,
+          confirmedAddress.longitude,
+        );
       }
     }
 
@@ -389,7 +428,8 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
   }
 
   String _addressSelectionKey(AddressModel address) {
-    return address.id ?? '${address.label.name}_${address.formattedAddress}_${address.latitude}_${address.longitude}';
+    return address.id ??
+        '${address.label.name}_${address.formattedAddress}_${address.latitude}_${address.longitude}';
   }
 
   String _addressTitle(AddressModel address) {
@@ -410,9 +450,12 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     final cartProvider = context.read<CartProvider>();
     final confirmedAddress = locationProvider.confirmedAddress;
 
-    final bool hasInitialCoords = _selectedLatitude != null && _selectedLongitude != null;
-    final double? fallbackLat = confirmedAddress?.latitude ?? locationProvider.latitude;
-    final double? fallbackLng = confirmedAddress?.longitude ?? locationProvider.longitude;
+    final bool hasInitialCoords =
+        _selectedLatitude != null && _selectedLongitude != null;
+    final double? fallbackLat =
+        confirmedAddress?.latitude ?? locationProvider.latitude;
+    final double? fallbackLng =
+        confirmedAddress?.longitude ?? locationProvider.longitude;
     if (!hasInitialCoords && fallbackLat != null && fallbackLng != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -420,10 +463,16 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
           _selectedLatitude = fallbackLat;
           _selectedLongitude = fallbackLng;
         });
-        cartProvider.updateDeliveryLocation(latitude: fallbackLat, longitude: fallbackLng);
+        cartProvider.updateDeliveryLocation(
+          latitude: fallbackLat,
+          longitude: fallbackLng,
+        );
       });
     }
-    if (!_isLoadingAddresses && _savedAddresses.isEmpty && confirmedAddress != null && _selectedAddressId == null) {
+    if (!_isLoadingAddresses &&
+        _savedAddresses.isEmpty &&
+        confirmedAddress != null &&
+        _selectedAddressId == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         setState(() {
@@ -433,7 +482,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
           _selectedLatitude = confirmedAddress.latitude;
           _selectedLongitude = confirmedAddress.longitude;
         });
-        _updateDeliveryLocation(confirmedAddress.latitude, confirmedAddress.longitude);
+        _updateDeliveryLocation(
+          confirmedAddress.latitude,
+          confirmedAddress.longitude,
+        );
       });
     }
 
@@ -441,7 +493,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
       statusBarColor: colors.backgroundPrimary,
       statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       systemNavigationBarColor: colors.backgroundPrimary,
-      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      systemNavigationBarIconBrightness: isDark
+          ? Brightness.light
+          : Brightness.dark,
     );
 
     SystemChrome.setSystemUIOverlayStyle(systemUiOverlayStyle);
@@ -454,7 +508,8 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
           onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
           child: Consumer<CartProvider>(
             builder: (context, provider, child) {
-              final bool isPickupTab = context.watch<NavigationProvider>().selectedIndex == 1;
+              final bool isPickupTab =
+                  context.watch<NavigationProvider>().selectedIndex == 1;
               if (isPickupTab && provider.fulfillmentMode != 'pickup') {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   if (!mounted) return;
@@ -466,19 +521,38 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
               final double deliveryFee = provider.deliveryFee;
               final double serviceFee = provider.serviceFee;
               final double rainFee = provider.rainFee;
-              final bool isPickupMode = provider.fulfillmentMode == 'pickup' || isPickupTab;
-              final bool isMixedCheckout = _isMixedCartCheckout(provider, isPickupMode: isPickupMode);
+              final bool isPickupMode =
+                  provider.fulfillmentMode == 'pickup' || isPickupTab;
+              final bool isMixedCheckout = _isMixedCartCheckout(
+                provider,
+                isPickupMode: isPickupMode,
+              );
               _syncMixedCheckoutState(provider, isPickupMode: isPickupMode);
-              final double creditsApplied = _effectiveCreditsAppliedForCheckout(provider, isPickupMode: isPickupMode);
+              final double creditsApplied = _effectiveCreditsAppliedForCheckout(
+                provider,
+                isPickupMode: isPickupMode,
+              );
               final double effectiveTip = isPickupMode ? 0.0 : _tipAmount;
-              final double total = _checkoutGrandTotal(provider, isPickupMode: isPickupMode);
-              final bool isCashOnDelivery = !isMixedCheckout && _isCashOnDeliverySelected(isPickupMode: isPickupMode);
+              final double total = _checkoutGrandTotal(
+                provider,
+                isPickupMode: isPickupMode,
+              );
+              final bool isCashOnDelivery =
+                  !isMixedCheckout &&
+                  _isCashOnDeliverySelected(isPickupMode: isPickupMode);
               final double payableNowAmount = isCashOnDelivery
-                  ? _codUpfrontAmountForCheckout(provider, isPickupMode: isPickupMode)
+                  ? _codUpfrontAmountForCheckout(
+                      provider,
+                      isPickupMode: isPickupMode,
+                    )
                   : total;
               final bool isPricingLoading = provider.isPricingLoading;
-              final bool hasMoreAddresses = _savedAddresses.length > _collapsedAddressCount;
-              final int hiddenAddressCount = math.max(0, _savedAddresses.length - _collapsedAddressCount);
+              final bool hasMoreAddresses =
+                  _savedAddresses.length > _collapsedAddressCount;
+              final int hiddenAddressCount = math.max(
+                0,
+                _savedAddresses.length - _collapsedAddressCount,
+              );
               final List<AddressModel> addressesToShow = _showAllAddresses
                   ? _savedAddresses
                   : _savedAddresses.take(_collapsedAddressCount).toList();
@@ -487,13 +561,21 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: EdgeInsets.only(top: padding.top + 10, left: 20.w, right: 20.w, bottom: 16.h),
+                    padding: EdgeInsets.only(
+                      top: padding.top + 10,
+                      left: 20.w,
+                      right: 20.w,
+                      bottom: 16.h,
+                    ),
                     child: Row(
                       children: [
                         Container(
                           height: 44,
                           width: 44,
-                          decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
+                          decoration: BoxDecoration(
+                            color: colors.backgroundSecondary,
+                            shape: BoxShape.circle,
+                          ),
                           child: Material(
                             color: Colors.transparent,
                             child: InkWell(
@@ -504,7 +586,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                                 child: SvgPicture.asset(
                                   Assets.icons.navArrowLeft,
                                   package: 'grab_go_shared',
-                                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                                  colorFilter: ColorFilter.mode(
+                                    colors.textPrimary,
+                                    BlendMode.srcIn,
+                                  ),
                                 ),
                               ),
                             ),
@@ -524,7 +609,11 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                       ],
                     ),
                   ),
-                  Divider(color: colors.backgroundSecondary, height: 1.h, thickness: 1),
+                  Divider(
+                    color: colors.backgroundSecondary,
+                    height: 1.h,
+                    thickness: 1,
+                  ),
                   Expanded(
                     child: SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
@@ -533,9 +622,14 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                         children: [
                           if (!isPickupMode) ...[
                             Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 20.w,
+                                vertical: 16.h,
+                              ),
                               child: Text(
-                                _isGiftOrder ? "Recipient Delivery Address" : "Delivery Address",
+                                _isGiftOrder
+                                    ? "Recipient Delivery Address"
+                                    : "Delivery Address",
                                 style: TextStyle(
                                   fontFamily: "Lato",
                                   package: 'grab_go_shared',
@@ -550,45 +644,61 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                               _buildAddressShimmerTile(colors, isDark),
                               _buildAddressShimmerTile(colors, isDark),
                             ],
-                            if (!_isLoadingAddresses && _savedAddresses.isNotEmpty)
+                            if (!_isLoadingAddresses &&
+                                _savedAddresses.isNotEmpty)
                               AnimatedSize(
                                 duration: const Duration(milliseconds: 280),
                                 curve: Curves.easeInOut,
                                 alignment: Alignment.topCenter,
                                 clipBehavior: Clip.hardEdge,
                                 child: Column(
-                                  children: List.generate(addressesToShow.length, (index) {
-                                    final address = addressesToShow[index];
-                                    final bool showDivider = index < addressesToShow.length - 1;
+                                  children: List.generate(
+                                    addressesToShow.length,
+                                    (index) {
+                                      final address = addressesToShow[index];
+                                      final bool showDivider =
+                                          index < addressesToShow.length - 1;
 
-                                    return Column(
-                                      children: [
-                                        _buildAddressTile(
-                                          id: _addressSelectionKey(address),
-                                          title: _addressTitle(address),
-                                          phone: _userPhone,
-                                          address: address.formattedAddress,
-                                          latitude: address.latitude,
-                                          longitude: address.longitude,
-                                          context: context,
-                                        ),
-                                        if (showDivider)
-                                          Padding(
-                                            padding: EdgeInsets.only(left: 56.w, right: 20.w),
-                                            child: Divider(
-                                              height: 8.h,
-                                              thickness: 0.8,
-                                              color: colors.inputBorder.withValues(alpha: 0.35),
-                                            ),
+                                      return Column(
+                                        children: [
+                                          _buildAddressTile(
+                                            id: _addressSelectionKey(address),
+                                            title: _addressTitle(address),
+                                            phone: _userPhone,
+                                            address: address.formattedAddress,
+                                            latitude: address.latitude,
+                                            longitude: address.longitude,
+                                            context: context,
                                           ),
-                                      ],
-                                    );
-                                  }),
+                                          if (showDivider)
+                                            Padding(
+                                              padding: EdgeInsets.only(
+                                                left: 56.w,
+                                                right: 20.w,
+                                              ),
+                                              child: Divider(
+                                                height: 8.h,
+                                                thickness: 0.8,
+                                                color: colors.inputBorder
+                                                    .withValues(alpha: 0.35),
+                                              ),
+                                            ),
+                                        ],
+                                      );
+                                    },
+                                  ),
                                 ),
                               ),
-                            if (!_isLoadingAddresses && _savedAddresses.isNotEmpty && hasMoreAddresses)
-                              _buildAddressListToggle(colors, hiddenAddressCount),
-                            if (!_isLoadingAddresses && _savedAddresses.isEmpty && confirmedAddress != null)
+                            if (!_isLoadingAddresses &&
+                                _savedAddresses.isNotEmpty &&
+                                hasMoreAddresses)
+                              _buildAddressListToggle(
+                                colors,
+                                hiddenAddressCount,
+                              ),
+                            if (!_isLoadingAddresses &&
+                                _savedAddresses.isEmpty &&
+                                confirmedAddress != null)
                               _buildAddressTile(
                                 id: _addressSelectionKey(confirmedAddress),
                                 title: _addressTitle(confirmedAddress),
@@ -598,9 +708,14 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                                 longitude: confirmedAddress.longitude,
                                 context: context,
                               ),
-                            if (!_isLoadingAddresses && _savedAddresses.isEmpty && confirmedAddress == null)
+                            if (!_isLoadingAddresses &&
+                                _savedAddresses.isEmpty &&
+                                confirmedAddress == null)
                               Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 20.w,
+                                  vertical: 6.h,
+                                ),
                                 child: Text(
                                   "No saved addresses yet.",
                                   style: TextStyle(
@@ -610,7 +725,8 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                                   ),
                                 ),
                               ),
-                            if (!_isLoadingAddresses && _savedAddresses.isEmpty) _buildCurrentLocationTile(context),
+                            if (!_isLoadingAddresses && _savedAddresses.isEmpty)
+                              _buildCurrentLocationTile(context),
                             SizedBox(height: 12.h),
                             if (!isMixedCheckout) ...[
                               _buildScheduleSection(colors, provider),
@@ -622,7 +738,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                             SizedBox(height: 8.h),
                           ] else ...[
                             Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 20.w,
+                                vertical: 16.h,
+                              ),
                               child: Text(
                                 "Pickup Contact",
                                 style: TextStyle(
@@ -643,7 +762,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                                 borderColor: colors.inputBorder,
                                 keyboardType: TextInputType.name,
                                 borderRadius: 12.r,
-                                contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 14.w,
+                                  vertical: 14.h,
+                                ),
                               ),
                             ),
                             SizedBox(height: 10.h),
@@ -661,7 +783,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                                   LengthLimitingTextInputFormatter(10),
                                 ],
                                 borderRadius: 12.r,
-                                contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 14.w,
+                                  vertical: 14.h,
+                                ),
                               ),
                             ),
                             SizedBox(height: 12.h),
@@ -698,7 +823,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                           ],
 
                           Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 20.w,
+                              vertical: 16.h,
+                            ),
                             child: Text(
                               "Vendor Instructions",
                               style: TextStyle(
@@ -721,7 +849,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                                 _buildInstructionChip("Extra sauce", colors),
                                 _buildInstructionChip("Less spicy", colors),
                                 _buildInstructionChip("No ice", colors),
-                                _buildInstructionChip("Cutlery included", colors),
+                                _buildInstructionChip(
+                                  "Cutlery included",
+                                  colors,
+                                ),
                                 _buildInstructionChip("Extra napkins", colors),
                                 _buildCustomInstructionChip(colors),
                               ],
@@ -731,13 +862,20 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                           _buildAnimatedInstructionPanel(
                             isVisible: _showCustomInstruction,
                             child: Padding(
-                              padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 12.h),
+                              padding: EdgeInsets.only(
+                                left: 20.w,
+                                right: 20.w,
+                                top: 12.h,
+                              ),
                               child: Container(
                                 padding: EdgeInsets.all(16.r),
                                 decoration: BoxDecoration(
                                   color: colors.backgroundPrimary,
                                   borderRadius: BorderRadius.circular(12.r),
-                                  border: Border.all(color: colors.inputBorder, width: 0.5),
+                                  border: Border.all(
+                                    color: colors.inputBorder,
+                                    width: 0.5,
+                                  ),
                                 ),
                                 child: TextField(
                                   controller: _restaurantInstructionController,
@@ -748,7 +886,8 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                                     fontWeight: FontWeight.w500,
                                   ),
                                   decoration: InputDecoration(
-                                    hintText: "Add notes for the restaurant (e.g., no onions, extra sauce)",
+                                    hintText:
+                                        "Add notes for the restaurant (e.g., no onions, extra sauce)",
                                     hintStyle: TextStyle(
                                       color: colors.textSecondary,
                                       fontSize: 13.sp,
@@ -765,7 +904,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                           if (!isPickupMode) ...[
                             SizedBox(height: 16.h),
                             Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 20.w,
+                                vertical: 16.h,
+                              ),
                               child: Text(
                                 "Delivery Instructions",
                                 style: TextStyle(
@@ -783,10 +925,22 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                                 spacing: 8.w,
                                 runSpacing: 8.h,
                                 children: [
-                                  _buildDeliveryInstructionChip("Leave at door", colors),
-                                  _buildDeliveryInstructionChip("Ring doorbell", colors),
-                                  _buildDeliveryInstructionChip("Text on arrival", colors),
-                                  _buildDeliveryInstructionChip("Call on arrival", colors),
+                                  _buildDeliveryInstructionChip(
+                                    "Leave at door",
+                                    colors,
+                                  ),
+                                  _buildDeliveryInstructionChip(
+                                    "Ring doorbell",
+                                    colors,
+                                  ),
+                                  _buildDeliveryInstructionChip(
+                                    "Text on arrival",
+                                    colors,
+                                  ),
+                                  _buildDeliveryInstructionChip(
+                                    "Call on arrival",
+                                    colors,
+                                  ),
                                   _buildCustomDeliveryInstructionChip(colors),
                                 ],
                               ),
@@ -794,13 +948,20 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                             _buildAnimatedInstructionPanel(
                               isVisible: _showCustomDeliveryInstruction,
                               child: Padding(
-                                padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 12.h),
+                                padding: EdgeInsets.only(
+                                  left: 20.w,
+                                  right: 20.w,
+                                  top: 12.h,
+                                ),
                                 child: Container(
                                   padding: EdgeInsets.all(16.r),
                                   decoration: BoxDecoration(
                                     color: colors.backgroundPrimary,
                                     borderRadius: BorderRadius.circular(12.r),
-                                    border: Border.all(color: colors.inputBorder, width: 0.5),
+                                    border: Border.all(
+                                      color: colors.inputBorder,
+                                      width: 0.5,
+                                    ),
                                   ),
                                   child: TextField(
                                     controller: _deliveryInstructionController,
@@ -811,7 +972,8 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                                       fontWeight: FontWeight.w500,
                                     ),
                                     decoration: InputDecoration(
-                                      hintText: "Enter custom delivery instructions",
+                                      hintText:
+                                          "Enter custom delivery instructions",
                                       hintStyle: TextStyle(
                                         color: colors.textSecondary,
                                         fontSize: 13.sp,
@@ -826,7 +988,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                             ),
                             SizedBox(height: 16.h),
                             Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 20.w,
+                                vertical: 16.h,
+                              ),
                               child: Text(
                                 "Support Your Rider (Optional)",
                                 style: TextStyle(
@@ -855,13 +1020,20 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                             _buildAnimatedInstructionPanel(
                               isVisible: _showCustomTip,
                               child: Padding(
-                                padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 12.h),
+                                padding: EdgeInsets.only(
+                                  left: 20.w,
+                                  right: 20.w,
+                                  top: 12.h,
+                                ),
                                 child: Container(
                                   padding: EdgeInsets.all(16.r),
                                   decoration: BoxDecoration(
                                     color: colors.backgroundPrimary,
                                     borderRadius: BorderRadius.circular(12.r),
-                                    border: Border.all(color: colors.inputBorder, width: 0.5),
+                                    border: Border.all(
+                                      color: colors.inputBorder,
+                                      width: 0.5,
+                                    ),
                                   ),
                                   child: TextField(
                                     keyboardType: TextInputType.number,
@@ -900,7 +1072,11 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                             ),
                           ],
                           SizedBox(height: 16.h),
-                          _buildPaymentMethodSection(colors, provider, isPickupMode: isPickupMode),
+                          _buildPaymentMethodSection(
+                            colors,
+                            provider,
+                            isPickupMode: isPickupMode,
+                          ),
                           SizedBox(height: 16.h),
 
                           SizedBox(
@@ -911,7 +1087,12 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                               numberOfCurves: 24,
                               curvesOnTop: true,
                               child: Padding(
-                                padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 16.h),
+                                padding: EdgeInsets.fromLTRB(
+                                  20.w,
+                                  20.h,
+                                  20.w,
+                                  16.h,
+                                ),
                                 child: Text(
                                   "Order Summary",
                                   style: TextStyle(
@@ -932,14 +1113,31 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 20.w),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 20.w,
+                                  ),
                                   child: Column(
                                     children: [
+                                      _buildCheckoutLineItemsCard(
+                                        provider,
+                                        colors,
+                                      ),
+                                      SizedBox(height: 10.h),
                                       if (isMixedCheckout) ...[
-                                        _buildGroupedVendorBreakdown(provider, colors),
+                                        _buildGroupedVendorBreakdown(
+                                          provider,
+                                          colors,
+                                        ),
                                         SizedBox(height: 10.h),
                                       ],
-                                      _buildPriceRow(context, "Subtotal", subtotal, colors, false, false),
+                                      _buildPriceRow(
+                                        context,
+                                        "Subtotal",
+                                        subtotal,
+                                        colors,
+                                        false,
+                                        false,
+                                      ),
                                       if (!isPickupMode) ...[
                                         SizedBox(height: 6.h),
                                         _buildPriceRow(
@@ -987,9 +1185,17 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                                           false,
                                         ),
                                       ],
-                                      if (!isPickupMode && effectiveTip > 0) ...[
+                                      if (!isPickupMode &&
+                                          effectiveTip > 0) ...[
                                         SizedBox(height: 6.h),
-                                        _buildPriceRow(context, "Tip", effectiveTip, colors, false, false),
+                                        _buildPriceRow(
+                                          context,
+                                          "Tip",
+                                          effectiveTip,
+                                          colors,
+                                          false,
+                                          false,
+                                        ),
                                       ],
                                       SizedBox(height: 6.h),
                                       _buildTotalRow(
@@ -1003,15 +1209,20 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                                   ),
                                 ),
                                 Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 20.w,
+                                    vertical: 8.h,
+                                  ),
                                   child: Text(
                                     _formatEstimatedDelivery(
                                       provider.cartItems,
                                       providerCount: provider.providerCount,
                                       minMinutes: provider.estimatedDeliveryMin,
                                       maxMinutes: provider.estimatedDeliveryMax,
-                                      completionMinMinutes: provider.estimatedDeliveryCompletionMin,
-                                      completionMaxMinutes: provider.estimatedDeliveryCompletionMax,
+                                      completionMinMinutes: provider
+                                          .estimatedDeliveryCompletionMin,
+                                      completionMaxMinutes: provider
+                                          .estimatedDeliveryCompletionMax,
                                       isPickupMode: isPickupMode,
                                     ),
                                     style: TextStyle(
@@ -1030,14 +1241,27 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                   ),
 
                   Container(
-                    padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 16.h, bottom: padding.bottom + 16.h),
+                    padding: EdgeInsets.only(
+                      left: 20.w,
+                      right: 20.w,
+                      top: 16.h,
+                      bottom: padding.bottom + 16.h,
+                    ),
                     decoration: BoxDecoration(
                       color: colors.backgroundPrimary,
-                      border: Border(top: BorderSide(color: colors.backgroundSecondary, width: 1)),
+                      border: Border(
+                        top: BorderSide(
+                          color: colors.backgroundSecondary,
+                          width: 1,
+                        ),
+                      ),
                     ),
 
                     child: GestureDetector(
-                      onTap: _isProcessingPayment ? null : () => _onProceedToPayment(context, provider, colors),
+                      onTap: _isProcessingPayment
+                          ? null
+                          : () =>
+                                _onProceedToPayment(context, provider, colors),
                       child: Material(
                         color: Colors.transparent,
                         child: InkWell(
@@ -1049,19 +1273,29 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                               color: _isProcessingPayment
                                   ? colors.accentOrange.withValues(alpha: 0.5)
                                   : colors.accentOrange,
-                              borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                              borderRadius: BorderRadius.circular(
+                                KBorderSize.borderMedium,
+                              ),
                             ),
                             child: Center(
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    _isProcessingPayment ? "Confirming..." : "Confirm order",
-                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15.sp),
+                                    _isProcessingPayment
+                                        ? "Confirming..."
+                                        : "Confirm order",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 15.sp,
+                                    ),
                                   ),
                                   if (!_isProcessingPayment)
                                     Text(
-                                      payableNowAmount > 0 ? " (GHS ${payableNowAmount.toStringAsFixed(2)})" : "",
+                                      payableNowAmount > 0
+                                          ? " (GHS ${payableNowAmount.toStringAsFixed(2)})"
+                                          : "",
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.w800,
@@ -1109,7 +1343,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
             ? Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: infoType == null ? null : () => _showFeeInfoSheet(context, colors, infoType),
+                  onTap: infoType == null
+                      ? null
+                      : () => _showFeeInfoSheet(context, colors, infoType),
                   borderRadius: BorderRadius.circular(999),
                   child: Padding(
                     padding: EdgeInsets.all(8.0.r),
@@ -1118,7 +1354,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                       package: "grab_go_shared",
                       height: 10.h,
                       width: 10.w,
-                      colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                      colorFilter: ColorFilter.mode(
+                        colors.textSecondary,
+                        BlendMode.srcIn,
+                      ),
                     ),
                   ),
                 ),
@@ -1158,24 +1397,38 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         children: [
           Text(
             "Total Amount",
-            style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const Spacer(),
           Text(
             "...",
-            style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       );
     }
 
-    final double? originalTotal = creditsApplied > 0 ? total + creditsApplied : null;
+    final double? originalTotal = creditsApplied > 0
+        ? total + creditsApplied
+        : null;
 
     return Row(
       children: [
         Text(
           "Total Amount",
-          style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontSize: 16.sp,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         const Spacer(),
         if (originalTotal != null)
@@ -1193,11 +1446,19 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                 ),
                 TextSpan(
                   text: " / ",
-                  style: TextStyle(color: colors.textSecondary, fontSize: 16.sp, fontWeight: FontWeight.w400),
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
                 TextSpan(
                   text: "GHS ${total.toStringAsFixed(2)}",
-                  style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color: colors.textPrimary,
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -1205,13 +1466,21 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         else
           Text(
             "GHS ${total.toStringAsFixed(2)}",
-            style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w600,
+            ),
           ),
       ],
     );
   }
 
-  void _showFeeInfoSheet(BuildContext context, AppColorsExtension colors, _FeeInfoType type) {
+  void _showFeeInfoSheet(
+    BuildContext context,
+    AppColorsExtension colors,
+    _FeeInfoType type,
+  ) {
     final title = type == _FeeInfoType.delivery
         ? "Delivery Fee"
         : type == _FeeInfoType.service
@@ -1227,39 +1496,52 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         ? const [
             _FeeInfoDetail(
               title: "Distance-based",
-              body: "Calculated using the distance from the vendor to your delivery address.",
+              body:
+                  "Calculated using the distance from the vendor to your delivery address.",
             ),
             _FeeInfoDetail(
               title: "Fair limits",
-              body: "A minimum and maximum are applied to keep pricing predictable.",
+              body:
+                  "A minimum and maximum are applied to keep pricing predictable.",
             ),
-            _FeeInfoDetail(title: "Courier coverage", body: "Helps cover rider time, fuel, and delivery handling."),
+            _FeeInfoDetail(
+              title: "Courier coverage",
+              body: "Helps cover rider time, fuel, and delivery handling.",
+            ),
           ]
         : type == _FeeInfoType.service
         ? const [
             _FeeInfoDetail(
               title: "Platform support",
-              body: "Keeps the app running, including customer support and order processing.",
+              body:
+                  "Keeps the app running, including customer support and order processing.",
             ),
             _FeeInfoDetail(
               title: "Order value based",
-              body: "Scales with your subtotal so larger orders contribute slightly more.",
+              body:
+                  "Scales with your subtotal so larger orders contribute slightly more.",
             ),
             _FeeInfoDetail(
               title: "Lower delivery fees",
-              body: "Helps reduce delivery charges by spreading costs across orders.",
+              body:
+                  "Helps reduce delivery charges by spreading costs across orders.",
             ),
           ]
         : const [
             _FeeInfoDetail(
               title: "Weather-based",
-              body: "Applied only when active rain is detected for your delivery area.",
+              body:
+                  "Applied only when active rain is detected for your delivery area.",
             ),
             _FeeInfoDetail(
               title: "Rider safety",
-              body: "Helps cover extra time and protective handling in wet conditions.",
+              body:
+                  "Helps cover extra time and protective handling in wet conditions.",
             ),
-            _FeeInfoDetail(title: "Transparent pricing", body: "The fee is fixed and visible before checkout."),
+            _FeeInfoDetail(
+              title: "Transparent pricing",
+              body: "The fee is fixed and visible before checkout.",
+            ),
           ];
 
     showModalBottomSheet<void>(
@@ -1282,25 +1564,40 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                 child: Container(
                   width: 36.w,
                   height: 4.h,
-                  decoration: BoxDecoration(color: colors.divider, borderRadius: BorderRadius.circular(999)),
+                  decoration: BoxDecoration(
+                    color: colors.divider,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
                 ),
               ),
               SizedBox(height: 14.h),
               Text(
                 title,
-                style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w800),
+                style: TextStyle(
+                  color: colors.textPrimary,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               SizedBox(height: 8.h),
               Text(
                 description,
-                style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  color: colors.textSecondary,
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               SizedBox(height: 12.h),
               ...details.map((detail) => _buildInfoDetail(detail, colors)),
               SizedBox(height: 6.h),
               Text(
                 "Fees can vary by location, vendor, and promotions.",
-                style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  color: colors.textSecondary,
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),
@@ -1319,7 +1616,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
             width: 6.w,
             height: 6.w,
             margin: EdgeInsets.only(top: 6.h),
-            decoration: BoxDecoration(color: colors.accentOrange, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: colors.accentOrange,
+              shape: BoxShape.circle,
+            ),
           ),
           SizedBox(width: 10.w),
           Expanded(
@@ -1328,12 +1628,20 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
               children: [
                 Text(
                   detail.title,
-                  style: TextStyle(color: colors.textPrimary, fontSize: 12.sp, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    color: colors.textPrimary,
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 SizedBox(height: 2.h),
                 Text(
                   detail.body,
-                  style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -1343,19 +1651,31 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     );
   }
 
-  bool _isMixedCartCheckout(CartProvider provider, {required bool isPickupMode}) {
+  bool _isMixedCartCheckout(
+    CartProvider provider, {
+    required bool isPickupMode,
+  }) {
     return !isPickupMode && provider.providerCount > 1;
   }
 
-  void _syncMixedCheckoutState(CartProvider provider, {required bool isPickupMode}) {
-    final isMixedCheckout = _isMixedCartCheckout(provider, isPickupMode: isPickupMode);
+  void _syncMixedCheckoutState(
+    CartProvider provider, {
+    required bool isPickupMode,
+  }) {
+    final isMixedCheckout = _isMixedCartCheckout(
+      provider,
+      isPickupMode: isPickupMode,
+    );
     if (!isMixedCheckout) return;
 
-    final bool shouldResetPaymentMethod = _selectedPaymentMethod != _CheckoutPaymentMethod.card;
+    final bool shouldResetPaymentMethod =
+        _selectedPaymentMethod != _CheckoutPaymentMethod.card;
     final bool shouldDisableSchedule = _isScheduleEnabled;
     final bool shouldDisableGift = _isGiftOrder;
 
-    if (!shouldResetPaymentMethod && !shouldDisableSchedule && !shouldDisableGift) {
+    if (!shouldResetPaymentMethod &&
+        !shouldDisableSchedule &&
+        !shouldDisableGift) {
       return;
     }
 
@@ -1381,25 +1701,36 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
   }
 
   bool _isCashOnDeliverySelected({required bool isPickupMode}) {
-    return !isPickupMode && _selectedPaymentMethod == _CheckoutPaymentMethod.cash;
+    return !isPickupMode &&
+        _selectedPaymentMethod == _CheckoutPaymentMethod.cash;
   }
 
   String _selectedPaymentMethodApiValue({required bool isPickupMode}) {
-    return _isCashOnDeliverySelected(isPickupMode: isPickupMode) ? "cash" : "card";
+    return _isCashOnDeliverySelected(isPickupMode: isPickupMode)
+        ? "cash"
+        : "card";
   }
 
   String _selectedPaymentMethodLabel({required bool isPickupMode}) {
-    return _isCashOnDeliverySelected(isPickupMode: isPickupMode) ? "Cash on Delivery" : "Paystack";
+    return _isCashOnDeliverySelected(isPickupMode: isPickupMode)
+        ? "Cash on Delivery"
+        : "Paystack";
   }
 
-  double _effectiveCreditsAppliedForCheckout(CartProvider provider, {required bool isPickupMode}) {
+  double _effectiveCreditsAppliedForCheckout(
+    CartProvider provider, {
+    required bool isPickupMode,
+  }) {
     if (_isCashOnDeliverySelected(isPickupMode: isPickupMode)) {
       return 0.0;
     }
     return provider.creditsApplied;
   }
 
-  double _checkoutGrandTotal(CartProvider provider, {required bool isPickupMode}) {
+  double _checkoutGrandTotal(
+    CartProvider provider, {
+    required bool isPickupMode,
+  }) {
     final double tipAmount = isPickupMode ? 0.0 : _tipAmount;
     final double baseTotal = provider.total + tipAmount;
     if (_isCashOnDeliverySelected(isPickupMode: isPickupMode)) {
@@ -1408,19 +1739,31 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     return baseTotal;
   }
 
-  double _codUpfrontAmountForCheckout(CartProvider provider, {required bool isPickupMode}) {
+  double _codUpfrontAmountForCheckout(
+    CartProvider provider, {
+    required bool isPickupMode,
+  }) {
     if (isPickupMode) {
       return _checkoutGrandTotal(provider, isPickupMode: isPickupMode);
     }
     return provider.deliveryFee + provider.rainFee;
   }
 
-  double _codRemainingAmountForCheckout(CartProvider provider, {required bool isPickupMode}) {
+  double _codRemainingAmountForCheckout(
+    CartProvider provider, {
+    required bool isPickupMode,
+  }) {
     if (!_isCashOnDeliverySelected(isPickupMode: isPickupMode)) {
       return 0.0;
     }
-    final orderTotal = _checkoutGrandTotal(provider, isPickupMode: isPickupMode);
-    final upfrontAmount = _codUpfrontAmountForCheckout(provider, isPickupMode: isPickupMode);
+    final orderTotal = _checkoutGrandTotal(
+      provider,
+      isPickupMode: isPickupMode,
+    );
+    final upfrontAmount = _codUpfrontAmountForCheckout(
+      provider,
+      isPickupMode: isPickupMode,
+    );
     return math.max(0, orderTotal - upfrontAmount);
   }
 
@@ -1436,20 +1779,25 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     setState(() {
       _isCheckingCodEligibility = false;
       _codEligibility = result;
-      if (!result.eligible && _selectedPaymentMethod == _CheckoutPaymentMethod.cash) {
+      if (!result.eligible &&
+          _selectedPaymentMethod == _CheckoutPaymentMethod.cash) {
         _selectedPaymentMethod = _CheckoutPaymentMethod.card;
       }
     });
     return result;
   }
 
-  _CodEligibilitySheetContent _buildCodEligibilitySheetContent(CodEligibilityResult eligibility) {
+  _CodEligibilitySheetContent _buildCodEligibilitySheetContent(
+    CodEligibilityResult eligibility,
+  ) {
     switch (eligibility.code) {
       case 'COD_TRUST_THRESHOLD_NOT_MET':
         final delivered = eligibility.deliveredPrepaidOrders ?? 0;
         final minimum = eligibility.minPrepaidDeliveredOrders ?? delivered;
         final remaining = math.max(0, minimum - delivered);
-        final progress = minimum > 0 ? '$delivered / $minimum prepaid delivered orders completed' : null;
+        final progress = minimum > 0
+            ? '$delivered / $minimum prepaid delivered orders completed'
+            : null;
         return _CodEligibilitySheetContent(
           title: 'Unlock Cash on Delivery',
           message: remaining > 0
@@ -1466,24 +1814,36 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         return const _CodEligibilitySheetContent(
           title: 'Add Phone Number',
           message: 'Cash on delivery requires a phone number on your account.',
-          steps: ['Open Profile settings.', 'Add your phone number.', 'Verify the number with OTP.'],
+          steps: [
+            'Open Profile settings.',
+            'Add your phone number.',
+            'Verify the number with OTP.',
+          ],
         );
       case 'COD_PHONE_NOT_VERIFIED':
         return const _CodEligibilitySheetContent(
           title: 'Verify Your Phone',
           message: 'Your phone number must be verified before COD can be used.',
-          steps: ['Open Profile settings.', 'Tap phone verification.', 'Complete OTP verification.'],
+          steps: [
+            'Open Profile settings.',
+            'Tap phone verification.',
+            'Complete OTP verification.',
+          ],
         );
       case 'COD_ACTIVE_ORDER_EXISTS':
         return const _CodEligibilitySheetContent(
           title: 'Complete Current COD Order',
           message: 'You already have an active cash-on-delivery order.',
-          steps: ['Wait for the current COD order to be completed.', 'Then return to checkout and select COD again.'],
+          steps: [
+            'Wait for the current COD order to be completed.',
+            'Then return to checkout and select COD again.',
+          ],
         );
       case 'COD_DISABLED_NO_SHOW':
         return const _CodEligibilitySheetContent(
           title: 'COD Temporarily Disabled',
-          message: 'COD is disabled on your account due to previous no-show activity.',
+          message:
+              'COD is disabled on your account due to previous no-show activity.',
           steps: [
             'Use Pay Online for upcoming orders.',
             'Complete orders successfully to restore trust.',
@@ -1529,31 +1889,51 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                 child: Container(
                   width: 36.w,
                   height: 4.h,
-                  decoration: BoxDecoration(color: colors.divider, borderRadius: BorderRadius.circular(999)),
+                  decoration: BoxDecoration(
+                    color: colors.divider,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
                 ),
               ),
               SizedBox(height: 14.h),
               Text(
                 content.title,
-                style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w800),
+                style: TextStyle(
+                  color: colors.textPrimary,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               SizedBox(height: 8.h),
               Text(
                 content.message,
-                style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  color: colors.textSecondary,
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               if (content.progress != null) ...[
                 SizedBox(height: 10.h),
                 Container(
                   width: double.infinity,
-                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 10.w,
+                    vertical: 8.h,
+                  ),
                   decoration: BoxDecoration(
                     color: colors.backgroundSecondary,
-                    borderRadius: BorderRadius.circular(KBorderSize.borderSmall),
+                    borderRadius: BorderRadius.circular(
+                      KBorderSize.borderSmall,
+                    ),
                   ),
                   child: Text(
                     content.progress!,
-                    style: TextStyle(color: colors.textPrimary, fontSize: 12.sp, fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                      color: colors.textPrimary,
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
@@ -1569,14 +1949,21 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                         child: Container(
                           width: 5.w,
                           height: 5.h,
-                          decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: colors.textSecondary,
+                          ),
                         ),
                       ),
                       SizedBox(width: 8.w),
                       Expanded(
                         child: Text(
                           step,
-                          style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                            color: colors.textSecondary,
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ],
@@ -1604,7 +1991,8 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
       AppToastMessage.show(
         context: context,
         backgroundColor: context.appColors.error,
-        message: "We couldn't check COD eligibility right now. Please try again.",
+        message:
+            "We couldn't check COD eligibility right now. Please try again.",
         maxLines: 3,
       );
       return;
@@ -1620,19 +2008,29 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     _showCodEligibilityBottomSheet(eligibility);
   }
 
-  Future<void> _onProceedToPayment(BuildContext context, CartProvider provider, AppColorsExtension colors) async {
+  Future<void> _onProceedToPayment(
+    BuildContext context,
+    CartProvider provider,
+    AppColorsExtension colors,
+  ) async {
     if (_isProcessingPayment) return;
 
-    final bool isPickupTab = context.read<NavigationProvider>().selectedIndex == 1;
+    final bool isPickupTab =
+        context.read<NavigationProvider>().selectedIndex == 1;
     if (isPickupTab && provider.fulfillmentMode != 'pickup') {
       await provider.setFulfillmentMode('pickup');
       if (!mounted) return;
     }
 
     final bool isPickupMode = provider.fulfillmentMode == 'pickup';
-    final bool isMixedCheckout = _isMixedCartCheckout(provider, isPickupMode: isPickupMode);
+    final bool isMixedCheckout = _isMixedCartCheckout(
+      provider,
+      isPickupMode: isPickupMode,
+    );
     if (isMixedCheckout) {
-      if (_selectedPaymentMethod != _CheckoutPaymentMethod.card || _isGiftOrder || _isScheduleEnabled) {
+      if (_selectedPaymentMethod != _CheckoutPaymentMethod.card ||
+          _isGiftOrder ||
+          _isScheduleEnabled) {
         setState(() {
           _selectedPaymentMethod = _CheckoutPaymentMethod.card;
           _isGiftOrder = false;
@@ -1648,7 +2046,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         notify: false,
       );
     }
-    final bool wantsCashOnDelivery = _isCashOnDeliverySelected(isPickupMode: isPickupMode);
+    final bool wantsCashOnDelivery = _isCashOnDeliverySelected(
+      isPickupMode: isPickupMode,
+    );
     if (!isPickupMode && !isMixedCheckout && wantsCashOnDelivery) {
       final eligibility = _codEligibility ?? await _refreshCodEligibility();
       if (!mounted) return;
@@ -1659,7 +2059,8 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
           AppToastMessage.show(
             context: context,
             backgroundColor: colors.error,
-            message: "We couldn't verify COD eligibility right now. Please try again.",
+            message:
+                "We couldn't verify COD eligibility right now. Please try again.",
             maxLines: 3,
           );
         }
@@ -1677,11 +2078,17 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     }
 
     if (provider.cartItems.isEmpty) {
-      AppToastMessage.show(context: context, backgroundColor: colors.error, message: "Your cart is empty.");
+      AppToastMessage.show(
+        context: context,
+        backgroundColor: colors.error,
+        message: "Your cart is empty.",
+      );
       return;
     }
 
-    final bool hasValidScheduleSelection = _ensureScheduleSelectionAvailable(provider);
+    final bool hasValidScheduleSelection = _ensureScheduleSelectionAvailable(
+      provider,
+    );
     if (!hasValidScheduleSelection) {
       AppToastMessage.show(
         context: context,
@@ -1697,7 +2104,12 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
       allowClosedVendor: _shouldAllowClosedVendorPreCheck(provider),
     );
     if (preSyncIssue != null) {
-      AppToastMessage.show(context: context, message: preSyncIssue, backgroundColor: colors.error, maxLines: 3);
+      AppToastMessage.show(
+        context: context,
+        message: preSyncIssue,
+        backgroundColor: colors.error,
+        maxLines: 3,
+      );
       return;
     }
 
@@ -1724,7 +2136,8 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
       AppToastMessage.show(
         context: context,
         backgroundColor: colors.error,
-        message: "Couldn't verify latest availability. Please refresh and try again.",
+        message:
+            "Couldn't verify latest availability. Please refresh and try again.",
         maxLines: 3,
       );
       return;
@@ -1755,17 +2168,28 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
       allowClosedVendor: _shouldAllowClosedVendorPreCheck(provider),
     );
     if (postSyncIssue != null) {
-      AppToastMessage.show(context: context, message: postSyncIssue, backgroundColor: colors.error, maxLines: 3);
+      AppToastMessage.show(
+        context: context,
+        message: postSyncIssue,
+        backgroundColor: colors.error,
+        maxLines: 3,
+      );
       return;
     }
 
     if (_selectedLatitude != null && _selectedLongitude != null) {
-      provider.updateDeliveryLocation(latitude: _selectedLatitude, longitude: _selectedLongitude);
+      provider.updateDeliveryLocation(
+        latitude: _selectedLatitude,
+        longitude: _selectedLongitude,
+      );
     }
 
     if (provider.fulfillmentMode == 'pickup') {
-      final normalizedPickupPhone = _normalizeGhanaPhone(_pickupContactPhoneController.text);
-      if (_pickupContactNameController.text.trim().isEmpty || _pickupContactPhoneController.text.trim().isEmpty) {
+      final normalizedPickupPhone = _normalizeGhanaPhone(
+        _pickupContactPhoneController.text,
+      );
+      if (_pickupContactNameController.text.trim().isEmpty ||
+          _pickupContactPhoneController.text.trim().isEmpty) {
         AppToastMessage.show(
           context: context,
           backgroundColor: colors.error,
@@ -1835,16 +2259,25 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     _showPaymentConfirmationSheet(context, provider, colors);
   }
 
-  String? _getPrePaymentBlockingIssue(CartProvider provider, {bool allowClosedVendor = false}) {
+  String? _getPrePaymentBlockingIssue(
+    CartProvider provider, {
+    bool allowClosedVendor = false,
+  }) {
     if (provider.cartItems.isEmpty) return "Your cart is empty.";
 
     final scheduleAvailability = provider.scheduleAvailability;
-    final vendorIsAcceptingOrders = _parseBool(scheduleAvailability?['isAcceptingOrders'], defaultValue: true);
+    final vendorIsAcceptingOrders = _parseBool(
+      scheduleAvailability?['isAcceptingOrders'],
+      defaultValue: true,
+    );
     if (!vendorIsAcceptingOrders) {
       return "This vendor is currently unavailable for new orders.";
     }
 
-    final vendorIsOpenNow = _parseBool(scheduleAvailability?['isOpen'], defaultValue: true);
+    final vendorIsOpenNow = _parseBool(
+      scheduleAvailability?['isOpen'],
+      defaultValue: true,
+    );
     final vendorIsAcceptingScheduledOrders = _parseBool(
       scheduleAvailability?['isAcceptingScheduledOrders'],
       defaultValue: true,
@@ -1874,9 +2307,11 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
 
       if (item is GroceryItem && (item.stock <= 0 || quantity > item.stock)) {
         outOfStockItems.add(item);
-      } else if (item is PharmacyItem && (item.stock <= 0 || quantity > item.stock)) {
+      } else if (item is PharmacyItem &&
+          (item.stock <= 0 || quantity > item.stock)) {
         outOfStockItems.add(item);
-      } else if (item is GrabMartItem && (item.stock <= 0 || quantity > item.stock)) {
+      } else if (item is GrabMartItem &&
+          (item.stock <= 0 || quantity > item.stock)) {
         outOfStockItems.add(item);
       }
     }
@@ -1886,7 +2321,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     }
 
     if (unavailableItems.isNotEmpty) {
-      final names = unavailableItems.take(2).map((item) => item.name).join(", ");
+      final names = unavailableItems
+          .take(2)
+          .map((item) => item.name)
+          .join(", ");
       final suffix = unavailableItems.length > 2 ? " and more" : "";
       return "Some items are unavailable: $names$suffix. Please update your cart.";
     }
@@ -1900,21 +2338,44 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     return null;
   }
 
-  void _showPaymentConfirmationSheet(BuildContext context, CartProvider provider, AppColorsExtension colors) {
+  void _showPaymentConfirmationSheet(
+    BuildContext context,
+    CartProvider provider,
+    AppColorsExtension colors,
+  ) {
     final parentContext = context;
-    final addressText = _selectedAddressDetails.isNotEmpty ? _selectedAddressDetails : _selectedAddress;
+    final addressText = _selectedAddressDetails.isNotEmpty
+        ? _selectedAddressDetails
+        : _selectedAddress;
     final isPickupMode = provider.fulfillmentMode == 'pickup';
-    final isMixedCheckout = _isMixedCartCheckout(provider, isPickupMode: isPickupMode);
+    final isMixedCheckout = _isMixedCartCheckout(
+      provider,
+      isPickupMode: isPickupMode,
+    );
     final double subtotal = provider.subtotal;
     final double deliveryFee = isPickupMode ? 0 : provider.deliveryFee;
     final double serviceFee = provider.serviceFee;
     final double rainFee = isPickupMode ? 0 : provider.rainFee;
-    final double creditsApplied = _effectiveCreditsAppliedForCheckout(provider, isPickupMode: isPickupMode);
+    final double creditsApplied = _effectiveCreditsAppliedForCheckout(
+      provider,
+      isPickupMode: isPickupMode,
+    );
     final double effectiveTip = isPickupMode ? 0.0 : _tipAmount;
-    final double total = _checkoutGrandTotal(provider, isPickupMode: isPickupMode);
-    final bool isCashOnDelivery = !isMixedCheckout && _isCashOnDeliverySelected(isPickupMode: isPickupMode);
-    final double codUpfrontAmount = _codUpfrontAmountForCheckout(provider, isPickupMode: isPickupMode);
-    final double codRemainingAmount = _codRemainingAmountForCheckout(provider, isPickupMode: isPickupMode);
+    final double total = _checkoutGrandTotal(
+      provider,
+      isPickupMode: isPickupMode,
+    );
+    final bool isCashOnDelivery =
+        !isMixedCheckout &&
+        _isCashOnDeliverySelected(isPickupMode: isPickupMode);
+    final double codUpfrontAmount = _codUpfrontAmountForCheckout(
+      provider,
+      isPickupMode: isPickupMode,
+    );
+    final double codRemainingAmount = _codRemainingAmountForCheckout(
+      provider,
+      isPickupMode: isPickupMode,
+    );
 
     showModalBottomSheet<void>(
       context: context,
@@ -1936,27 +2397,46 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                 child: Container(
                   width: 36.w,
                   height: 4.h,
-                  decoration: BoxDecoration(color: colors.divider, borderRadius: BorderRadius.circular(999)),
+                  decoration: BoxDecoration(
+                    color: colors.divider,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
                 ),
               ),
               SizedBox(height: 14.h),
               Text(
                 "Confirm Payment",
-                style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w800),
+                style: TextStyle(
+                  color: colors.textPrimary,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               SizedBox(height: 12.h),
               _buildSummaryBlock(
-                isPickupMode ? "Pickup Contact" : (_isGiftOrder ? "Recipient Address" : "Delivery Address"),
-                isPickupMode ? "${_pickupContactNameController.text.trim()} • ${_pickupPhoneDisplay()}" : addressText,
+                isPickupMode
+                    ? "Pickup Contact"
+                    : (_isGiftOrder ? "Recipient Address" : "Delivery Address"),
+                isPickupMode
+                    ? "${_pickupContactNameController.text.trim()} • ${_pickupPhoneDisplay()}"
+                    : addressText,
                 colors,
               ),
               if (!isPickupMode) ...[
                 SizedBox(height: 10.h),
-                _buildSummaryBlock("Delivery Time", _buildDeliveryTimeSummaryText(), colors),
+                _buildSummaryBlock(
+                  "Delivery Time",
+                  _buildDeliveryTimeSummaryText(),
+                  colors,
+                ),
               ],
               if (!isPickupMode && _isGiftOrder) ...[
                 SizedBox(height: 10.h),
-                _buildSummaryBlock("Gift Delivery", _buildGiftSummaryText(), colors),
+                _buildSummaryBlock(
+                  "Gift Delivery",
+                  _buildGiftSummaryText(),
+                  colors,
+                ),
               ],
               SizedBox(height: 10.h),
               _buildSummaryBlock(
@@ -1966,13 +2446,18 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                     : "Paystack (Card, Mobile Money & Bank Transfer)",
                 colors,
               ),
+              SizedBox(height: 10.h),
+              _buildCheckoutLineItemsCard(provider, colors, compact: true),
               if (isMixedCheckout) ...[
                 SizedBox(height: 10.h),
                 _buildGroupedVendorBreakdown(provider, colors, compact: true),
               ],
               SizedBox(height: 14.h),
               _buildSummaryRow("Subtotal", subtotal, colors),
-              if (!isPickupMode) ...[SizedBox(height: 6.h), _buildSummaryRow("Delivery Fee", deliveryFee, colors)],
+              if (!isPickupMode) ...[
+                SizedBox(height: 6.h),
+                _buildSummaryRow("Delivery Fee", deliveryFee, colors),
+              ],
               SizedBox(height: 6.h),
               _buildSummaryRow("Service Fee", serviceFee, colors),
               if (!isPickupMode && rainFee > 0) ...[
@@ -1993,12 +2478,21 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                 SizedBox(height: 10.h),
                 _buildSummaryRow("Pay Online", codUpfrontAmount, colors),
                 SizedBox(height: 6.h),
-                _buildSummaryRow("Cash at Delivery", codRemainingAmount, colors),
+                _buildSummaryRow(
+                  "Cash at Delivery",
+                  codRemainingAmount,
+                  colors,
+                ),
               ],
               SizedBox(height: 10.h),
               Divider(color: colors.backgroundSecondary, height: 1),
               SizedBox(height: 10.h),
-              _buildSummaryRow(isCashOnDelivery ? "Order Total" : "Total", total, colors, isEmphasis: true),
+              _buildSummaryRow(
+                isCashOnDelivery ? "Order Total" : "Total",
+                total,
+                colors,
+                isEmphasis: true,
+              ),
               SizedBox(height: 16.h),
               AppButton(
                 width: double.infinity,
@@ -2010,7 +2504,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                 buttonText: isCashOnDelivery
                     ? "Pay Online (GHS ${codUpfrontAmount.toStringAsFixed(2)})"
                     : "Pay Now (GHS ${total.toStringAsFixed(2)})",
-                textStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800),
+                textStyle: TextStyle(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w800,
+                ),
                 textColor: Colors.white,
                 padding: EdgeInsets.symmetric(vertical: 16.h),
                 borderRadius: KBorderSize.borderMedium,
@@ -2022,7 +2519,11 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildSummaryBlock(String title, String value, AppColorsExtension colors) {
+  Widget _buildSummaryBlock(
+    String title,
+    String value,
+    AppColorsExtension colors,
+  ) {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(12.r),
@@ -2035,19 +2536,32 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         children: [
           Text(
             title,
-            style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: colors.textSecondary,
+              fontSize: 11.sp,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           SizedBox(height: 6.h),
           Text(
             value,
-            style: TextStyle(color: colors.textPrimary, fontSize: 13.sp, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSummaryRow(String label, double amount, AppColorsExtension colors, {bool isEmphasis = false}) {
+  Widget _buildSummaryRow(
+    String label,
+    double amount,
+    AppColorsExtension colors, {
+    bool isEmphasis = false,
+  }) {
     final displayAmount = "GHS ${amount.toStringAsFixed(2)}";
     return Row(
       children: [
@@ -2072,14 +2586,134 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     );
   }
 
-  List<_CheckoutVendorGroup> _collectCheckoutVendorGroups(CartProvider provider, Map<CartItem, int> cartItems) {
+  List<MapEntry<CartItem, int>> _sortedCheckoutEntries(
+    Map<CartItem, int> cartItems,
+  ) {
+    final entries = cartItems.entries.toList(growable: false);
+    entries.sort((a, b) {
+      final providerCompare = a.key.providerName.toLowerCase().compareTo(
+        b.key.providerName.toLowerCase(),
+      );
+      if (providerCompare != 0) return providerCompare;
+      return a.key.name.toLowerCase().compareTo(b.key.name.toLowerCase());
+    });
+    return entries;
+  }
+
+  Widget _buildCheckoutLineItemsCard(
+    CartProvider provider,
+    AppColorsExtension colors, {
+    bool compact = false,
+  }) {
+    if (provider.cartItems.isEmpty) return const SizedBox.shrink();
+    final entries = _sortedCheckoutEntries(provider.cartItems);
+    final showProviderName = provider.providerCount > 1;
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(compact ? 10.r : 12.r),
+      decoration: BoxDecoration(
+        color: compact ? colors.backgroundSecondary : colors.backgroundPrimary,
+        borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+        border: Border.all(
+          color: colors.inputBorder.withValues(alpha: 0.35),
+          width: 0.8,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Order Items",
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontSize: compact ? 11.sp : 12.sp,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          SizedBox(height: compact ? 8.h : 10.h),
+          for (int index = 0; index < entries.length; index++) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${entries[index].key.name} x${entries[index].value}',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: colors.textPrimary,
+                          fontSize: compact ? 11.sp : 12.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      if (showProviderName) ...[
+                        SizedBox(height: 2.h),
+                        Text(
+                          entries[index].key.providerName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: colors.textSecondary,
+                            fontSize: compact ? 9.sp : 10.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                      if (entries[index].key is FoodItem) ...[
+                        SizedBox(height: 6.h),
+                        FoodCustomizationChips(
+                          item: entries[index].key as FoodItem,
+                          colors: colors,
+                          compact: true,
+                          maxPreferenceLabels: compact ? 2 : 3,
+                          maxNoteLength: compact ? 24 : 32,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                SizedBox(width: 10.w),
+                Text(
+                  'GHS ${(entries[index].key.price * entries[index].value).toStringAsFixed(2)}',
+                  style: TextStyle(
+                    color: colors.textPrimary,
+                    fontSize: compact ? 11.sp : 12.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+            if (index < entries.length - 1) ...[
+              SizedBox(height: compact ? 8.h : 10.h),
+              Divider(
+                height: 1,
+                color: colors.inputBorder.withValues(alpha: 0.30),
+              ),
+              SizedBox(height: compact ? 8.h : 10.h),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
+  List<_CheckoutVendorGroup> _collectCheckoutVendorGroups(
+    CartProvider provider,
+    Map<CartItem, int> cartItems,
+  ) {
     final grouped = <String, _CheckoutVendorGroupMutable>{};
 
     for (final entry in cartItems.entries) {
       final item = entry.key;
       final quantity = entry.value;
       final providerId = item.providerId.trim();
-      final providerName = item.providerName.trim().isNotEmpty ? item.providerName.trim() : 'Vendor';
+      final providerName = item.providerName.trim().isNotEmpty
+          ? item.providerName.trim()
+          : 'Vendor';
       final key = provider.buildVendorGroupKey(
         itemType: item.itemType,
         providerId: providerId,
@@ -2090,7 +2724,12 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
 
       grouped.putIfAbsent(
         key,
-        () => _CheckoutVendorGroupMutable(providerName: providerName, itemCount: 0, subtotal: 0, etaLabel: etaLabel),
+        () => _CheckoutVendorGroupMutable(
+          providerName: providerName,
+          itemCount: 0,
+          subtotal: 0,
+          etaLabel: etaLabel,
+        ),
       );
       grouped[key]!.itemCount += quantity;
       grouped[key]!.subtotal += subtotal;
@@ -2109,7 +2748,11 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         .toList(growable: false);
   }
 
-  Widget _buildGroupedVendorBreakdown(CartProvider provider, AppColorsExtension colors, {bool compact = false}) {
+  Widget _buildGroupedVendorBreakdown(
+    CartProvider provider,
+    AppColorsExtension colors, {
+    bool compact = false,
+  }) {
     final groups = _collectCheckoutVendorGroups(provider, provider.cartItems);
     if (groups.isEmpty) return const SizedBox.shrink();
 
@@ -2148,7 +2791,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
               ),
               SizedBox(width: 8.w),
               Padding(
-                padding: EdgeInsets.only(top: groups[index].etaLabel == null ? 0 : 1.h),
+                padding: EdgeInsets.only(
+                  top: groups[index].etaLabel == null ? 0 : 1.h,
+                ),
                 child: Text(
                   '${groups[index].itemCount} ${groups[index].itemCount == 1 ? 'item' : 'items'}',
                   style: TextStyle(
@@ -2160,7 +2805,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
               ),
               SizedBox(width: 12.w),
               Padding(
-                padding: EdgeInsets.only(top: groups[index].etaLabel == null ? 0 : 1.h),
+                padding: EdgeInsets.only(
+                  top: groups[index].etaLabel == null ? 0 : 1.h,
+                ),
                 child: Text(
                   'GHS ${groups[index].subtotal.toStringAsFixed(2)}',
                   style: TextStyle(
@@ -2184,7 +2831,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         decoration: BoxDecoration(
           color: colors.backgroundSecondary,
           borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-          border: Border.all(color: colors.inputBorder.withValues(alpha: 0.35), width: 0.8),
+          border: Border.all(
+            color: colors.inputBorder.withValues(alpha: 0.35),
+            width: 0.8,
+          ),
         ),
         child: content,
       );
@@ -2196,14 +2846,21 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
         borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-        border: Border.all(color: colors.inputBorder.withValues(alpha: 0.35), width: 0.8),
+        border: Border.all(
+          color: colors.inputBorder.withValues(alpha: 0.35),
+          width: 0.8,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             "Vendor Breakdown",
-            style: TextStyle(color: colors.textPrimary, fontSize: 12.sp, fontWeight: FontWeight.w800),
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w800,
+            ),
           ),
           SizedBox(height: 8.h),
           content,
@@ -2212,7 +2869,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     );
   }
 
-  Future<void> _handlePaystackPayment(BuildContext context, CartProvider provider) async {
+  Future<void> _handlePaystackPayment(
+    BuildContext context,
+    CartProvider provider,
+  ) async {
     if (_isProcessingPayment) return;
 
     setState(() {
@@ -2235,7 +2895,8 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
       AppToastMessage.show(
         context: context,
         backgroundColor: context.appColors.error,
-        message: "Couldn't verify latest availability. Please refresh and try again.",
+        message:
+            "Couldn't verify latest availability. Please refresh and try again.",
         maxLines: 3,
       );
       return;
@@ -2245,7 +2906,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
       setState(() {
         _isProcessingPayment = false;
       });
-      AppToastMessage.show(context: context, message: "Some items in your cart are no longer available.");
+      AppToastMessage.show(
+        context: context,
+        message: "Some items in your cart are no longer available.",
+      );
       return;
     }
 
@@ -2282,9 +2946,17 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     final double subtotal = provider.subtotal;
     final bool isPickupMode = provider.fulfillmentMode == 'pickup';
     final double deliveryFee = isPickupMode ? 0.0 : provider.deliveryFee;
-    final bool isMixedCheckout = _isMixedCartCheckout(provider, isPickupMode: isPickupMode);
-    final bool isCashOnDelivery = !isMixedCheckout && _isCashOnDeliverySelected(isPickupMode: isPickupMode);
-    final double orderGrandTotal = _checkoutGrandTotal(provider, isPickupMode: isPickupMode);
+    final bool isMixedCheckout = _isMixedCartCheckout(
+      provider,
+      isPickupMode: isPickupMode,
+    );
+    final bool isCashOnDelivery =
+        !isMixedCheckout &&
+        _isCashOnDeliverySelected(isPickupMode: isPickupMode);
+    final double orderGrandTotal = _checkoutGrandTotal(
+      provider,
+      isPickupMode: isPickupMode,
+    );
     CreateOrderResult? createdOrder;
     CreateCheckoutSessionResult? createdSession;
     String? orderId;
@@ -2320,7 +2992,12 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
           codRemainingCashAmount: null,
         );
       } else {
-        createdOrder = await _createOrder(context, subtotal, deliveryFee, orderGrandTotal);
+        createdOrder = await _createOrder(
+          context,
+          subtotal,
+          deliveryFee,
+          orderGrandTotal,
+        );
         orderId = createdOrder?.orderId;
         if (orderId == null) {
           throw Exception('Failed to create order');
@@ -2329,11 +3006,16 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         expectedOnlineAmount = isCashOnDelivery
             ? math.max(
                 0,
-                createdOrder?.codUpfrontAmount ?? _codUpfrontAmountForCheckout(provider, isPickupMode: isPickupMode),
+                createdOrder?.codUpfrontAmount ??
+                    _codUpfrontAmountForCheckout(
+                      provider,
+                      isPickupMode: isPickupMode,
+                    ),
               )
             : orderGrandTotal;
         expectedCodRemainingAmount = isCashOnDelivery
-            ? (createdOrder?.codRemainingCashOnDelivery ?? math.max(0, orderGrandTotal - expectedOnlineAmount))
+            ? (createdOrder?.codRemainingCashOnDelivery ??
+                  math.max(0, orderGrandTotal - expectedOnlineAmount))
             : null;
 
         paymentData = _buildPaymentCompletePayload(
@@ -2342,8 +3024,12 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
           isGroupedOrder: false,
           orderNumber: createdOrder?.orderNumber,
           giftDeliveryCode: createdOrder?.giftDeliveryCode,
-          paymentMethod: _selectedPaymentMethodApiValue(isPickupMode: isPickupMode),
-          paymentMethodLabel: _selectedPaymentMethodLabel(isPickupMode: isPickupMode),
+          paymentMethod: _selectedPaymentMethodApiValue(
+            isPickupMode: isPickupMode,
+          ),
+          paymentMethodLabel: _selectedPaymentMethodLabel(
+            isPickupMode: isPickupMode,
+          ),
           orderGrandTotal: orderGrandTotal,
           paidOnlineAmount: expectedOnlineAmount,
           codRemainingCashAmount: expectedCodRemainingAmount,
@@ -2355,8 +3041,14 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
           _isProcessingPayment = false;
         });
         final confirmationResult = sessionId != null
-            ? await _confirmCheckoutSessionPayment(sessionId: sessionId, reference: 'credits-only')
-            : await _confirmOrderPayment(orderId: orderId!, reference: 'credits-only');
+            ? await _confirmCheckoutSessionPayment(
+                sessionId: sessionId,
+                reference: 'credits-only',
+              )
+            : await _confirmOrderPayment(
+                orderId: orderId!,
+                reference: 'credits-only',
+              );
         paymentData = _mergePaymentResultIntoPayload(
           paymentData,
           confirmationResult: confirmationResult,
@@ -2366,13 +3058,18 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         if (confirmationResult.success) {
           _handlePaymentSuccess(context, paymentData: paymentData);
         } else {
-          _showErrorDialog(context, 'Payment confirmation failed. Please try again.');
+          _showErrorDialog(
+            context,
+            'Payment confirmation failed. Please try again.',
+          );
         }
         return;
       }
 
       final init = sessionId != null
-          ? await orderService.initializeCheckoutSessionPaystackPayment(sessionId: sessionId)
+          ? await orderService.initializeCheckoutSessionPaystackPayment(
+              sessionId: sessionId,
+            )
           : await orderService.initializePaystackPayment(orderId: orderId!);
       final authUrl = init.authorizationUrl;
       final reference = init.reference;
@@ -2380,7 +3077,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
       final paidOnlineAmount = init.paymentAmount ?? expectedOnlineAmount;
       final codRemainingCashAmount =
           init.codRemainingCashAmount ??
-          (isCashOnDelivery ? (expectedCodRemainingAmount ?? math.max(0, orderGrandTotal - paidOnlineAmount)) : null);
+          (isCashOnDelivery
+              ? (expectedCodRemainingAmount ??
+                    math.max(0, orderGrandTotal - paidOnlineAmount))
+              : null);
       paymentData = {
         ...paymentData,
         'paymentScope': init.paymentScope,
@@ -2399,7 +3099,8 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         reference: reference,
       );
 
-      paymentSucceeded = result.status == paystack.PaystackPaymentStatus.success;
+      paymentSucceeded =
+          result.status == paystack.PaystackPaymentStatus.success;
       if (result.status == paystack.PaystackPaymentStatus.success ||
           result.status == paystack.PaystackPaymentStatus.unknown) {
         if (!mounted) return;
@@ -2453,7 +3154,8 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
   String? _getOrderCreationFailureToastMessage(Object error) {
     final rawError = error.toString().toLowerCase();
 
-    if (rawError.contains('scheduled_order_vendor_disabled') || rawError.contains('not accepting scheduled orders')) {
+    if (rawError.contains('scheduled_order_vendor_disabled') ||
+        rawError.contains('not accepting scheduled orders')) {
       return "This vendor is not accepting scheduled orders right now.";
     }
 
@@ -2463,7 +3165,8 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     if (rawError.contains('cod_trust_threshold_not_met')) {
       return "Complete more prepaid orders to unlock cash on delivery.";
     }
-    if (rawError.contains('cod_phone_not_verified') || rawError.contains('cod_phone_required')) {
+    if (rawError.contains('cod_phone_not_verified') ||
+        rawError.contains('cod_phone_required')) {
       return "Please verify your phone number to use cash on delivery.";
     }
     if (rawError.contains('cod_active_order_exists')) {
@@ -2501,7 +3204,8 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
 
     final isVendorUnavailable =
         rawError.contains('store/restaurant not found or inactive') ||
-        rawError.contains('store/restaurant') && rawError.contains('inactive') ||
+        rawError.contains('store/restaurant') &&
+            rawError.contains('inactive') ||
         rawError.contains('vendor') && rawError.contains('closed') ||
         rawError.contains('restaurant') && rawError.contains('closed') ||
         rawError.contains('store is currently closed') ||
@@ -2536,14 +3240,26 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     final cart = context.read<CartProvider>();
     final orderService = OrderServiceWrapper();
     final isPickupMode = cart.fulfillmentMode == 'pickup';
-    final selectedPaymentMethod = _selectedPaymentMethodApiValue(isPickupMode: isPickupMode);
+    final selectedPaymentMethod = _selectedPaymentMethodApiValue(
+      isPickupMode: isPickupMode,
+    );
     final shouldCreateGiftOrder = !isPickupMode && _isGiftOrder;
     final selectedScheduleSlot = !isPickupMode ? _selectedScheduleSlot() : null;
-    final deliveryTimeType = selectedScheduleSlot != null ? 'scheduled' : 'asap';
-    final scheduledForAtIso = selectedScheduleSlot?.startAt.toUtc().toIso8601String();
-    final giftRecipientName = shouldCreateGiftOrder ? _giftRecipientNameController.text.trim() : null;
-    final giftRecipientPhone = shouldCreateGiftOrder ? _normalizeGhanaPhone(_giftRecipientPhoneController.text) : null;
-    final giftNote = shouldCreateGiftOrder ? _giftNoteController.text.trim() : null;
+    final deliveryTimeType = selectedScheduleSlot != null
+        ? 'scheduled'
+        : 'asap';
+    final scheduledForAtIso = selectedScheduleSlot?.startAt
+        .toUtc()
+        .toIso8601String();
+    final giftRecipientName = shouldCreateGiftOrder
+        ? _giftRecipientNameController.text.trim()
+        : null;
+    final giftRecipientPhone = shouldCreateGiftOrder
+        ? _normalizeGhanaPhone(_giftRecipientPhoneController.text)
+        : null;
+    final giftNote = shouldCreateGiftOrder
+        ? _giftNoteController.text.trim()
+        : null;
 
     try {
       final createOrderResult = await orderService.createOrder(
@@ -2554,8 +3270,12 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         deliveryAddress: isPickupMode ? null : _selectedAddress,
         deliveryLatitude: isPickupMode ? null : _selectedLatitude,
         deliveryLongitude: isPickupMode ? null : _selectedLongitude,
-        pickupContactName: isPickupMode ? _pickupContactNameController.text.trim() : null,
-        pickupContactPhone: isPickupMode ? _normalizeGhanaPhone(_pickupContactPhoneController.text) : null,
+        pickupContactName: isPickupMode
+            ? _pickupContactNameController.text.trim()
+            : null,
+        pickupContactPhone: isPickupMode
+            ? _normalizeGhanaPhone(_pickupContactPhoneController.text)
+            : null,
         acceptNoShowPolicy: isPickupMode ? _pickupNoShowAccepted : null,
         noShowPolicyVersion: isPickupMode ? "v1" : null,
         paymentMethod: selectedPaymentMethod,
@@ -2567,7 +3287,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         isGiftOrder: shouldCreateGiftOrder,
         giftRecipientName: shouldCreateGiftOrder ? giftRecipientName : null,
         giftRecipientPhone: shouldCreateGiftOrder ? giftRecipientPhone : null,
-        giftNote: shouldCreateGiftOrder && giftNote != null && giftNote.isNotEmpty ? giftNote : null,
+        giftNote:
+            shouldCreateGiftOrder && giftNote != null && giftNote.isNotEmpty
+            ? giftNote
+            : null,
       );
 
       return createOrderResult;
@@ -2577,7 +3300,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     }
   }
 
-  Future<CreateCheckoutSessionResult?> _createCheckoutSession(BuildContext context) async {
+  Future<CreateCheckoutSessionResult?> _createCheckoutSession(
+    BuildContext context,
+  ) async {
     final cart = context.read<CartProvider>();
     final orderService = OrderServiceWrapper();
     final isPickupMode = cart.fulfillmentMode == 'pickup';
@@ -2606,7 +3331,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     }
   }
 
-  Future<ConfirmPaymentResult> _confirmOrderPayment({required String orderId, required String reference}) async {
+  Future<ConfirmPaymentResult> _confirmOrderPayment({
+    required String orderId,
+    required String reference,
+  }) async {
     final orderService = OrderServiceWrapper();
     return orderService.confirmPayment(orderId: orderId, reference: reference);
   }
@@ -2616,7 +3344,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     required String reference,
   }) async {
     final orderService = OrderServiceWrapper();
-    return await orderService.confirmCheckoutSessionPayment(sessionId: sessionId, reference: reference);
+    return await orderService.confirmCheckoutSessionPayment(
+      sessionId: sessionId,
+      reference: reference,
+    );
   }
 
   Future<void> _releaseOrderCreditHold({required String orderId}) async {
@@ -2628,7 +3359,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     }
   }
 
-  Future<void> _releaseCheckoutSessionCreditHold({required String sessionId}) async {
+  Future<void> _releaseCheckoutSessionCreditHold({
+    required String sessionId,
+  }) async {
     try {
       final orderService = OrderServiceWrapper();
       await orderService.releaseCheckoutSessionCreditHold(sessionId: sessionId);
@@ -2659,7 +3392,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     final taxAmount = cart.tax;
     final double effectiveTip = isPickupMode ? 0.0 : _tipAmount;
     final bool isGiftOrder = !isPickupMode && _isGiftOrder;
-    final String? normalizedGiftPhone = isGiftOrder ? _normalizeGhanaPhone(_giftRecipientPhoneController.text) : null;
+    final String? normalizedGiftPhone = isGiftOrder
+        ? _normalizeGhanaPhone(_giftRecipientPhoneController.text)
+        : null;
     final onlinePaidAmount = paidOnlineAmount ?? orderGrandTotal;
 
     return {
@@ -2682,7 +3417,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
       'orderNumber': orderNumber ?? _generateOrderNumber(),
       'timestamp': DateTime.now().toIso8601String(),
       'isGiftOrder': isGiftOrder,
-      'giftRecipientName': isGiftOrder ? _giftRecipientNameController.text.trim() : null,
+      'giftRecipientName': isGiftOrder
+          ? _giftRecipientNameController.text.trim()
+          : null,
       'giftRecipientPhone': normalizedGiftPhone,
       'giftDeliveryCode': isGiftOrder ? giftDeliveryCode : null,
     };
@@ -2695,13 +3432,18 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
   }) {
     final merged = <String, dynamic>{...payload};
     final previousTotal = _asDouble(merged['total']) ?? 0.0;
-    final orderGrandTotal = _asDouble(merged['orderGrandTotal']) ?? previousTotal;
-    final confirmedExternalAmount = confirmationResult.externalPaymentAmount ?? previousTotal;
+    final orderGrandTotal =
+        _asDouble(merged['orderGrandTotal']) ?? previousTotal;
+    final confirmedExternalAmount =
+        confirmationResult.externalPaymentAmount ?? previousTotal;
     final confirmedCodRemaining =
         confirmationResult.codRemainingCashAmount ??
-        (isCashOnDelivery ? math.max(0, orderGrandTotal - confirmedExternalAmount) : null);
+        (isCashOnDelivery
+            ? math.max(0, orderGrandTotal - confirmedExternalAmount)
+            : null);
 
-    merged['paymentScope'] = confirmationResult.paymentScope ?? merged['paymentScope'];
+    merged['paymentScope'] =
+        confirmationResult.paymentScope ?? merged['paymentScope'];
     merged['total'] = confirmedExternalAmount;
     merged['orderGrandTotal'] = orderGrandTotal;
     merged['codRemainingCashAmount'] = confirmedCodRemaining;
@@ -2714,11 +3456,17 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     return null;
   }
 
-  void _handlePaymentSuccess(BuildContext context, {required Map<String, dynamic> paymentData}) {
+  void _handlePaymentSuccess(
+    BuildContext context, {
+    required Map<String, dynamic> paymentData,
+  }) {
     context.go('/paymentComplete', extra: paymentData);
   }
 
-  void _handlePaymentFailure(BuildContext context, {Map<String, dynamic>? paymentData}) {
+  void _handlePaymentFailure(
+    BuildContext context, {
+    Map<String, dynamic>? paymentData,
+  }) {
     if (paymentData == null) {
       _showErrorDialog(context, "Payment failed. Please try again.");
       return;
@@ -2736,21 +3484,29 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
   String _getConcatenatedNotes() {
     List<String> notesParts = [];
 
-    if (_selectedInstructions.isNotEmpty || _restaurantInstructionController.text.isNotEmpty) {
+    if (_selectedInstructions.isNotEmpty ||
+        _restaurantInstructionController.text.isNotEmpty) {
       notesParts.add(
         "Restaurant: ${[..._selectedInstructions, if (_restaurantInstructionController.text.isNotEmpty) _restaurantInstructionController.text].join(', ')}",
       );
     }
 
-    final isPickupMode = context.read<CartProvider>().fulfillmentMode == 'pickup';
-    if (!isPickupMode && (_selectedDeliveryInstructions.isNotEmpty || _deliveryInstructionController.text.isNotEmpty)) {
+    final isPickupMode =
+        context.read<CartProvider>().fulfillmentMode == 'pickup';
+    if (!isPickupMode &&
+        (_selectedDeliveryInstructions.isNotEmpty ||
+            _deliveryInstructionController.text.isNotEmpty)) {
       notesParts.add(
         "Delivery: ${[..._selectedDeliveryInstructions, if (_deliveryInstructionController.text.isNotEmpty) _deliveryInstructionController.text].join(', ')}",
       );
     }
 
-    if (!isPickupMode && _isGiftOrder && _giftAddressDetailsController.text.trim().isNotEmpty) {
-      notesParts.add("Gift drop-off details: ${_giftAddressDetailsController.text.trim()}");
+    if (!isPickupMode &&
+        _isGiftOrder &&
+        _giftAddressDetailsController.text.trim().isNotEmpty) {
+      notesParts.add(
+        "Gift drop-off details: ${_giftAddressDetailsController.text.trim()}",
+      );
     }
 
     return notesParts.join(" | ");
@@ -2780,25 +3536,55 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
       ),
       child: Row(
         children: [
-          _buildShimmerBox(width: 24.w, height: 24.h, colors: colors, isDark: isDark, shape: BoxShape.circle),
+          _buildShimmerBox(
+            width: 24.w,
+            height: 24.h,
+            colors: colors,
+            isDark: isDark,
+            shape: BoxShape.circle,
+          ),
           SizedBox(width: 14.w),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildShimmerBox(width: 70.w, height: 14.h, colors: colors, isDark: isDark, borderRadius: 6.r),
+                _buildShimmerBox(
+                  width: 70.w,
+                  height: 14.h,
+                  colors: colors,
+                  isDark: isDark,
+                  borderRadius: 6.r,
+                ),
                 SizedBox(height: 10.h),
                 Row(
                   children: [
-                    _buildShimmerBox(width: 12.w, height: 12.h, colors: colors, isDark: isDark, borderRadius: 3.r),
+                    _buildShimmerBox(
+                      width: 12.w,
+                      height: 12.h,
+                      colors: colors,
+                      isDark: isDark,
+                      borderRadius: 3.r,
+                    ),
                     SizedBox(width: 6.w),
-                    _buildShimmerBox(width: 120.w, height: 10.h, colors: colors, isDark: isDark, borderRadius: 4.r),
+                    _buildShimmerBox(
+                      width: 120.w,
+                      height: 10.h,
+                      colors: colors,
+                      isDark: isDark,
+                      borderRadius: 4.r,
+                    ),
                   ],
                 ),
                 SizedBox(height: 6.h),
                 Row(
                   children: [
-                    _buildShimmerBox(width: 12.w, height: 12.h, colors: colors, isDark: isDark, borderRadius: 3.r),
+                    _buildShimmerBox(
+                      width: 12.w,
+                      height: 12.h,
+                      colors: colors,
+                      isDark: isDark,
+                      borderRadius: 3.r,
+                    ),
                     SizedBox(width: 6.w),
                     Expanded(
                       child: _buildShimmerBox(
@@ -2815,7 +3601,13 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
             ),
           ),
           SizedBox(width: 8.w),
-          _buildShimmerBox(width: 32.w, height: 32.h, colors: colors, isDark: isDark, shape: BoxShape.circle),
+          _buildShimmerBox(
+            width: 32.w,
+            height: 32.h,
+            colors: colors,
+            isDark: isDark,
+            shape: BoxShape.circle,
+          ),
         ],
       ),
     );
@@ -2829,7 +3621,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         onTap: _openAddressPickerFromCheckout,
         child: Container(
           padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
-          decoration: BoxDecoration(color: colors.accentOrange.withValues(alpha: 0.1)),
+          decoration: BoxDecoration(
+            color: colors.accentOrange.withValues(alpha: 0.1),
+          ),
           child: Row(
             children: [
               SvgPicture.asset(
@@ -2837,13 +3631,22 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                 package: 'grab_go_shared',
                 height: 18.h,
                 width: 18.w,
-                colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                colorFilter: ColorFilter.mode(
+                  colors.accentOrange,
+                  BlendMode.srcIn,
+                ),
               ),
               SizedBox(width: 12.w),
               Expanded(
                 child: Text(
-                  _isGiftOrder ? "Pick recipient address on map" : "Pick delivery address on map",
-                  style: TextStyle(color: colors.accentOrange, fontSize: 13.sp, fontWeight: FontWeight.w700),
+                  _isGiftOrder
+                      ? "Pick recipient address on map"
+                      : "Pick delivery address on map",
+                  style: TextStyle(
+                    color: colors.accentOrange,
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               SvgPicture.asset(
@@ -2851,7 +3654,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                 package: 'grab_go_shared',
                 height: 16.h,
                 width: 16.w,
-                colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                colorFilter: ColorFilter.mode(
+                  colors.accentOrange,
+                  BlendMode.srcIn,
+                ),
               ),
             ],
           ),
@@ -2861,8 +3667,12 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
   }
 
   Widget _buildAddressListToggle(AppColorsExtension colors, int hiddenCount) {
-    final String label = _showAllAddresses ? "Show less" : "Show $hiddenCount more";
-    final String icon = _showAllAddresses ? Assets.icons.navArrowUp : Assets.icons.navArrowDown;
+    final String label = _showAllAddresses
+        ? "Show less"
+        : "Show $hiddenCount more";
+    final String icon = _showAllAddresses
+        ? Assets.icons.navArrowUp
+        : Assets.icons.navArrowDown;
 
     return Padding(
       padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 2.h, bottom: 6.h),
@@ -2884,7 +3694,11 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                 children: [
                   Text(
                     label,
-                    style: TextStyle(color: colors.accentOrange, fontSize: 12.sp, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      color: colors.accentOrange,
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   SizedBox(width: 4.w),
                   SvgPicture.asset(
@@ -2892,7 +3706,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                     package: 'grab_go_shared',
                     height: 14.h,
                     width: 14.w,
-                    colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                    colorFilter: ColorFilter.mode(
+                      colors.accentOrange,
+                      BlendMode.srcIn,
+                    ),
                   ),
                 ],
               ),
@@ -2903,8 +3720,13 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildScheduleSection(AppColorsExtension colors, CartProvider provider) {
-    final noSlotsMessage = _getNoScheduleSlotsMessage(provider.scheduleAvailability);
+  Widget _buildScheduleSection(
+    AppColorsExtension colors,
+    CartProvider provider,
+  ) {
+    final noSlotsMessage = _getNoScheduleSlotsMessage(
+      provider.scheduleAvailability,
+    );
     final bool isDeliveryMode = provider.fulfillmentMode != 'pickup';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2943,7 +3765,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                 onTap: () {
                   setState(() {
                     _isScheduleEnabled = true;
-                    _scheduleSlots = _generateScheduleSlots(provider.scheduleAvailability);
+                    _scheduleSlots = _generateScheduleSlots(
+                      provider.scheduleAvailability,
+                    );
                     if (_selectedScheduleIndex >= _scheduleSlots.length) {
                       _selectedScheduleIndex = 0;
                     }
@@ -2959,7 +3783,11 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
             padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 10.h),
             child: Text(
               "Choose ASAP or schedule for a later delivery window.",
-              style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                color: colors.textSecondary,
+                fontSize: 11.sp,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         AnimatedSize(
@@ -2987,7 +3815,11 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                           ]
                         : List.generate(
                             _scheduleSlots.length,
-                            (index) => _buildScheduleSlotTile(_scheduleSlots[index], index, colors),
+                            (index) => _buildScheduleSlotTile(
+                              _scheduleSlots[index],
+                              index,
+                              colors,
+                            ),
                           ),
                   ),
                 )
@@ -3009,7 +3841,11 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         ),
         child: Text(
           "Multi-vendor checkout: Gift delivery and scheduled delivery are unavailable for this order.",
-          style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w500),
+          style: TextStyle(
+            color: colors.textSecondary,
+            fontSize: 11.sp,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ),
     );
@@ -3048,7 +3884,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                     package: 'grab_go_shared',
                     height: 20.h,
                     width: 20.w,
-                    colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                    colorFilter: ColorFilter.mode(
+                      colors.accentOrange,
+                      BlendMode.srcIn,
+                    ),
                   ),
                 ),
               ),
@@ -3059,17 +3898,29 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                   children: [
                     Text(
                       "Send as a gift",
-                      style: TextStyle(color: colors.textPrimary, fontSize: 13.sp, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     SizedBox(height: 2.h),
                     Text(
                       "Recipient will need a delivery code.",
-                      style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        color: colors.textSecondary,
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ],
                 ),
               ),
-              CustomSwitch(value: _isGiftOrder, onChanged: _setGiftOrderEnabled, activeColor: colors.accentOrange),
+              CustomSwitch(
+                value: _isGiftOrder,
+                onChanged: _setGiftOrderEnabled,
+                activeColor: colors.accentOrange,
+              ),
             ],
           ),
         ),
@@ -3090,7 +3941,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                         fillColor: colors.backgroundPrimary,
                         borderColor: colors.inputBorder,
                         borderRadius: 12.r,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 14.w,
+                          vertical: 14.h,
+                        ),
                       ),
                       SizedBox(height: 10.h),
                       AppTextInput(
@@ -3100,9 +3954,15 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                         borderColor: colors.inputBorder,
                         keyboardType: TextInputType.phone,
                         prefixIcon: _buildGhanaPhonePrefix(context),
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(10),
+                        ],
                         borderRadius: 12.r,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 14.w,
+                          vertical: 14.h,
+                        ),
                       ),
                       SizedBox(height: 10.h),
                       Container(
@@ -3110,12 +3970,19 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                         decoration: BoxDecoration(
                           color: colors.backgroundPrimary,
                           borderRadius: BorderRadius.circular(12.r),
-                          border: Border.all(color: colors.inputBorder, width: 0.5),
+                          border: Border.all(
+                            color: colors.inputBorder,
+                            width: 0.5,
+                          ),
                         ),
                         child: TextField(
                           controller: _giftNoteController,
                           maxLines: 3,
-                          style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                            color: colors.textPrimary,
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w500,
+                          ),
                           decoration: InputDecoration(
                             hintText: "Gift note (optional)",
                             hintStyle: TextStyle(
@@ -3134,14 +4001,22 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                         decoration: BoxDecoration(
                           color: colors.backgroundPrimary,
                           borderRadius: BorderRadius.circular(12.r),
-                          border: Border.all(color: colors.inputBorder, width: 0.5),
+                          border: Border.all(
+                            color: colors.inputBorder,
+                            width: 0.5,
+                          ),
                         ),
                         child: TextField(
                           controller: _giftAddressDetailsController,
                           maxLines: 2,
-                          style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                            color: colors.textPrimary,
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w500,
+                          ),
                           decoration: InputDecoration(
-                            hintText: "Recipient landmark / house details (required)",
+                            hintText:
+                                "Recipient landmark / house details (required)",
                             hintStyle: TextStyle(
                               color: colors.textSecondary,
                               fontSize: 13.sp,
@@ -3153,12 +4028,17 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                         ),
                       ),
                       SizedBox(height: 8.h),
-                      if (_selectedAddressDetails.isNotEmpty || _selectedAddress.isNotEmpty) ...[
+                      if (_selectedAddressDetails.isNotEmpty ||
+                          _selectedAddress.isNotEmpty) ...[
                         Align(
                           alignment: Alignment.centerLeft,
                           child: Text(
                             "Recipient address: ${_selectedAddressDetails.isNotEmpty ? _selectedAddressDetails : _selectedAddress}",
-                            style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w500),
+                            style: TextStyle(
+                              color: colors.textSecondary,
+                              fontSize: 11.sp,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                         SizedBox(height: 6.h),
@@ -3167,7 +4047,11 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                         alignment: Alignment.centerLeft,
                         child: Text(
                           "Delivery code is sent to you, and to recipient if phone is provided. Add precise drop-off details.",
-                          style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                            color: colors.textSecondary,
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ],
@@ -3179,12 +4063,30 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildPaymentMethodSection(AppColorsExtension colors, CartProvider provider, {required bool isPickupMode}) {
-    final bool isMixedCheckout = _isMixedCartCheckout(provider, isPickupMode: isPickupMode);
-    final bool isCashOnDelivery = !isMixedCheckout && _isCashOnDeliverySelected(isPickupMode: isPickupMode);
-    final double totalAmount = _checkoutGrandTotal(provider, isPickupMode: isPickupMode);
-    final double codUpfrontAmount = _codUpfrontAmountForCheckout(provider, isPickupMode: isPickupMode);
-    final double codRemainingAmount = _codRemainingAmountForCheckout(provider, isPickupMode: isPickupMode);
+  Widget _buildPaymentMethodSection(
+    AppColorsExtension colors,
+    CartProvider provider, {
+    required bool isPickupMode,
+  }) {
+    final bool isMixedCheckout = _isMixedCartCheckout(
+      provider,
+      isPickupMode: isPickupMode,
+    );
+    final bool isCashOnDelivery =
+        !isMixedCheckout &&
+        _isCashOnDeliverySelected(isPickupMode: isPickupMode);
+    final double totalAmount = _checkoutGrandTotal(
+      provider,
+      isPickupMode: isPickupMode,
+    );
+    final double codUpfrontAmount = _codUpfrontAmountForCheckout(
+      provider,
+      isPickupMode: isPickupMode,
+    );
+    final double codRemainingAmount = _codRemainingAmountForCheckout(
+      provider,
+      isPickupMode: isPickupMode,
+    );
     final codEligibility = _codEligibility;
     final bool codEligibilityKnown = codEligibility != null;
     final bool codEligible = codEligibility?.eligible == true;
@@ -3226,7 +4128,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
               _buildPaymentMethodTile(
                 title: "Pay Online",
                 subtitle: "Card, mobile money, or bank transfer",
-                isSelected: _selectedPaymentMethod == _CheckoutPaymentMethod.card || isPickupMode,
+                isSelected:
+                    _selectedPaymentMethod == _CheckoutPaymentMethod.card ||
+                    isPickupMode,
                 colors: colors,
                 onTap: () {
                   if (_selectedPaymentMethod == _CheckoutPaymentMethod.card) {
@@ -3237,12 +4141,18 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                   });
                 },
               ),
-              Divider(height: 8.h, thickness: 0.8, color: colors.inputBorder.withValues(alpha: 0.35)),
+              Divider(
+                height: 8.h,
+                thickness: 0.8,
+                color: colors.inputBorder.withValues(alpha: 0.35),
+              ),
 
               _buildPaymentMethodTile(
                 title: "Cash on Delivery",
                 subtitle: codSubtitle,
-                isSelected: !isPickupMode && _selectedPaymentMethod == _CheckoutPaymentMethod.cash,
+                isSelected:
+                    !isPickupMode &&
+                    _selectedPaymentMethod == _CheckoutPaymentMethod.cash,
                 colors: colors,
                 isDisabled: isPickupMode || isMixedCheckout,
                 onTap: () {
@@ -3265,15 +4175,24 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                     padding: EdgeInsets.all(12.r),
                     decoration: BoxDecoration(
                       color: colors.backgroundSecondary,
-                      borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                      border: Border.all(color: colors.inputBorder.withValues(alpha: 0.35), width: 0.8),
+                      borderRadius: BorderRadius.circular(
+                        KBorderSize.borderMedium,
+                      ),
+                      border: Border.all(
+                        color: colors.inputBorder.withValues(alpha: 0.35),
+                        width: 0.8,
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           "COD Breakdown",
-                          style: TextStyle(color: colors.textPrimary, fontSize: 12.sp, fontWeight: FontWeight.w700),
+                          style: TextStyle(
+                            color: colors.textPrimary,
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                         SizedBox(height: 8.h),
                         Row(
@@ -3289,7 +4208,11 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                             const Spacer(),
                             Text(
                               "GHS ${codUpfrontAmount.toStringAsFixed(2)}",
-                              style: TextStyle(color: colors.textPrimary, fontSize: 11.sp, fontWeight: FontWeight.w700),
+                              style: TextStyle(
+                                color: colors.textPrimary,
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ],
                         ),
@@ -3307,14 +4230,22 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                             const Spacer(),
                             Text(
                               "GHS ${codRemainingAmount.toStringAsFixed(2)}",
-                              style: TextStyle(color: colors.textPrimary, fontSize: 11.sp, fontWeight: FontWeight.w700),
+                              style: TextStyle(
+                                color: colors.textPrimary,
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ],
                         ),
                         SizedBox(height: 6.h),
                         Text(
                           "Order total: GHS ${totalAmount.toStringAsFixed(2)}",
-                          style: TextStyle(color: colors.textSecondary, fontSize: 10.sp, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                            color: colors.textSecondary,
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ],
                     ),
@@ -3334,7 +4265,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     required VoidCallback onTap,
     bool isDisabled = false,
   }) {
-    final Color titleColor = isDisabled ? colors.textSecondary : colors.textPrimary;
+    final Color titleColor = isDisabled
+        ? colors.textSecondary
+        : colors.textPrimary;
     final Color subtitleColor = colors.textSecondary;
     return Material(
       color: Colors.transparent,
@@ -3352,12 +4285,20 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                   children: [
                     Text(
                       title,
-                      style: TextStyle(color: titleColor, fontSize: 13.sp, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        color: titleColor,
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     SizedBox(height: 2.h),
                     Text(
                       subtitle,
-                      style: TextStyle(color: subtitleColor, fontSize: 11.sp, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        color: subtitleColor,
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ],
                 ),
@@ -3367,14 +4308,19 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                 width: 24.w,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isSelected ? colors.accentOrange.withValues(alpha: 0.1) : Colors.transparent,
+                  color: isSelected
+                      ? colors.accentOrange.withValues(alpha: 0.1)
+                      : Colors.transparent,
                 ),
                 child: isSelected
                     ? Center(
                         child: Container(
                           height: 10.h,
                           width: 10.w,
-                          decoration: BoxDecoration(shape: BoxShape.circle, color: colors.accentOrange),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: colors.accentOrange,
+                          ),
                         ),
                       )
                     : null,
@@ -3388,7 +4334,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
 
   String _buildGiftSummaryText() {
     final recipientName = _giftRecipientNameController.text.trim();
-    final normalizedRecipientPhone = _normalizeGhanaPhone(_giftRecipientPhoneController.text);
+    final normalizedRecipientPhone = _normalizeGhanaPhone(
+      _giftRecipientPhoneController.text,
+    );
     final giftNote = _giftNoteController.text.trim();
     final giftAddressDetails = _giftAddressDetailsController.text.trim();
 
@@ -3434,7 +4382,11 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildScheduleSlotTile(_ScheduleSlot slot, int index, AppColorsExtension colors) {
+  Widget _buildScheduleSlotTile(
+    _ScheduleSlot slot,
+    int index,
+    AppColorsExtension colors,
+  ) {
     final bool isSelected = _selectedScheduleIndex == index;
 
     final bool showDivider = index < _scheduleSlots.length - 1;
@@ -3450,7 +4402,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
-            decoration: BoxDecoration(color: colors.backgroundPrimary, borderRadius: BorderRadius.circular(12.r)),
+            decoration: BoxDecoration(
+              color: colors.backgroundPrimary,
+              borderRadius: BorderRadius.circular(12.r),
+            ),
             child: Row(
               children: [
                 Container(
@@ -3458,14 +4413,19 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                   width: 20.w,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isSelected ? colors.accentOrange.withValues(alpha: 0.15) : Colors.transparent,
+                    color: isSelected
+                        ? colors.accentOrange.withValues(alpha: 0.15)
+                        : Colors.transparent,
                   ),
                   child: isSelected
                       ? Center(
                           child: Container(
                             height: 8.h,
                             width: 8.w,
-                            decoration: BoxDecoration(shape: BoxShape.circle, color: colors.accentOrange),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: colors.accentOrange,
+                            ),
                           ),
                         )
                       : null,
@@ -3477,12 +4437,20 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                     children: [
                       Text(
                         slot.dayLabel,
-                        style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                        style: TextStyle(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w700,
+                          color: colors.textPrimary,
+                        ),
                       ),
                       SizedBox(height: 4.h),
                       Text(
                         slot.timeRange,
-                        style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+                        style: TextStyle(
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w500,
+                          color: colors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -3494,7 +4462,11 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         if (showDivider)
           Padding(
             padding: EdgeInsets.only(left: 32.w),
-            child: Divider(height: 12.h, thickness: 0.8, color: colors.inputBorder.withValues(alpha: 0.4)),
+            child: Divider(
+              height: 12.h,
+              thickness: 0.8,
+              color: colors.inputBorder.withValues(alpha: 0.4),
+            ),
           ),
       ],
     );
@@ -3514,8 +4486,11 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
       if (!mounted) return;
 
       final nextSlots = _generateScheduleSlots(provider.scheduleAvailability);
-      final nextIndex = nextSlots.isEmpty ? 0 : math.min(_selectedScheduleIndex, nextSlots.length - 1);
-      if (_areScheduleSlotsEqual(_scheduleSlots, nextSlots) && nextIndex == _selectedScheduleIndex) {
+      final nextIndex = nextSlots.isEmpty
+          ? 0
+          : math.min(_selectedScheduleIndex, nextSlots.length - 1);
+      if (_areScheduleSlotsEqual(_scheduleSlots, nextSlots) &&
+          nextIndex == _selectedScheduleIndex) {
         return;
       }
       setState(() {
@@ -3548,7 +4523,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     return true;
   }
 
-  List<_ScheduleSlot> _generateScheduleSlots([Map<String, dynamic>? scheduleAvailability]) {
+  List<_ScheduleSlot> _generateScheduleSlots([
+    Map<String, dynamic>? scheduleAvailability,
+  ]) {
     final minLeadMinutes = _parsePositiveInt(
       scheduleAvailability?['minLeadMinutes'],
       _defaultScheduleLeadMinutes,
@@ -3567,14 +4544,25 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
       min: 1,
       max: 30,
     );
-    final bool isOpenNow = _parseBool(scheduleAvailability?['isOpen'], defaultValue: true);
-    final bool isAcceptingOrders = _parseBool(scheduleAvailability?['isAcceptingOrders'], defaultValue: true);
+    final bool isOpenNow = _parseBool(
+      scheduleAvailability?['isOpen'],
+      defaultValue: true,
+    );
+    final bool isAcceptingOrders = _parseBool(
+      scheduleAvailability?['isAcceptingOrders'],
+      defaultValue: true,
+    );
     final bool isAcceptingScheduledOrders = _parseBool(
       scheduleAvailability?['isAcceptingScheduledOrders'],
       defaultValue: true,
     );
-    final bool is24Hours = _parseBool(scheduleAvailability?['is24Hours'], defaultValue: false);
-    final openingHours = _parseOpeningHours(scheduleAvailability?['openingHours']);
+    final bool is24Hours = _parseBool(
+      scheduleAvailability?['is24Hours'],
+      defaultValue: false,
+    );
+    final openingHours = _parseOpeningHours(
+      scheduleAvailability?['openingHours'],
+    );
 
     if (!isAcceptingOrders || !isAcceptingScheduledOrders) {
       return [];
@@ -3590,14 +4578,19 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
 
     final int maxIterations = ((maxHorizonDays * 24 * 60) ~/ slotMinutes) + 8;
     int iterations = 0;
-    while (slots.length < _scheduleSlotCount && cursor.isBefore(horizonEnd) && iterations < maxIterations) {
+    while (slots.length < _scheduleSlotCount &&
+        cursor.isBefore(horizonEnd) &&
+        iterations < maxIterations) {
       iterations += 1;
       final slotEnd = cursor.add(slotDuration);
       final bool shouldInclude =
           is24Hours ||
           openingHours.isEmpty ||
           (_isWithinOpeningHours(openingHours, cursor) &&
-              _isWithinOpeningHours(openingHours, slotEnd.subtract(const Duration(minutes: 1))));
+              _isWithinOpeningHours(
+                openingHours,
+                slotEnd.subtract(const Duration(minutes: 1)),
+              ));
       if (shouldInclude) {
         slots.add(
           _ScheduleSlot(
@@ -3614,8 +4607,15 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     return slots;
   }
 
-  int _parsePositiveInt(dynamic value, int fallback, {required int min, required int max}) {
-    final parsed = value is num ? value.toInt() : int.tryParse(value?.toString() ?? '');
+  int _parsePositiveInt(
+    dynamic value,
+    int fallback, {
+    required int min,
+    required int max,
+  }) {
+    final parsed = value is num
+        ? value.toInt()
+        : int.tryParse(value?.toString() ?? '');
     if (parsed == null) return fallback;
     if (parsed < min || parsed > max) return fallback;
     return parsed;
@@ -3637,7 +4637,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     final parsed = <_OpeningHourEntry>[];
     for (final entry in raw) {
       if (entry is! Map) continue;
-      final dayOfWeek = entry['dayOfWeek'] is num ? (entry['dayOfWeek'] as num).toInt() : null;
+      final dayOfWeek = entry['dayOfWeek'] is num
+          ? (entry['dayOfWeek'] as num).toInt()
+          : null;
       final openTime = entry['openTime']?.toString();
       final closeTime = entry['closeTime']?.toString();
       if (dayOfWeek == null || dayOfWeek < 0 || dayOfWeek > 6) continue;
@@ -3655,7 +4657,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
   }
 
   int? _timeToMinutes(String value) {
-    final match = RegExp(r'^(\d{1,2}):(\d{2})(?::(\d{2}))?$').firstMatch(value.trim());
+    final match = RegExp(
+      r'^(\d{1,2}):(\d{2})(?::(\d{2}))?$',
+    ).firstMatch(value.trim());
     if (match == null) return null;
     final hour = int.tryParse(match.group(1) ?? '');
     final minute = int.tryParse(match.group(2) ?? '');
@@ -3664,7 +4668,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     return hour * 60 + minute;
   }
 
-  bool _isWithinOpeningHours(List<_OpeningHourEntry> openingHours, DateTime time) {
+  bool _isWithinOpeningHours(
+    List<_OpeningHourEntry> openingHours,
+    DateTime time,
+  ) {
     if (openingHours.isEmpty) return true;
 
     final dayOfWeek = time.weekday % 7;
@@ -3705,8 +4712,13 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     return minuteOfDay >= openMinute || minuteOfDay < closeMinute;
   }
 
-  String _getNoScheduleSlotsMessage(Map<String, dynamic>? scheduleAvailability) {
-    final bool isAcceptingOrders = _parseBool(scheduleAvailability?['isAcceptingOrders'], defaultValue: true);
+  String _getNoScheduleSlotsMessage(
+    Map<String, dynamic>? scheduleAvailability,
+  ) {
+    final bool isAcceptingOrders = _parseBool(
+      scheduleAvailability?['isAcceptingOrders'],
+      defaultValue: true,
+    );
     if (!isAcceptingOrders) {
       return "This vendor is currently unavailable for new orders.";
     }
@@ -3719,9 +4731,17 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
       return "This vendor is not accepting scheduled orders right now.";
     }
 
-    final bool isOpenNow = _parseBool(scheduleAvailability?['isOpen'], defaultValue: true);
-    final bool is24Hours = _parseBool(scheduleAvailability?['is24Hours'], defaultValue: false);
-    final openingHours = _parseOpeningHours(scheduleAvailability?['openingHours']);
+    final bool isOpenNow = _parseBool(
+      scheduleAvailability?['isOpen'],
+      defaultValue: true,
+    );
+    final bool is24Hours = _parseBool(
+      scheduleAvailability?['is24Hours'],
+      defaultValue: false,
+    );
+    final openingHours = _parseOpeningHours(
+      scheduleAvailability?['openingHours'],
+    );
     if (!is24Hours && openingHours.isEmpty && !isOpenNow) {
       return "No scheduled slots available right now. Try again later.";
     }
@@ -3730,7 +4750,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
   }
 
   bool _shouldAllowClosedVendorPreCheck(CartProvider provider) {
-    if (_isMixedCartCheckout(provider, isPickupMode: provider.fulfillmentMode == 'pickup')) {
+    if (_isMixedCartCheckout(
+      provider,
+      isPickupMode: provider.fulfillmentMode == 'pickup',
+    )) {
       return false;
     }
     if (provider.fulfillmentMode == 'pickup') return false;
@@ -3748,8 +4771,11 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     }
 
     final nextSlots = _generateScheduleSlots(provider.scheduleAvailability);
-    final nextIndex = nextSlots.isEmpty ? 0 : math.min(_selectedScheduleIndex, nextSlots.length - 1);
-    if (!_areScheduleSlotsEqual(_scheduleSlots, nextSlots) || nextIndex != _selectedScheduleIndex) {
+    final nextIndex = nextSlots.isEmpty
+        ? 0
+        : math.min(_selectedScheduleIndex, nextSlots.length - 1);
+    if (!_areScheduleSlotsEqual(_scheduleSlots, nextSlots) ||
+        nextIndex != _selectedScheduleIndex) {
       setState(() {
         _scheduleSlots = nextSlots;
         _selectedScheduleIndex = nextIndex;
@@ -3772,7 +4798,13 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     final remainder = totalMinutes % slotMinutes;
     final delta = remainder == 0 ? 0 : slotMinutes - remainder;
     final rounded = time.add(Duration(minutes: delta));
-    return DateTime(rounded.year, rounded.month, rounded.day, rounded.hour, rounded.minute);
+    return DateTime(
+      rounded.year,
+      rounded.month,
+      rounded.day,
+      rounded.hour,
+      rounded.minute,
+    );
   }
 
   String _formatDayLabel(DateTime time) {
@@ -3781,7 +4813,20 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     if (_isSameDay(time, now.add(const Duration(days: 1)))) return "Tomorrow";
 
     const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     final dayName = weekdays[time.weekday - 1];
     final monthName = months[time.month - 1];
     return '$dayName, $monthName ${time.day}';
@@ -3815,17 +4860,24 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         decoration: BoxDecoration(
           color: Colors.white,
           shape: shape,
-          borderRadius: shape == BoxShape.rectangle ? BorderRadius.circular(borderRadius ?? 8.r) : null,
+          borderRadius: shape == BoxShape.rectangle
+              ? BorderRadius.circular(borderRadius ?? 8.r)
+              : null,
         ),
       ),
     );
   }
 
-  Widget _buildAnimatedInstructionPanel({required bool isVisible, required Widget child}) {
+  Widget _buildAnimatedInstructionPanel({
+    required bool isVisible,
+    required Widget child,
+  }) {
     return AnimatedCrossFade(
       firstChild: const SizedBox.shrink(),
       secondChild: child,
-      crossFadeState: isVisible ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+      crossFadeState: isVisible
+          ? CrossFadeState.showSecond
+          : CrossFadeState.showFirst,
       duration: const Duration(milliseconds: 260),
       firstCurve: Curves.easeInOutCubic,
       secondCurve: Curves.easeInOutCubic,
@@ -3877,7 +4929,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         duration: const Duration(milliseconds: 200),
         padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
         decoration: BoxDecoration(
-          color: _showCustomInstruction ? colors.accentOrange : colors.backgroundSecondary,
+          color: _showCustomInstruction
+              ? colors.accentOrange
+              : colors.backgroundSecondary,
           borderRadius: BorderRadius.circular(20.r),
         ),
         child: Row(
@@ -3886,9 +4940,13 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
             Text(
               "Custom",
               style: TextStyle(
-                color: _showCustomInstruction ? Colors.white : colors.textPrimary,
+                color: _showCustomInstruction
+                    ? Colors.white
+                    : colors.textPrimary,
                 fontSize: 13.sp,
-                fontWeight: _showCustomInstruction ? FontWeight.w700 : FontWeight.w500,
+                fontWeight: _showCustomInstruction
+                    ? FontWeight.w700
+                    : FontWeight.w500,
               ),
             ),
             SizedBox(width: 4.w),
@@ -3913,7 +4971,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildDeliveryInstructionChip(String label, AppColorsExtension colors) {
+  Widget _buildDeliveryInstructionChip(
+    String label,
+    AppColorsExtension colors,
+  ) {
     final bool isSelected = _selectedDeliveryInstructions.contains(label);
 
     return GestureDetector(
@@ -3956,7 +5017,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         duration: const Duration(milliseconds: 200),
         padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
         decoration: BoxDecoration(
-          color: _showCustomDeliveryInstruction ? colors.accentOrange : colors.backgroundSecondary,
+          color: _showCustomDeliveryInstruction
+              ? colors.accentOrange
+              : colors.backgroundSecondary,
           borderRadius: BorderRadius.circular(20.r),
         ),
         child: Row(
@@ -3965,9 +5028,13 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
             Text(
               "Custom",
               style: TextStyle(
-                color: _showCustomDeliveryInstruction ? Colors.white : colors.textPrimary,
+                color: _showCustomDeliveryInstruction
+                    ? Colors.white
+                    : colors.textPrimary,
                 fontSize: 13.sp,
-                fontWeight: _showCustomDeliveryInstruction ? FontWeight.w700 : FontWeight.w500,
+                fontWeight: _showCustomDeliveryInstruction
+                    ? FontWeight.w700
+                    : FontWeight.w500,
               ),
             ),
             SizedBox(width: 4.w),
@@ -3981,7 +5048,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                 height: 16.h,
                 width: 16.w,
                 colorFilter: ColorFilter.mode(
-                  _showCustomDeliveryInstruction ? Colors.white : colors.textPrimary,
+                  _showCustomDeliveryInstruction
+                      ? Colors.white
+                      : colors.textPrimary,
                   BlendMode.srcIn,
                 ),
               ),
@@ -4035,7 +5104,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         duration: const Duration(milliseconds: 200),
         padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
         decoration: BoxDecoration(
-          color: _showCustomTip ? colors.accentOrange : colors.backgroundSecondary,
+          color: _showCustomTip
+              ? colors.accentOrange
+              : colors.backgroundSecondary,
           borderRadius: BorderRadius.circular(20.r),
         ),
         child: Row(
@@ -4059,7 +5130,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                 package: 'grab_go_shared',
                 height: 16.h,
                 width: 16.w,
-                colorFilter: ColorFilter.mode(_showCustomTip ? Colors.white : colors.textPrimary, BlendMode.srcIn),
+                colorFilter: ColorFilter.mode(
+                  _showCustomTip ? Colors.white : colors.textPrimary,
+                  BlendMode.srcIn,
+                ),
               ),
             ),
           ],
@@ -4080,7 +5154,11 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
             SizedBox(width: 4.w),
             Text(
               "+233",
-              style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+              style: TextStyle(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w700,
+                color: colors.textPrimary,
+              ),
             ),
             SizedBox(width: 8.w),
             Container(width: 1.2, height: 22.h, color: colors.inputBorder),
@@ -4114,7 +5192,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
           _selectedLongitude = longitude;
         });
         if (latitude != null && longitude != null) {
-          cartProvider.updateDeliveryLocation(latitude: latitude, longitude: longitude);
+          cartProvider.updateDeliveryLocation(
+            latitude: latitude,
+            longitude: longitude,
+          );
         }
       },
       child: AnimatedContainer(
@@ -4132,14 +5213,19 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
               width: 24.w,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isSelected ? colors.accentOrange.withValues(alpha: 0.1) : Colors.transparent,
+                color: isSelected
+                    ? colors.accentOrange.withValues(alpha: 0.1)
+                    : Colors.transparent,
               ),
               child: isSelected
                   ? Center(
                       child: Container(
                         height: 10.h,
                         width: 10.w,
-                        decoration: BoxDecoration(shape: BoxShape.circle, color: colors.accentOrange),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: colors.accentOrange,
+                        ),
                       ),
                     )
                   : null,
@@ -4152,9 +5238,14 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                   Row(
                     children: [
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8.w,
+                          vertical: 4.h,
+                        ),
                         decoration: BoxDecoration(
-                          color: isSelected ? colors.accentOrange.withValues(alpha: 0.15) : colors.backgroundSecondary,
+                          color: isSelected
+                              ? colors.accentOrange.withValues(alpha: 0.15)
+                              : colors.backgroundSecondary,
                           borderRadius: BorderRadius.circular(6.r),
                         ),
                         child: Text(
@@ -4162,7 +5253,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                           style: TextStyle(
                             fontSize: 12.sp,
                             fontWeight: FontWeight.w700,
-                            color: isSelected ? colors.accentOrange : colors.textPrimary,
+                            color: isSelected
+                                ? colors.accentOrange
+                                : colors.textPrimary,
                           ),
                         ),
                       ),
@@ -4177,12 +5270,19 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                           package: 'grab_go_shared',
                           height: 12.h,
                           width: 12.w,
-                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                          colorFilter: ColorFilter.mode(
+                            colors.textSecondary,
+                            BlendMode.srcIn,
+                          ),
                         ),
                         SizedBox(width: 6.w),
                         Text(
                           phone,
-                          style: TextStyle(fontSize: 12.sp, color: colors.textSecondary, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            color: colors.textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ],
                     ),
@@ -4195,13 +5295,20 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                         package: 'grab_go_shared',
                         height: 12.h,
                         width: 12.w,
-                        colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                        colorFilter: ColorFilter.mode(
+                          colors.textSecondary,
+                          BlendMode.srcIn,
+                        ),
                       ),
                       SizedBox(width: 6.w),
                       Expanded(
                         child: Text(
                           address,
-                          style: TextStyle(fontSize: 12.sp, color: colors.textSecondary, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            color: colors.textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ],
@@ -4217,13 +5324,19 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                 customBorder: const CircleBorder(),
                 child: Container(
                   padding: EdgeInsets.all(8.r),
-                  decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                    color: colors.backgroundSecondary,
+                    shape: BoxShape.circle,
+                  ),
                   child: SvgPicture.asset(
                     Assets.icons.edit,
                     package: 'grab_go_shared',
                     height: 16.h,
                     width: 16.w,
-                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                    colorFilter: ColorFilter.mode(
+                      colors.textPrimary,
+                      BlendMode.srcIn,
+                    ),
                   ),
                 ),
               ),
@@ -4244,7 +5357,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
 
     return GestureDetector(
       onTap: () {
-        final addressText = locationProvider.address.isNotEmpty ? locationProvider.address : "Current Location";
+        final addressText = locationProvider.address.isNotEmpty
+            ? locationProvider.address
+            : "Current Location";
         setState(() {
           _selectedAddressId = "current_location";
           _selectedAddress = addressText;
@@ -4253,7 +5368,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
           _selectedLongitude = longitude;
         });
         if (latitude != null && longitude != null) {
-          cartProvider.updateDeliveryLocation(latitude: latitude, longitude: longitude);
+          cartProvider.updateDeliveryLocation(
+            latitude: latitude,
+            longitude: longitude,
+          );
         }
       },
       child: AnimatedContainer(
@@ -4263,7 +5381,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-          border: Border.all(color: colors.inputBorder.withValues(alpha: 0.5), width: 1),
+          border: Border.all(
+            color: colors.inputBorder.withValues(alpha: 0.5),
+            width: 1,
+          ),
         ),
         child: Row(
           children: [
@@ -4280,7 +5401,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                   package: 'grab_go_shared',
                   height: 28.h,
                   width: 28.w,
-                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                  colorFilter: ColorFilter.mode(
+                    colors.accentOrange,
+                    BlendMode.srcIn,
+                  ),
                 ),
               ),
             ),
@@ -4292,9 +5416,14 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                   Row(
                     children: [
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8.w,
+                          vertical: 4.h,
+                        ),
                         decoration: BoxDecoration(
-                          color: isSelected ? colors.accentOrange.withValues(alpha: 0.15) : colors.backgroundSecondary,
+                          color: isSelected
+                              ? colors.accentOrange.withValues(alpha: 0.15)
+                              : colors.backgroundSecondary,
                           borderRadius: BorderRadius.circular(6.r),
                         ),
                         child: Text(
@@ -4302,7 +5431,9 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                           style: TextStyle(
                             fontSize: 12.sp,
                             fontWeight: FontWeight.w700,
-                            color: isSelected ? colors.accentOrange : colors.textPrimary,
+                            color: isSelected
+                                ? colors.accentOrange
+                                : colors.textPrimary,
                           ),
                         ),
                       ),
@@ -4311,7 +5442,11 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                   SizedBox(height: 8.h),
                   Text(
                     "Tap to use your current GPS location",
-                    style: TextStyle(fontSize: 12.sp, color: colors.textSecondary, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      color: colors.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -4323,14 +5458,19 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
               width: 24.w,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isSelected ? colors.accentOrange.withValues(alpha: 0.1) : Colors.transparent,
+                color: isSelected
+                    ? colors.accentOrange.withValues(alpha: 0.1)
+                    : Colors.transparent,
               ),
               child: isSelected
                   ? Center(
                       child: Container(
                         height: 10.h,
                         width: 10.w,
-                        decoration: BoxDecoration(shape: BoxShape.circle, color: colors.accentOrange),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: colors.accentOrange,
+                        ),
                       ),
                     )
                   : null,
@@ -4366,11 +5506,17 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         completionMaxMinutes != null &&
         completionMinMinutes > 0 &&
         completionMaxMinutes > 0) {
-      final completionWindow = formatWindow(completionMinMinutes, completionMaxMinutes);
+      final completionWindow = formatWindow(
+        completionMinMinutes,
+        completionMaxMinutes,
+      );
       return "All deliveries by: $completionWindow";
     }
 
-    if (minMinutes != null && maxMinutes != null && minMinutes > 0 && maxMinutes > 0) {
+    if (minMinutes != null &&
+        maxMinutes != null &&
+        minMinutes > 0 &&
+        maxMinutes > 0) {
       return "$prefix: ${formatWindow(minMinutes, maxMinutes)}";
     }
 
@@ -4419,7 +5565,12 @@ class _ScheduleSlot {
   final String dayLabel;
   final String timeRange;
 
-  const _ScheduleSlot({required this.startAt, required this.endAt, required this.dayLabel, required this.timeRange});
+  const _ScheduleSlot({
+    required this.startAt,
+    required this.endAt,
+    required this.dayLabel,
+    required this.timeRange,
+  });
 }
 
 class _OpeningHourEntry {
@@ -4449,7 +5600,12 @@ class _CodEligibilitySheetContent {
   final List<String> steps;
   final String? progress;
 
-  const _CodEligibilitySheetContent({required this.title, required this.message, required this.steps, this.progress});
+  const _CodEligibilitySheetContent({
+    required this.title,
+    required this.message,
+    required this.steps,
+    this.progress,
+  });
 }
 
 class _CheckoutVendorGroup {

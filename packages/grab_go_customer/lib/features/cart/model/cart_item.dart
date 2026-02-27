@@ -5,9 +5,11 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:flutter_swipe_action_cell/core/cell.dart';
 import 'package:go_router/go_router.dart';
-import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart' as cart_model;
+import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart'
+    as cart_model;
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
+import 'package:grab_go_customer/shared/widgets/food_customization_chips.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:provider/provider.dart';
@@ -36,18 +38,31 @@ class _CartItemState extends State<CartItem> {
 
         return Column(
           children: [
-            for (int groupIndex = 0; groupIndex < groupedEntries.length; groupIndex++) ...[
-              _buildGroupHeader(colors: colors, group: groupedEntries[groupIndex]),
-              for (int itemIndex = 0; itemIndex < groupedEntries[groupIndex].entries.length; itemIndex++)
+            for (
+              int groupIndex = 0;
+              groupIndex < groupedEntries.length;
+              groupIndex++
+            ) ...[
+              _buildGroupHeader(
+                colors: colors,
+                group: groupedEntries[groupIndex],
+              ),
+              for (
+                int itemIndex = 0;
+                itemIndex < groupedEntries[groupIndex].entries.length;
+                itemIndex++
+              )
                 _buildCartEntry(
                   context: context,
                   provider: provider,
                   cartEntry: groupedEntries[groupIndex].entries[itemIndex],
                   imageSize: imageSize,
                   colors: colors,
-                  showItemDivider: itemIndex < groupedEntries[groupIndex].entries.length - 1,
+                  showItemDivider:
+                      itemIndex < groupedEntries[groupIndex].entries.length - 1,
                 ),
-              if (groupIndex < groupedEntries.length - 1) SizedBox(height: 10.h),
+              if (groupIndex < groupedEntries.length - 1)
+                SizedBox(height: 10.h),
             ],
           ],
         );
@@ -55,32 +70,48 @@ class _CartItemState extends State<CartItem> {
     );
   }
 
-  List<_CartVendorGroup> _groupCartEntries(Map<cart_model.CartItem, int> cartItems) {
+  List<_CartVendorGroup> _groupCartEntries(
+    Map<cart_model.CartItem, int> cartItems,
+  ) {
     final grouped = <String, List<MapEntry<cart_model.CartItem, int>>>{};
     final groupNames = <String, String>{};
 
     for (final entry in cartItems.entries) {
       final item = entry.key;
       final providerId = item.providerId.trim();
-      final providerName = item.providerName.trim().isNotEmpty ? item.providerName.trim() : 'Vendor';
-      final providerKey = providerId.isNotEmpty ? providerId : '${item.itemType}:${providerName.toLowerCase()}';
+      final providerName = item.providerName.trim().isNotEmpty
+          ? item.providerName.trim()
+          : 'Vendor';
+      final providerKey = providerId.isNotEmpty
+          ? providerId
+          : '${item.itemType}:${providerName.toLowerCase()}';
       final groupKey = '${item.itemType}:$providerKey';
 
-      grouped.putIfAbsent(groupKey, () => <MapEntry<cart_model.CartItem, int>>[]);
+      grouped.putIfAbsent(
+        groupKey,
+        () => <MapEntry<cart_model.CartItem, int>>[],
+      );
       grouped[groupKey]!.add(entry);
       groupNames[groupKey] = providerName;
     }
 
     return grouped.entries
         .map(
-          (entry) =>
-              _CartVendorGroup(key: entry.key, providerName: groupNames[entry.key] ?? 'Vendor', entries: entry.value),
+          (entry) => _CartVendorGroup(
+            key: entry.key,
+            providerName: groupNames[entry.key] ?? 'Vendor',
+            entries: entry.value,
+          ),
         )
         .toList(growable: false);
   }
 
-  Widget _buildGroupHeader({required AppColorsExtension colors, required _CartVendorGroup group}) {
-    final subtitle = '${group.entries.length} ${group.entries.length == 1 ? 'item' : 'items'}';
+  Widget _buildGroupHeader({
+    required AppColorsExtension colors,
+    required _CartVendorGroup group,
+  }) {
+    final subtitle =
+        '${group.entries.length} ${group.entries.length == 1 ? 'item' : 'items'}';
 
     return Padding(
       padding: EdgeInsets.fromLTRB(20.w, 6.h, 20.w, 4.h),
@@ -88,12 +119,20 @@ class _CartItemState extends State<CartItem> {
         children: [
           Text(
             group.providerName,
-            style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w800),
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w800,
+            ),
           ),
           const Spacer(),
           Text(
             subtitle,
-            style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: colors.textSecondary,
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -110,7 +149,9 @@ class _CartItemState extends State<CartItem> {
   }) {
     final cartItem = cartEntry.key;
     final quantity = cartEntry.value;
-    final bool isRestaurantClosed = cartItem is FoodItem ? !cartItem.isRestaurantOpen : false;
+    final bool isRestaurantClosed = cartItem is FoodItem
+        ? !cartItem.isRestaurantOpen
+        : false;
     final bool isItemPending = provider.isItemOperationPending(cartItem);
 
     return Column(
@@ -129,7 +170,9 @@ class _CartItemState extends State<CartItem> {
                   margin: EdgeInsets.only(right: 10.w, top: 6.h, bottom: 6.h),
                   decoration: BoxDecoration(
                     color: colors.error,
-                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                    borderRadius: BorderRadius.circular(
+                      KBorderSize.borderRadius15,
+                    ),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -137,7 +180,11 @@ class _CartItemState extends State<CartItem> {
                       Text(
                         isItemPending ? 'Removing' : AppStrings.cartDelete,
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ],
                   ),
@@ -168,7 +215,10 @@ class _CartItemState extends State<CartItem> {
                     child: Stack(
                       children: [
                         CachedNetworkImage(
-                          imageUrl: ImageOptimizer.getPreviewUrl(cartItem.image, width: 300),
+                          imageUrl: ImageOptimizer.getPreviewUrl(
+                            cartItem.image,
+                            width: 300,
+                          ),
                           height: imageSize,
                           width: imageSize,
                           fit: BoxFit.cover,
@@ -182,7 +232,10 @@ class _CartItemState extends State<CartItem> {
                               child: SvgPicture.asset(
                                 Assets.icons.utensilsCrossed,
                                 package: 'grab_go_shared',
-                                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                colorFilter: ColorFilter.mode(
+                                  colors.textSecondary,
+                                  BlendMode.srcIn,
+                                ),
                                 width: 30.w,
                                 height: 30.h,
                               ),
@@ -196,7 +249,10 @@ class _CartItemState extends State<CartItem> {
                               child: SvgPicture.asset(
                                 Assets.icons.utensilsCrossed,
                                 package: 'grab_go_shared',
-                                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                colorFilter: ColorFilter.mode(
+                                  colors.textSecondary,
+                                  BlendMode.srcIn,
+                                ),
                                 width: 30.w,
                                 height: 30.h,
                               ),
@@ -211,7 +267,11 @@ class _CartItemState extends State<CartItem> {
                               child: Text(
                                 "We're closed",
                                 textAlign: TextAlign.center,
-                                style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.w700),
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12.sp,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
                           ),
@@ -220,7 +280,10 @@ class _CartItemState extends State<CartItem> {
                   ),
                   Expanded(
                     child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12.r, vertical: 8.h),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12.r,
+                        vertical: 8.h,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -246,7 +309,10 @@ class _CartItemState extends State<CartItem> {
                                     package: 'grab_go_shared',
                                     height: 13.h,
                                     width: 13.w,
-                                    colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                    colorFilter: ColorFilter.mode(
+                                      colors.accentOrange,
+                                      BlendMode.srcIn,
+                                    ),
                                   ),
                                   SizedBox(width: 4.w),
                                   Text(
@@ -259,6 +325,13 @@ class _CartItemState extends State<CartItem> {
                                   ),
                                 ],
                               ),
+                              if (cartItem is FoodItem) ...[
+                                SizedBox(height: 8.h),
+                                FoodCustomizationChips(
+                                  item: cartItem,
+                                  colors: colors,
+                                ),
+                              ],
                             ],
                           ),
                           SizedBox(height: 10.h),
@@ -266,9 +339,14 @@ class _CartItemState extends State<CartItem> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Container(
-                                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 10.w,
+                                  vertical: 6.h,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: colors.accentOrange.withValues(alpha: 0.15),
+                                  color: colors.accentOrange.withValues(
+                                    alpha: 0.15,
+                                  ),
                                   borderRadius: BorderRadius.circular(8.r),
                                 ),
                                 child: Text(
@@ -281,7 +359,10 @@ class _CartItemState extends State<CartItem> {
                                 ),
                               ),
                               Container(
-                                padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 4.h),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 4.w,
+                                  vertical: 4.h,
+                                ),
                                 decoration: BoxDecoration(
                                   color: colors.backgroundSecondary,
                                   borderRadius: BorderRadius.circular(10.r),
@@ -306,16 +387,27 @@ class _CartItemState extends State<CartItem> {
                                                 height: 18.w,
                                                 child: CircularProgressIndicator(
                                                   strokeWidth: 2,
-                                                  valueColor: AlwaysStoppedAnimation<Color>(colors.textSecondary),
+                                                  valueColor:
+                                                      AlwaysStoppedAnimation<
+                                                        Color
+                                                      >(colors.textSecondary),
                                                 ),
                                               )
-                                            : Icon(Icons.remove, color: colors.textSecondary, size: 18),
+                                            : Icon(
+                                                Icons.remove,
+                                                color: colors.textSecondary,
+                                                size: 18,
+                                              ),
                                       ),
                                     ),
                                     Container(
-                                      padding: EdgeInsets.symmetric(horizontal: 12.w),
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 12.w,
+                                      ),
                                       child: Text(
-                                        isItemPending ? '...' : quantity.toString(),
+                                        isItemPending
+                                            ? '...'
+                                            : quantity.toString(),
                                         style: TextStyle(
                                           fontSize: 14.sp,
                                           fontWeight: FontWeight.w700,
@@ -326,13 +418,18 @@ class _CartItemState extends State<CartItem> {
                                     GestureDetector(
                                       onTap: () {
                                         if (isItemPending) return;
-                                        provider.addToCart(cartItem, context: context);
+                                        provider.addToCart(
+                                          cartItem,
+                                          context: context,
+                                        );
                                       },
                                       child: Container(
                                         padding: EdgeInsets.all(4.r),
                                         decoration: BoxDecoration(
                                           color: isItemPending
-                                              ? colors.accentOrange.withValues(alpha: 0.45)
+                                              ? colors.accentOrange.withValues(
+                                                  alpha: 0.45,
+                                                )
                                               : colors.accentOrange,
                                           shape: BoxShape.circle,
                                         ),
@@ -340,12 +437,20 @@ class _CartItemState extends State<CartItem> {
                                             ? SizedBox(
                                                 width: 18.w,
                                                 height: 18.w,
-                                                child: const CircularProgressIndicator(
-                                                  strokeWidth: 2,
-                                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                                ),
+                                                child:
+                                                    const CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      valueColor:
+                                                          AlwaysStoppedAnimation<
+                                                            Color
+                                                          >(Colors.white),
+                                                    ),
                                               )
-                                            : const Icon(Icons.add, color: Colors.white, size: 18),
+                                            : const Icon(
+                                                Icons.add,
+                                                color: Colors.white,
+                                                size: 18,
+                                              ),
                                       ),
                                     ),
                                   ],
@@ -392,5 +497,9 @@ class _CartVendorGroup {
   final String providerName;
   final List<MapEntry<cart_model.CartItem, int>> entries;
 
-  const _CartVendorGroup({required this.key, required this.providerName, required this.entries});
+  const _CartVendorGroup({
+    required this.key,
+    required this.providerName,
+    required this.entries,
+  });
 }

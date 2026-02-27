@@ -376,9 +376,13 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
   }
 
   String _selectionRuleLabel({required int minSelections, required int maxSelections}) {
-    if (minSelections <= 0 && maxSelections <= 1) return 'Optional • choose up to 1';
+    if (minSelections <= 0 && maxSelections <= 1) {
+      return 'Optional • choose up to 1';
+    }
     if (minSelections <= 0) return 'Optional • choose up to $maxSelections';
-    if (minSelections == maxSelections) return 'Required • choose $minSelections';
+    if (minSelections == maxSelections) {
+      return 'Required • choose $minSelections';
+    }
     return 'Required • choose $minSelections-$maxSelections';
   }
 
@@ -474,7 +478,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
   }
 
   Widget _buildCustomizationSection(AppColorsExtension colors) {
-    if (!_isFoodCustomizationEnabled) return const SizedBox.shrink();
+    if (widget.foodItem == null) return const SizedBox.shrink();
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 20.w),
@@ -499,7 +503,6 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                     if (optionId == null) return const SizedBox.shrink();
                     final isSelected = _selectedPortionId == optionId;
                     final label = _readOptionLabel(option, fallback: optionId);
-                    final quantityLabel = option['quantityLabel']?.toString() ?? option['quantity']?.toString() ?? '';
                     final explicitPrice = _readOptionPrice(option, fallback: double.nan);
                     final priceText = explicitPrice.isFinite
                         ? _formatMoney(explicitPrice)
@@ -518,17 +521,13 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                         decoration: BoxDecoration(
                           color: isSelected ? colors.accentOrange.withValues(alpha: 0.12) : colors.backgroundSecondary,
                           borderRadius: BorderRadius.circular(12.r),
-                          border: Border.all(
-                            color: isSelected ? colors.accentOrange : colors.inputBorder,
-                            width: isSelected ? 1.4 : 1,
-                          ),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              quantityLabel.isEmpty ? label : '$label • $quantityLabel',
+                              label,
                               style: TextStyle(
                                 fontSize: 12.sp,
                                 fontWeight: FontWeight.w700,
@@ -611,10 +610,6 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                     ? colors.accentOrange.withValues(alpha: 0.12)
                                     : colors.backgroundSecondary,
                                 borderRadius: BorderRadius.circular(12.r),
-                                border: Border.all(
-                                  color: isSelected ? colors.accentOrange : colors.inputBorder,
-                                  width: isSelected ? 1.4 : 1,
-                                ),
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -649,10 +644,17 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
             );
           }),
           Text(
-            'Special instructions',
+            _isFoodCustomizationEnabled ? 'Special instructions' : 'Special instructions (optional)',
             style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
           ),
           SizedBox(height: 8.h),
+          if (!_isFoodCustomizationEnabled) ...[
+            Text(
+              'Tell the vendor how you want this order prepared.',
+              style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+            ),
+            SizedBox(height: 8.h),
+          ],
           TextField(
             controller: _itemNoteController,
             onChanged: (_) => setState(() {}),
@@ -672,7 +674,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12.r),
-                borderSide: BorderSide(color: colors.inputBorder),
+                borderSide: const BorderSide(color: Colors.transparent),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12.r),
@@ -1007,25 +1009,27 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                                 ),
                                               ),
                                               SizedBox(width: 10.w),
-                                              Container(
-                                                height: 4.h,
-                                                width: 4.w,
-                                                decoration: BoxDecoration(
-                                                  color: colors.textSecondary,
-                                                  shape: BoxShape.circle,
+                                              if (widget.foodItem?.orderCount != 0) ...[
+                                                Container(
+                                                  height: 4.h,
+                                                  width: 4.w,
+                                                  decoration: BoxDecoration(
+                                                    color: colors.textSecondary,
+                                                    shape: BoxShape.circle,
+                                                  ),
                                                 ),
-                                              ),
-                                              SizedBox(width: 8.w),
-                                              Text(
-                                                '${widget.foodItem?.orderCount.toString()} orders',
-                                                style: TextStyle(
-                                                  fontFamily: 'Lato',
-                                                  package: 'grab_go_shared',
-                                                  color: colors.textPrimary,
-                                                  fontWeight: FontWeight.w400,
-                                                  fontSize: 13.sp,
+                                                SizedBox(width: 8.w),
+                                                Text(
+                                                  '${widget.foodItem?.orderCount.toString()} orders',
+                                                  style: TextStyle(
+                                                    fontFamily: 'Lato',
+                                                    package: 'grab_go_shared',
+                                                    color: colors.textPrimary,
+                                                    fontWeight: FontWeight.w400,
+                                                    fontSize: 13.sp,
+                                                  ),
                                                 ),
-                                              ),
+                                              ],
                                             ],
                                           ),
                                         ],
@@ -1082,7 +1086,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                 ),
                               ),
 
-                              if (_isFoodCustomizationEnabled) ...[
+                              if (widget.foodItem != null) ...[
                                 SizedBox(height: KSpacing.lg.h),
                                 _buildCustomizationSection(colors),
                               ],
