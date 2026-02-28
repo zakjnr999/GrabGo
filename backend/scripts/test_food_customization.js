@@ -134,9 +134,9 @@ const resolveUpdateBody = (args) => {
         {
           id: "protein",
           label: "Choose Protein",
-          required: true,
-          minSelections: 1,
-          maxSelections: 1,
+          required: false,
+          minSelections: 0,
+          maxSelections: 3,
           options: [
             {
               id: "fish",

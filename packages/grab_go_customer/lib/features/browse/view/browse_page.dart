@@ -1503,14 +1503,25 @@ class _BrowsePageState extends State<BrowsePage> {
   ) {
     return Consumer<CartProvider>(
       builder: (context, provider, _) {
-        final isInCart = provider.cartItems.containsKey(cartItem);
-        final isItemPending = provider.isItemOperationPending(cartItem);
+        final includeFoodCustomizations = cartItem is FoodItem;
+        final isInCart = provider.hasItemInCart(
+          cartItem,
+          includeFoodCustomizations: includeFoodCustomizations,
+        );
+        final isItemPending = provider.isItemOperationPendingForDisplay(
+          cartItem,
+          includeFoodCustomizations: includeFoodCustomizations,
+        );
+        final itemForAction = provider.resolveItemForCartAction(
+          cartItem,
+          includeFoodCustomizations: includeFoodCustomizations,
+        );
 
         return GestureDetector(
           onTap: () {
             if (isItemPending) return;
-            if (isInCart) {
-              provider.removeItemCompletely(cartItem);
+            if (isInCart && itemForAction != null) {
+              provider.removeItemCompletely(itemForAction);
             } else {
               provider.addToCart(cartItem, context: context);
             }

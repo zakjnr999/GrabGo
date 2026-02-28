@@ -64,6 +64,45 @@ class VendorLocation {
   Map<String, dynamic> toJson() => _$VendorLocationToJson(this);
 }
 
+OpeningHours? _parseOpeningHours(dynamic raw) {
+  if (raw == null) return null;
+  if (raw is Map<String, dynamic>) {
+    return OpeningHours.fromJson(raw);
+  }
+  if (raw is List) {
+    final hoursMap = <String, dynamic>{};
+    const dayMap = {
+      0: 'sunday',
+      1: 'monday',
+      2: 'tuesday',
+      3: 'wednesday',
+      4: 'thursday',
+      5: 'friday',
+      6: 'saturday',
+    };
+
+    for (final entry in raw) {
+      if (entry is! Map) continue;
+      final dayOfWeekValue = entry['dayOfWeek'];
+      final int? dayOfWeek = dayOfWeekValue is num
+          ? dayOfWeekValue.toInt()
+          : int.tryParse(dayOfWeekValue?.toString() ?? '');
+      final key = dayMap[dayOfWeek];
+      if (key == null) continue;
+
+      hoursMap[key] = {
+        'open': (entry['open'] ?? entry['openTime'] ?? '09:00').toString(),
+        'close': (entry['close'] ?? entry['closeTime'] ?? '21:00').toString(),
+        'isClosed': entry['isClosed'] == true,
+      };
+    }
+
+    if (hoursMap.isEmpty) return null;
+    return OpeningHours.fromJson(hoursMap);
+  }
+  return null;
+}
+
 @JsonSerializable()
 class VendorModel {
   @JsonKey(name: '_id')
@@ -325,9 +364,7 @@ class VendorModel {
       categories: parseStringList(json['categories']),
       foodType: json['foodType']?.toString() ?? json['food_type']?.toString(),
       location: json['location'] != null ? VendorLocation.fromJson(json['location'] as Map<String, dynamic>) : null,
-      openingHours: json['openingHours'] != null
-          ? OpeningHours.fromJson(json['openingHours'] as Map<String, dynamic>)
-          : null,
+      openingHours: _parseOpeningHours(json['openingHours']),
       deliveryTime: json['deliveryTime']?.toString() ?? json['average_delivery_time']?.toString(),
       averageDeliveryTime:
           json['averageDeliveryTime'] as int? ??

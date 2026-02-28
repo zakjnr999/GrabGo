@@ -46,15 +46,23 @@ class FoodProvider with ChangeNotifier {
   Future<void> fetchCategories() => _categoryProvider.fetchCategories();
   Future<void> refreshCategories() => _categoryProvider.refreshCategories();
   void clearCategories() => _categoryProvider.clearCategories();
-  Future<void> fetchFoodsForCategory(String categoryId) => _categoryProvider.fetchFoodsForCategory(categoryId);
+  Future<void> fetchFoodsForCategory(String categoryId) =>
+      _categoryProvider.fetchFoodsForCategory(categoryId);
 
   List<FoodItem> getAllFoods() => _categoryProvider.state.allFoods;
-  List<FoodItem> getRandomFoods({int count = 5}) => _categoryProvider.state.getRandomFoods(count: count);
+  List<FoodItem> getRandomFoods({int count = 5}) =>
+      _categoryProvider.state.getRandomFoods(count: count);
 
   /// Get items from the same seller (restaurant), excluding the current item
-  List<FoodItem> getItemsFromSeller(int sellerId, {String? excludeItemId, int? limit}) {
+  List<FoodItem> getItemsFromSeller(
+    int sellerId, {
+    String? excludeItemId,
+    int? limit,
+  }) {
     final allFoods = getAllFoods();
-    final sellerItems = allFoods.where((item) => item.sellerId == sellerId && item.id != excludeItemId).toList();
+    final sellerItems = allFoods
+        .where((item) => item.sellerId == sellerId && item.id != excludeItemId)
+        .toList();
 
     if (limit != null && sellerItems.length > limit) {
       return sellerItems.take(limit).toList();
@@ -100,10 +108,16 @@ class FoodProvider with ChangeNotifier {
   }
 
   /// Get similar items from the same category, excluding the current item
-  List<FoodItem> getSimilarItems(String categoryId, {String? excludeItemId, int limit = 5}) {
+  List<FoodItem> getSimilarItems(
+    String categoryId, {
+    String? excludeItemId,
+    int limit = 5,
+  }) {
     for (var category in categories) {
       if (category.id == categoryId) {
-        final similarItems = category.items.where((item) => item.id != excludeItemId).toList();
+        final similarItems = category.items
+            .where((item) => item.id != excludeItemId)
+            .toList();
         return similarItems.take(limit).toList();
       }
     }
@@ -112,15 +126,72 @@ class FoodProvider with ChangeNotifier {
 
   /// Get "You May Like" items - items from same seller, sorted by popularity
   List<FoodItem> getYouMayLikeItems(FoodItem currentItem, {int limit = 5}) {
-    final allFoods = getAllFoods();
+    final pool = _buildYouMayLikePool();
+    if (pool.isEmpty) return [];
 
-    // Get items from same seller, sorted by order count (popularity)
-    final sellerItems = allFoods
-        .where((item) => item.sellerId == currentItem.sellerId && item.id != currentItem.id)
-        .toList();
-    sellerItems.sort((a, b) => b.orderCount.compareTo(a.orderCount));
+    final candidates = pool
+        .where((item) => item.id.trim().isNotEmpty && item.id != currentItem.id)
+        .toList(growable: false);
+    if (candidates.isEmpty) return [];
 
-    return sellerItems.take(limit).toList();
+    final sameProviderItems = candidates
+        .where((item) => _isSameProviderItem(item, currentItem))
+        .toList(growable: false);
+    final selected = sameProviderItems.isNotEmpty
+        ? sameProviderItems
+        : candidates;
+
+    final sorted = [...selected]
+      ..sort((a, b) {
+        final byOrders = b.orderCount.compareTo(a.orderCount);
+        if (byOrders != 0) return byOrders;
+        final byRating = b.rating.compareTo(a.rating);
+        if (byRating != 0) return byRating;
+        final byReviews = b.reviewCount.compareTo(a.reviewCount);
+        if (byReviews != 0) return byReviews;
+        final byDiscount = b.discountPercentage.compareTo(a.discountPercentage);
+        if (byDiscount != 0) return byDiscount;
+        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      });
+
+    return sorted.take(limit).toList(growable: false);
+  }
+
+  List<FoodItem> _buildYouMayLikePool() {
+    final allCandidates = <FoodItem>[
+      ...getAllFoods(),
+      ...dealItems,
+      ...popularItems,
+      ...topRatedItems,
+      ...recommendedItems,
+    ];
+    final byId = <String, FoodItem>{};
+    for (final item in allCandidates) {
+      final id = item.id.trim();
+      if (id.isEmpty) continue;
+      byId.putIfAbsent(id, () => item);
+    }
+    return byId.values.toList(growable: false);
+  }
+
+  bool _isSameProviderItem(FoodItem item, FoodItem currentItem) {
+    final itemRestaurantId = item.restaurantId.trim();
+    final currentRestaurantId = currentItem.restaurantId.trim();
+    if (currentRestaurantId.isNotEmpty && itemRestaurantId.isNotEmpty) {
+      return itemRestaurantId == currentRestaurantId;
+    }
+
+    if (currentItem.sellerId != 0 && item.sellerId != 0) {
+      return item.sellerId == currentItem.sellerId;
+    }
+
+    final currentSellerName = currentItem.sellerName.trim().toLowerCase();
+    final itemSellerName = item.sellerName.trim().toLowerCase();
+    if (currentSellerName.isNotEmpty && itemSellerName.isNotEmpty) {
+      return itemSellerName == currentSellerName;
+    }
+
+    return false;
   }
 
   /// Find which category contains a food item
@@ -134,32 +205,52 @@ class FoodProvider with ChangeNotifier {
   }
 
   /// Get items from same category as the given item
-  List<FoodItem> getItemsFromSameCategory(FoodItem currentItem, {int limit = 5}) {
+  List<FoodItem> getItemsFromSameCategory(
+    FoodItem currentItem, {
+    int limit = 5,
+  }) {
     final category = getCategoryForItem(currentItem);
     if (category == null) return [];
 
-    return category.items.where((item) => item.id != currentItem.id).take(limit).toList();
+    return category.items
+        .where((item) => item.id != currentItem.id)
+        .take(limit)
+        .toList();
   }
 
   /// Refresh all data from all providers (cache-first on initial load)
   Future<void> refreshAll({bool forceRefresh = false}) async {
     await Future.wait([
-      forceRefresh ? _categoryProvider.refreshCategories() : _categoryProvider.fetchCategories(),
-      forceRefresh ? _bannerProvider.refreshBanners() : _bannerProvider.fetchPromotionalBanners(),
-      forceRefresh ? _dealsProvider.refreshDeals() : _dealsProvider.fetchDeals(),
+      forceRefresh
+          ? _categoryProvider.refreshCategories()
+          : _categoryProvider.fetchCategories(),
+      forceRefresh
+          ? _bannerProvider.refreshBanners()
+          : _bannerProvider.fetchPromotionalBanners(),
+      forceRefresh
+          ? _dealsProvider.refreshDeals()
+          : _dealsProvider.fetchDeals(),
       _discoveryProvider.fetchOrderHistory(forceRefresh: forceRefresh),
       _discoveryProvider.fetchRecentOrderItems(forceRefresh: forceRefresh),
-      forceRefresh ? _discoveryProvider.refreshPopularItems() : _discoveryProvider.fetchPopularItems(),
-      forceRefresh ? _discoveryProvider.refreshTopRatedItems() : _discoveryProvider.fetchTopRatedItems(),
-      forceRefresh ? _discoveryProvider.refreshRecommendedItems() : _discoveryProvider.fetchRecommendedItems(),
+      forceRefresh
+          ? _discoveryProvider.refreshPopularItems()
+          : _discoveryProvider.fetchPopularItems(),
+      forceRefresh
+          ? _discoveryProvider.refreshTopRatedItems()
+          : _discoveryProvider.fetchTopRatedItems(),
+      forceRefresh
+          ? _discoveryProvider.refreshRecommendedItems()
+          : _discoveryProvider.fetchRecommendedItems(),
     ]);
   }
 
   // Banners Provider
-  List<PromoBanner> get promotionalBanners => _bannerProvider.promotionalBanners;
+  List<PromoBanner> get promotionalBanners =>
+      _bannerProvider.promotionalBanners;
   bool get isLoadingBanners => _bannerProvider.isLoadingBanners;
 
-  Future<void> fetchPromotionalBanners() => _bannerProvider.fetchPromotionalBanners();
+  Future<void> fetchPromotionalBanners() =>
+      _bannerProvider.fetchPromotionalBanners();
 
   // Deals Provider
   List<FoodItem> get dealItems => _dealsProvider.dealItems;
@@ -186,10 +277,13 @@ class FoodProvider with ChangeNotifier {
   int get recommendedPage => _discoveryProvider.recommendedPage;
   bool get hasMoreRecommended => _discoveryProvider.hasMoreRecommended;
 
-  Future<void> fetchRecentOrderItems() => _discoveryProvider.fetchRecentOrderItems();
+  Future<void> fetchRecentOrderItems() =>
+      _discoveryProvider.fetchRecentOrderItems();
   Future<void> fetchOrderHistory() => _discoveryProvider.fetchOrderHistory();
   Future<void> fetchPopularItems() => _discoveryProvider.fetchPopularItems();
   Future<void> fetchTopRatedItems() => _discoveryProvider.fetchTopRatedItems();
-  Future<void> fetchRecommendedItems() => _discoveryProvider.fetchRecommendedItems();
-  Future<void> loadMoreRecommendedItems() => _discoveryProvider.loadMoreRecommendedItems();
+  Future<void> fetchRecommendedItems() =>
+      _discoveryProvider.fetchRecommendedItems();
+  Future<void> loadMoreRecommendedItems() =>
+      _discoveryProvider.loadMoreRecommendedItems();
 }

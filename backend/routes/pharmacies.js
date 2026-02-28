@@ -10,6 +10,31 @@ const { normalizeRatingResponse } = require("../utils/rating_calculator");
 /**
  * Helper to format Pharmacy store for frontend compatibility
  */
+const formatOpeningHours = (openingHours) => {
+    if (!Array.isArray(openingHours)) return null;
+
+    const dayMap = {
+        0: 'sunday',
+        1: 'monday',
+        2: 'tuesday',
+        3: 'wednesday',
+        4: 'thursday',
+        5: 'friday',
+        6: 'saturday',
+    };
+
+    return openingHours.reduce((acc, row) => {
+        const key = dayMap[row.dayOfWeek];
+        if (!key) return acc;
+        acc[key] = {
+            open: row.openTime ?? '09:00',
+            close: row.closeTime ?? '21:00',
+            isClosed: Boolean(row.isClosed),
+        };
+        return acc;
+    }, {});
+};
+
 const formatStore = (store) => {
     if (!store) return null;
     const ratingMeta = normalizeRatingResponse({
@@ -25,6 +50,7 @@ const formatStore = (store) => {
         ratingCount: ratingMeta.ratingCount,
         totalReviews: ratingMeta.totalReviews,
         reviewCount: ratingMeta.reviewCount,
+        openingHours: formatOpeningHours(store.openingHours),
         // Legacy support mapping
         store_name: store.storeName,
         is_open: store.isOpen,
@@ -796,7 +822,17 @@ router.get("/nearby", cacheMiddleware(cache.CACHE_KEYS.PHARMACY + ':nearby', 180
 router.get("/stores/:id", async (req, res) => {
     try {
         const store = await prisma.pharmacyStore.findUnique({
-            where: { id: req.params.id }
+            where: { id: req.params.id },
+            include: {
+                openingHours: {
+                    select: {
+                        dayOfWeek: true,
+                        openTime: true,
+                        closeTime: true,
+                        isClosed: true,
+                    }
+                }
+            }
         });
 
         if (!store) {

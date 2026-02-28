@@ -13,7 +13,12 @@ class OrderStep {
   final String time;
   final bool isCompleted;
 
-  OrderStep({required this.title, required this.description, required this.time, required this.isCompleted});
+  OrderStep({
+    required this.title,
+    required this.description,
+    required this.time,
+    required this.isCompleted,
+  });
 }
 
 class OrderTracking extends StatefulWidget {
@@ -27,15 +32,30 @@ class _OrderTrackingState extends State<OrderTracking> {
   int activeStep = 2; // Current step (0-3)
 
   final List<OrderStep> orderSteps = [
-    OrderStep(title: "Order Placed", description: "Your order has been received", time: "10:30 AM", isCompleted: true),
+    OrderStep(
+      title: "Order Placed",
+      description: "Your order has been received",
+      time: "10:30 AM",
+      isCompleted: true,
+    ),
     OrderStep(
       title: "Preparing your order",
       description: "Restaurant is preparing your order",
       time: "10:35 AM",
       isCompleted: true,
     ),
-    OrderStep(title: "Out for Delivery", description: "Your order is on the way", time: "10:45 AM", isCompleted: true),
-    OrderStep(title: "Delivered", description: "Order has been delivered", time: "10:50 AM", isCompleted: false),
+    OrderStep(
+      title: "Out for Delivery",
+      description: "Your order is on the way",
+      time: "10:45 AM",
+      isCompleted: true,
+    ),
+    OrderStep(
+      title: "Delivered",
+      description: "Order has been delivered",
+      time: "10:50 AM",
+      isCompleted: false,
+    ),
   ];
 
   @override
@@ -57,10 +77,15 @@ class _OrderTrackingState extends State<OrderTracking> {
               decoration: BoxDecoration(
                 color: colors.backgroundPrimary,
                 shape: BoxShape.circle,
-                border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+                border: Border.all(
+                  color: colors.inputBorder.withValues(alpha: 0.3),
+                  width: 0.5,
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
+                    color: isDark
+                        ? Colors.black.withAlpha(20)
+                        : Colors.black.withAlpha(5),
                     spreadRadius: 0,
                     blurRadius: 8,
                     offset: const Offset(0, 2),
@@ -77,7 +102,10 @@ class _OrderTrackingState extends State<OrderTracking> {
                     child: SvgPicture.asset(
                       Assets.icons.navArrowLeft,
                       package: 'grab_go_shared',
-                      colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                      colorFilter: ColorFilter.mode(
+                        colors.textPrimary,
+                        BlendMode.srcIn,
+                      ),
                     ),
                   ),
                 ),
@@ -91,10 +119,15 @@ class _OrderTrackingState extends State<OrderTracking> {
               decoration: BoxDecoration(
                 color: colors.backgroundPrimary,
                 borderRadius: BorderRadius.circular(20.r),
-                border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+                border: Border.all(
+                  color: colors.inputBorder.withValues(alpha: 0.3),
+                  width: 0.5,
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
+                    color: isDark
+                        ? Colors.black.withAlpha(20)
+                        : Colors.black.withAlpha(5),
                     spreadRadius: 0,
                     blurRadius: 8,
                     offset: const Offset(0, 2),
@@ -115,7 +148,10 @@ class _OrderTrackingState extends State<OrderTracking> {
                       package: 'grab_go_shared',
                       height: 16.h,
                       width: 16.w,
-                      colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                      colorFilter: ColorFilter.mode(
+                        colors.accentOrange,
+                        BlendMode.srcIn,
+                      ),
                     ),
                   ),
                   SizedBox(width: 8.w),
@@ -141,10 +177,15 @@ class _OrderTrackingState extends State<OrderTracking> {
               decoration: BoxDecoration(
                 color: colors.backgroundPrimary,
                 shape: BoxShape.circle,
-                border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+                border: Border.all(
+                  color: colors.inputBorder.withValues(alpha: 0.3),
+                  width: 0.5,
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: isDark ? Colors.black.withAlpha(20) : Colors.black.withAlpha(5),
+                    color: isDark
+                        ? Colors.black.withAlpha(20)
+                        : Colors.black.withAlpha(5),
                     spreadRadius: 0,
                     blurRadius: 8,
                     offset: const Offset(0, 2),
@@ -161,7 +202,10 @@ class _OrderTrackingState extends State<OrderTracking> {
                     child: SvgPicture.asset(
                       Assets.icons.headsetHelp,
                       package: 'grab_go_shared',
-                      colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                      colorFilter: ColorFilter.mode(
+                        colors.accentViolet,
+                        BlendMode.srcIn,
+                      ),
                     ),
                   ),
                 ),
@@ -184,11 +228,16 @@ class _OrderTrackingState extends State<OrderTracking> {
                 padding: EdgeInsets.all(20.r),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.8)],
+                    colors: [
+                      colors.accentOrange,
+                      colors.accentOrange.withValues(alpha: 0.8),
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                  borderRadius: BorderRadius.circular(
+                    KBorderSize.borderRadius15,
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: colors.accentOrange.withValues(alpha: 0.3),
@@ -205,13 +254,19 @@ class _OrderTrackingState extends State<OrderTracking> {
                       children: [
                         Container(
                           padding: EdgeInsets.all(10.r),
-                          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            shape: BoxShape.circle,
+                          ),
                           child: SvgPicture.asset(
                             Assets.icons.deliveryTruck,
                             package: 'grab_go_shared',
                             height: 24.h,
                             width: 24.w,
-                            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                            colorFilter: const ColorFilter.mode(
+                              Colors.white,
+                              BlendMode.srcIn,
+                            ),
                           ),
                         ),
                         SizedBox(width: 12.w),
@@ -221,7 +276,11 @@ class _OrderTrackingState extends State<OrderTracking> {
                             children: [
                               Text(
                                 orderSteps[activeStep].title,
-                                style: TextStyle(fontSize: 18.sp, color: Colors.white, fontWeight: FontWeight.w800),
+                                style: TextStyle(
+                                  fontSize: 18.sp,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
                               SizedBox(height: 4.h),
                               Text(
@@ -239,7 +298,10 @@ class _OrderTrackingState extends State<OrderTracking> {
                     ),
                     SizedBox(height: 12.h),
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12.w,
+                        vertical: 8.h,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(10.r),
@@ -247,11 +309,19 @@ class _OrderTrackingState extends State<OrderTracking> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.access_time, color: Colors.white, size: 16.sp),
+                          Icon(
+                            Icons.access_time,
+                            color: Colors.white,
+                            size: 16.sp,
+                          ),
                           SizedBox(width: 6.w),
                           Text(
                             "Est. ${orderSteps[activeStep].time}",
-                            style: TextStyle(fontSize: 12.sp, color: Colors.white, fontWeight: FontWeight.w700),
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ],
                       ),
@@ -287,14 +357,20 @@ class _OrderTrackingState extends State<OrderTracking> {
                     customStep: Container(
                       width: 50.w,
                       height: 50.h,
-                      decoration: BoxDecoration(color: colors.accentOrange, shape: BoxShape.circle),
+                      decoration: BoxDecoration(
+                        color: colors.accentOrange,
+                        shape: BoxShape.circle,
+                      ),
                       child: Center(
                         child: SvgPicture.asset(
                           Assets.icons.check,
                           package: 'grab_go_shared',
                           width: 24.w,
                           height: 24.h,
-                          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                          colorFilter: const ColorFilter.mode(
+                            Colors.white,
+                            BlendMode.srcIn,
+                          ),
                         ),
                       ),
                     ),
@@ -303,14 +379,20 @@ class _OrderTrackingState extends State<OrderTracking> {
                     customStep: Container(
                       width: 50.w,
                       height: 50.h,
-                      decoration: BoxDecoration(color: colors.accentOrange, shape: BoxShape.circle),
+                      decoration: BoxDecoration(
+                        color: colors.accentOrange,
+                        shape: BoxShape.circle,
+                      ),
                       child: Center(
                         child: SvgPicture.asset(
                           Assets.icons.chefHat,
                           package: 'grab_go_shared',
                           width: 24.w,
                           height: 24.h,
-                          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                          colorFilter: const ColorFilter.mode(
+                            Colors.white,
+                            BlendMode.srcIn,
+                          ),
                         ),
                       ),
                     ),
@@ -330,7 +412,10 @@ class _OrderTrackingState extends State<OrderTracking> {
                           package: 'grab_go_shared',
                           height: 24.h,
                           width: 24.w,
-                          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                          colorFilter: const ColorFilter.mode(
+                            Colors.white,
+                            BlendMode.srcIn,
+                          ),
                         ),
                       ),
                     ),
@@ -345,7 +430,11 @@ class _OrderTrackingState extends State<OrderTracking> {
                         border: Border.all(color: colors.inputBorder, width: 2),
                       ),
                       child: Center(
-                        child: Icon(Icons.handshake, color: colors.textSecondary, size: 24.sp),
+                        child: Icon(
+                          Icons.handshake,
+                          color: colors.textSecondary,
+                          size: 24.sp,
+                        ),
                       ),
                     ),
                   ),
@@ -362,7 +451,9 @@ class _OrderTrackingState extends State<OrderTracking> {
               Stack(
                 children: [
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                    borderRadius: BorderRadius.circular(
+                      KBorderSize.borderRadius15,
+                    ),
                     child: Assets.icons.orderTrackSample.image(
                       width: double.infinity,
                       height: 200.h,
@@ -373,7 +464,9 @@ class _OrderTrackingState extends State<OrderTracking> {
                   Stack(
                     children: [
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                        borderRadius: BorderRadius.circular(
+                          KBorderSize.borderRadius15,
+                        ),
                         child: Assets.icons.orderTrackSample.image(
                           width: double.infinity,
                           height: 200.h,
@@ -389,12 +482,19 @@ class _OrderTrackingState extends State<OrderTracking> {
                           child: GestureDetector(
                             onTap: () => context.push("/mapTracking"),
                             child: ClipRRect(
-                              borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                              borderRadius: BorderRadius.circular(
+                                KBorderSize.borderMedium,
+                              ),
                               child: BackdropFilter(
                                 filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
                                 child: Container(
-                                  color: colors.accentOrange.withValues(alpha: 0.2),
-                                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+                                  color: colors.accentOrange.withValues(
+                                    alpha: 0.2,
+                                  ),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 12.w,
+                                    vertical: 4.h,
+                                  ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
@@ -413,7 +513,10 @@ class _OrderTrackingState extends State<OrderTracking> {
                                         package: 'grab_go_shared',
                                         height: 16.h,
                                         width: 16.w,
-                                        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                        colorFilter: const ColorFilter.mode(
+                                          Colors.white,
+                                          BlendMode.srcIn,
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -434,11 +537,18 @@ class _OrderTrackingState extends State<OrderTracking> {
                 padding: EdgeInsets.all(20.r),
                 decoration: BoxDecoration(
                   color: colors.backgroundPrimary,
-                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                  border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+                  borderRadius: BorderRadius.circular(
+                    KBorderSize.borderRadius15,
+                  ),
+                  border: Border.all(
+                    color: colors.inputBorder.withValues(alpha: 0.3),
+                    width: 0.5,
+                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
+                      color: isDark
+                          ? Colors.black.withAlpha(30)
+                          : Colors.black.withAlpha(8),
                       spreadRadius: 0,
                       blurRadius: 12,
                       offset: const Offset(0, 2),
@@ -461,22 +571,44 @@ class _OrderTrackingState extends State<OrderTracking> {
                             package: 'grab_go_shared',
                             height: 16.h,
                             width: 16.w,
-                            colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                            colorFilter: ColorFilter.mode(
+                              colors.accentOrange,
+                              BlendMode.srcIn,
+                            ),
                           ),
                         ),
                         SizedBox(width: 10.w),
                         Text(
                           "Delivery Details",
-                          style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                          style: TextStyle(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w800,
+                            color: colors.textPrimary,
+                          ),
                         ),
                       ],
                     ),
                     SizedBox(height: 16.h),
-                    _buildDeliveryDetailRow(Assets.icons.mapPin, "Address", "Cocoyam St. Madina Adenta, Ghana", colors),
+                    _buildDeliveryDetailRow(
+                      Assets.icons.mapPin,
+                      "Address",
+                      "Cocoyam St. Madina Adenta, Ghana",
+                      colors,
+                    ),
                     SizedBox(height: 12.h),
-                    _buildDeliveryDetailRow(Assets.icons.deliveryTruck, "Type", "Door delivery", colors),
+                    _buildDeliveryDetailRow(
+                      Assets.icons.deliveryTruck,
+                      "Type",
+                      "Door delivery",
+                      colors,
+                    ),
                     SizedBox(height: 12.h),
-                    _buildDeliveryDetailRow(Assets.icons.shieldCheck, "Service", "Premium", colors),
+                    _buildDeliveryDetailRow(
+                      Assets.icons.shieldCheck,
+                      "Service",
+                      "Premium",
+                      colors,
+                    ),
                   ],
                 ),
               ),
@@ -487,11 +619,18 @@ class _OrderTrackingState extends State<OrderTracking> {
                 padding: EdgeInsets.all(20.r),
                 decoration: BoxDecoration(
                   color: colors.backgroundPrimary,
-                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                  border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+                  borderRadius: BorderRadius.circular(
+                    KBorderSize.borderRadius15,
+                  ),
+                  border: Border.all(
+                    color: colors.inputBorder.withValues(alpha: 0.3),
+                    width: 0.5,
+                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
+                      color: isDark
+                          ? Colors.black.withAlpha(30)
+                          : Colors.black.withAlpha(8),
                       spreadRadius: 0,
                       blurRadius: 12,
                       offset: const Offset(0, 2),
@@ -514,18 +653,29 @@ class _OrderTrackingState extends State<OrderTracking> {
                             package: 'grab_go_shared',
                             height: 16.h,
                             width: 16.w,
-                            colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                            colorFilter: ColorFilter.mode(
+                              colors.accentViolet,
+                              BlendMode.srcIn,
+                            ),
                           ),
                         ),
                         SizedBox(width: 10.w),
                         Text(
                           "Order Summary",
-                          style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                          style: TextStyle(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w800,
+                            color: colors.textPrimary,
+                          ),
                         ),
                       ],
                     ),
                     SizedBox(height: 16.h),
-                    _buildOrderSummaryRow("Fufu with Palm Nut Soup", "GHS 5.69", colors),
+                    _buildOrderSummaryRow(
+                      "Fufu with Palm Nut Soup",
+                      "GHS 5.69",
+                      colors,
+                    ),
                     SizedBox(height: 12.h),
                     GestureDetector(
                       onTap: () {},
@@ -534,10 +684,18 @@ class _OrderTrackingState extends State<OrderTracking> {
                         children: [
                           Text(
                             "View details",
-                            style: TextStyle(fontSize: 13.sp, color: colors.accentOrange, fontWeight: FontWeight.w700),
+                            style: TextStyle(
+                              fontSize: 13.sp,
+                              color: colors.accentOrange,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                           SizedBox(width: 4.w),
-                          Icon(Icons.arrow_forward_ios, size: 12.sp, color: colors.accentOrange),
+                          Icon(
+                            Icons.arrow_forward_ios,
+                            size: 12.sp,
+                            color: colors.accentOrange,
+                          ),
                         ],
                       ),
                     ),
@@ -552,11 +710,18 @@ class _OrderTrackingState extends State<OrderTracking> {
                 padding: EdgeInsets.all(20.r),
                 decoration: BoxDecoration(
                   color: colors.backgroundPrimary,
-                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                  border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+                  borderRadius: BorderRadius.circular(
+                    KBorderSize.borderRadius15,
+                  ),
+                  border: Border.all(
+                    color: colors.inputBorder.withValues(alpha: 0.3),
+                    width: 0.5,
+                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
+                      color: isDark
+                          ? Colors.black.withAlpha(30)
+                          : Colors.black.withAlpha(8),
                       spreadRadius: 0,
                       blurRadius: 12,
                       offset: const Offset(0, 2),
@@ -568,17 +733,28 @@ class _OrderTrackingState extends State<OrderTracking> {
                   children: [
                     Text(
                       "Total Paid",
-                      style: TextStyle(fontSize: 16.sp, color: colors.textPrimary, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        fontSize: 16.sp,
+                        color: colors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12.w,
+                        vertical: 6.h,
+                      ),
                       decoration: BoxDecoration(
                         color: colors.accentGreen.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10.r),
                       ),
                       child: Text(
                         "GHS 24.80",
-                        style: TextStyle(fontSize: 16.sp, color: colors.accentGreen, fontWeight: FontWeight.w800),
+                        style: TextStyle(
+                          fontSize: 16.sp,
+                          color: colors.accentGreen,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                   ],
@@ -591,20 +767,31 @@ class _OrderTrackingState extends State<OrderTracking> {
     );
   }
 
-  Widget _buildDeliveryDetailRow(dynamic icon, String label, String value, AppColorsExtension colors) {
+  Widget _buildDeliveryDetailRow(
+    dynamic icon,
+    String label,
+    String value,
+    AppColorsExtension colors,
+  ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           padding: EdgeInsets.all(6.r),
-          decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(8.r)),
+          decoration: BoxDecoration(
+            color: colors.backgroundSecondary,
+            borderRadius: BorderRadius.circular(8.r),
+          ),
           child: icon is String
               ? SvgPicture.asset(
                   icon,
                   package: "grab_go_shared",
                   height: 14.h,
                   width: 14.w,
-                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                  colorFilter: ColorFilter.mode(
+                    colors.textSecondary,
+                    BlendMode.srcIn,
+                  ),
                 )
               : Icon(icon, size: 14.sp, color: colors.textSecondary),
         ),
@@ -615,12 +802,20 @@ class _OrderTrackingState extends State<OrderTracking> {
             children: [
               Text(
                 label,
-                style: TextStyle(fontSize: 11.sp, color: colors.textSecondary, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  fontSize: 11.sp,
+                  color: colors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               SizedBox(height: 2.h),
               Text(
                 value,
-                style: TextStyle(fontSize: 13.sp, color: colors.textPrimary, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  fontSize: 13.sp,
+                  color: colors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
@@ -629,20 +824,53 @@ class _OrderTrackingState extends State<OrderTracking> {
     );
   }
 
-  Widget _buildOrderSummaryRow(String item, String price, AppColorsExtension colors) {
+  Widget _buildOrderSummaryRow(
+    String item,
+    String price,
+    AppColorsExtension colors, {
+    String? customizationSummary,
+  }) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          child: Text(
-            item,
-            style: TextStyle(fontSize: 14.sp, color: colors.textPrimary, fontWeight: FontWeight.w700),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                item,
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  color: colors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              if (customizationSummary != null &&
+                  customizationSummary.trim().isNotEmpty)
+                Padding(
+                  padding: EdgeInsets.only(top: 2.h),
+                  child: Text(
+                    customizationSummary,
+                    style: TextStyle(
+                      fontSize: 11.sp,
+                      color: colors.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+            ],
           ),
         ),
         SizedBox(width: 8.w),
         Text(
           price,
-          style: TextStyle(fontSize: 14.sp, color: colors.accentOrange, fontWeight: FontWeight.w800),
+          style: TextStyle(
+            fontSize: 14.sp,
+            color: colors.accentOrange,
+            fontWeight: FontWeight.w800,
+          ),
         ),
       ],
     );

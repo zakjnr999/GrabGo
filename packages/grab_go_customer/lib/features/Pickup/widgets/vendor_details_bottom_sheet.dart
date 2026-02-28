@@ -772,10 +772,15 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                   ),
                 Consumer<CartProvider>(
                   builder: (context, cartProvider, _) {
-                    final isInCart = cartProvider.cartItems.containsKey(item);
-                    final isItemPending = cartProvider.isItemOperationPending(
+                    final isInCart = cartProvider.hasItemInCart(
                       item,
+                      includeFoodCustomizations: true,
                     );
+                    final isItemPending = cartProvider
+                        .isItemOperationPendingForDisplay(
+                          item,
+                          includeFoodCustomizations: true,
+                        );
                     return Positioned(
                       right: 8.w,
                       bottom: 8.h,
@@ -785,10 +790,15 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                           if (cartProvider.fulfillmentMode != 'pickup') {
                             await cartProvider.setFulfillmentMode('pickup');
                           }
-                          final isNowInCart = cartProvider.cartItems
-                              .containsKey(item);
-                          if (isNowInCart) {
-                            await cartProvider.removeItemCompletely(item);
+                          final refreshedActionItem = cartProvider
+                              .resolveItemForCartAction(
+                                item,
+                                includeFoodCustomizations: true,
+                              );
+                          if (refreshedActionItem != null) {
+                            await cartProvider.removeItemCompletely(
+                              refreshedActionItem,
+                            );
                           } else {
                             await cartProvider.addToCart(
                               item,

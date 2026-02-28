@@ -6,6 +6,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:grab_go_customer/features/order/service/order_service_wrapper.dart';
 import 'package:grab_go_customer/features/order/view/rating_onboarding.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -30,6 +31,7 @@ class _MapTrackingState extends State<MapTracking> {
   bool _isSheetCollapsed = true;
   TrackingProvider? _trackingProvider;
   Future<TrackingProvider>? _initFuture;
+  List<_TrackedOrderItem> _orderItems = const [];
 
   @override
   void initState() {
@@ -56,9 +58,107 @@ class _MapTrackingState extends State<MapTracking> {
 
     // Initialize tracking for this order
     await provider.initializeTracking(widget.orderId);
+    _loadOrderDetails();
 
     return provider;
   }
+
+  Future<void> _loadOrderDetails() async {
+    try {
+      final orderData = await OrderServiceWrapper().getOrder(widget.orderId);
+      if (!mounted) return;
+      setState(() {
+        _orderItems = _parseTrackedOrderItems(orderData['items']);
+      });
+    } catch (_) {
+      // Keep tracking available even if order-details fetch fails.
+    }
+  }
+
+  List<_TrackedOrderItem> _parseTrackedOrderItems(dynamic rawItems) {
+    if (rawItems is! List) return const [];
+    final parsed = <_TrackedOrderItem>[];
+
+    for (final raw in rawItems) {
+      if (raw is! Map) continue;
+      final item = Map<String, dynamic>.from(raw);
+      final itemName = item['name']?.toString().trim().isNotEmpty == true
+          ? item['name'].toString().trim()
+          : item['food'] is Map
+          ? (item['food']['name']?.toString().trim().isNotEmpty == true
+                ? item['food']['name'].toString().trim()
+                : 'Item')
+          : 'Item';
+
+      parsed.add(
+        _TrackedOrderItem(
+          name: itemName,
+          quantity: _toInt(item['quantity'], fallback: 1),
+          priceLabel: _formatCurrency(_toDouble(item['price']) ?? 0.0),
+          customizationSummary: _buildCustomizationSummary(item),
+        ),
+      );
+    }
+    return parsed;
+  }
+
+  String? _buildCustomizationSummary(Map<String, dynamic> item) {
+    final parts = <String>[];
+
+    final selectedPortion = item['selectedPortion'];
+    final portionLabel = selectedPortion is Map
+        ? selectedPortion['label']?.toString().trim()
+        : null;
+    if (portionLabel != null && portionLabel.isNotEmpty) {
+      parts.add('Portion: $portionLabel');
+    }
+
+    final selectedPreferences = item['selectedPreferences'];
+    if (selectedPreferences is List) {
+      final labels = selectedPreferences
+          .whereType<Map>()
+          .map(
+            (entry) =>
+                entry['optionLabel']?.toString().trim() ??
+                entry['label']?.toString().trim() ??
+                '',
+          )
+          .where((entry) => entry.isNotEmpty)
+          .toList(growable: false);
+
+      if (labels.isNotEmpty) {
+        if (labels.length > 2) {
+          final visible = labels.take(2).join(', ');
+          final remaining = labels.length - 2;
+          parts.add('Prefs: $visible +$remaining');
+        } else {
+          parts.add('Prefs: ${labels.join(', ')}');
+        }
+      }
+    }
+
+    final note = item['itemNote']?.toString().trim();
+    if (note != null && note.isNotEmpty) {
+      parts.add('Note');
+    }
+
+    if (parts.isEmpty) return null;
+    return parts.join(' • ');
+  }
+
+  double? _toDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
+  }
+
+  int _toInt(dynamic value, {int fallback = 0}) {
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? fallback;
+    return fallback;
+  }
+
+  String _formatCurrency(double value) => 'GHS ${value.toStringAsFixed(2)}';
 
   void _checkDeliveryStatus(TrackingProvider provider) {
     final currentStatus = provider.trackingData?.status;
@@ -1134,37 +1234,51 @@ class _MapTrackingState extends State<MapTracking> {
                                           ),
                                         ),
                                         child: Column(
-                                          children: [
-                                            _buildOrderItem(
-                                              colors: colors,
-                                              itemName:
-                                                  "Jollof Rice with Chicken",
-                                              quantity: 2,
-                                              price: "GHS 45.00",
-                                            ),
-                                            Divider(
-                                              color: colors.inputBorder
-                                                  .withValues(alpha: 0.3),
-                                              height: 24.h,
-                                            ),
-                                            _buildOrderItem(
-                                              colors: colors,
-                                              itemName: "Fried Plantain",
-                                              quantity: 1,
-                                              price: "GHS 15.00",
-                                            ),
-                                            Divider(
-                                              color: colors.inputBorder
-                                                  .withValues(alpha: 0.3),
-                                              height: 24.h,
-                                            ),
-                                            _buildOrderItem(
-                                              colors: colors,
-                                              itemName: "Coca Cola (500ml)",
-                                              quantity: 1,
-                                              price: "GHS 5.00",
-                                            ),
-                                          ],
+                                          children: _orderItems.isEmpty
+                                              ? [
+                                                  Text(
+                                                    "Item details unavailable right now.",
+                                                    style: TextStyle(
+                                                      color:
+                                                          colors.textSecondary,
+                                                      fontSize: 12.sp,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                ]
+                                              : [
+                                                  for (
+                                                    int index = 0;
+                                                    index < _orderItems.length;
+                                                    index++
+                                                  ) ...[
+                                                    _buildOrderItem(
+                                                      colors: colors,
+                                                      itemName:
+                                                          _orderItems[index]
+                                                              .name,
+                                                      quantity:
+                                                          _orderItems[index]
+                                                              .quantity,
+                                                      price: _orderItems[index]
+                                                          .priceLabel,
+                                                      customizationSummary:
+                                                          _orderItems[index]
+                                                              .customizationSummary,
+                                                    ),
+                                                    if (index <
+                                                        _orderItems.length - 1)
+                                                      Divider(
+                                                        color: colors
+                                                            .inputBorder
+                                                            .withValues(
+                                                              alpha: 0.3,
+                                                            ),
+                                                        height: 24.h,
+                                                      ),
+                                                  ],
+                                                ],
                                         ),
                                       ),
 
@@ -1533,6 +1647,7 @@ class _MapTrackingState extends State<MapTracking> {
     required String itemName,
     required int quantity,
     required String price,
+    String? customizationSummary,
   }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1554,13 +1669,33 @@ class _MapTrackingState extends State<MapTracking> {
         ),
         SizedBox(width: 12.w),
         Expanded(
-          child: Text(
-            itemName,
-            style: TextStyle(
-              color: colors.textPrimary,
-              fontSize: 13.sp,
-              fontWeight: FontWeight.w500,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                itemName,
+                style: TextStyle(
+                  color: colors.textPrimary,
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              if (customizationSummary != null &&
+                  customizationSummary.trim().isNotEmpty)
+                Padding(
+                  padding: EdgeInsets.only(top: 2.h),
+                  child: Text(
+                    customizationSummary,
+                    style: TextStyle(
+                      color: colors.textSecondary,
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+            ],
           ),
         ),
         Text(
@@ -1574,4 +1709,18 @@ class _MapTrackingState extends State<MapTracking> {
       ],
     );
   }
+}
+
+class _TrackedOrderItem {
+  final String name;
+  final int quantity;
+  final String priceLabel;
+  final String? customizationSummary;
+
+  const _TrackedOrderItem({
+    required this.name,
+    required this.quantity,
+    required this.priceLabel,
+    this.customizationSummary,
+  });
 }

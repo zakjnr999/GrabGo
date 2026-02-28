@@ -68,12 +68,18 @@ class OrderItem {
   final int quantity;
   final double price;
   final String? image;
+  final Map<String, dynamic>? selectedPortion;
+  final List<Map<String, dynamic>> selectedPreferences;
+  final String? itemNote;
 
   OrderItem({
     required this.name,
     required this.quantity,
     required this.price,
     this.image,
+    this.selectedPortion,
+    this.selectedPreferences = const [],
+    this.itemNote,
   });
 }
 
@@ -133,12 +139,25 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
       final itemName = item['name'] ?? item['food']?['name'] ?? 'Unknown Item';
       final itemPrice = _toDouble(item['price'] ?? item['food']?['price']);
       final itemImage = item['image'] ?? item['food']?['image'];
+      final selectedPortion = item['selectedPortion'] is Map
+          ? Map<String, dynamic>.from(item['selectedPortion'])
+          : null;
+      final selectedPreferences = item['selectedPreferences'] is List
+          ? (item['selectedPreferences'] as List)
+                .whereType<Map>()
+                .map((entry) => Map<String, dynamic>.from(entry))
+                .toList(growable: false)
+          : const <Map<String, dynamic>>[];
+      final itemNote = item['itemNote']?.toString();
 
       return OrderItem(
         name: itemName,
         quantity: _toInt(item['quantity'], fallback: 1),
         price: itemPrice,
         image: itemImage,
+        selectedPortion: selectedPortion,
+        selectedPreferences: selectedPreferences,
+        itemNote: itemNote,
       );
     }).toList();
 
@@ -258,6 +277,41 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
     if (value is num) return value.toInt();
     if (value is String) return int.tryParse(value);
     return null;
+  }
+
+  String? _buildCustomizationSummary(OrderItem item) {
+    final parts = <String>[];
+    final portionLabel = item.selectedPortion?['label']?.toString().trim();
+    if (portionLabel != null && portionLabel.isNotEmpty) {
+      parts.add('Portion: $portionLabel');
+    }
+
+    final prefLabels = item.selectedPreferences
+        .map(
+          (entry) =>
+              entry['optionLabel']?.toString().trim() ??
+              entry['label']?.toString().trim() ??
+              '',
+        )
+        .where((label) => label.isNotEmpty)
+        .toList(growable: false);
+    if (prefLabels.isNotEmpty) {
+      if (prefLabels.length > 2) {
+        final visible = prefLabels.take(2).join(', ');
+        final extra = prefLabels.length - 2;
+        parts.add('Prefs: $visible +$extra');
+      } else {
+        parts.add('Prefs: ${prefLabels.join(', ')}');
+      }
+    }
+
+    final note = item.itemNote?.trim();
+    if (note != null && note.isNotEmpty) {
+      parts.add('Note');
+    }
+
+    if (parts.isEmpty) return null;
+    return parts.join(' • ');
   }
 
   List<OrderModel> _filterOrdersByTab(List<OrderModel> convertedOrders) {
@@ -1162,24 +1216,26 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
             ],
           ),
           SizedBox(height: 16.h),
-          ...order.items
-              .take(2)
-              .map(
-                (item) => Padding(
-                  padding: EdgeInsets.only(bottom: 8.h),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 6.w,
-                        height: 6.h,
-                        decoration: BoxDecoration(
-                          color: colors.accentOrange,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      SizedBox(width: 8.w),
-                      Expanded(
-                        child: Text(
+          ...order.items.take(2).map((item) {
+            final customizationSummary = _buildCustomizationSummary(item);
+            return Padding(
+              padding: EdgeInsets.only(bottom: 8.h),
+              child: Row(
+                children: [
+                  Container(
+                    width: 6.w,
+                    height: 6.h,
+                    decoration: BoxDecoration(
+                      color: colors.accentOrange,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  SizedBox(width: 8.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
                           '${item.quantity}x ${item.name}',
                           style: TextStyle(
                             fontSize: 13.sp,
@@ -1189,19 +1245,37 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      Text(
-                        '${AppStrings.currencySymbol} ${item.price.toStringAsFixed(2)}',
-                        style: TextStyle(
-                          fontSize: 13.sp,
-                          fontWeight: FontWeight.w600,
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                    ],
+                        if (customizationSummary != null)
+                          Padding(
+                            padding: EdgeInsets.only(top: 2.h),
+                            child: Text(
+                              customizationSummary,
+                              style: TextStyle(
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.w500,
+                                color: colors.textSecondary.withValues(
+                                  alpha: 0.85,
+                                ),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-                ),
+                  Text(
+                    '${AppStrings.currencySymbol} ${item.price.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                ],
               ),
+            );
+          }),
           if (order.items.length > 2)
             Padding(
               padding: EdgeInsets.only(left: 14.w, top: 4.h),

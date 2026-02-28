@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:grab_go_customer/features/Pickup/widgets/vendor_details_bottom_sheet.dart';
 import 'package:grab_go_customer/features/grabmart/model/grabmart_category.dart';
 import 'package:grab_go_customer/features/grabmart/model/grabmart_item.dart';
 import 'package:grab_go_customer/features/grabmart/viewmodel/grabmart_provider.dart';
@@ -983,8 +982,7 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
         isLoading: _isLoadingNearbyVendors,
         accentColor: accentColor,
         showClosedOnImage: true,
-        onItemTap: (vendor) =>
-            VendorDetailBottomSheet.show(context: context, vendor: vendor),
+        onItemTap: (vendor) => context.push('/vendorDetails', extra: vendor),
       ),
     );
   }

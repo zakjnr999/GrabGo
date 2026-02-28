@@ -58,11 +58,19 @@ class OrderAgainSection extends StatelessWidget {
               return Consumer<CartProvider>(
                 builder: (context, cartProvider, child) {
                   final itemForCart = originalItem ?? item;
-                  final bool isInCart = cartProvider.cartItems.containsKey(
+                  final bool isInCart = cartProvider.hasItemInCart(
                     itemForCart,
+                    includeFoodCustomizations: true,
                   );
                   final bool isItemPending = cartProvider
-                      .isItemOperationPending(itemForCart);
+                      .isItemOperationPendingForDisplay(
+                        itemForCart,
+                        includeFoodCustomizations: true,
+                      );
+                  final actionItem = cartProvider.resolveItemForCartAction(
+                    itemForCart,
+                    includeFoodCustomizations: true,
+                  );
                   return Padding(
                     padding: EdgeInsets.only(right: 15.w),
                     child: QuickReorderCard(
@@ -73,8 +81,8 @@ class OrderAgainSection extends StatelessWidget {
                       isLoading: isItemPending,
                       onAddToCart: () {
                         if (isItemPending) return;
-                        if (isInCart) {
-                          cartProvider.removeItemCompletely(itemForCart);
+                        if (isInCart && actionItem != null) {
+                          cartProvider.removeItemCompletely(actionItem);
                         } else {
                           cartProvider.addToCart(itemForCart, context: context);
                         }

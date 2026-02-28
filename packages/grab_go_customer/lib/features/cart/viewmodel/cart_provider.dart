@@ -86,6 +86,184 @@ class CartProvider extends ChangeNotifier {
   bool isItemOperationPending(CartItem item) =>
       _pendingItemOps.contains(_itemKey(item));
 
+  bool hasItemInCart(CartItem item, {bool includeFoodCustomizations = false}) =>
+      getItemQuantity(
+        item,
+        includeFoodCustomizations: includeFoodCustomizations,
+      ) >
+      0;
+
+  int getItemQuantity(CartItem item, {bool includeFoodCustomizations = false}) {
+    final entries = _findMatchingCartEntries(
+      item,
+      includeFoodCustomizations: includeFoodCustomizations,
+    );
+    if (entries.isEmpty) return 0;
+    return entries.fold<int>(0, (sum, entry) => sum + entry.value);
+  }
+
+  bool isItemOperationPendingForDisplay(
+    CartItem item, {
+    bool includeFoodCustomizations = false,
+  }) {
+    if (isItemOperationPending(item)) return true;
+    if (!includeFoodCustomizations || item is! FoodItem) return false;
+
+    final entries = _findMatchingCartEntries(
+      item,
+      includeFoodCustomizations: true,
+    );
+    for (final entry in entries) {
+      if (isItemOperationPending(entry.key)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  CartItem? resolveItemForCartAction(
+    CartItem item, {
+    bool includeFoodCustomizations = false,
+  }) {
+    if (_cartItems.containsKey(item)) return item;
+    final entries = _findMatchingCartEntries(
+      item,
+      includeFoodCustomizations: includeFoodCustomizations,
+    );
+    if (entries.isEmpty) return null;
+    return entries.first.key;
+  }
+
+  List<MapEntry<CartItem, int>> _findMatchingCartEntries(
+    CartItem item, {
+    bool includeFoodCustomizations = false,
+  }) {
+    final exactQuantity = _cartItems[item];
+    if (exactQuantity != null) {
+      return [MapEntry(item, exactQuantity)];
+    }
+    if (!includeFoodCustomizations || item is! FoodItem) {
+      return const <MapEntry<CartItem, int>>[];
+    }
+
+    final matches = <MapEntry<CartItem, int>>[];
+    for (final entry in _cartItems.entries) {
+      if (_isSameFoodBaseItem(item, entry.key)) {
+        matches.add(entry);
+      }
+    }
+    return matches;
+  }
+
+  bool _isSameFoodBaseItem(CartItem current, CartItem other) {
+    if (current is! FoodItem || other is! FoodItem) return false;
+
+    if (current.id.isNotEmpty && other.id.isNotEmpty) {
+      return current.id == other.id;
+    }
+
+    return current.name == other.name &&
+        current.restaurantId == other.restaurantId;
+  }
+
+  Future<String?> replaceFoodCustomizationInCart({
+    required FoodItem currentItem,
+    required FoodItem updatedItem,
+  }) async {
+    final oldKey = _itemKey(currentItem);
+    final newKey = _itemKey(updatedItem);
+    if (oldKey == newKey) return null;
+
+    if (_pendingItemOps.contains(oldKey) || _pendingItemOps.contains(newKey)) {
+      return 'Please wait for the current cart update to finish.';
+    }
+
+    final currentQuantity = _cartItems[currentItem];
+    if (currentQuantity == null || currentQuantity <= 0) {
+      return 'Item not found in cart.';
+    }
+
+    final previousItems = Map<CartItem, int>.from(_cartItems);
+    final previousItemIds = Map<String, String>.from(_cartItemIdsByKey);
+    final previousCartType = _cartType;
+
+    Future<void> rollbackLocalState() async {
+      _cartItems
+        ..clear()
+        ..addAll(previousItems);
+      _cartItemIdsByKey
+        ..clear()
+        ..addAll(previousItemIds);
+      _cartType = previousCartType;
+      _markLocalCartMutated();
+      _recalculateLocalPricing();
+      await _saveCart();
+      notifyListeners();
+    }
+
+    _pendingItemOps
+      ..add(oldKey)
+      ..add(newKey);
+    notifyListeners();
+
+    try {
+      _cartItems.remove(currentItem);
+      final mergedQuantity = (_cartItems[updatedItem] ?? 0) + currentQuantity;
+      _cartItems[updatedItem] = mergedQuantity;
+      _cartItemIdsByKey.remove(oldKey);
+      _markLocalCartMutated();
+      _recalculateLocalPricing();
+      _saveCart();
+      notifyListeners();
+
+      var oldCartItemId = _cartItemIdsByKey[oldKey];
+      oldCartItemId ??= await _ensureCartItemId(oldKey, forceRefresh: true);
+      if (oldCartItemId == null) {
+        await rollbackLocalState();
+        await syncFromBackend();
+        return 'Could not update item customization. Please try again.';
+      }
+
+      var removeError = await _removeFromBackend(oldCartItemId);
+      if (_isItemNotFoundInCartError(removeError)) {
+        final freshCartItemId = await _ensureCartItemId(
+          oldKey,
+          forceRefresh: true,
+        );
+        if (freshCartItemId != null) {
+          removeError = await _removeFromBackend(freshCartItemId);
+        } else {
+          removeError = null;
+        }
+      }
+      if (removeError != null) {
+        await rollbackLocalState();
+        await syncFromBackend();
+        return removeError;
+      }
+
+      final addError = await _addToBackend(updatedItem, currentQuantity);
+      if (addError != null) {
+        await _addToBackend(currentItem, currentQuantity);
+        await rollbackLocalState();
+        await syncFromBackend();
+        return addError;
+      }
+
+      await syncFromBackend();
+      return null;
+    } catch (e) {
+      await rollbackLocalState();
+      await syncFromBackend();
+      return e.toString();
+    } finally {
+      _pendingItemOps
+        ..remove(oldKey)
+        ..remove(newKey);
+      notifyListeners();
+    }
+  }
+
   String buildVendorGroupKey({
     required String itemType,
     required String providerId,
@@ -806,7 +984,11 @@ class CartProvider extends ChangeNotifier {
   }
 
   void _resetGiftOrderDraftIfCartIsEmpty({bool notify = true}) {
-    if (_cartItems.isNotEmpty) return;
+    final shouldReset =
+        _cartItems.isEmpty ||
+        _normalizeFulfillmentMode(_fulfillmentMode) == 'pickup' ||
+        providerCount > 1;
+    if (!shouldReset) return;
     _resetGiftOrderDraft(notify: notify);
   }
 
@@ -912,6 +1094,7 @@ class CartProvider extends ChangeNotifier {
     _scheduleAvailability = null;
     _markLocalCartMutated();
     _applyPricing(null);
+    _resetGiftOrderDraftIfCartIsEmpty(notify: false);
     notifyListeners();
     await syncFromBackend();
   }
@@ -1377,7 +1560,8 @@ class CartProvider extends ChangeNotifier {
             body['selectedPortionId'] = selectedPortionId;
           }
           if (item.selectedPreferenceOptionIds.isNotEmpty) {
-            body['selectedPreferenceOptionIds'] = item.selectedPreferenceOptionIds;
+            body['selectedPreferenceOptionIds'] =
+                item.selectedPreferenceOptionIds;
           }
           final note = item.itemNote?.trim();
           if (note != null && note.isNotEmpty) {
@@ -1602,6 +1786,7 @@ class CartProvider extends ChangeNotifier {
       _markLocalCartMutated();
       _recalculateLocalPricing();
       _saveCart();
+      _resetGiftOrderDraftIfCartIsEmpty(notify: false);
       notifyListeners();
 
       // Sync to backend async
@@ -1630,6 +1815,7 @@ class CartProvider extends ChangeNotifier {
         _markLocalCartMutated();
         _recalculateLocalPricing();
         _saveCart();
+        _resetGiftOrderDraftIfCartIsEmpty(notify: false);
         notifyListeners();
         await syncFromBackend();
         if (context != null && context.mounted) {

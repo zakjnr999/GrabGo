@@ -12,6 +12,31 @@ const { normalizeRatingResponse } = require("../utils/rating_calculator");
 
 const router = express.Router();
 
+const formatOpeningHours = (openingHours) => {
+  if (!Array.isArray(openingHours)) return null;
+
+  const dayMap = {
+    0: "sunday",
+    1: "monday",
+    2: "tuesday",
+    3: "wednesday",
+    4: "thursday",
+    5: "friday",
+    6: "saturday",
+  };
+
+  return openingHours.reduce((acc, row) => {
+    const key = dayMap[row.dayOfWeek];
+    if (!key) return acc;
+    acc[key] = {
+      open: row.openTime ?? "09:00",
+      close: row.closeTime ?? "21:00",
+      isClosed: Boolean(row.isClosed),
+    };
+    return acc;
+  }, {});
+};
+
 // Helper function to format restaurant for frontend compatibility
 const formatRestaurant = (restaurant) => {
   if (!restaurant) return null;
@@ -47,6 +72,7 @@ const formatRestaurant = (restaurant) => {
     min_order: restaurant.minOrder,
     totalReviews: ratingMeta.totalReviews,
     reviewCount: ratingMeta.reviewCount,
+    openingHours: formatOpeningHours(openingHours),
   };
 };
 
@@ -99,6 +125,18 @@ router.get("/", async (req, res, next) => {
         minOrder: true,
         paymentMethods: true,
         bannerImages: true,
+        isVerified: true,
+        verifiedAt: true,
+        featured: true,
+        featuredUntil: true,
+        features: true,
+        tags: true,
+        whatsappNumber: true,
+        totalReviews: true,
+        isAcceptingOrders: true,
+        isGrabGoExclusive: true,
+        isGrabGoExclusiveUntil: true,
+        lastOnlineAt: true,
         status: true,
         rating: true,
         ratingCount: true,
@@ -108,6 +146,10 @@ router.get("/", async (req, res, next) => {
         address: true,
         city: true,
         area: true,
+        facebookUrl: true,
+        instagramUrl: true,
+        twitterUrl: true,
+        websiteUrl: true,
         openingHours: {
           select: {
             dayOfWeek: true,
@@ -370,6 +412,18 @@ router.get("/stores/:id", async (req, res) => {
         minOrder: true,
         paymentMethods: true,
         bannerImages: true,
+        isVerified: true,
+        verifiedAt: true,
+        featured: true,
+        featuredUntil: true,
+        features: true,
+        tags: true,
+        whatsappNumber: true,
+        totalReviews: true,
+        isAcceptingOrders: true,
+        isGrabGoExclusive: true,
+        isGrabGoExclusiveUntil: true,
+        lastOnlineAt: true,
         status: true,
         rating: true,
         ratingCount: true,
@@ -379,6 +433,10 @@ router.get("/stores/:id", async (req, res) => {
         address: true,
         city: true,
         area: true,
+        facebookUrl: true,
+        instagramUrl: true,
+        twitterUrl: true,
+        websiteUrl: true,
         openingHours: {
           select: {
             dayOfWeek: true,
@@ -729,6 +787,18 @@ router.put("/:restaurantId", protect, admin, verifyApiKey, async (req, res) => {
         minOrder: true,
         paymentMethods: true,
         bannerImages: true,
+        isVerified: true,
+        verifiedAt: true,
+        featured: true,
+        featuredUntil: true,
+        features: true,
+        tags: true,
+        whatsappNumber: true,
+        totalReviews: true,
+        isAcceptingOrders: true,
+        isGrabGoExclusive: true,
+        isGrabGoExclusiveUntil: true,
+        lastOnlineAt: true,
         status: true,
         rating: true,
         ratingCount: true,
@@ -738,6 +808,18 @@ router.put("/:restaurantId", protect, admin, verifyApiKey, async (req, res) => {
         address: true,
         city: true,
         area: true,
+        facebookUrl: true,
+        instagramUrl: true,
+        twitterUrl: true,
+        websiteUrl: true,
+        openingHours: {
+          select: {
+            dayOfWeek: true,
+            openTime: true,
+            closeTime: true,
+            isClosed: true,
+          },
+        },
         createdAt: true,
         updatedAt: true,
       }

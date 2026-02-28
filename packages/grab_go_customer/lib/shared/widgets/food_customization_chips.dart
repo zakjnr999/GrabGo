@@ -34,9 +34,14 @@ class FoodCustomizationChips extends StatelessWidget {
       children: labels
           .map((label) {
             return Container(
-              padding: EdgeInsets.symmetric(horizontal: compact ? 7.w : 9.w, vertical: 4.h),
+              padding: EdgeInsets.symmetric(
+                horizontal: compact ? 7.w : 9.w,
+                vertical: 4.h,
+              ),
               decoration: BoxDecoration(
-                color: colors.accentOrange.withValues(alpha: compact ? 0.10 : 0.12),
+                color: colors.accentOrange.withValues(
+                  alpha: compact ? 0.10 : 0.12,
+                ),
                 borderRadius: BorderRadius.circular(compact ? 7.r : 8.r),
               ),
               child: Text(
@@ -88,6 +93,44 @@ class FoodCustomizationChips extends StatelessWidget {
     }
 
     return labels;
+  }
+
+  static List<String> buildFoodCustomizationSummaryLines(
+    FoodItem item, {
+    int maxPreferenceLabels = 2,
+    int maxNoteLength = 40,
+  }) {
+    final lines = <String>[];
+
+    final selectedPortion = item.selectedPortion;
+    if (selectedPortion != null) {
+      final portionLabel = _readString(selectedPortion['label']);
+      if (portionLabel != null && portionLabel.isNotEmpty) {
+        lines.add('Portion: $portionLabel');
+      }
+    }
+
+    final preferenceLabels = item.selectedPreferences
+        .map((entry) => _readString(entry['optionLabel']))
+        .whereType<String>()
+        .where((entry) => entry.isNotEmpty)
+        .toList(growable: false);
+    if (preferenceLabels.isNotEmpty) {
+      if (preferenceLabels.length > maxPreferenceLabels) {
+        final visible = preferenceLabels.take(maxPreferenceLabels).join(', ');
+        final remaining = preferenceLabels.length - maxPreferenceLabels;
+        lines.add('Prefs: $visible +$remaining');
+      } else {
+        lines.add('Prefs: ${preferenceLabels.join(', ')}');
+      }
+    }
+
+    final note = item.itemNote?.trim();
+    if (note != null && note.isNotEmpty) {
+      lines.add('Note: ${_truncate(note, maxNoteLength)}');
+    }
+
+    return lines;
   }
 
   static String? _readString(dynamic value) {

@@ -207,33 +207,25 @@ class _CustomPopupMenuState extends State<CustomPopupMenu> with SingleTickerProv
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              height: 40.h,
-              width: 40.h,
-              decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(10.r)),
-              child: Center(
-                child: item.icon != null
-                    ? SvgPicture.asset(
-                        item.icon!,
-                        package: "grab_go_shared",
-                        height: widget.iconSize ?? 20.h,
-                        width: widget.iconSize ?? 20.h,
-                        colorFilter: ColorFilter.mode(effectiveIconColor, BlendMode.srcIn),
-                      )
-                    : Icon(
-                        item.materialIcon ?? Icons.settings,
-                        size: widget.iconSize ?? 20.h,
-                        color: effectiveIconColor,
-                      ),
-              ),
+            Center(
+              child: item.icon != null
+                  ? SvgPicture.asset(
+                      item.icon!,
+                      package: "grab_go_shared",
+                      height: widget.iconSize ?? 18.h,
+                      width: widget.iconSize ?? 18.w,
+                      colorFilter: ColorFilter.mode(effectiveIconColor, BlendMode.srcIn),
+                    )
+                  : Icon(item.materialIcon ?? Icons.settings, size: widget.iconSize ?? 20.h, color: effectiveIconColor),
             ),
             SizedBox(width: 12.w),
 
             Expanded(
               child: Text(
                 item.label,
-                style: TextStyle(color: textColor, fontSize: 14.sp, fontWeight: FontWeight.w600, letterSpacing: -0.2),
+                style: TextStyle(color: textColor, fontSize: 14.sp, fontWeight: FontWeight.w500, letterSpacing: -0.2),
               ),
             ),
 

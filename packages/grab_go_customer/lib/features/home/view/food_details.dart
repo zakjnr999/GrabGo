@@ -91,6 +91,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
     });
 
     _initializeCustomizationDrafts();
+    _ensureFoodCatalogLoaded();
   }
 
   @override
@@ -114,6 +115,17 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
   bool get isPharmacy => widget.isPharmacy;
   bool get isGrabMart => widget.isGrabMart;
   bool get isStoreItem => widget.isStoreItem;
+
+  void _ensureFoodCatalogLoaded() {
+    if (widget.foodItem == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final provider = context.read<FoodProvider>();
+      if (provider.getAllFoods().isEmpty && !provider.isLoading) {
+        provider.fetchCategories();
+      }
+    });
+  }
 
   void _loadMoreRestaurantItems() {
     if (widget.foodItem == null) return;
@@ -223,7 +235,9 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
   String _buildPreferenceSelectionKey(String optionId, {String? sizeOptionId}) {
     final normalizedOptionId = optionId.trim();
     final normalizedSizeId = sizeOptionId?.trim();
-    if (normalizedSizeId == null || normalizedSizeId.isEmpty) return normalizedOptionId;
+    if (normalizedSizeId == null || normalizedSizeId.isEmpty) {
+      return normalizedOptionId;
+    }
     return '$normalizedOptionId$_preferenceSelectionDelimiter$normalizedSizeId';
   }
 
@@ -649,14 +663,25 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
         return SafeArea(
           top: false,
           child: Padding(
-            padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 18.h),
+            padding: EdgeInsets.symmetric(vertical: 16.h),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Choose size for $optionLabel',
-                  style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                Center(
+                  child: Container(
+                    width: 36.w,
+                    height: 4.h,
+                    decoration: BoxDecoration(color: colors.divider, borderRadius: BorderRadius.circular(999)),
+                  ),
+                ),
+                SizedBox(height: 14.h),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20.w),
+                  child: Text(
+                    'Choose size for $optionLabel',
+                    style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                  ),
                 ),
                 SizedBox(height: 10.h),
                 ...sizeOptions.map((sizeOption) {
@@ -667,7 +692,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                   final isSelected = selectedSizeOptionId == sizeOptionId;
 
                   return ListTile(
-                    contentPadding: EdgeInsets.zero,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 20.w),
                     dense: true,
                     onTap: () => Navigator.pop(sheetContext, sizeOptionId),
                     title: Text(
@@ -679,18 +704,27 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                       style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: colors.textSecondary),
                     ),
                     trailing: isSelected
-                        ? Icon(Icons.check_circle, color: colors.accentOrange, size: 18.sp)
+                        ? SvgPicture.asset(
+                            Assets.icons.checkCircleSolid,
+                            package: 'grab_go_shared',
+                            height: 18.h,
+                            width: 18.w,
+                            colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                          )
                         : Icon(Icons.circle_outlined, color: colors.inputBorder, size: 18.sp),
                   );
                 }),
                 if (showRemoveAction) ...[
                   SizedBox(height: 8.h),
-                  TextButton(
-                    onPressed: () => Navigator.pop(sheetContext, _removePreferenceSelectionSentinel),
-                    style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                    child: Text(
-                      'Remove selection',
-                      style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: colors.error),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20.w),
+                    child: AppButton(
+                      onPressed: () => Navigator.pop(sheetContext, _removePreferenceSelectionSentinel),
+                      width: double.infinity,
+                      backgroundColor: colors.accentOrange,
+                      borderRadius: KBorderSize.borderMedium,
+                      buttonText: "Remove Selection",
+                      textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15.sp),
                     ),
                   ),
                 ],
@@ -1402,7 +1436,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                               ],
 
                               if (hasIngredients) ...[
-                                SizedBox(height: KSpacing.lg.h),
+                                SizedBox(height: KSpacing.md.h),
                                 Container(
                                   padding: EdgeInsets.symmetric(horizontal: 20.w),
                                   child: Column(
@@ -1505,7 +1539,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                   },
                                 ),
 
-                              SizedBox(height: KSpacing.lg.h),
+                              SizedBox(height: KSpacing.md.h),
 
                               if (!widget.isGrocery && widget.foodItem != null)
                                 Consumer<FoodProvider>(
@@ -1647,9 +1681,19 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
               child: Consumer<CartProvider>(
                 builder: (context, provider, _) {
                   final CartItem actionableCartItem = widget.foodItem != null ? _buildFoodCartItem() : cartItem;
-                  final int qty = provider.cartItems[actionableCartItem] ?? 0;
+                  final int qty = provider.getItemQuantity(
+                    actionableCartItem,
+                    includeFoodCustomizations: widget.foodItem != null,
+                  );
                   final bool isInCart = qty > 0;
-                  final bool isItemPending = provider.isItemOperationPending(actionableCartItem);
+                  final bool isItemPending = provider.isItemOperationPendingForDisplay(
+                    actionableCartItem,
+                    includeFoodCustomizations: widget.foodItem != null,
+                  );
+                  final actionItem = provider.resolveItemForCartAction(
+                    actionableCartItem,
+                    includeFoodCustomizations: widget.foodItem != null,
+                  );
 
                   return Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1663,8 +1707,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                 padding: EdgeInsets.symmetric(horizontal: 10.w),
                                 decoration: BoxDecoration(
                                   color: colors.backgroundSecondary,
-                                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-                                  border: Border.all(color: colors.inputBorder, width: 1.5),
+                                  borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                                 ),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1672,8 +1715,8 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                                     InkWell(
                                       onTap: () {
                                         if (isItemPending) return;
-                                        if (isInCart) {
-                                          provider.removeFromCart(actionableCartItem);
+                                        if (isInCart && actionItem != null) {
+                                          provider.removeFromCart(actionItem);
                                         }
                                       },
                                       child: isItemPending
@@ -1731,16 +1774,16 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                           child: AppButton(
                             onPressed: () {
                               if (isItemPending) return;
-                              if (isInCart) {
-                                provider.removeItemCompletely(actionableCartItem);
+                              if (isInCart && actionItem != null) {
+                                provider.removeItemCompletely(actionItem);
                               } else {
                                 _handleAddToCart(provider, actionableCartItem);
                               }
                             },
                             backgroundColor: Colors.transparent,
-                            borderRadius: KBorderSize.borderRadius50,
+                            borderRadius: KBorderSize.borderMedium,
                             buttonText: isItemPending ? "Updating..." : (isInCart ? "Remove from Cart" : "Add to Cart"),
-                            textStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                            textStyle: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w600),
                           ),
                         ),
                       ),
@@ -1765,8 +1808,9 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
   Widget _buildRestaurantFoodItem(FoodItem item, AppColorsExtension colors) {
     return Consumer<CartProvider>(
       builder: (context, cartProvider, child) {
-        final bool isInCart = cartProvider.cartItems.containsKey(item);
-        final bool isItemPending = cartProvider.isItemOperationPending(item);
+        final bool isInCart = cartProvider.hasItemInCart(item, includeFoodCustomizations: true);
+        final bool isItemPending = cartProvider.isItemOperationPendingForDisplay(item, includeFoodCustomizations: true);
+        final actionItem = cartProvider.resolveItemForCartAction(item, includeFoodCustomizations: true);
 
         return FoodItemCard(
           item: item,
@@ -1777,8 +1821,8 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
           trailing: GestureDetector(
             onTap: () {
               if (isItemPending) return;
-              if (isInCart) {
-                cartProvider.removeItemCompletely(item);
+              if (isInCart && actionItem != null) {
+                cartProvider.removeItemCompletely(actionItem);
               } else {
                 cartProvider.addToCart(item, context: context);
               }
@@ -1800,7 +1844,7 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
                       ),
                     )
                   : SvgPicture.asset(
-                      Assets.icons.cart,
+                      isInCart ? Assets.icons.check : Assets.icons.cart,
                       package: 'grab_go_shared',
                       height: 16.h,
                       width: 16.w,

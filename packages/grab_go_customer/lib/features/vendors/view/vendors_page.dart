@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
@@ -16,7 +17,6 @@ import '../widgets/vendor_horizontal_section.dart';
 import '../../home/model/filter_model.dart';
 import '../../home/model/food_category.dart';
 import '../../home/viewmodel/food_provider.dart';
-import '../../groceries/viewmodel/grocery_provider.dart';
 
 class VendorsPage extends StatefulWidget {
   const VendorsPage({super.key});
@@ -27,7 +27,9 @@ class VendorsPage extends StatefulWidget {
 
 class _VendorsPageState extends State<VendorsPage> {
   final ScrollController _scrollController = ScrollController();
-  final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0.0);
+  final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(
+    0.0,
+  );
   FilterModel _activeFilter = FilterModel();
 
   static const double _collapsedHeight = 70.0;
@@ -44,8 +46,14 @@ class _VendorsPageState extends State<VendorsPage> {
       final vendorProvider = context.read<VendorProvider>();
       final serviceProvider = context.read<ServiceProvider>();
       final locationProvider = context.read<NativeLocationProvider>();
-      final vendorType = _getVendorTypeFromService(serviceProvider.currentService.id);
-      vendorProvider.fetchVendors(vendorType, lat: locationProvider.latitude, lng: locationProvider.longitude);
+      final vendorType = _getVendorTypeFromService(
+        serviceProvider.currentService.id,
+      );
+      vendorProvider.fetchVendors(
+        vendorType,
+        lat: locationProvider.latitude,
+        lng: locationProvider.longitude,
+      );
     });
   }
 
@@ -71,28 +79,34 @@ class _VendorsPageState extends State<VendorsPage> {
 
   VendorType? _previousVendorType;
   double? _previousLat;
-  double? _previousLng;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final serviceProvider = context.watch<ServiceProvider>();
     final locationProvider = context.watch<NativeLocationProvider>();
-    final currentVendorType = _getVendorTypeFromService(serviceProvider.currentService.id);
+    final currentVendorType = _getVendorTypeFromService(
+      serviceProvider.currentService.id,
+    );
 
-    final bool typeChanged = _previousVendorType != null && _previousVendorType != currentVendorType;
-    final bool locationLoaded = _previousLat == null && locationProvider.latitude != null;
+    final bool typeChanged =
+        _previousVendorType != null && _previousVendorType != currentVendorType;
+    final bool locationLoaded =
+        _previousLat == null && locationProvider.latitude != null;
 
     if (typeChanged || locationLoaded) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final vendorProvider = context.read<VendorProvider>();
-        vendorProvider.fetchVendors(currentVendorType, lat: locationProvider.latitude, lng: locationProvider.longitude);
+        vendorProvider.fetchVendors(
+          currentVendorType,
+          lat: locationProvider.latitude,
+          lng: locationProvider.longitude,
+        );
       });
     }
 
     _previousVendorType = currentVendorType;
     _previousLat = locationProvider.latitude;
-    _previousLng = locationProvider.longitude;
   }
 
   @override
@@ -113,14 +127,18 @@ class _VendorsPageState extends State<VendorsPage> {
       backgroundColor: colors.backgroundPrimary,
       body: Consumer2<ServiceProvider, NativeLocationProvider>(
         builder: (context, serviceProvider, locationProvider, _) {
-          final vendorType = _getVendorTypeFromService(serviceProvider.currentService.id);
+          final vendorType = _getVendorTypeFromService(
+            serviceProvider.currentService.id,
+          );
           final accentColor = Color(vendorType.color);
 
           final systemUiOverlayStyle = SystemUiOverlayStyle(
             statusBarColor: accentColor,
             statusBarIconBrightness: Brightness.light,
             systemNavigationBarColor: colors.backgroundSecondary,
-            systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+            systemNavigationBarIconBrightness: isDark
+                ? Brightness.light
+                : Brightness.dark,
           );
 
           return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -147,7 +165,14 @@ class _VendorsPageState extends State<VendorsPage> {
                       top: 0,
                       left: 0,
                       right: 0,
-                      child: _buildCollapsibleHeader(colors, accentColor, provider, vendorType, size, serviceProvider),
+                      child: _buildCollapsibleHeader(
+                        colors,
+                        accentColor,
+                        provider,
+                        vendorType,
+                        size,
+                        serviceProvider,
+                      ),
                     ),
                   ],
                 );
@@ -168,11 +193,16 @@ class _VendorsPageState extends State<VendorsPage> {
     ServiceProvider serviceProvider,
     NativeLocationProvider locationProvider,
   ) {
-    final expandedContentPadding = UmbrellaHeaderMetrics.contentPaddingFor(size);
+    final expandedContentPadding = UmbrellaHeaderMetrics.contentPaddingFor(
+      size,
+    );
 
     return AppRefreshIndicator(
-      onRefresh: () =>
-          provider.fetchVendors(vendorType, lat: locationProvider.latitude, lng: locationProvider.longitude),
+      onRefresh: () => provider.fetchVendors(
+        vendorType,
+        lat: locationProvider.latitude,
+        lng: locationProvider.longitude,
+      ),
       bgColor: colors.accentOrange,
       iconPath: Assets.icons.store,
       child: SingleChildScrollView(
@@ -194,9 +224,8 @@ class _VendorsPageState extends State<VendorsPage> {
                 title: "GrabGo Exclusives",
                 icon: Assets.icons.tag,
                 vendors: provider.exclusiveVendors,
-                onItemTap: (vendor) {
-                  // TODO: Navigate to vendor details
-                },
+                onItemTap: (vendor) =>
+                    context.push('/vendorDetails', extra: vendor),
                 isLoading: provider.isLoading,
                 accentColor: colors.accentOrange,
               ),
@@ -207,9 +236,8 @@ class _VendorsPageState extends State<VendorsPage> {
                 title: "New on GrabGo",
                 icon: Assets.icons.sparkles,
                 vendors: provider.newVendors,
-                onItemTap: (vendor) {
-                  // TODO: Navigate to vendor details
-                },
+                onItemTap: (vendor) =>
+                    context.push('/vendorDetails', extra: vendor),
                 isLoading: provider.isLoading,
                 accentColor: colors.accentOrange,
               ),
@@ -220,9 +248,8 @@ class _VendorsPageState extends State<VendorsPage> {
                 title: "Fastest Near You",
                 icon: Assets.icons.timer,
                 vendors: provider.nearestVendors,
-                onItemTap: (vendor) {
-                  // TODO: Navigate to vendor details
-                },
+                onItemTap: (vendor) =>
+                    context.push('/vendorDetails', extra: vendor),
                 isLoading: provider.isLoading,
                 accentColor: colors.accentOrange,
               ),
@@ -233,9 +260,8 @@ class _VendorsPageState extends State<VendorsPage> {
                 title: "Budget Friendly",
                 icon: Assets.icons.cash,
                 vendors: provider.budgetFriendlyVendors,
-                onItemTap: (vendor) {
-                  // TODO: Navigate to vendor details
-                },
+                onItemTap: (vendor) =>
+                    context.push('/vendorDetails', extra: vendor),
                 isLoading: provider.isLoading,
                 accentColor: colors.accentOrange,
               ),
@@ -269,10 +295,15 @@ class _VendorsPageState extends State<VendorsPage> {
     return ValueListenableBuilder<double>(
       valueListenable: _scrollOffsetNotifier,
       builder: (context, scrollOffset, _) {
-        final collapseProgress = (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
+        final collapseProgress = (scrollOffset / _scrollThreshold).clamp(
+          0.0,
+          1.0,
+        );
         // Match home_page.dart expanded height
         final expandedHeight = UmbrellaHeaderMetrics.expandedHeightFor(size);
-        final currentHeight = expandedHeight - ((expandedHeight - _collapsedHeight) * collapseProgress);
+        final currentHeight =
+            expandedHeight -
+            ((expandedHeight - _collapsedHeight) * collapseProgress);
         final contentOpacity = (1.0 - collapseProgress).clamp(0.0, 1.0);
 
         return SizedBox(
@@ -292,10 +323,13 @@ class _VendorsPageState extends State<VendorsPage> {
     );
   }
 
-  Widget _buildHeaderContent(AppColorsExtension colors, VendorType vendorType, ServiceProvider serviceProvider) {
+  Widget _buildHeaderContent(
+    AppColorsExtension colors,
+    VendorType vendorType,
+    ServiceProvider serviceProvider,
+  ) {
     final statusBarHeight = MediaQuery.of(context).padding.top;
     final foodProvider = context.watch<FoodProvider>();
-    final groceryProvider = context.watch<GroceryProvider>();
 
     // Prepare categories for HomeSearch
     List<FoodCategoryModel> categories = [];
@@ -312,7 +346,11 @@ class _VendorsPageState extends State<VendorsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: EdgeInsets.only(left: 20.w, right: 20.w, top: statusBarHeight + 10.h),
+            padding: EdgeInsets.only(
+              left: 20.w,
+              right: 20.w,
+              top: statusBarHeight + 10.h,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -377,9 +415,7 @@ class _VendorsPageState extends State<VendorsPage> {
         final vendor = provider.filteredVendors[index];
         return VendorCard(
           vendor: vendor,
-          onTap: () {
-            // TODO: Navigate to vendor details
-          },
+          onTap: () => context.push('/vendorDetails', extra: vendor),
         );
       },
     );
@@ -395,7 +431,11 @@ class _VendorsPageState extends State<VendorsPage> {
     );
   }
 
-  Widget _buildEmptyContent(AppColorsExtension colors, VendorType vendorType, Size size) {
+  Widget _buildEmptyContent(
+    AppColorsExtension colors,
+    VendorType vendorType,
+    Size size,
+  ) {
     return Container(
       height: size.height * 0.5,
       padding: EdgeInsets.symmetric(horizontal: 40.w),
@@ -407,20 +447,31 @@ class _VendorsPageState extends State<VendorsPage> {
           Text(
             'No ${vendorType.displayName.toLowerCase()}s found',
             textAlign: TextAlign.center,
-            style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontSize: 18.sp,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           SizedBox(height: 8.h),
           Text(
             'Try adjusting your filters or search terms',
             textAlign: TextAlign.center,
-            style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w400),
+            style: TextStyle(
+              color: colors.textSecondary,
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w400,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildErrorContent(AppColorsExtension colors, VendorProvider provider) {
+  Widget _buildErrorContent(
+    AppColorsExtension colors,
+    VendorProvider provider,
+  ) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 40.w, vertical: 60.h),
       child: Column(
@@ -430,12 +481,20 @@ class _VendorsPageState extends State<VendorsPage> {
           SizedBox(height: 16.h),
           Text(
             'Oops! Something went wrong',
-            style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontSize: 18.sp,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           SizedBox(height: 8.h),
           Text(
             provider.error ?? 'Unknown error',
-            style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w400),
+            style: TextStyle(
+              color: colors.textSecondary,
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w400,
+            ),
             textAlign: TextAlign.center,
           ),
           SizedBox(height: 24.h),
@@ -443,9 +502,14 @@ class _VendorsPageState extends State<VendorsPage> {
             onPressed: () => provider.refreshVendors(),
             style: ElevatedButton.styleFrom(
               backgroundColor: colors.accentOrange,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.r),
+              ),
             ),
-            child: const Text('Try Again', style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'Try Again',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -465,7 +529,10 @@ class VendorCardSkeleton extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
         borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-        border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 1),
+        border: Border.all(
+          color: colors.inputBorder.withValues(alpha: 0.3),
+          width: 1,
+        ),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -475,7 +542,9 @@ class VendorCardSkeleton extends StatelessWidget {
           Container(
             height: 140.h,
             width: double.infinity,
-            decoration: BoxDecoration(color: colors.inputBorder.withValues(alpha: 0.3)),
+            decoration: BoxDecoration(
+              color: colors.inputBorder.withValues(alpha: 0.3),
+            ),
           ),
 
           // Info Skeleton (Three Rows)
