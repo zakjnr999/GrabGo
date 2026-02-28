@@ -33,7 +33,10 @@ class VendorCard extends StatelessWidget {
     final size = MediaQuery.sizeOf(context);
     final cardWidth = width ?? (size.width - 40.w);
     final imageHeight = (cardWidth * 0.45).clamp(90.0, 125.0);
-    final reviewCountText = vendor.totalReviews > 0 ? " (${vendor.totalReviews})" : "";
+    final reviewCountText = vendor.totalReviews > 0
+        ? " (${vendor.totalReviews})"
+        : "";
+    final opsState = _buildOpsState(colors);
 
     return Container(
       width: width ?? double.infinity,
@@ -85,7 +88,10 @@ class VendorCard extends StatelessWidget {
                                   package: 'grab_go_shared',
                                   height: 13,
                                   width: 13.w,
-                                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                  colorFilter: ColorFilter.mode(
+                                    colors.accentOrange,
+                                    BlendMode.srcIn,
+                                  ),
                                 ),
                                 SizedBox(width: 4.w),
                                 Text(
@@ -130,7 +136,8 @@ class VendorCard extends StatelessWidget {
                                       fontWeight: FontWeight.w800,
                                     ),
                                   ),
-                                if (showDistance && vendor.distanceText.isNotEmpty)
+                                if (showDistance &&
+                                    vendor.distanceText.isNotEmpty)
                                   Text(
                                     vendor.distanceText,
                                     maxLines: 1,
@@ -147,7 +154,10 @@ class VendorCard extends StatelessWidget {
                             Container(
                               width: 3.w,
                               height: 3,
-                              decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: colors.textSecondary,
+                              ),
                             ),
                             SizedBox(width: 8.w),
                             SvgPicture.asset(
@@ -155,7 +165,10 @@ class VendorCard extends StatelessWidget {
                               package: 'grab_go_shared',
                               height: 12,
                               width: 12.w,
-                              colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                              colorFilter: ColorFilter.mode(
+                                colors.textSecondary,
+                                BlendMode.srcIn,
+                              ),
                             ),
                             SizedBox(width: 4.w),
                             Flexible(
@@ -189,7 +202,10 @@ class VendorCard extends StatelessWidget {
                                         package: 'grab_go_shared',
                                         height: 13,
                                         width: 13.w,
-                                        colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                                        colorFilter: ColorFilter.mode(
+                                          colors.textPrimary,
+                                          BlendMode.srcIn,
+                                        ),
                                       ),
                                       SizedBox(width: 4.w),
                                       Text(
@@ -205,7 +221,10 @@ class VendorCard extends StatelessWidget {
                                   if (vendor.minOrder > 0) ...[
                                     Text(
                                       "|",
-                                      style: TextStyle(color: colors.textTertiary, fontSize: 12.sp),
+                                      style: TextStyle(
+                                        color: colors.textTertiary,
+                                        fontSize: 12.sp,
+                                      ),
                                     ),
                                     Text(
                                       "Min:",
@@ -227,17 +246,13 @@ class VendorCard extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            if (vendor.isOpen || !showClosedOnImage) ...[
+                            if (opsState != null) ...[
                               SizedBox(width: 8.w),
-                              Text(
-                                vendor.isOpen ? "We're open" : "We're closed",
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: vendor.isOpen ? colors.accentGreen : colors.error,
-                                  fontSize: 12.sp,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                              _buildOpsStatePill(
+                                colors: colors,
+                                label: opsState.label,
+                                textColor: opsState.textColor,
+                                backgroundColor: opsState.backgroundColor,
                               ),
                             ],
                           ],
@@ -254,7 +269,13 @@ class VendorCard extends StatelessWidget {
     );
   }
 
-  Widget _buildVendorImage(BuildContext context, AppColorsExtension colors, double imageHeight) {
+  Widget _buildVendorImage(
+    BuildContext context,
+    AppColorsExtension colors,
+    double imageHeight,
+  ) {
+    final imageUrl = _vendorCardImageUrl();
+
     return Stack(
       children: [
         ClipRRect(
@@ -265,7 +286,7 @@ class VendorCard extends StatelessWidget {
             bottomRight: Radius.circular(KBorderSize.borderRadius4),
           ),
           child: CachedNetworkImage(
-            imageUrl: ImageOptimizer.getPreviewUrl(vendor.logo ?? '', width: 800),
+            imageUrl: ImageOptimizer.getPreviewUrl(imageUrl ?? '', width: 800),
             height: imageHeight,
             width: double.infinity,
             fit: BoxFit.cover,
@@ -277,7 +298,10 @@ class VendorCard extends StatelessWidget {
                 child: SvgPicture.asset(
                   Assets.icons.store,
                   package: 'grab_go_shared',
-                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                  colorFilter: ColorFilter.mode(
+                    colors.textSecondary,
+                    BlendMode.srcIn,
+                  ),
                   width: 30.w,
                   height: 30,
                 ),
@@ -291,7 +315,10 @@ class VendorCard extends StatelessWidget {
                 child: SvgPicture.asset(
                   Assets.icons.store,
                   package: 'grab_go_shared',
-                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                  colorFilter: ColorFilter.mode(
+                    colors.textSecondary,
+                    BlendMode.srcIn,
+                  ),
                   width: 30.w,
                   height: 30,
                 ),
@@ -299,6 +326,36 @@ class VendorCard extends StatelessWidget {
             ),
           ),
         ),
+        if ((vendor.featured ?? false) || (vendor.isVerified ?? false))
+          Positioned(
+            left: 8.w,
+            top: 8.h,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (vendor.featured ?? false)
+                  _buildTrustBadge(
+                    colors: colors,
+                    iconAsset: Assets.icons.sparkles,
+                    label: 'Featured',
+                    textColor: Colors.white,
+                    backgroundColor: colors.accentOrange.withValues(
+                      alpha: 0.92,
+                    ),
+                  ),
+                if ((vendor.featured ?? false) && (vendor.isVerified ?? false))
+                  SizedBox(height: 6.h),
+                if (vendor.isVerified ?? false)
+                  _buildTrustBadge(
+                    colors: colors,
+                    iconAsset: Assets.icons.badgeCheck,
+                    label: 'Verified',
+                    textColor: Colors.white,
+                    backgroundColor: Colors.black.withValues(alpha: 0.55),
+                  ),
+              ],
+            ),
+          ),
         Positioned(
           top: 2.h,
           right: 2.w,
@@ -307,7 +364,9 @@ class VendorCard extends StatelessWidget {
               width: 36.w,
               height: 36.w,
               decoration: BoxDecoration(
-                borderRadius: const BorderRadius.only(topRight: Radius.circular(KBorderSize.borderMedium)),
+                borderRadius: const BorderRadius.only(
+                  topRight: Radius.circular(KBorderSize.borderMedium),
+                ),
                 gradient: RadialGradient(
                   center: const Alignment(1.0, -1.0),
                   radius: 1.15,
@@ -328,12 +387,16 @@ class VendorCard extends StatelessWidget {
           child: Consumer<FavoritesProvider>(
             builder: (context, favoritesProvider, child) {
               final favoriteVendor = _toFavoriteVendor(vendor);
-              final isFavorite = favoritesProvider.isVendorFavorite(favoriteVendor);
+              final isFavorite = favoritesProvider.isVendorFavorite(
+                favoriteVendor,
+              );
 
               return GestureDetector(
                 onTap: () async {
                   try {
-                    await favoritesProvider.toggleVendorFavorite(favoriteVendor);
+                    await favoritesProvider.toggleVendorFavorite(
+                      favoriteVendor,
+                    );
                   } catch (_) {
                     if (context.mounted) {
                       AppToastMessage.show(
@@ -349,13 +412,16 @@ class VendorCard extends StatelessWidget {
                   package: 'grab_go_shared',
                   height: 24,
                   width: 24.w,
-                  colorFilter: ColorFilter.mode(isFavorite ? context.appColors.error : Colors.white, BlendMode.srcIn),
+                  colorFilter: ColorFilter.mode(
+                    isFavorite ? context.appColors.error : Colors.white,
+                    BlendMode.srcIn,
+                  ),
                 ),
               );
             },
           ),
         ),
-        if (!vendor.isOpen && showClosedOnImage)
+        if (!vendor.isAvailableForOrders && showClosedOnImage)
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -369,12 +435,146 @@ class VendorCard extends StatelessWidget {
               ),
               alignment: Alignment.center,
               child: Text(
-                "We're closed",
-                style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.w800),
+                vendor.overlayAvailabilityLabel,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
           ),
       ],
+    );
+  }
+
+  String? _vendorCardImageUrl() {
+    final bannerImage = vendor.bannerImages
+        ?.cast<String?>()
+        .map((entry) => entry?.trim() ?? '')
+        .firstWhere((entry) => entry.isNotEmpty, orElse: () => '');
+    if (bannerImage != null && bannerImage.isNotEmpty) {
+      return bannerImage;
+    }
+
+    final logo = vendor.logo?.trim();
+    if (logo != null && logo.isNotEmpty) {
+      return logo;
+    }
+
+    return null;
+  }
+
+  _VendorOpsState? _buildOpsState(AppColorsExtension colors) {
+    if (vendor.isAvailableForOrders) {
+      return _VendorOpsState(
+        label: 'Accepting orders',
+        textColor: colors.accentGreen,
+        backgroundColor: colors.accentGreen.withValues(alpha: 0.12),
+      );
+    }
+
+    final lastSeenLabel = _formatLastSeen(vendor.lastOnlineAt);
+    if (vendor.isTemporarilyUnavailableButOpen) {
+      return _VendorOpsState(
+        label: lastSeenLabel ?? 'Not accepting',
+        textColor: colors.error,
+        backgroundColor: colors.error.withValues(alpha: 0.10),
+      );
+    }
+
+    return _VendorOpsState(
+      label: lastSeenLabel ?? 'Closed for now',
+      textColor: colors.error,
+      backgroundColor: colors.error.withValues(alpha: 0.10),
+    );
+  }
+
+  String? _formatLastSeen(DateTime? lastSeenAt) {
+    if (lastSeenAt == null) return null;
+
+    final now = DateTime.now();
+    final difference = now.difference(lastSeenAt.toLocal());
+    if (difference.isNegative) return null;
+
+    if (difference.inMinutes < 1) return 'Seen just now';
+    if (difference.inMinutes < 60) return 'Seen ${difference.inMinutes}m ago';
+    if (difference.inHours < 24) return 'Seen ${difference.inHours}h ago';
+    if (difference.inDays == 1) return 'Seen yesterday';
+    if (difference.inDays < 7) return 'Seen ${difference.inDays}d ago';
+    return 'Seen recently';
+  }
+
+  Widget _buildTrustBadge({
+    required AppColorsExtension colors,
+    required String iconAsset,
+    required String label,
+    required Color textColor,
+    required Color backgroundColor,
+  }) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 5.h),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(999.r),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SvgPicture.asset(
+            iconAsset,
+            package: 'grab_go_shared',
+            width: 12.w,
+            height: 12.h,
+            colorFilter: ColorFilter.mode(textColor, BlendMode.srcIn),
+          ),
+          SizedBox(width: 4.w),
+          Text(
+            label,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 10.sp,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOpsStatePill({
+    required AppColorsExtension colors,
+    required String label,
+    required Color textColor,
+    required Color backgroundColor,
+  }) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 5.h),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(999.r),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6.w,
+            height: 6.w,
+            decoration: BoxDecoration(color: textColor, shape: BoxShape.circle),
+          ),
+          SizedBox(width: 5.w),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 10.sp,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -389,6 +589,9 @@ class VendorCard extends StatelessWidget {
       status: 'approved',
       isOpen: vendor.isOpen,
       isAcceptingOrders: vendor.isAcceptingOrders,
+      isVerified: vendor.isVerified ?? false,
+      featured: vendor.featured ?? false,
+      lastOnlineAt: vendor.lastOnlineAt,
       type: _toFavoriteVendorType(vendor),
     );
   }
@@ -422,4 +625,16 @@ class VendorCard extends StatelessWidget {
         return FavoriteVendorType.grabMartStore;
     }
   }
+}
+
+class _VendorOpsState {
+  final String label;
+  final Color textColor;
+  final Color backgroundColor;
+
+  const _VendorOpsState({
+    required this.label,
+    required this.textColor,
+    required this.backgroundColor,
+  });
 }

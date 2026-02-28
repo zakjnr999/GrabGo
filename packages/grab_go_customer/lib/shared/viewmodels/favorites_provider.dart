@@ -24,6 +24,9 @@ class FavoriteVendor {
   final String status;
   final bool isOpen;
   final bool isAcceptingOrders;
+  final bool isVerified;
+  final bool featured;
+  final DateTime? lastOnlineAt;
   final DateTime? addedAt;
   final FavoriteVendorType type;
 
@@ -37,6 +40,9 @@ class FavoriteVendor {
     required this.status,
     required this.isOpen,
     required this.isAcceptingOrders,
+    required this.isVerified,
+    required this.featured,
+    this.lastOnlineAt,
     this.addedAt,
     required this.type,
   });
@@ -67,6 +73,9 @@ class FavoriteVendor {
     'status': status,
     'isOpen': isOpen,
     'isAcceptingOrders': isAcceptingOrders,
+    'isVerified': isVerified,
+    'featured': featured,
+    'lastOnlineAt': lastOnlineAt?.toIso8601String(),
     'addedAt': addedAt?.toIso8601String(),
     'type': type.name,
   };
@@ -91,6 +100,11 @@ class FavoriteVendor {
         json['isAcceptingOrders'],
         defaultValue: true,
       ),
+      isVerified: _parseBool(json['isVerified'], defaultValue: false),
+      featured: _parseBool(json['featured'], defaultValue: false),
+      lastOnlineAt: json['lastOnlineAt'] != null
+          ? DateTime.tryParse(json['lastOnlineAt'].toString())
+          : null,
       addedAt: json['addedAt'] != null
           ? DateTime.tryParse(json['addedAt'].toString())
           : null,
@@ -764,6 +778,11 @@ class FavoritesProvider extends ChangeNotifier with CacheMixin {
         entity['isAcceptingOrders'],
         defaultValue: true,
       ),
+      isVerified: _parseBool(entity['isVerified'], defaultValue: false),
+      featured: _parseBool(entity['featured'], defaultValue: false),
+      lastOnlineAt: entity['lastOnlineAt'] != null
+          ? DateTime.tryParse(entity['lastOnlineAt'].toString())
+          : null,
       addedAt: entry['addedAt'] != null
           ? DateTime.tryParse(entry['addedAt'].toString())
           : null,

@@ -11,6 +11,7 @@ import 'package:grab_go_customer/features/profile/view/settings_page.dart';
 import 'package:grab_go_customer/features/status/view/status_page.dart';
 import 'package:grab_go_customer/features/vendors/model/vendor_model.dart';
 import 'package:grab_go_customer/features/vendors/view/vendor_details_page.dart';
+import 'package:grab_go_customer/features/vendors/view/vendor_info_page.dart';
 import 'package:grab_go_customer/features/status/view/all_statuses_page.dart';
 import 'package:grab_go_customer/features/status/model/status_model.dart';
 import 'package:grab_go_customer/shared/widgets/deep_link_error_screen.dart';
@@ -846,6 +847,46 @@ final GoRouter appRouter = GoRouter(
         return CustomTransitionPage(
           key: state.pageKey,
           child: VendorDetailsPage(vendor: extra),
+          transitionDuration: const Duration(milliseconds: 400),
+          reverseTransitionDuration: const Duration(milliseconds: 400),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.vertical,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/vendorInfo",
+      pageBuilder: (context, state) {
+        final extra = state.extra;
+        if (extra is! VendorModel) {
+          return CustomTransitionPage(
+            key: state.pageKey,
+            child: const Scaffold(
+              body: Center(child: Text('Vendor info unavailable')),
+            ),
+            transitionDuration: const Duration(milliseconds: 350),
+            reverseTransitionDuration: const Duration(milliseconds: 350),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  return SharedAxisTransition(
+                    animation: animation,
+                    secondaryAnimation: secondaryAnimation,
+                    transitionType: SharedAxisTransitionType.vertical,
+                    child: child,
+                  );
+                },
+          );
+        }
+
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: VendorInfoPage(vendor: extra),
           transitionDuration: const Duration(milliseconds: 400),
           reverseTransitionDuration: const Duration(milliseconds: 400),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {

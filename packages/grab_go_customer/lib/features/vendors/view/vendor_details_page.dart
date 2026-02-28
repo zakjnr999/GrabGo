@@ -1,11 +1,13 @@
 import 'dart:ui';
 
+import 'package:chopper/chopper.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:grab_go_customer/core/api/api_client.dart';
 import 'package:grab_go_customer/features/grabmart/repository/grabmart_repository.dart';
 import 'package:grab_go_customer/features/groceries/repository/grocery_repository.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
@@ -18,9 +20,9 @@ import 'package:grab_go_customer/shared/widgets/deal_card.dart';
 import 'package:grab_go_customer/shared/widgets/food_item_card.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
-import 'package:grab_go_shared/grub_go_shared.dart'
-    hide FoodRepository, FoodService;
+import 'package:grab_go_shared/grub_go_shared.dart' hide FoodRepository, FoodService;
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 class VendorDetailsPage extends StatefulWidget {
   const VendorDetailsPage({super.key, required this.vendor});
@@ -33,13 +35,58 @@ class VendorDetailsPage extends StatefulWidget {
 
 class _VendorDetailsPageState extends State<VendorDetailsPage> {
   final List<_VendorDisplayItem> _vendorItems = [];
+  late VendorModel _vendor;
+  bool _isLoadingVendorDetails = true;
   bool _isLoadingItems = true;
   String? _itemsError;
 
   @override
   void initState() {
     super.initState();
+    _vendor = widget.vendor;
+    _fetchVendorDetails();
     _fetchVendorItems();
+  }
+
+  Future<void> _fetchVendorDetails() async {
+    try {
+      final currentVendor = _vendor;
+      late Response<Map<String, dynamic>> response;
+
+      switch (currentVendor.vendorTypeEnum) {
+        case VendorType.food:
+          response = await vendorService.getRestaurantById(currentVendor.id);
+          break;
+        case VendorType.grocery:
+          response = await vendorService.getGroceryStoreById(currentVendor.id);
+          break;
+        case VendorType.pharmacy:
+          response = await vendorService.getPharmacyStoreById(currentVendor.id);
+          break;
+        case VendorType.grabmart:
+          response = await vendorService.getGrabMartStoreById(currentVendor.id);
+          break;
+      }
+
+      final body = response.body;
+      if (response.isSuccessful && body != null && body['data'] is Map<String, dynamic>) {
+        final detailJson = Map<String, dynamic>.from(body['data'] as Map<String, dynamic>);
+        final detail = currentVendor.mergeDetailSnapshot(detailJson);
+
+        if (!mounted) return;
+        setState(() {
+          _vendor = detail;
+        });
+      }
+    } catch (error) {
+      debugPrint('VendorDetailsPage: failed to load vendor details: $error');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingVendorDetails = false;
+        });
+      }
+    }
   }
 
   Future<void> _fetchVendorItems() async {
@@ -56,73 +103,39 @@ class _VendorDetailsPageState extends State<VendorDetailsPage> {
 
       switch (vendorType) {
         case VendorType.food:
-          final foods = await FoodRepository().fetchFoods(
-            restaurantId: vendorId,
-          );
-          items.addAll(
-            foods.map(
-              (item) => _VendorDisplayItem(
-                id: item.id,
-                sourceItem: item,
-                displayItem: item,
-              ),
-            ),
-          );
+          final foods = await FoodRepository().fetchFoods(restaurantId: vendorId);
+          items.addAll(foods.map((item) => _VendorDisplayItem(id: item.id, sourceItem: item, displayItem: item)));
           break;
         case VendorType.grocery:
-          final groceries = await GroceryRepository().fetchItems(
-            store: vendorId,
-          );
+          final groceries = await GroceryRepository().fetchItems(store: vendorId);
           items.addAll(
-            groceries.map(
-              (item) => _VendorDisplayItem(
-                id: item.id,
-                sourceItem: item,
-                displayItem: item.toFoodItem(),
-              ),
-            ),
+            groceries.map((item) => _VendorDisplayItem(id: item.id, sourceItem: item, displayItem: item.toFoodItem())),
           );
           break;
         case VendorType.pharmacy:
-          final pharmacyItems = await PharmacyRepository().fetchItems(
-            store: vendorId,
-          );
+          final pharmacyItems = await PharmacyRepository().fetchItems(store: vendorId);
           items.addAll(
             pharmacyItems.map(
-              (item) => _VendorDisplayItem(
-                id: item.id,
-                sourceItem: item,
-                displayItem: item.toFoodItem(),
-              ),
+              (item) => _VendorDisplayItem(id: item.id, sourceItem: item, displayItem: item.toFoodItem()),
             ),
           );
           break;
         case VendorType.grabmart:
-          final grabmartItems = await GrabMartRepository().fetchItems(
-            store: vendorId,
-          );
+          final grabmartItems = await GrabMartRepository().fetchItems(store: vendorId);
           items.addAll(
             grabmartItems.map(
-              (item) => _VendorDisplayItem(
-                id: item.id,
-                sourceItem: item,
-                displayItem: item.toFoodItem(),
-              ),
+              (item) => _VendorDisplayItem(id: item.id, sourceItem: item, displayItem: item.toFoodItem()),
             ),
           );
           break;
       }
 
       items.sort((a, b) {
-        final byOrders = b.displayItem.orderCount.compareTo(
-          a.displayItem.orderCount,
-        );
+        final byOrders = b.displayItem.orderCount.compareTo(a.displayItem.orderCount);
         if (byOrders != 0) return byOrders;
         final byRating = b.displayItem.rating.compareTo(a.displayItem.rating);
         if (byRating != 0) return byRating;
-        return a.displayItem.name.toLowerCase().compareTo(
-          b.displayItem.name.toLowerCase(),
-        );
+        return a.displayItem.name.toLowerCase().compareTo(b.displayItem.name.toLowerCase());
       });
 
       if (!mounted) return;
@@ -166,70 +179,57 @@ class _VendorDetailsPageState extends State<VendorDetailsPage> {
       area: _vendor.area,
       status: 'approved',
       isOpen: _vendor.isOpen,
+      isVerified: _vendor.isVerified ?? false,
+      featured: _vendor.featured ?? false,
       isAcceptingOrders: _vendor.isAcceptingOrders,
+      lastOnlineAt: _vendor.lastOnlineAt,
       type: _favoriteVendorType,
     );
-  }
-
-  String _formatOpeningTime(String? raw) {
-    if (raw == null || raw.trim().isEmpty) return '--';
-    final parsed = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(raw.trim());
-    if (parsed == null) return raw.trim();
-    final hour24 = int.tryParse(parsed.group(1)!);
-    final minute = parsed.group(2)!;
-    if (hour24 == null || hour24 < 0 || hour24 > 23) return raw.trim();
-    final suffix = hour24 >= 12 ? 'PM' : 'AM';
-    final hour12 = hour24 % 12 == 0 ? 12 : hour24 % 12;
-    return '$hour12:$minute $suffix';
-  }
-
-  DaySchedule? _todaySchedule(OpeningHours? openingHours) {
-    if (openingHours == null) return null;
-    switch (DateTime.now().weekday) {
-      case DateTime.monday:
-        return openingHours.monday;
-      case DateTime.tuesday:
-        return openingHours.tuesday;
-      case DateTime.wednesday:
-        return openingHours.wednesday;
-      case DateTime.thursday:
-        return openingHours.thursday;
-      case DateTime.friday:
-        return openingHours.friday;
-      case DateTime.saturday:
-        return openingHours.saturday;
-      case DateTime.sunday:
-        return openingHours.sunday;
-      default:
-        return null;
-    }
-  }
-
-  String _availabilityText() {
-    if (_vendor.is24Hours == true) return 'Open 24 hours';
-    final today = _todaySchedule(_vendor.openingHours);
-    if (today == null) {
-      return _vendor.isOpen ? 'Open now' : 'Closed for now';
-    }
-    if (today.isClosed) return 'Closed today';
-    return _vendor.isOpen
-        ? 'Closes at ${_formatOpeningTime(today.close)}'
-        : 'Opens at ${_formatOpeningTime(today.open)}';
   }
 
   void _openItemDetails(_VendorDisplayItem item) {
     context.push('/foodDetails', extra: item.sourceItem);
   }
 
-  String? _heroImageUrl() {
-    final bannerImage = _vendor.bannerImages
+  void _openVendorInfo() {
+    context.push('/vendorInfo', extra: _vendor);
+  }
+
+  Future<void> _shareVendor() async {
+    final buffer = StringBuffer('Check out ${_vendor.displayName} on GrabGo.');
+    final address = _vendor.address.trim();
+    final website = _vendor.websiteUrl?.trim();
+
+    if (address.isNotEmpty) {
+      buffer.write('\n$address');
+    }
+    if (website != null && website.isNotEmpty) {
+      buffer.write('\n$website');
+    }
+
+    try {
+      await SharePlus.instance.share(ShareParams(text: buffer.toString(), subject: '${_vendor.displayName} on GrabGo'));
+    } catch (_) {
+      if (!mounted) return;
+      AppToastMessage.show(
+        context: context,
+        backgroundColor: context.appColors.error,
+        message: 'Unable to share this store right now.',
+      );
+    }
+  }
+
+  String? _heroImageUrlFor(VendorModel vendor, {bool allowLogoFallback = true}) {
+    final bannerImage = vendor.bannerImages
         ?.cast<String?>()
         .map((entry) => entry?.trim() ?? '')
         .firstWhere((entry) => entry.isNotEmpty, orElse: () => '');
     if (bannerImage != null && bannerImage.isNotEmpty) return bannerImage;
 
-    final logo = _vendor.logo?.trim();
-    if (logo != null && logo.isNotEmpty) return logo;
+    if (allowLogoFallback) {
+      final logo = vendor.logo?.trim();
+      if (logo != null && logo.isNotEmpty) return logo;
+    }
     return null;
   }
 
@@ -245,334 +245,211 @@ class _VendorDetailsPageState extends State<VendorDetailsPage> {
       statusBarIconBrightness: Brightness.light,
       statusBarBrightness: Brightness.dark,
       systemNavigationBarColor: colors.backgroundPrimary,
-      systemNavigationBarIconBrightness: isDark
-          ? Brightness.light
-          : Brightness.dark,
+      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
     );
     final popularItems = _vendorItems.take(5).toList(growable: false);
-    final heroImageUrl = _heroImageUrl();
-    final expandedHeight = size.height * 0.24;
+    final heroImageUrl = _isLoadingVendorDetails
+        ? null
+        : (_heroImageUrlFor(_vendor, allowLogoFallback: false) ?? _heroImageUrlFor(_vendor));
+    final expandedHeight = size.height * 0.20;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: statusBarStyle,
       child: Scaffold(
         backgroundColor: colors.backgroundPrimary,
-        body: RefreshIndicator(
-          color: accentColor,
-          onRefresh: _fetchVendorItems,
-          child: CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
-              SliverAppBar(
-                expandedHeight: expandedHeight,
-                backgroundColor: Colors.transparent,
-                surfaceTintColor: Colors.transparent,
-                systemOverlayStyle: const SystemUiOverlayStyle(
-                  statusBarColor: Colors.transparent,
-                  statusBarIconBrightness: Brightness.light,
-                  statusBarBrightness: Brightness.dark,
-                ),
-                elevation: 0,
-                pinned: true,
-                stretch: false,
-                automaticallyImplyLeading: false,
-                flexibleSpace: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final collapsedHeight = kToolbarHeight + topPadding;
-                    final totalRange = (expandedHeight - collapsedHeight).clamp(
-                      1.0,
-                      double.infinity,
-                    );
-                    final collapseT =
-                        (1 -
-                                ((constraints.maxHeight - collapsedHeight) /
-                                    totalRange))
-                            .clamp(0.0, 1.0);
-                    final collapsingToolbarColor = Color.lerp(
-                      Colors.transparent,
-                      colors.backgroundPrimary.withValues(alpha: 0.96),
-                      collapseT,
-                    )!;
-                    final useDarkStatusIcons = !isDark && collapseT > 0.72;
+        body: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverAppBar(
+              expandedHeight: expandedHeight,
+              backgroundColor: Colors.transparent,
+              surfaceTintColor: Colors.transparent,
+              systemOverlayStyle: const SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                statusBarIconBrightness: Brightness.light,
+                statusBarBrightness: Brightness.dark,
+              ),
+              elevation: 0,
+              pinned: true,
+              stretch: false,
+              automaticallyImplyLeading: false,
+              flexibleSpace: LayoutBuilder(
+                builder: (context, constraints) {
+                  final collapsedHeight = kToolbarHeight + topPadding;
+                  final totalRange = (expandedHeight - collapsedHeight).clamp(1.0, double.infinity);
+                  final collapseT = (1 - ((constraints.maxHeight - collapsedHeight) / totalRange)).clamp(0.0, 1.0);
+                  final collapsingToolbarColor = Color.lerp(
+                    Colors.transparent,
+                    colors.backgroundPrimary.withValues(alpha: 0.96),
+                    collapseT,
+                  )!;
+                  final useDarkStatusIcons = !isDark && collapseT > 0.72;
 
-                    return AnnotatedRegion<SystemUiOverlayStyle>(
-                      value: SystemUiOverlayStyle(
-                        statusBarColor: Colors.transparent,
-                        statusBarIconBrightness: useDarkStatusIcons
-                            ? Brightness.dark
-                            : Brightness.light,
-                        statusBarBrightness: useDarkStatusIcons
-                            ? Brightness.light
-                            : Brightness.dark,
-                      ),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          if (heroImageUrl != null)
-                            CachedNetworkImage(
-                              imageUrl: ImageOptimizer.getFullUrl(
-                                heroImageUrl,
-                                width: 1200,
+                  return AnnotatedRegion<SystemUiOverlayStyle>(
+                    value: SystemUiOverlayStyle(
+                      statusBarColor: Colors.transparent,
+                      statusBarIconBrightness: useDarkStatusIcons ? Brightness.dark : Brightness.light,
+                      statusBarBrightness: useDarkStatusIcons ? Brightness.light : Brightness.dark,
+                    ),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      fit: StackFit.expand,
+                      children: [
+                        if (heroImageUrl != null)
+                          CachedNetworkImage(
+                            imageUrl: ImageOptimizer.getFullUrl(heroImageUrl, width: 1200),
+                            fit: BoxFit.cover,
+                            memCacheWidth: 900,
+                            maxHeightDiskCache: 700,
+                            placeholder: (context, url) => _buildHeroPlaceholder(colors, accentColor),
+                            errorWidget: (context, url, error) => _buildHeroPlaceholder(colors, accentColor),
+                          )
+                        else
+                          _buildHeroPlaceholder(colors, accentColor),
+                        Positioned.fill(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Color.lerp(
+                                    Colors.black.withValues(alpha: 0.58),
+                                    Colors.black.withValues(alpha: 0.28),
+                                    collapseT,
+                                  )!,
+                                  Color.lerp(accentColor.withValues(alpha: 0.22), Colors.transparent, collapseT)!,
+                                  Colors.transparent,
+                                ],
+                                stops: const [0.0, 0.38, 1.0],
                               ),
-                              fit: BoxFit.cover,
-                              memCacheWidth: 900,
-                              maxHeightDiskCache: 700,
-                              placeholder: (context, url) =>
-                                  _buildHeroPlaceholder(colors, accentColor),
-                              errorWidget: (context, url, error) =>
-                                  _buildHeroPlaceholder(colors, accentColor),
-                            )
-                          else
-                            _buildHeroPlaceholder(colors, accentColor),
+                            ),
+                          ),
+                        ),
+                        if (!_isLoadingVendorDetails && !_vendor.isAvailableForOrders)
                           Positioned.fill(
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    Color.lerp(
-                                      Colors.black.withValues(alpha: 0.58),
-                                      Colors.black.withValues(alpha: 0.28),
-                                      collapseT,
-                                    )!,
-                                    Color.lerp(
-                                      accentColor.withValues(alpha: 0.22),
-                                      Colors.transparent,
-                                      collapseT,
-                                    )!,
-                                    Colors.transparent,
-                                  ],
-                                  stops: const [0.0, 0.38, 1.0],
-                                ),
+                            child: Container(
+                              color: Colors.black.withValues(alpha: 0.45),
+                              alignment: Alignment.center,
+                              child: Text(
+                                _vendor.overlayAvailabilityLabel,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
                               ),
                             ),
                           ),
-                          if (!_vendor.isOpen)
-                            Positioned.fill(
-                              child: Container(
-                                color: Colors.black.withValues(alpha: 0.45),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  "We're closed",
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14.sp,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          Positioned.fill(
-                            child: ColoredBox(color: collapsingToolbarColor),
+                        Positioned.fill(child: ColoredBox(color: collapsingToolbarColor)),
+                        Positioned(
+                          left: 20.w,
+                          right: 20.w,
+                          bottom: -34.h,
+                          child: Opacity(
+                            opacity: (1 - collapseT * 1.8).clamp(0.0, 1.0),
+                            child: _buildVendorOverviewCard(colors, accentColor),
                           ),
-                          Positioned(
-                            left: 20.w,
-                            right: 88.w,
-                            bottom: 42.h,
-                            child: Opacity(
-                              opacity: (1 - collapseT * 1.25).clamp(0.0, 1.0),
-                              child: IgnorePointer(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      _vendor.displayName,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 24.sp,
-                                        fontWeight: FontWeight.w800,
-                                        height: 1.05,
-                                      ),
-                                    ),
-                                    SizedBox(height: 6.h),
-                                    Row(
-                                      children: [
-                                        SvgPicture.asset(
-                                          Assets.icons.starSolid,
-                                          package: 'grab_go_shared',
-                                          width: 14.w,
-                                          height: 14.w,
-                                          colorFilter: ColorFilter.mode(
-                                            accentColor,
-                                            BlendMode.srcIn,
-                                          ),
-                                        ),
-                                        SizedBox(width: 4.w),
-                                        Text(
-                                          _vendor.rating.toStringAsFixed(
-                                            1,
-                                          ),
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 12.sp,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                        if (_vendor.totalReviews > 0) ...[
-                                          SizedBox(width: 4.w),
-                                          Text(
-                                            '(${_vendor.totalReviews} reviews)',
-                                            style: TextStyle(
-                                              color: Colors.white.withValues(
-                                                alpha: 0.85,
-                                              ),
-                                              fontSize: 11.sp,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ],
-                                        SizedBox(width: 8.w),
-                                        Container(
-                                          width: 4.w,
-                                          height: 4.w,
-                                          decoration: BoxDecoration(
-                                            color: Colors.white.withValues(
-                                              alpha: 0.7,
-                                            ),
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ),
-                                        SizedBox(width: 8.w),
-                                        Expanded(
-                                          child: Text(
-                                            _vendor.isOpen
-                                                ? 'Open now'
-                                                : 'Closed for now',
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              color: _vendor.isOpen
-                                                  ? colors.accentGreen
-                                                        .withValues(alpha: 0.95)
-                                                  : const Color(0xFFFFC9C9),
-                                              fontSize: 11.sp,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              bottom: PreferredSize(preferredSize: Size.fromHeight(72.h), child: const SizedBox.shrink()),
+              actionsPadding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 2.h),
+              actions: [
+                _buildSliverActionButton(
+                  onTap: () {
+                    final router = GoRouter.of(context);
+                    if (router.canPop()) {
+                      router.pop();
+                    } else {
+                      context.go('/homepage');
+                    }
+                  },
+                  child: SvgPicture.asset(
+                    Assets.icons.navArrowLeft,
+                    package: 'grab_go_shared',
+                    height: 20.h,
+                    width: 20.w,
+                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                  ),
+                ),
+                const Spacer(),
+
+                _buildSliverActionButton(
+                  onTap: _shareVendor,
+                  child: SvgPicture.asset(
+                    Assets.icons.shareAndroid,
+                    package: 'grab_go_shared',
+                    height: 20.h,
+                    width: 20.w,
+                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                  ),
+                ),
+                SizedBox(width: 10.w),
+                Consumer<FavoritesProvider>(
+                  builder: (context, favoritesProvider, child) {
+                    final isFavorite = favoritesProvider.isVendorFavoriteById(_vendor.id, _favoriteVendorType);
+                    return _buildSliverActionButton(
+                      onTap: () async {
+                        try {
+                          await favoritesProvider.toggleVendorFavorite(_asFavoriteVendor());
+                        } catch (_) {
+                          if (!mounted) return;
+                          AppToastMessage.show(
+                            context: context,
+                            backgroundColor: colors.error,
+                            message: 'Unable to update favorites. Please try again.',
+                          );
+                        }
+                      },
+                      child: SvgPicture.asset(
+                        isFavorite ? Assets.icons.heartSolid : Assets.icons.heart,
+                        package: 'grab_go_shared',
+                        height: 20.h,
+                        width: 20.w,
+                        colorFilter: ColorFilter.mode(isFavorite ? colors.error : Colors.white, BlendMode.srcIn),
                       ),
                     );
                   },
                 ),
-                bottom: PreferredSize(
-                  preferredSize: Size.fromHeight(24.h),
-                  child: Container(
-                    height: 24.h,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: colors.backgroundSecondary,
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(20.r),
-                        topRight: Radius.circular(20.r),
-                      ),
-                    ),
-                    child: Container(
-                      margin: EdgeInsets.only(top: 8.h),
-                      width: 40.w,
-                      height: 4.h,
-                      decoration: BoxDecoration(
-                        color: colors.textSecondary.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(10.r),
-                      ),
-                    ),
+                SizedBox(width: 10.w),
+                _buildSliverActionButton(
+                  onTap: _openVendorInfo,
+                  child: SvgPicture.asset(
+                    Assets.icons.infoCircle,
+                    package: 'grab_go_shared',
+                    height: 20.h,
+                    width: 20.w,
+                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                   ),
                 ),
-                actionsPadding: EdgeInsets.symmetric(
-                  horizontal: 10.w,
-                  vertical: 2.h,
-                ),
-                actions: [
-                  _buildSliverActionButton(
-                    onTap: () {
-                      final router = GoRouter.of(context);
-                      if (router.canPop()) {
-                        router.pop();
-                      } else {
-                        context.go('/homepage');
-                      }
-                    },
-                    child: SvgPicture.asset(
-                      Assets.icons.navArrowLeft,
-                      package: 'grab_go_shared',
-                      height: 20.h,
-                      width: 20.w,
-                      colorFilter: const ColorFilter.mode(
-                        Colors.white,
-                        BlendMode.srcIn,
-                      ),
-                    ),
+              ],
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.only(bottom: 24.h),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: colors.backgroundPrimary,
+                    borderRadius: BorderRadius.only(topLeft: Radius.circular(22.r), topRight: Radius.circular(22.r)),
                   ),
-                  const Spacer(),
-                  Consumer<FavoritesProvider>(
-                    builder: (context, favoritesProvider, child) {
-                      final isFavorite = favoritesProvider.isVendorFavoriteById(
-                        _vendor.id,
-                        _favoriteVendorType,
-                      );
-                      return _buildSliverActionButton(
-                        onTap: () async {
-                          try {
-                            await favoritesProvider.toggleVendorFavorite(
-                              _asFavoriteVendor(),
-                            );
-                          } catch (_) {
-                            if (!mounted) return;
-                            AppToastMessage.show(
-                              context: context,
-                              backgroundColor: colors.error,
-                              message:
-                                  'Unable to update favorites. Please try again.',
-                            );
-                          }
-                        },
-                        child: SvgPicture.asset(
-                          isFavorite
-                              ? Assets.icons.heartSolid
-                              : Assets.icons.heart,
-                          package: 'grab_go_shared',
-                          height: 20.h,
-                          width: 20.w,
-                          colorFilter: ColorFilter.mode(
-                            isFavorite ? colors.error : Colors.white,
-                            BlendMode.srcIn,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.only(bottom: 24.h),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildVendorOverviewCard(colors, accentColor),
-                      SizedBox(height: 14.h),
+                      SizedBox(height: 10.h),
+                      Center(
+                        child: Container(
+                          width: 40.w,
+                          height: 4.h,
+                          decoration: BoxDecoration(
+                            color: colors.textSecondary.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(10.r),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 16.h),
                       _buildQuickStatsCard(colors),
-                      SizedBox(height: 14.h),
-                      if (_hasOpeningHours) ...[
-                        _buildOpeningHoursCard(colors),
-                        SizedBox(height: 14.h),
-                      ],
-                      if (_hasTagsOrCategories) ...[
-                        _buildTagsSection(colors),
-                        SizedBox(height: 14.h),
-                      ],
+                      SizedBox(height: 16.h),
                       if (popularItems.isNotEmpty || _isLoadingItems) ...[
                         SectionHeader(
                           title: 'Popular at ${_vendor.displayName}',
@@ -588,27 +465,18 @@ class _VendorDetailsPageState extends State<VendorDetailsPage> {
                               : ListView.builder(
                                   padding: EdgeInsets.only(left: 20.w),
                                   scrollDirection: Axis.horizontal,
-                                  physics:
-                                      const AlwaysScrollableScrollPhysics(),
+                                  physics: const AlwaysScrollableScrollPhysics(),
                                   itemCount: popularItems.length,
                                   itemBuilder: (context, index) {
-                                    final item =
-                                        popularItems[index].displayItem;
+                                    final item = popularItems[index].displayItem;
                                     return Padding(
                                       padding: EdgeInsets.only(right: 12.w),
                                       child: DealCard(
                                         item: item,
-                                        discountPercent: item.discountPercentage
-                                            .toInt(),
-                                        deliveryTime:
-                                            item.estimatedDeliveryTime,
-                                        cardWidth: (size.width * 0.62).clamp(
-                                          200.0,
-                                          260.0,
-                                        ),
-                                        onTap: () => _openItemDetails(
-                                          popularItems[index],
-                                        ),
+                                        discountPercent: item.discountPercentage.toInt(),
+                                        deliveryTime: item.estimatedDeliveryTime,
+                                        cardWidth: (size.width * 0.62).clamp(200.0, 260.0),
+                                        onTap: () => _openItemDetails(popularItems[index]),
                                       ),
                                     );
                                   },
@@ -640,8 +508,7 @@ class _VendorDetailsPageState extends State<VendorDetailsPage> {
                           padding: EdgeInsets.symmetric(horizontal: 20.w),
                           child: _buildInlineMessage(
                             colors: colors,
-                            message:
-                                'No items available from this vendor right now.',
+                            message: 'No items available from this vendor right now.',
                           ),
                         )
                       else
@@ -652,10 +519,7 @@ class _VendorDetailsPageState extends State<VendorDetailsPage> {
                               for (final item in _vendorItems)
                                 FoodItemCard(
                                   item: item.displayItem,
-                                  margin: EdgeInsets.symmetric(
-                                    horizontal: 4.w,
-                                    vertical: 6.h,
-                                  ),
+                                  margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 6.h),
                                   onTap: () => _openItemDetails(item),
                                 ),
                             ],
@@ -665,20 +529,11 @@ class _VendorDetailsPageState extends State<VendorDetailsPage> {
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
-  }
-
-  bool get _hasOpeningHours {
-    return _vendor.openingHours != null;
-  }
-
-  bool get _hasTagsOrCategories {
-    return _vendor.vendorCategories.isNotEmpty ||
-        (_vendor.tags?.isNotEmpty ?? false);
   }
 
   Widget _buildHeroPlaceholder(AppColorsExtension colors, Color accentColor) {
@@ -695,23 +550,17 @@ class _VendorDetailsPageState extends State<VendorDetailsPage> {
     );
   }
 
-  Widget _buildSliverActionButton({
-    required VoidCallback onTap,
-    required Widget child,
-  }) {
+  Widget _buildSliverActionButton({required VoidCallback onTap, required Widget child}) {
     return GestureDetector(
       onTap: onTap,
       child: SizedBox(
-        width: 44.w,
-        height: 44.w,
+        width: 44,
+        height: 44,
         child: ClipOval(
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 9, sigmaY: 9),
             child: Container(
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.22),
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.22), shape: BoxShape.circle),
               child: Center(child: child),
             ),
           ),
@@ -720,119 +569,231 @@ class _VendorDetailsPageState extends State<VendorDetailsPage> {
     );
   }
 
-  Widget _buildVendorOverviewCard(
-    AppColorsExtension colors,
-    Color accentColor,
-  ) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20.w),
-      child: Container(
-        padding: EdgeInsets.all(14.r),
-        decoration: BoxDecoration(
-          color: colors.backgroundPrimary,
-          borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+  Widget _buildVendorOverviewCard(AppColorsExtension colors, Color accentColor) {
+    final displayVendor = _vendor;
+    final locationText = displayVendor.address.trim().isNotEmpty
+        ? displayVendor.address.trim()
+        : [
+            displayVendor.area?.trim(),
+            displayVendor.city.trim(),
+          ].whereType<String>().where((entry) => entry.isNotEmpty).join(', ');
+    final summaryPills = <Widget>[
+      if (displayVendor.isVerified == true)
+        _buildMetaPill(
+          colors: colors,
+          label: 'Verified',
+          backgroundColor: colors.accentGreen.withValues(alpha: 0.12),
+          textColor: colors.accentGreen,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Wrap(
-              spacing: 8.w,
-              runSpacing: 8.h,
-              children: [
-                _buildInfoChip(
-                  colors: colors,
-                  backgroundColor: colors.backgroundSecondary,
-                  iconAsset: Assets.icons.starSolid,
-                  iconColor: accentColor,
-                  label: _vendor.totalReviews > 0
-                      ? '${_vendor.rating.toStringAsFixed(1)} (${_vendor.totalReviews} reviews)'
-                      : _vendor.rating.toStringAsFixed(1),
+      if (displayVendor.featured == true)
+        _buildMetaPill(
+          colors: colors,
+          label: 'Featured',
+          backgroundColor: colors.accentOrange.withValues(alpha: 0.12),
+          textColor: colors.accentOrange,
+        ),
+      if (displayVendor.isExclusive)
+        _buildMetaPill(
+          colors: colors,
+          label: 'GrabGo Exclusive',
+          backgroundColor: colors.accentOrange.withValues(alpha: 0.12),
+          textColor: colors.accentOrange,
+        ),
+      if (!_isLoadingVendorDetails && !displayVendor.isAcceptingOrders)
+        _buildMetaPill(
+          colors: colors,
+          label: 'Not accepting orders',
+          backgroundColor: colors.error.withValues(alpha: 0.10),
+          textColor: colors.error,
+        ),
+    ];
+
+    return Container(
+      padding: EdgeInsets.all(14.r),
+      decoration: BoxDecoration(
+        color: colors.backgroundPrimary,
+        borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 12)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                child: SizedBox(
+                  width: 72,
+                  height: 72,
+                  child: displayVendor.logo != null && displayVendor.logo!.trim().isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: ImageOptimizer.getFullUrl(displayVendor.logo!, width: 240),
+                          fit: BoxFit.cover,
+                          memCacheWidth: 240,
+                          placeholder: (context, url) => _buildHeroPlaceholder(colors, accentColor),
+                          errorWidget: (context, url, error) => _buildHeroPlaceholder(colors, accentColor),
+                        )
+                      : _buildHeroPlaceholder(colors, accentColor),
                 ),
-                _buildInfoChip(
-                  colors: colors,
-                  backgroundColor: _vendor.isOpen
-                      ? colors.accentGreen.withValues(alpha: 0.12)
-                      : colors.error.withValues(alpha: 0.10),
-                  label: _availabilityText(),
-                  textColor: _vendor.isOpen
-                      ? colors.accentGreen
-                      : colors.error,
-                ),
-              ],
-            ),
-            if (_vendor.address.isNotEmpty) ...[
-              SizedBox(height: 10.h),
-              Text(
-                _vendor.address,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: colors.textSecondary,
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w500,
-                  height: 1.35,
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayVendor.displayName,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 20.sp,
+                        fontWeight: FontWeight.w800,
+                        height: 1.1,
+                      ),
+                    ),
+                    SizedBox(height: 6.h),
+                    Row(
+                      children: [
+                        SvgPicture.asset(
+                          Assets.icons.starSolid,
+                          package: 'grab_go_shared',
+                          width: 14.w,
+                          height: 14.w,
+                          colorFilter: ColorFilter.mode(accentColor, BlendMode.srcIn),
+                        ),
+                        SizedBox(width: 4.w),
+                        Text(
+                          displayVendor.rating.toStringAsFixed(1),
+                          style: TextStyle(color: colors.textPrimary, fontSize: 12.sp, fontWeight: FontWeight.w700),
+                        ),
+                        if (displayVendor.totalReviews > 0) ...[
+                          SizedBox(width: 4.w),
+                          Flexible(
+                            child: Text(
+                              '(${displayVendor.totalReviews} reviews)',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: colors.textSecondary,
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                        SizedBox(width: 4.w),
+                        GestureDetector(
+                          onTap: () => context.push('/vendorRatings'),
+                          behavior: HitTestBehavior.opaque,
+                          child: Padding(
+                            padding: EdgeInsets.all(2.r),
+                            child: SvgPicture.asset(
+                              Assets.icons.navArrowRight,
+                              package: 'grab_go_shared',
+                              width: 12.w,
+                              height: 12.w,
+                              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                            ),
+                          ),
+                        ),
+                        if (_isLoadingVendorDetails) ...[
+                          SizedBox(width: 8.w),
+                          Container(
+                            width: 56.w,
+                            height: 10.h,
+                            decoration: BoxDecoration(
+                              color: colors.backgroundSecondary,
+                              borderRadius: BorderRadius.circular(999.r),
+                            ),
+                          ),
+                        ] else ...[
+                          SizedBox(width: 8.w),
+                          Container(
+                            width: 4.w,
+                            height: 4.w,
+                            decoration: BoxDecoration(
+                              color: colors.textSecondary.withValues(alpha: 0.45),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          SizedBox(width: 8.w),
+                          Flexible(
+                            child: Text(
+                              displayVendor.shortAvailabilityLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: displayVendor.isAvailableForOrders ? colors.accentGreen : colors.error,
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (locationText.isNotEmpty) ...[
+                      SizedBox(height: 6.h),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SvgPicture.asset(
+                            Assets.icons.mapPin,
+                            package: 'grab_go_shared',
+                            width: 14.w,
+                            height: 14.w,
+                            colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                          ),
+                          SizedBox(width: 5.w),
+                          Expanded(
+                            child: Text(
+                              locationText,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: colors.textSecondary,
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w500,
+                                height: 1.35,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ],
-            if ((_vendor.description ?? '').trim().isNotEmpty) ...[
-              SizedBox(height: 8.h),
-              Text(
-                _vendor.description!.trim(),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: colors.textSecondary,
-                  fontSize: 11.sp,
-                  fontWeight: FontWeight.w500,
-                  height: 1.4,
-                ),
-              ),
-            ],
+          ),
+          if (summaryPills.isNotEmpty) ...[
+            SizedBox(height: 10.h),
+            Wrap(spacing: 8.w, runSpacing: 8.h, children: summaryPills),
           ],
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildInfoChip({
+  Widget _buildMetaPill({
     required AppColorsExtension colors,
-    required Color backgroundColor,
     required String label,
-    String? iconAsset,
-    Color? iconColor,
+    Color? backgroundColor,
     Color? textColor,
   }) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 7.h),
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: backgroundColor ?? colors.backgroundSecondary,
         borderRadius: BorderRadius.circular(999.r),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (iconAsset != null) ...[
-            SvgPicture.asset(
-              iconAsset,
-              package: 'grab_go_shared',
-              width: 13.w,
-              height: 13.w,
-              colorFilter: ColorFilter.mode(
-                iconColor ?? colors.textSecondary,
-                BlendMode.srcIn,
-              ),
-            ),
-            SizedBox(width: 4.w),
-          ],
-          Text(
-            label,
-            style: TextStyle(
-              color: textColor ?? colors.textPrimary,
-              fontSize: 11.sp,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
+      child: Text(
+        label,
+        style: TextStyle(color: textColor ?? colors.textPrimary, fontSize: 11.sp, fontWeight: FontWeight.w700),
       ),
     );
   }
@@ -851,11 +812,7 @@ class _VendorDetailsPageState extends State<VendorDetailsPage> {
         ),
         child: Row(
           children: [
-            _buildStatColumn(
-              colors,
-              'Delivery Fee',
-              _vendor.deliveryFeeText,
-            ),
+            _buildStatColumn(colors, 'Delivery Fee', _vendor.deliveryFeeText),
             _buildDivider(colors),
             _buildStatColumn(colors, 'Min Order', _vendor.minOrderText),
             _buildDivider(colors),
@@ -866,31 +823,19 @@ class _VendorDetailsPageState extends State<VendorDetailsPage> {
     );
   }
 
-  Widget _buildStatColumn(
-    AppColorsExtension colors,
-    String label,
-    String value,
-  ) {
+  Widget _buildStatColumn(AppColorsExtension colors, String label, String value) {
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
             label,
-            style: TextStyle(
-              color: colors.textSecondary,
-              fontSize: 11.sp,
-              fontWeight: FontWeight.w500,
-            ),
+            style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w500),
           ),
           SizedBox(height: 4.h),
           Text(
             value,
-            style: TextStyle(
-              color: colors.textPrimary,
-              fontSize: 12.sp,
-              fontWeight: FontWeight.w700,
-            ),
+            style: TextStyle(color: colors.textPrimary, fontSize: 12.sp, fontWeight: FontWeight.w700),
           ),
         ],
       ),
@@ -903,127 +848,6 @@ class _VendorDetailsPageState extends State<VendorDetailsPage> {
       height: 30.h,
       margin: EdgeInsets.symmetric(horizontal: 6.w),
       color: colors.inputBorder.withValues(alpha: 0.5),
-    );
-  }
-
-  Widget _buildOpeningHoursCard(AppColorsExtension colors) {
-    final openingHours = _vendor.openingHours;
-    if (openingHours == null) return const SizedBox.shrink();
-
-    final dayEntries = <(String, DaySchedule?)>[
-      ('Mon', openingHours.monday),
-      ('Tue', openingHours.tuesday),
-      ('Wed', openingHours.wednesday),
-      ('Thu', openingHours.thursday),
-      ('Fri', openingHours.friday),
-      ('Sat', openingHours.saturday),
-      ('Sun', openingHours.sunday),
-    ];
-    final todayIndex = DateTime.now().weekday - 1;
-
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20.w),
-      child: Container(
-        padding: EdgeInsets.all(12.r),
-        decoration: BoxDecoration(
-          color: colors.backgroundPrimary,
-          borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Opening Hours',
-              style: TextStyle(
-                color: colors.textPrimary,
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            SizedBox(height: 8.h),
-            for (int index = 0; index < dayEntries.length; index++) ...[
-              _buildOpeningHourRow(
-                colors: colors,
-                dayLabel: dayEntries[index].$1,
-                schedule: dayEntries[index].$2,
-                isToday: index == todayIndex,
-              ),
-              if (index < dayEntries.length - 1) SizedBox(height: 4.h),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOpeningHourRow({
-    required AppColorsExtension colors,
-    required String dayLabel,
-    required DaySchedule? schedule,
-    required bool isToday,
-  }) {
-    final isClosed = schedule == null || schedule.isClosed;
-    final value = isClosed
-        ? 'Closed'
-        : '${_formatOpeningTime(schedule.open)} - ${_formatOpeningTime(schedule.close)}';
-    return Row(
-      children: [
-        SizedBox(
-          width: 42.w,
-          child: Text(
-            dayLabel,
-            style: TextStyle(
-              color: isToday ? colors.accentOrange : colors.textSecondary,
-              fontSize: 11.sp,
-              fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
-            ),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: TextStyle(
-              color: isToday ? colors.textPrimary : colors.textSecondary,
-              fontSize: 11.sp,
-              fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTagsSection(AppColorsExtension colors) {
-    final tags = <String>[
-      ..._vendor.vendorCategories,
-      ...(_vendor.tags ?? const <String>[]),
-    ].where((entry) => entry.trim().isNotEmpty).toSet().toList(growable: false);
-    if (tags.isEmpty) return const SizedBox.shrink();
-
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20.w),
-      child: Wrap(
-        spacing: 8.w,
-        runSpacing: 8.h,
-        children: [
-          for (final tag in tags)
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-              decoration: BoxDecoration(
-                color: colors.backgroundPrimary,
-                borderRadius: BorderRadius.circular(999.r),
-              ),
-              child: Text(
-                tag,
-                style: TextStyle(
-                  color: colors.textSecondary,
-                  fontSize: 11.sp,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-        ],
-      ),
     );
   }
 
@@ -1083,11 +907,7 @@ class _VendorDetailsPageState extends State<VendorDetailsPage> {
           Expanded(
             child: Text(
               message,
-              style: TextStyle(
-                color: colors.textSecondary,
-                fontSize: 12.sp,
-                fontWeight: FontWeight.w500,
-              ),
+              style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w500),
             ),
           ),
           if (actionText != null && onTap != null)
@@ -1095,11 +915,7 @@ class _VendorDetailsPageState extends State<VendorDetailsPage> {
               onTap: onTap,
               child: Text(
                 actionText,
-                style: TextStyle(
-                  color: colors.accentOrange,
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: TextStyle(color: colors.accentOrange, fontSize: 12.sp, fontWeight: FontWeight.w700),
               ),
             ),
         ],
@@ -1113,9 +929,5 @@ class _VendorDisplayItem {
   final Object sourceItem;
   final FoodItem displayItem;
 
-  const _VendorDisplayItem({
-    required this.id,
-    required this.sourceItem,
-    required this.displayItem,
-  });
+  const _VendorDisplayItem({required this.id, required this.sourceItem, required this.displayItem});
 }

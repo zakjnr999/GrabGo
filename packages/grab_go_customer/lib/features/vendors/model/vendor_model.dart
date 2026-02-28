@@ -9,9 +9,14 @@ class DaySchedule {
   final String close;
   final bool isClosed;
 
-  DaySchedule({this.open = '09:00', this.close = '21:00', this.isClosed = false});
+  DaySchedule({
+    this.open = '09:00',
+    this.close = '21:00',
+    this.isClosed = false,
+  });
 
-  factory DaySchedule.fromJson(Map<String, dynamic> json) => _$DayScheduleFromJson(json);
+  factory DaySchedule.fromJson(Map<String, dynamic> json) =>
+      _$DayScheduleFromJson(json);
   Map<String, dynamic> toJson() => _$DayScheduleToJson(this);
 }
 
@@ -25,9 +30,18 @@ class OpeningHours {
   final DaySchedule? saturday;
   final DaySchedule? sunday;
 
-  OpeningHours({this.monday, this.tuesday, this.wednesday, this.thursday, this.friday, this.saturday, this.sunday});
+  OpeningHours({
+    this.monday,
+    this.tuesday,
+    this.wednesday,
+    this.thursday,
+    this.friday,
+    this.saturday,
+    this.sunday,
+  });
 
-  factory OpeningHours.fromJson(Map<String, dynamic> json) => _$OpeningHoursFromJson(json);
+  factory OpeningHours.fromJson(Map<String, dynamic> json) =>
+      _$OpeningHoursFromJson(json);
   Map<String, dynamic> toJson() => _$OpeningHoursToJson(this);
 }
 
@@ -39,7 +53,13 @@ class VendorLocation {
   final String city;
   final String? area;
 
-  VendorLocation({required this.lat, required this.lng, required this.address, required this.city, this.area});
+  VendorLocation({
+    required this.lat,
+    required this.lng,
+    required this.address,
+    required this.city,
+    this.area,
+  });
 
   factory VendorLocation.fromJson(Map<String, dynamic> json) {
     if (json['coordinates'] != null) {
@@ -112,7 +132,8 @@ class VendorModel {
   final String? restaurantName;
   final String? name;
 
-  String get displayName => storeName ?? restaurantName ?? name ?? 'Unknown Vendor';
+  String get displayName =>
+      storeName ?? restaurantName ?? name ?? 'Unknown Vendor';
 
   final String? logo;
   final String? description;
@@ -139,6 +160,10 @@ class VendorModel {
   final bool? isVerified;
   final DateTime? verifiedAt;
   final String? whatsappNumber;
+  final String? facebookUrl;
+  final String? instagramUrl;
+  final String? twitterUrl;
+  final String? websiteUrl;
   final List<String>? paymentMethods;
   final List<String>? bannerImages;
   final bool? isGrabGoExclusive;
@@ -197,6 +222,10 @@ class VendorModel {
     this.isVerified,
     this.verifiedAt,
     this.whatsappNumber,
+    this.facebookUrl,
+    this.instagramUrl,
+    this.twitterUrl,
+    this.websiteUrl,
     this.paymentMethods,
     this.bannerImages,
     this.isGrabGoExclusive,
@@ -249,6 +278,10 @@ class VendorModel {
     bool? isVerified,
     DateTime? verifiedAt,
     String? whatsappNumber,
+    String? facebookUrl,
+    String? instagramUrl,
+    String? twitterUrl,
+    String? websiteUrl,
     List<String>? paymentMethods,
     List<String>? bannerImages,
     bool? isGrabGoExclusive,
@@ -291,7 +324,8 @@ class VendorModel {
       openingHours: openingHours ?? this.openingHours,
       deliveryTime: deliveryTime ?? this.deliveryTime,
       averageDeliveryTime: averageDeliveryTime ?? this.averageDeliveryTime,
-      averagePreparationTime: averagePreparationTime ?? this.averagePreparationTime,
+      averagePreparationTime:
+          averagePreparationTime ?? this.averagePreparationTime,
       deliveryRadius: deliveryRadius ?? this.deliveryRadius,
       features: features ?? this.features,
       tags: tags ?? this.tags,
@@ -300,10 +334,15 @@ class VendorModel {
       isVerified: isVerified ?? this.isVerified,
       verifiedAt: verifiedAt ?? this.verifiedAt,
       whatsappNumber: whatsappNumber ?? this.whatsappNumber,
+      facebookUrl: facebookUrl ?? this.facebookUrl,
+      instagramUrl: instagramUrl ?? this.instagramUrl,
+      twitterUrl: twitterUrl ?? this.twitterUrl,
+      websiteUrl: websiteUrl ?? this.websiteUrl,
       paymentMethods: paymentMethods ?? this.paymentMethods,
       bannerImages: bannerImages ?? this.bannerImages,
       isGrabGoExclusive: isGrabGoExclusive ?? this.isGrabGoExclusive,
-      isGrabGoExclusiveUntil: isGrabGoExclusiveUntil ?? this.isGrabGoExclusiveUntil,
+      isGrabGoExclusiveUntil:
+          isGrabGoExclusiveUntil ?? this.isGrabGoExclusiveUntil,
       vendorType: vendorType ?? this.vendorType,
       lastOnlineAt: lastOnlineAt ?? this.lastOnlineAt,
       distance: distance ?? this.distance,
@@ -320,6 +359,180 @@ class VendorModel {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       vendorTypeEnum: vendorTypeEnum ?? this.vendorTypeEnum,
+    );
+  }
+
+  static bool _hasAnyKey(Map<String, dynamic> json, List<String> keys) {
+    return keys.any(json.containsKey);
+  }
+
+  VendorModel mergeDetailSnapshot(Map<String, dynamic> json) {
+    final detail = VendorModel.fromJson(
+      json,
+    ).copyWith(vendorTypeEnum: vendorTypeEnum, distance: distance);
+
+    final hasLocationData = _hasAnyKey(json, [
+      'location',
+      'longitude',
+      'latitude',
+      'address',
+      'city',
+      'area',
+    ]);
+    final hasRatingData = _hasAnyKey(json, [
+      'weightedRating',
+      'displayRating',
+      'rating',
+    ]);
+    final hasReviewData = _hasAnyKey(json, [
+      'totalReviews',
+      'total_reviews',
+      'reviewCount',
+      'ratingCount',
+    ]);
+
+    return copyWith(
+      id: _hasAnyKey(json, ['_id', 'id']) ? detail.id : id,
+      storeName: _hasAnyKey(json, ['storeName', 'store_name'])
+          ? detail.storeName
+          : storeName,
+      restaurantName: _hasAnyKey(json, ['restaurantName', 'restaurant_name'])
+          ? detail.restaurantName
+          : restaurantName,
+      name: json.containsKey('name') ? detail.name : name,
+      logo:
+          json.containsKey('logo') && (detail.logo?.trim().isNotEmpty ?? false)
+          ? detail.logo
+          : logo,
+      description: json.containsKey('description')
+          ? detail.description
+          : description,
+      phone: json.containsKey('phone') ? detail.phone : phone,
+      email: json.containsKey('email') ? detail.email : email,
+      isOpen: _hasAnyKey(json, ['isOpen', 'is_open']) ? detail.isOpen : isOpen,
+      isAcceptingOrders: json.containsKey('isAcceptingOrders')
+          ? detail.isAcceptingOrders
+          : isAcceptingOrders,
+      deliveryFee: _hasAnyKey(json, ['deliveryFee', 'delivery_fee'])
+          ? detail.deliveryFee
+          : deliveryFee,
+      minOrder: _hasAnyKey(json, ['minOrder', 'min_order'])
+          ? detail.minOrder
+          : minOrder,
+      rating: hasRatingData ? detail.rating : rating,
+      totalReviews: hasReviewData ? detail.totalReviews : totalReviews,
+      categories: json.containsKey('categories')
+          ? detail.categories
+          : categories,
+      foodType: _hasAnyKey(json, ['foodType', 'food_type'])
+          ? detail.foodType
+          : foodType,
+      location: hasLocationData && detail.location != null
+          ? detail.location
+          : location,
+      openingHours: json.containsKey('openingHours')
+          ? detail.openingHours
+          : openingHours,
+      deliveryTime: _hasAnyKey(json, ['deliveryTime', 'average_delivery_time'])
+          ? detail.deliveryTime
+          : deliveryTime,
+      averageDeliveryTime:
+          _hasAnyKey(json, ['averageDeliveryTime', 'average_delivery_time'])
+          ? detail.averageDeliveryTime
+          : averageDeliveryTime,
+      averagePreparationTime:
+          _hasAnyKey(json, [
+            'averagePreparationTime',
+            'average_preparation_time',
+          ])
+          ? detail.averagePreparationTime
+          : averagePreparationTime,
+      deliveryRadius: _hasAnyKey(json, ['deliveryRadius', 'delivery_radius'])
+          ? detail.deliveryRadius
+          : deliveryRadius,
+      features: json.containsKey('features') ? detail.features : features,
+      tags: json.containsKey('tags') ? detail.tags : tags,
+      featured: json.containsKey('featured') ? detail.featured : featured,
+      featuredUntil: json.containsKey('featuredUntil')
+          ? detail.featuredUntil
+          : featuredUntil,
+      isVerified: json.containsKey('isVerified')
+          ? detail.isVerified
+          : isVerified,
+      verifiedAt: json.containsKey('verifiedAt')
+          ? detail.verifiedAt
+          : verifiedAt,
+      whatsappNumber: json.containsKey('whatsappNumber')
+          ? detail.whatsappNumber
+          : whatsappNumber,
+      facebookUrl: json.containsKey('facebookUrl')
+          ? detail.facebookUrl
+          : facebookUrl,
+      instagramUrl: json.containsKey('instagramUrl')
+          ? detail.instagramUrl
+          : instagramUrl,
+      twitterUrl: json.containsKey('twitterUrl')
+          ? detail.twitterUrl
+          : twitterUrl,
+      websiteUrl: json.containsKey('websiteUrl')
+          ? detail.websiteUrl
+          : websiteUrl,
+      paymentMethods: _hasAnyKey(json, ['paymentMethods', 'payment_methods'])
+          ? detail.paymentMethods
+          : paymentMethods,
+      bannerImages:
+          _hasAnyKey(json, ['bannerImages', 'banner_images']) &&
+              (detail.bannerImages?.isNotEmpty ?? false)
+          ? detail.bannerImages
+          : bannerImages,
+      isGrabGoExclusive: _hasAnyKey(json, ['isGrabGoExclusive', 'is_exclusive'])
+          ? detail.isGrabGoExclusive
+          : isGrabGoExclusive,
+      isGrabGoExclusiveUntil: json.containsKey('isGrabGoExclusiveUntil')
+          ? detail.isGrabGoExclusiveUntil
+          : isGrabGoExclusiveUntil,
+      vendorType: json.containsKey('vendorType')
+          ? detail.vendorType
+          : vendorType,
+      lastOnlineAt: json.containsKey('lastOnlineAt')
+          ? detail.lastOnlineAt
+          : lastOnlineAt,
+      emergencyService:
+          _hasAnyKey(json, ['emergencyService', 'emergency_service'])
+          ? detail.emergencyService
+          : emergencyService,
+      licenseNumber: _hasAnyKey(json, ['licenseNumber', 'license_number'])
+          ? detail.licenseNumber
+          : licenseNumber,
+      pharmacistName: _hasAnyKey(json, ['pharmacistName', 'pharmacist_name'])
+          ? detail.pharmacistName
+          : pharmacistName,
+      insuranceAccepted:
+          _hasAnyKey(json, ['insuranceAccepted', 'insurance_accepted'])
+          ? detail.insuranceAccepted
+          : insuranceAccepted,
+      prescriptionRequired:
+          _hasAnyKey(json, ['prescriptionRequired', 'prescription_required'])
+          ? detail.prescriptionRequired
+          : prescriptionRequired,
+      is24Hours: _hasAnyKey(json, ['is24Hours', 'is_24_hours'])
+          ? detail.is24Hours
+          : is24Hours,
+      hasParking: _hasAnyKey(json, ['hasParking', 'has_parking'])
+          ? detail.hasParking
+          : hasParking,
+      services: json.containsKey('services') ? detail.services : services,
+      productTypes: _hasAnyKey(json, ['productTypes', 'product_types'])
+          ? detail.productTypes
+          : productTypes,
+      businessIdNumber:
+          _hasAnyKey(json, ['businessIdNumber', 'business_id_number'])
+          ? detail.businessIdNumber
+          : businessIdNumber,
+      createdAt: json.containsKey('createdAt') ? detail.createdAt : createdAt,
+      updatedAt: json.containsKey('updatedAt') ? detail.updatedAt : updatedAt,
+      vendorTypeEnum: vendorTypeEnum,
+      distance: distance,
     );
   }
 
@@ -341,15 +554,22 @@ class VendorModel {
         ? rawIsOpen != 0
         : true;
     final totalReviewsValue =
-        json['totalReviews'] ?? json['total_reviews'] ?? json['reviewCount'] ?? json['ratingCount'] ?? 0;
+        json['totalReviews'] ??
+        json['total_reviews'] ??
+        json['reviewCount'] ??
+        json['ratingCount'] ??
+        0;
     final int parsedTotalReviews = totalReviewsValue is num
         ? totalReviewsValue.toInt()
         : int.tryParse(totalReviewsValue.toString()) ?? 0;
 
     return VendorModel(
       id: (json['_id'] ?? json['id'] ?? '').toString(),
-      storeName: json['storeName']?.toString() ?? json['store_name']?.toString(),
-      restaurantName: json['restaurantName']?.toString() ?? json['restaurant_name']?.toString(),
+      storeName:
+          json['storeName']?.toString() ?? json['store_name']?.toString(),
+      restaurantName:
+          json['restaurantName']?.toString() ??
+          json['restaurant_name']?.toString(),
       name: json['name']?.toString(),
       logo: json['logo']?.toString(),
       description: json['description']?.toString(),
@@ -357,48 +577,98 @@ class VendorModel {
       email: (json['email'] ?? '').toString(),
       isOpen: parsedIsOpen,
       isAcceptingOrders: json['isAcceptingOrders'] as bool? ?? true,
-      deliveryFee: (json['deliveryFee'] ?? json['delivery_fee'] ?? 0.0).toDouble(),
+      deliveryFee: (json['deliveryFee'] ?? json['delivery_fee'] ?? 0.0)
+          .toDouble(),
       minOrder: (json['minOrder'] ?? json['min_order'] ?? 0.0).toDouble(),
-      rating: (json['weightedRating'] ?? json['displayRating'] ?? json['rating'] ?? 0.0).toDouble(),
+      rating:
+          (json['weightedRating'] ??
+                  json['displayRating'] ??
+                  json['rating'] ??
+                  0.0)
+              .toDouble(),
       totalReviews: parsedTotalReviews,
       categories: parseStringList(json['categories']),
       foodType: json['foodType']?.toString() ?? json['food_type']?.toString(),
-      location: json['location'] != null ? VendorLocation.fromJson(json['location'] as Map<String, dynamic>) : null,
+      location: json['location'] != null
+          ? VendorLocation.fromJson(json['location'] as Map<String, dynamic>)
+          : null,
       openingHours: _parseOpeningHours(json['openingHours']),
-      deliveryTime: json['deliveryTime']?.toString() ?? json['average_delivery_time']?.toString(),
+      deliveryTime:
+          json['deliveryTime']?.toString() ??
+          json['average_delivery_time']?.toString(),
       averageDeliveryTime:
           json['averageDeliveryTime'] as int? ??
-          (json['average_delivery_time'] is int ? json['average_delivery_time'] as int : null),
-      averagePreparationTime: json['averagePreparationTime'] as int? ?? json['average_preparation_time'] as int?,
-      deliveryRadius: (json['deliveryRadius'] ?? json['delivery_radius'] ?? 5.0).toDouble(),
+          (json['average_delivery_time'] is int
+              ? json['average_delivery_time'] as int
+              : null),
+      averagePreparationTime:
+          json['averagePreparationTime'] as int? ??
+          json['average_preparation_time'] as int?,
+      deliveryRadius: (json['deliveryRadius'] ?? json['delivery_radius'] ?? 5.0)
+          .toDouble(),
       features: parseStringList(json['features']),
       tags: parseStringList(json['tags']),
       featured: json['featured'] as bool?,
-      featuredUntil: json['featuredUntil'] != null ? DateTime.tryParse(json['featuredUntil'].toString()) : null,
+      featuredUntil: json['featuredUntil'] != null
+          ? DateTime.tryParse(json['featuredUntil'].toString())
+          : null,
       isVerified: json['isVerified'] as bool?,
-      verifiedAt: json['verifiedAt'] != null ? DateTime.tryParse(json['verifiedAt'].toString()) : null,
+      verifiedAt: json['verifiedAt'] != null
+          ? DateTime.tryParse(json['verifiedAt'].toString())
+          : null,
       whatsappNumber: json['whatsappNumber']?.toString(),
-      paymentMethods: parseStringList(json['paymentMethods'] ?? json['payment_methods']),
-      bannerImages: parseStringList(json['bannerImages'] ?? json['banner_images']),
-      isGrabGoExclusive: json['isGrabGoExclusive'] as bool? ?? json['is_exclusive'] as bool?,
+      facebookUrl: json['facebookUrl']?.toString(),
+      instagramUrl: json['instagramUrl']?.toString(),
+      twitterUrl: json['twitterUrl']?.toString(),
+      websiteUrl: json['websiteUrl']?.toString(),
+      paymentMethods: parseStringList(
+        json['paymentMethods'] ?? json['payment_methods'],
+      ),
+      bannerImages: parseStringList(
+        json['bannerImages'] ?? json['banner_images'],
+      ),
+      isGrabGoExclusive:
+          json['isGrabGoExclusive'] as bool? ?? json['is_exclusive'] as bool?,
       isGrabGoExclusiveUntil: json['isGrabGoExclusiveUntil'] != null
           ? DateTime.tryParse(json['isGrabGoExclusiveUntil'].toString())
           : null,
       vendorType: json['vendorType']?.toString(),
-      lastOnlineAt: json['lastOnlineAt'] != null ? DateTime.tryParse(json['lastOnlineAt'].toString()) : null,
-      distance: (json['distance'] != null) ? (json['distance'] as num).toDouble() : null,
-      emergencyService: json['emergencyService'] as bool? ?? json['emergency_service'] as bool?,
-      licenseNumber: json['licenseNumber']?.toString() ?? json['license_number']?.toString(),
-      pharmacistName: json['pharmacistName']?.toString() ?? json['pharmacist_name']?.toString(),
-      insuranceAccepted: parseStringList(json['insuranceAccepted'] ?? json['insurance_accepted']),
-      prescriptionRequired: json['prescriptionRequired'] as bool? ?? json['prescription_required'] as bool?,
+      lastOnlineAt: json['lastOnlineAt'] != null
+          ? DateTime.tryParse(json['lastOnlineAt'].toString())
+          : null,
+      distance: (json['distance'] != null)
+          ? (json['distance'] as num).toDouble()
+          : null,
+      emergencyService:
+          json['emergencyService'] as bool? ??
+          json['emergency_service'] as bool?,
+      licenseNumber:
+          json['licenseNumber']?.toString() ??
+          json['license_number']?.toString(),
+      pharmacistName:
+          json['pharmacistName']?.toString() ??
+          json['pharmacist_name']?.toString(),
+      insuranceAccepted: parseStringList(
+        json['insuranceAccepted'] ?? json['insurance_accepted'],
+      ),
+      prescriptionRequired:
+          json['prescriptionRequired'] as bool? ??
+          json['prescription_required'] as bool?,
       is24Hours: json['is24Hours'] as bool? ?? json['is_24_hours'] as bool?,
       hasParking: json['hasParking'] as bool? ?? json['has_parking'] as bool?,
       services: parseStringList(json['services']),
-      productTypes: parseStringList(json['productTypes'] ?? json['product_types']),
-      businessIdNumber: json['businessIdNumber']?.toString() ?? json['business_id_number']?.toString(),
-      createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'].toString()) : null,
-      updatedAt: json['updatedAt'] != null ? DateTime.tryParse(json['updatedAt'].toString()) : null,
+      productTypes: parseStringList(
+        json['productTypes'] ?? json['product_types'],
+      ),
+      businessIdNumber:
+          json['businessIdNumber']?.toString() ??
+          json['business_id_number']?.toString(),
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'].toString())
+          : null,
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.tryParse(json['updatedAt'].toString())
+          : null,
     );
   }
 
@@ -435,4 +705,13 @@ class VendorModel {
     }
     return deliveryTime ?? '30 mins';
   }
+
+  bool get isAvailableForOrders => isOpen && isAcceptingOrders;
+
+  bool get isTemporarilyUnavailableButOpen => isOpen && !isAcceptingOrders;
+
+  String get shortAvailabilityLabel => isAvailableForOrders ? 'Open' : 'Closed';
+
+  String get overlayAvailabilityLabel =>
+      isTemporarilyUnavailableButOpen ? 'Not accepting' : "We're closed";
 }

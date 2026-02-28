@@ -47,18 +47,28 @@ class VendorProvider extends ChangeNotifier {
   bool get fastDeliveryOnly => _fastDeliveryOnly;
   VendorType? get mapCategoryFilter => _mapCategoryFilter;
 
+  List<VendorModel> get _derivedVendorSource {
+    final source = _filteredVendors.isNotEmpty || _vendors.isEmpty
+        ? _filteredVendors
+        : _vendors;
+    if (_selectedType == null) return List<VendorModel>.from(source);
+    return source
+        .where((vendor) => vendor.vendorTypeEnum == _selectedType)
+        .toList();
+  }
+
   List<VendorModel> get exclusiveVendors {
-    return _vendors.where((v) => v.isExclusive).toList();
+    return _derivedVendorSource.where((v) => v.isExclusive).toList();
   }
 
   List<VendorModel> get nearestVendors {
-    final list = _vendors.where((v) => v.distance != null).toList();
+    final list = _derivedVendorSource.where((v) => v.distance != null).toList();
     list.sort((a, b) => a.distance!.compareTo(b.distance!));
     return list.take(10).toList();
   }
 
   List<VendorModel> get newVendors {
-    final list = List<VendorModel>.from(_vendors);
+    final list = List<VendorModel>.from(_derivedVendorSource);
     // Sort by createdAt descending, if available
     list.sort((a, b) {
       if (a.createdAt == null && b.createdAt == null) return 0;
@@ -70,7 +80,9 @@ class VendorProvider extends ChangeNotifier {
   }
 
   List<VendorModel> get budgetFriendlyVendors {
-    final list = _vendors.where((v) => v.minOrder > 0 && v.minOrder <= 20).toList();
+    final list = _derivedVendorSource
+        .where((v) => v.minOrder > 0 && v.minOrder <= 20)
+        .toList();
     list.sort((a, b) => a.minOrder.compareTo(b.minOrder));
     return list.take(10).toList();
   }
@@ -88,34 +100,40 @@ class VendorProvider extends ChangeNotifier {
     return count;
   }
 
-  /// Fetch vendors by type
-  Future<void> fetchVendors(VendorType type, {double? lat, double? lng, bool forceRefresh = false}) async {
-    final typeName = type.toString().split('.').last;
-
-    // If type changed, clear current vendors immediately to avoid showing wrong data
-    if (_selectedType != type) {
-      _vendors = [];
-      _filteredVendors = [];
-    }
-
-    _selectedType = type;
-
-    // Load from cache first for immediate UI update
-    if (!forceRefresh) {
-      final cachedJson = CacheService.getVendorsByType(typeName);
-      if (cachedJson.isNotEmpty) {
-        _vendors = cachedJson.map((json) {
-          final vendor = VendorModel.fromJson(Map<String, dynamic>.from(json)).copyWith(vendorTypeEnum: type);
-          if (lat != null && lng != null) {
-            final distanceInMeters = Geolocator.distanceBetween(lat, lng, vendor.latitude, vendor.longitude);
-            return vendor.copyWith(distance: distanceInMeters / 1000);
-          }
-          return vendor;
-        }).toList();
-        _applyFilters();
-        notifyListeners();
+  List<VendorModel> _mapCachedVendors(
+    List<Map<String, dynamic>> cachedJson,
+    VendorType type, {
+    double? lat,
+    double? lng,
+  }) {
+    return cachedJson.map((json) {
+      final vendor = VendorModel.fromJson(
+        Map<String, dynamic>.from(json),
+      ).copyWith(vendorTypeEnum: type);
+      if (lat != null && lng != null) {
+        final distanceInMeters = Geolocator.distanceBetween(
+          lat,
+          lng,
+          vendor.latitude,
+          vendor.longitude,
+        );
+        return vendor.copyWith(distance: distanceInMeters / 1000);
       }
-    }
+      return vendor;
+    }).toList();
+  }
+
+  /// Fetch vendors by type
+  Future<void> fetchVendors(
+    VendorType type, {
+    double? lat,
+    double? lng,
+    bool forceRefresh = false,
+  }) async {
+    final typeName = type.toString().split('.').last;
+    _selectedType = type;
+    _vendors = [];
+    _filteredVendors = [];
 
     _isLoading = true;
     _error = null;
@@ -159,30 +177,31 @@ class VendorProvider extends ChangeNotifier {
       if (response.isSuccessful && response.body != null) {
         final data = response.body!['data'] as List;
 
-        final List<Map<String, dynamic>> vendorsList = data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        final List<Map<String, dynamic>> vendorsList = data
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
 
         // Save to cache
         await CacheService.saveVendorsByType(typeName, vendorsList);
 
-        _vendors = vendorsList.map((json) {
-          final vendor = VendorModel.fromJson(json).copyWith(vendorTypeEnum: type);
-          if (lat != null && lng != null) {
-            final distanceInMeters = Geolocator.distanceBetween(lat, lng, vendor.latitude, vendor.longitude);
-            return vendor.copyWith(distance: distanceInMeters / 1000);
-          }
-          return vendor;
-        }).toList();
+        _vendors = _mapCachedVendors(vendorsList, type, lat: lat, lng: lng);
         _applyFilters();
       } else {
-        // Only set error if we don't have cached data
-        if (_vendors.isEmpty) {
+        final cachedJson = CacheService.getVendorsByType(typeName);
+        if (cachedJson.isNotEmpty) {
+          _vendors = _mapCachedVendors(cachedJson, type, lat: lat, lng: lng);
+          _applyFilters();
+        } else {
           _error = 'Failed to fetch vendors';
         }
       }
     } catch (e) {
       debugPrint('Error fetching vendors: $e');
-      // Only set error if we don't have cached data
-      if (_vendors.isEmpty) {
+      final cachedJson = CacheService.getVendorsByType(typeName);
+      if (cachedJson.isNotEmpty) {
+        _vendors = _mapCachedVendors(cachedJson, type, lat: lat, lng: lng);
+        _applyFilters();
+      } else {
         _error = e.toString();
       }
     } finally {
@@ -249,12 +268,21 @@ class VendorProvider extends ChangeNotifier {
   }
 
   /// Get nearby vendors
-  Future<void> getNearbyVendors(double lat, double lng, {double radius = 5}) async {
+  Future<void> getNearbyVendors(
+    double lat,
+    double lng, {
+    double radius = 5,
+  }) async {
     if (_selectedType == null) return;
     await getNearbyVendorsByType(_selectedType!, lat, lng, radius: radius);
   }
 
-  Future<void> getNearbyVendorsByType(VendorType type, double lat, double lng, {double radius = 5}) async {
+  Future<void> getNearbyVendorsByType(
+    VendorType type,
+    double lat,
+    double lng, {
+    double radius = 5,
+  }) async {
     _selectedType = type;
     _isLoading = true;
     _error = null;
@@ -265,16 +293,32 @@ class VendorProvider extends ChangeNotifier {
 
       switch (type) {
         case VendorType.food:
-          response = await _vendorService.getNearbyRestaurants(latitude: lat, longitude: lng, radius: radius);
+          response = await _vendorService.getNearbyRestaurants(
+            latitude: lat,
+            longitude: lng,
+            radius: radius,
+          );
           break;
         case VendorType.grocery:
-          response = await _vendorService.getNearbyGroceryStores(latitude: lat, longitude: lng, radius: radius);
+          response = await _vendorService.getNearbyGroceryStores(
+            latitude: lat,
+            longitude: lng,
+            radius: radius,
+          );
           break;
         case VendorType.pharmacy:
-          response = await _vendorService.getNearbyPharmacies(latitude: lat, longitude: lng, radius: radius);
+          response = await _vendorService.getNearbyPharmacies(
+            latitude: lat,
+            longitude: lng,
+            radius: radius,
+          );
           break;
         case VendorType.grabmart:
-          response = await _vendorService.getNearbyGrabMarts(latitude: lat, longitude: lng, radius: radius);
+          response = await _vendorService.getNearbyGrabMarts(
+            latitude: lat,
+            longitude: lng,
+            radius: radius,
+          );
           break;
       }
 
@@ -284,7 +328,12 @@ class VendorProvider extends ChangeNotifier {
           final vendor = VendorModel.fromJson(
             Map<String, dynamic>.from(json as Map),
           ).copyWith(vendorTypeEnum: type);
-          final distanceInMeters = Geolocator.distanceBetween(lat, lng, vendor.latitude, vendor.longitude);
+          final distanceInMeters = Geolocator.distanceBetween(
+            lat,
+            lng,
+            vendor.latitude,
+            vendor.longitude,
+          );
           return vendor.copyWith(distance: distanceInMeters / 1000);
         }).toList();
         _applyFilters();
@@ -301,7 +350,11 @@ class VendorProvider extends ChangeNotifier {
   }
 
   /// Get all nearby vendors regardless of type
-  Future<void> getAllNearbyVendors(double lat, double lng, {double radius = 5}) async {
+  Future<void> getAllNearbyVendors(
+    double lat,
+    double lng, {
+    double radius = 5,
+  }) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -309,10 +362,26 @@ class VendorProvider extends ChangeNotifier {
     try {
       // Execute all 4 calls in parallel
       final results = await Future.wait([
-        _vendorService.getNearbyRestaurants(latitude: lat, longitude: lng, radius: radius),
-        _vendorService.getNearbyGroceryStores(latitude: lat, longitude: lng, radius: radius),
-        _vendorService.getNearbyPharmacies(latitude: lat, longitude: lng, radius: radius),
-        _vendorService.getNearbyGrabMarts(latitude: lat, longitude: lng, radius: radius),
+        _vendorService.getNearbyRestaurants(
+          latitude: lat,
+          longitude: lng,
+          radius: radius,
+        ),
+        _vendorService.getNearbyGroceryStores(
+          latitude: lat,
+          longitude: lng,
+          radius: radius,
+        ),
+        _vendorService.getNearbyPharmacies(
+          latitude: lat,
+          longitude: lng,
+          radius: radius,
+        ),
+        _vendorService.getNearbyGrabMarts(
+          latitude: lat,
+          longitude: lng,
+          radius: radius,
+        ),
       ]);
 
       final List<VendorModel> allVendors = [];
@@ -327,7 +396,12 @@ class VendorProvider extends ChangeNotifier {
             final vendor = VendorModel.fromJson(
               Map<String, dynamic>.from(json as Map),
             ).copyWith(vendorTypeEnum: type);
-            final distanceInMeters = Geolocator.distanceBetween(lat, lng, vendor.latitude, vendor.longitude);
+            final distanceInMeters = Geolocator.distanceBetween(
+              lat,
+              lng,
+              vendor.latitude,
+              vendor.longitude,
+            );
             return vendor.copyWith(distance: distanceInMeters / 1000);
           }).toList();
           allVendors.addAll(typeVendors);
@@ -406,8 +480,9 @@ class VendorProvider extends ChangeNotifier {
         final data = response.body!['data'] as List;
         _vendors = data
             .map(
-              (json) =>
-                  VendorModel.fromJson(Map<String, dynamic>.from(json as Map)).copyWith(vendorTypeEnum: _selectedType!),
+              (json) => VendorModel.fromJson(
+                Map<String, dynamic>.from(json as Map),
+              ).copyWith(vendorTypeEnum: _selectedType!),
             )
             .toList();
         _filteredVendors = _vendors;
@@ -430,10 +505,13 @@ class VendorProvider extends ChangeNotifier {
       if (_emergencyOnly && vendor.emergencyService != true) return false;
       if (_is24HoursOnly && vendor.is24Hours != true) return false;
       if (_minRating != null && vendor.rating < _minRating!) return false;
-      if (_maxDistance != null && vendor.distance != null && vendor.distance! > _maxDistance!) {
+      if (_maxDistance != null &&
+          vendor.distance != null &&
+          vendor.distance! > _maxDistance!) {
         return false;
       }
-      if (_mapCategoryFilter != null && vendor.vendorTypeEnum != _mapCategoryFilter) {
+      if (_mapCategoryFilter != null &&
+          vendor.vendorTypeEnum != _mapCategoryFilter) {
         return false;
       }
       if (_fastDeliveryOnly && (vendor.averageDeliveryTime ?? 60) > 30) {
@@ -445,11 +523,15 @@ class VendorProvider extends ChangeNotifier {
         if (_priceRange == 2 && vendor.minOrder > 80) return false;
       }
       if (_selectedCategoryId != null) {
-        final matchesCategory = vendor.categories?.contains(_selectedCategoryId) ?? false;
-        final matchesService = vendor.services?.contains(_selectedCategoryId) ?? false;
-        final matchesProductType = vendor.productTypes?.contains(_selectedCategoryId) ?? false;
+        final matchesCategory =
+            vendor.categories?.contains(_selectedCategoryId) ?? false;
+        final matchesService =
+            vendor.services?.contains(_selectedCategoryId) ?? false;
+        final matchesProductType =
+            vendor.productTypes?.contains(_selectedCategoryId) ?? false;
 
-        if (!matchesCategory && !matchesService && !matchesProductType) return false;
+        if (!matchesCategory && !matchesService && !matchesProductType)
+          return false;
       }
       return true;
     }).toList();
