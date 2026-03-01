@@ -169,6 +169,8 @@ class GrabMartItem implements CartItem {
       sellerName: storeName ?? 'GrabMart',
       sellerId: storeId.hashCode % 1000000,
       restaurantId: storeId,
+      categoryId: categoryId,
+      categoryName: categoryName,
       restaurantImage: storeLogo ?? '',
       orderCount: orderCount,
       favoriteItemType: 'grabmart_item',

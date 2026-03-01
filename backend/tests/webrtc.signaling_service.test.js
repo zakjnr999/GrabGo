@@ -1,38 +1,38 @@
-const callStore = new Map();
-const socketStore = new Map();
-const userCallStore = new Map();
+const mockCallStore = new Map();
+const mockSocketStore = new Map();
+const mockUserCallStore = new Map();
 
 jest.mock('../utils/cache', () => ({
   isRedisConnected: jest.fn(() => false),
   set: jest.fn(async (key, value) => {
     if (key.startsWith('webrtc:call:')) {
-      callStore.set(key.replace('webrtc:call:', ''), value);
+      mockCallStore.set(key.replace('webrtc:call:', ''), value);
     } else if (key.startsWith('webrtc:socket:')) {
-      socketStore.set(key.replace('webrtc:socket:', ''), value);
+      mockSocketStore.set(key.replace('webrtc:socket:', ''), value);
     } else if (key.startsWith('webrtc:user-call:')) {
-      userCallStore.set(key.replace('webrtc:user-call:', ''), value);
+      mockUserCallStore.set(key.replace('webrtc:user-call:', ''), value);
     }
     return true;
   }),
   get: jest.fn(async (key) => {
     if (key.startsWith('webrtc:call:')) {
-      return callStore.get(key.replace('webrtc:call:', '')) || null;
+      return mockCallStore.get(key.replace('webrtc:call:', '')) || null;
     }
     if (key.startsWith('webrtc:socket:')) {
-      return socketStore.get(key.replace('webrtc:socket:', '')) || null;
+      return mockSocketStore.get(key.replace('webrtc:socket:', '')) || null;
     }
     if (key.startsWith('webrtc:user-call:')) {
-      return userCallStore.get(key.replace('webrtc:user-call:', '')) || null;
+      return mockUserCallStore.get(key.replace('webrtc:user-call:', '')) || null;
     }
     return null;
   }),
   del: jest.fn(async (key) => {
     if (key.startsWith('webrtc:call:')) {
-      callStore.delete(key.replace('webrtc:call:', ''));
+      mockCallStore.delete(key.replace('webrtc:call:', ''));
     } else if (key.startsWith('webrtc:socket:')) {
-      socketStore.delete(key.replace('webrtc:socket:', ''));
+      mockSocketStore.delete(key.replace('webrtc:socket:', ''));
     } else if (key.startsWith('webrtc:user-call:')) {
-      userCallStore.delete(key.replace('webrtc:user-call:', ''));
+      mockUserCallStore.delete(key.replace('webrtc:user-call:', ''));
     }
     return true;
   }),
@@ -96,9 +96,9 @@ describe('WebRTCSignalingService', () => {
   beforeEach(() => {
     jest.useFakeTimers();
 
-    callStore.clear();
-    socketStore.clear();
-    userCallStore.clear();
+    mockCallStore.clear();
+    mockSocketStore.clear();
+    mockUserCallStore.clear();
     jest.clearAllMocks();
 
     prisma.order.findUnique.mockResolvedValue({

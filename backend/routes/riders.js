@@ -7,6 +7,10 @@ const { uploadSingle, uploadToCloudinary } = require("../middleware/upload");
 const dispatchService = require("../services/dispatch_service");
 const OrderReservation = require("../models/OrderReservation");
 
+const ORDER_RESERVATION_ENTITY = "order";
+const buildOrderReservationQuery = (query = {}) =>
+  OrderReservation.buildEntityQuery(ORDER_RESERVATION_ENTITY, query);
+
 const router = express.Router();
 
 /**
@@ -114,10 +118,12 @@ router.get(
   async (req, res) => {
     try {
       // First, get IDs of orders that have active reservations (pending status, not expired)
-      const activeReservations = await OrderReservation.find({
-        status: 'pending',
-        expiresAt: { $gt: new Date() }
-      }).select('orderId');
+      const activeReservations = await OrderReservation.find(
+        buildOrderReservationQuery({
+          status: 'pending',
+          expiresAt: { $gt: new Date() }
+        })
+      ).select('orderId');
 
       const reservedOrderIds = activeReservations.map(r => r.orderId);
       console.log(`🔒 ${reservedOrderIds.length} orders currently reserved, excluding from available list`);
@@ -404,6 +410,13 @@ router.post(
         });
       }
 
+      if (reservation.entityType && reservation.entityType !== ORDER_RESERVATION_ENTITY) {
+        return res.status(400).json({
+          success: false,
+          message: "Unsupported reservation type for this endpoint",
+        });
+      }
+
       if (reservation.riderId !== riderId) {
         return res.status(403).json({
           success: false,
@@ -535,7 +548,9 @@ router.post(
         const OrderTracking = require('../models/OrderTracking');
         const trackingService = require('../services/tracking_service');
 
-        await OrderTracking.findOneAndDelete({ orderId: updatedOrder.id });
+        await OrderTracking.findOneAndDelete(
+          OrderTracking.buildEntityQuery("order", { orderId: updatedOrder.id })
+        );
 
         const pickupLocation = getPickupLocation(updatedOrder);
         const pickupLat = parseCoordinate(pickupLocation.latitude);
@@ -720,12 +735,14 @@ router.get(
         query.status = status;
       }
 
-      const reservations = await OrderReservation.find(query)
+      const reservations = await OrderReservation.find(buildOrderReservationQuery(query))
         .sort({ createdAt: -1 })
         .limit(parseInt(limit));
 
       // Calculate stats
-      const allReservations = await OrderReservation.find({ riderId });
+      const allReservations = await OrderReservation.find(
+        buildOrderReservationQuery({ riderId })
+      );
       const stats = {
         total: allReservations.length,
         accepted: allReservations.filter(r => r.status === 'accepted').length,
@@ -875,6 +892,93 @@ router.post(
         success: false,
         message: "Failed to go offline",
         error: error.message
+      });
+    }
+  }
+);
+
+/**
+ * @route   PUT /riders/parcel-opt-in
+ * @desc    Toggle rider eligibility for parcel jobs
+ * @access  Private (Rider)
+ */
+router.put(
+  "/parcel-opt-in",
+  protect,
+  authorize("rider"),
+  [
+    body("parcelOptIn")
+      .isBoolean()
+      .withMessage("parcelOptIn must be a boolean"),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: "Validation failed",
+          errors: errors.array(),
+        });
+      }
+
+      const riderId = req.user.id;
+      const parcelOptIn = req.body.parcelOptIn === true;
+
+      const rider = await prisma.rider.findUnique({
+        where: { userId: riderId },
+        select: { id: true, userId: true, verificationStatus: true, parcelOptIn: true },
+      });
+
+      if (!rider) {
+        return res.status(404).json({
+          success: false,
+          message: "Rider profile not found",
+        });
+      }
+
+      if (rider.verificationStatus !== "approved") {
+        return res.status(400).json({
+          success: false,
+          message: "Rider must be approved before enabling parcel deliveries",
+        });
+      }
+
+      const updated = await prisma.rider.update({
+        where: { userId: riderId },
+        data: { parcelOptIn },
+        select: { userId: true, parcelOptIn: true },
+      });
+
+      const RiderStatus = require("../models/RiderStatus");
+      const status = await RiderStatus.findOne({ riderId });
+      if (status) {
+        const preferred = new Set((status.preferredOrderTypes || []).map(String));
+        if (parcelOptIn) {
+          preferred.add("parcel");
+        } else {
+          preferred.delete("parcel");
+        }
+
+        await RiderStatus.findOneAndUpdate(
+          { riderId },
+          { $set: { preferredOrderTypes: Array.from(preferred) } }
+        );
+      }
+
+      return res.json({
+        success: true,
+        message: parcelOptIn
+          ? "Parcel delivery enabled for your rider profile"
+          : "Parcel delivery disabled for your rider profile",
+        data: updated,
+      });
+    } catch (error) {
+      console.error("Parcel opt-in update error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to update parcel opt-in status",
+        error: error.message,
       });
     }
   }
@@ -1114,7 +1218,7 @@ router.post(
 
       // Clear previous reservations if requested (for testing)
       if (clearPrevious === 'true') {
-        await OrderReservation.deleteMany({ orderId });
+        await OrderReservation.deleteMany(buildOrderReservationQuery({ orderId }));
         console.log(`🧹 [Test Dispatch] Cleared previous reservations for order: ${orderId}`);
       }
 
@@ -1213,11 +1317,13 @@ router.post(
       }
 
       // Check if order has an active reservation by ANOTHER rider
-      const activeReservation = await OrderReservation.findOne({
-        orderId: orderId,
-        status: 'pending',
-        expiresAt: { $gt: new Date() }
-      });
+      const activeReservation = await OrderReservation.findOne(
+        buildOrderReservationQuery({
+          orderId: orderId,
+          status: 'pending',
+          expiresAt: { $gt: new Date() }
+        })
+      );
 
       if (activeReservation && activeReservation.riderId !== riderId) {
         return res.status(409).json({
@@ -1398,7 +1504,9 @@ router.post(
         const trackingService = require('../services/tracking_service');
 
         // Delete any existing tracking (in case order was previously cancelled)
-        await OrderTracking.findOneAndDelete({ orderId: updatedOrder.id });
+        await OrderTracking.findOneAndDelete(
+          OrderTracking.buildEntityQuery("order", { orderId: updatedOrder.id })
+        );
 
         const pickupLocation = getPickupLocation(updatedOrder);
         const pickupLat = parseCoordinate(pickupLocation.latitude);
@@ -1586,7 +1694,9 @@ router.post(
       // Delete tracking record so it can be re-initialized if order is accepted again
       try {
         const OrderTracking = require('../models/OrderTracking');
-        await OrderTracking.findOneAndDelete({ orderId: orderId });
+        await OrderTracking.findOneAndDelete(
+          OrderTracking.buildEntityQuery("order", { orderId: orderId })
+        );
         console.log(`🗑️ Tracking deleted for cancelled order ${orderId}`);
       } catch (trackingError) {
         console.error("Delete tracking on cancellation error:", trackingError);

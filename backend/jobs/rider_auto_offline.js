@@ -3,6 +3,10 @@ const OrderReservation = require('../models/OrderReservation');
 const socketService = require('../services/socket_service');
 const { sendToUser } = require('../services/fcm_service');
 
+const ORDER_RESERVATION_ENTITY_MATCH = {
+  $or: [{ entityType: 'order' }, { entityType: { $exists: false } }]
+};
+
 const CONFIG = {
   INACTIVITY_THRESHOLD_MS: 30 * 60 * 1000,
   CRITICAL_BATTERY_LEVEL: 5,                 
@@ -64,7 +68,8 @@ async function autoOfflineUnresponsiveRiders() {
     const unresponsiveRiders = await OrderReservation.aggregate([
       {
         $match: {
-          status: 'timeout',
+          ...ORDER_RESERVATION_ENTITY_MATCH,
+          status: 'expired',
           createdAt: { $gte: windowStart }
         }
       },

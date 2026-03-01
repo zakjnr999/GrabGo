@@ -1014,15 +1014,15 @@ class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin
               fillColor: colors.backgroundSecondary,
               contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.r),
+                borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                 borderSide: BorderSide(color: colors.inputBorder),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.r),
+                borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                 borderSide: const BorderSide(color: Colors.transparent),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.r),
+                borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                 borderSide: BorderSide(color: colors.accentOrange),
               ),
             ),

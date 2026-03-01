@@ -3,6 +3,10 @@ const DeliveryAnalytics = require('../models/DeliveryAnalytics');
 const geolib = require('geolib');
 const prisma = require('../config/prisma');
 
+const ORDER_TRACKING_ENTITY = 'order';
+const buildOrderTrackingQuery = (query = {}) =>
+  OrderTracking.buildEntityQuery(ORDER_TRACKING_ENTITY, query);
+
 class AnalyticsService {
 
   /**
@@ -13,7 +17,7 @@ class AnalyticsService {
   async calculateDeliveryAnalytics(orderId) {
     try {
       // Find the tracking record in MongoDB
-      const tracking = await OrderTracking.findOne({ orderId });
+      const tracking = await OrderTracking.findOne(buildOrderTrackingQuery({ orderId }));
 
       if (!tracking || !tracking.locationHistory || tracking.locationHistory.length === 0) {
         console.log(`⚠️ Analytics: No tracking history found for order ${orderId}`);

@@ -77,9 +77,7 @@ class _ScoredItemMatch {
 
 class _BrowsePageState extends State<BrowsePage> {
   final ScrollController _scrollController = ScrollController();
-  final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(
-    0.0,
-  );
+  final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0.0);
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   static const double _collapsedHeight = 70.0;
@@ -110,6 +108,7 @@ class _BrowsePageState extends State<BrowsePage> {
   bool _isSearchMode = false;
   String _searchQuery = '';
   String? _activeQuickFilter;
+  List<String> _recentSearches = [];
   int _visibleSearchItemCount = _searchItemsPageSize;
   bool _isLoadingMoreSearchItems = false;
   Timer? _searchDebounceTimer;
@@ -117,7 +116,33 @@ class _BrowsePageState extends State<BrowsePage> {
   @override
   void initState() {
     super.initState();
+    _loadRecentSearches();
     _scrollController.addListener(_onScroll);
+  }
+
+  void _loadRecentSearches() {
+    _recentSearches = CacheService.getSearchHistory();
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _persistRecentSearch(String term) {
+    final value = term.trim();
+    if (value.isEmpty) return;
+    CacheService.addSearchTerm(value);
+    _loadRecentSearches();
+  }
+
+  void _clearRecentSearches() {
+    CacheService.clearSearchHistory();
+    _loadRecentSearches();
+  }
+
+  Future<void> _removeRecentSearch(String term) async {
+    final updatedSearches = List<String>.from(_recentSearches)..removeWhere((entry) => entry == term);
+    await CacheService.saveSearchHistory(updatedSearches);
+    _loadRecentSearches();
   }
 
   void _onScroll() {
@@ -159,12 +184,40 @@ class _BrowsePageState extends State<BrowsePage> {
       _visibleSearchItemCount = _searchItemsPageSize;
       _isLoadingMoreSearchItems = false;
     });
+    _loadRecentSearches();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         if (_scrollController.hasClients) {
           _scrollController.jumpTo(0);
         }
+        _searchFocusNode.requestFocus();
+      }
+    });
+  }
+
+  void _startSearchFromTerm(String term) {
+    final value = term.trim();
+    if (value.isEmpty) return;
+
+    _searchDebounceTimer?.cancel();
+    _persistRecentSearch(value);
+    setState(() {
+      _isSearchMode = true;
+      _searchQuery = value;
+      _activeQuickFilter = null;
+      _visibleSearchItemCount = _searchItemsPageSize;
+      _isLoadingMoreSearchItems = false;
+      _searchController.text = value;
+      _searchController.selection = TextSelection.collapsed(offset: value.length);
+    });
+
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
         _searchFocusNode.requestFocus();
       }
     });
@@ -228,24 +281,12 @@ class _BrowsePageState extends State<BrowsePage> {
     final size = MediaQuery.sizeOf(context);
 
     final systemUiOverlayStyle = SystemUiOverlayStyle(
-      statusBarColor: _isSearchMode
-          ? colors.backgroundPrimary
-          : colors.accentOrange,
-      statusBarIconBrightness: _isSearchMode
-          ? (isDark ? Brightness.light : Brightness.dark)
-          : Brightness.light,
+      statusBarColor: _isSearchMode ? colors.backgroundPrimary : colors.accentOrange,
+      statusBarIconBrightness: _isSearchMode ? (isDark ? Brightness.light : Brightness.dark) : Brightness.light,
       systemNavigationBarColor: colors.backgroundPrimary,
-      systemNavigationBarIconBrightness: isDark
-          ? Brightness.light
-          : Brightness.dark,
+      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
     );
-    final content = _buildContent(
-      colors,
-      isDark,
-      serviceProvider,
-      size,
-      padding.top,
-    );
+    final content = _buildContent(colors, isDark, serviceProvider, size, padding.top);
     final scrollContent = _isSearchMode
         ? content
         : AppRefreshIndicator(
@@ -253,25 +294,13 @@ class _BrowsePageState extends State<BrowsePage> {
             iconPath: Assets.icons.search,
             onRefresh: () async {
               if (serviceProvider.isFoodService) {
-                await Provider.of<FoodProvider>(
-                  context,
-                  listen: false,
-                ).fetchCategories();
+                await Provider.of<FoodProvider>(context, listen: false).fetchCategories();
               } else if (serviceProvider.isGroceryService) {
-                await Provider.of<GroceryProvider>(
-                  context,
-                  listen: false,
-                ).fetchCategories();
+                await Provider.of<GroceryProvider>(context, listen: false).fetchCategories();
               } else if (serviceProvider.isPharmacyService) {
-                await Provider.of<PharmacyProvider>(
-                  context,
-                  listen: false,
-                ).fetchCategories();
+                await Provider.of<PharmacyProvider>(context, listen: false).fetchCategories();
               } else if (serviceProvider.isStoresService) {
-                await Provider.of<GrabMartProvider>(
-                  context,
-                  listen: false,
-                ).fetchCategories();
+                await Provider.of<GrabMartProvider>(context, listen: false).fetchCategories();
               }
             },
             child: content,
@@ -280,42 +309,25 @@ class _BrowsePageState extends State<BrowsePage> {
       duration: _modeTransitionDuration,
       switchInCurve: Curves.easeOutQuart,
       switchOutCurve: Curves.easeInQuart,
-      layoutBuilder: (currentChild, previousChildren) =>
-          currentChild ?? const SizedBox.shrink(),
+      layoutBuilder: (currentChild, previousChildren) => currentChild ?? const SizedBox.shrink(),
       transitionBuilder: (child, animation) {
-        final curved = CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOutQuart,
-        );
-        final slide = Tween<Offset>(
-          begin: const Offset(0, 0.04),
-          end: Offset.zero,
-        ).animate(curved);
+        final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutQuart);
+        final slide = Tween<Offset>(begin: const Offset(0, 0.04), end: Offset.zero).animate(curved);
         return FadeTransition(
           opacity: curved,
           child: SlideTransition(position: slide, child: child),
         );
       },
-      child: KeyedSubtree(
-        key: ValueKey(_isSearchMode ? 'search_content' : 'browse_content'),
-        child: scrollContent,
-      ),
+      child: KeyedSubtree(key: ValueKey(_isSearchMode ? 'search_content' : 'browse_content'), child: scrollContent),
     );
     final animatedHeader = AnimatedSwitcher(
       duration: _modeTransitionDuration,
       switchInCurve: Curves.easeOutQuart,
       switchOutCurve: Curves.easeInQuart,
-      layoutBuilder: (currentChild, previousChildren) =>
-          currentChild ?? const SizedBox.shrink(),
+      layoutBuilder: (currentChild, previousChildren) => currentChild ?? const SizedBox.shrink(),
       transitionBuilder: (child, animation) {
-        final curved = CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOutQuart,
-        );
-        final offsetAnimation = Tween<Offset>(
-          begin: const Offset(0, -0.06),
-          end: Offset.zero,
-        ).animate(curved);
+        final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutQuart);
+        final offsetAnimation = Tween<Offset>(begin: const Offset(0, -0.06), end: Offset.zero).animate(curved);
         return FadeTransition(
           opacity: curved,
           child: SlideTransition(position: offsetAnimation, child: child),
@@ -344,11 +356,7 @@ class _BrowsePageState extends State<BrowsePage> {
     );
   }
 
-  Widget _buildCollapsibleHeader(
-    AppColorsExtension colors,
-    Size size,
-    EdgeInsets padding,
-  ) {
+  Widget _buildCollapsibleHeader(AppColorsExtension colors, Size size, EdgeInsets padding) {
     if (_isSearchMode) {
       final headerHeight = padding.top + _searchHeaderContentHeight.h;
       return Container(
@@ -360,10 +368,7 @@ class _BrowsePageState extends State<BrowsePage> {
             Container(
               height: 44,
               width: 44,
-              decoration: BoxDecoration(
-                color: colors.backgroundSecondary,
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
@@ -374,10 +379,7 @@ class _BrowsePageState extends State<BrowsePage> {
                     child: SvgPicture.asset(
                       Assets.icons.navArrowLeft,
                       package: 'grab_go_shared',
-                      colorFilter: ColorFilter.mode(
-                        colors.textPrimary,
-                        BlendMode.srcIn,
-                      ),
+                      colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                     ),
                   ),
                 ),
@@ -399,10 +401,7 @@ class _BrowsePageState extends State<BrowsePage> {
                       package: 'grab_go_shared',
                       width: 18.w,
                       height: 18.h,
-                      colorFilter: ColorFilter.mode(
-                        colors.textTertiary,
-                        BlendMode.srcIn,
-                      ),
+                      colorFilter: ColorFilter.mode(colors.textTertiary, BlendMode.srcIn),
                     ),
                     SizedBox(width: 8.w),
                     Expanded(
@@ -411,20 +410,17 @@ class _BrowsePageState extends State<BrowsePage> {
                         focusNode: _searchFocusNode,
                         autofocus: true,
                         onChanged: _onSearchTextChanged,
-                        style: TextStyle(
-                          color: colors.textPrimary,
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.w500,
-                        ),
+                        onSubmitted: (value) {
+                          _applySearchQuery(value);
+                          _persistRecentSearch(value);
+                        },
+                        style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
                         textInputAction: TextInputAction.search,
                         decoration: InputDecoration(
                           isCollapsed: true,
                           border: InputBorder.none,
                           hintText: 'Search items or categories',
-                          hintStyle: TextStyle(
-                            color: colors.textTertiary,
-                            fontSize: 13.sp,
-                          ),
+                          hintStyle: TextStyle(color: colors.textTertiary, fontSize: 13.sp),
                         ),
                       ),
                     ),
@@ -436,10 +432,12 @@ class _BrowsePageState extends State<BrowsePage> {
                           _applySearchQuery('');
                           _searchFocusNode.requestFocus();
                         },
-                        child: Icon(
-                          Icons.close,
-                          color: colors.textTertiary,
-                          size: 18.sp,
+                        child: SvgPicture.asset(
+                          Assets.icons.xmark,
+                          package: 'grab_go_shared',
+                          width: 18.w,
+                          height: 18.h,
+                          colorFilter: ColorFilter.mode(colors.textTertiary, BlendMode.srcIn),
                         ),
                       ),
                   ],
@@ -454,14 +452,9 @@ class _BrowsePageState extends State<BrowsePage> {
     return ValueListenableBuilder<double>(
       valueListenable: _scrollOffsetNotifier,
       builder: (context, scrollOffset, _) {
-        final collapseProgress = (scrollOffset / _scrollThreshold).clamp(
-          0.0,
-          1.0,
-        );
+        final collapseProgress = (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
         final expandedHeight = UmbrellaHeaderMetrics.expandedHeightFor(size);
-        final currentHeight =
-            expandedHeight -
-            ((expandedHeight - _collapsedHeight) * collapseProgress);
+        final currentHeight = expandedHeight - ((expandedHeight - _collapsedHeight) * collapseProgress);
         final contentOpacity = (1.0 - collapseProgress).clamp(0.0, 1.0);
 
         return SizedBox(
@@ -484,19 +477,12 @@ class _BrowsePageState extends State<BrowsePage> {
                         children: [
                           Text(
                             'Browse',
-                            style: TextStyle(
-                              fontSize: 24.sp,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
+                            style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.w700, color: Colors.white),
                           ),
                           SizedBox(height: 4.h),
                           Text(
                             'Discover trending items',
-                            style: TextStyle(
-                              fontSize: 14.sp,
-                              color: Colors.white.withValues(alpha: 0.8),
-                            ),
+                            style: TextStyle(fontSize: 14.sp, color: Colors.white.withValues(alpha: 0.8)),
                           ),
                         ],
                       ),
@@ -508,10 +494,7 @@ class _BrowsePageState extends State<BrowsePage> {
                         package: 'grab_go_shared',
                         width: 20.w,
                         height: 20.h,
-                        colorFilter: const ColorFilter.mode(
-                          Colors.white,
-                          BlendMode.srcIn,
-                        ),
+                        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                       ),
                     ),
                   ],
@@ -533,17 +516,12 @@ class _BrowsePageState extends State<BrowsePage> {
   ) {
     final foodProvider = Provider.of<FoodProvider>(context);
     final bool isFoodUnavailable =
-        !foodProvider.isLoading &&
-        foodProvider.categories.isEmpty &&
-        foodProvider.hasAttemptedFetch;
+        !foodProvider.isLoading && foodProvider.categories.isEmpty && foodProvider.hasAttemptedFetch;
 
     if (isFoodUnavailable) {
       return ListView(
         controller: _scrollController,
-        padding: EdgeInsets.only(
-          top: _contentTopPadding(size, topInset),
-          bottom: 32.h,
-        ),
+        padding: EdgeInsets.only(top: _contentTopPadding(size, topInset), bottom: 32.h),
         children: const [AreaUnavailableScreen(isAreaUnavailable: true)],
       );
     }
@@ -554,20 +532,11 @@ class _BrowsePageState extends State<BrowsePage> {
           if (provider.isLoading) {
             return ListView(
               controller: _scrollController,
-              padding: EdgeInsets.only(
-                top: _contentTopPadding(size, topInset),
-                bottom: 32.h,
-              ),
+              padding: EdgeInsets.only(top: _contentTopPadding(size, topInset), bottom: 32.h),
               children: const [BrowsePageSkeleton()],
             );
           }
-          return _buildLoadedContent(
-            colors,
-            isDark,
-            serviceProvider,
-            size,
-            topInset,
-          );
+          return _buildLoadedContent(colors, isDark, serviceProvider, size, topInset);
         },
       );
     } else if (serviceProvider.isGroceryService) {
@@ -576,20 +545,11 @@ class _BrowsePageState extends State<BrowsePage> {
           if (provider.isLoadingItems || provider.isLoadingCategories) {
             return ListView(
               controller: _scrollController,
-              padding: EdgeInsets.only(
-                top: _contentTopPadding(size, topInset),
-                bottom: 32.h,
-              ),
+              padding: EdgeInsets.only(top: _contentTopPadding(size, topInset), bottom: 32.h),
               children: const [BrowsePageSkeleton()],
             );
           }
-          return _buildLoadedContent(
-            colors,
-            isDark,
-            serviceProvider,
-            size,
-            topInset,
-          );
+          return _buildLoadedContent(colors, isDark, serviceProvider, size, topInset);
         },
       );
     } else if (serviceProvider.isPharmacyService) {
@@ -598,20 +558,11 @@ class _BrowsePageState extends State<BrowsePage> {
           if (provider.isLoadingItems || provider.isLoadingCategories) {
             return ListView(
               controller: _scrollController,
-              padding: EdgeInsets.only(
-                top: _contentTopPadding(size, topInset),
-                bottom: 32.h,
-              ),
+              padding: EdgeInsets.only(top: _contentTopPadding(size, topInset), bottom: 32.h),
               children: const [BrowsePageSkeleton()],
             );
           }
-          return _buildLoadedContent(
-            colors,
-            isDark,
-            serviceProvider,
-            size,
-            topInset,
-          );
+          return _buildLoadedContent(colors, isDark, serviceProvider, size, topInset);
         },
       );
     } else if (serviceProvider.isStoresService) {
@@ -620,20 +571,11 @@ class _BrowsePageState extends State<BrowsePage> {
           if (provider.isLoadingItems || provider.isLoadingCategories) {
             return ListView(
               controller: _scrollController,
-              padding: EdgeInsets.only(
-                top: _contentTopPadding(size, topInset),
-                bottom: 32.h,
-              ),
+              padding: EdgeInsets.only(top: _contentTopPadding(size, topInset), bottom: 32.h),
               children: const [BrowsePageSkeleton()],
             );
           }
-          return _buildLoadedContent(
-            colors,
-            isDark,
-            serviceProvider,
-            size,
-            topInset,
-          );
+          return _buildLoadedContent(colors, isDark, serviceProvider, size, topInset);
         },
       );
     }
@@ -654,29 +596,64 @@ class _BrowsePageState extends State<BrowsePage> {
 
     return ListView(
       controller: _scrollController,
-      padding: EdgeInsets.only(
-        top: _contentTopPadding(size, topInset),
-        bottom: 32.h,
-      ),
+      padding: EdgeInsets.only(top: _contentTopPadding(size, topInset), bottom: 32.h),
       children: [
-        // Trending Section
-        _buildSectionHeader(colors, 'Trending Now', 'Most ordered this week'),
-        SizedBox(height: 12.h),
-        _buildTrendingList(colors, isDark, serviceProvider),
-
-        SizedBox(height: KSpacing.lg.h),
-
-        // Popular Categories Section
-        _buildSectionHeader(colors, 'Popular Categories', 'Browse by category'),
+        _buildSectionHeader(colors, 'Top Categories', 'Browse by category'),
         SizedBox(height: 12.h),
         _buildCategoriesList(colors, isDark, serviceProvider),
 
         SizedBox(height: KSpacing.lg.h),
 
-        // Quick Searches Section
-        _buildSectionHeader(colors, 'Quick Searches', 'Popular filters'),
+        _buildSectionHeader(colors, 'Trending Dishes', 'Tap the search icon to explore a dish'),
         SizedBox(height: 12.h),
-        _buildQuickSearches(colors),
+        _buildTrendingList(colors, isDark, serviceProvider),
+
+        SizedBox(height: KSpacing.lg.h),
+
+        if (_recentSearches.isNotEmpty) ...[
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Recent Searches',
+                        style: TextStyle(
+                          fontSize: 18.sp,
+                          fontFamily: 'Lato',
+                          package: 'grab_go_shared',
+                          fontWeight: FontWeight.w700,
+                          color: colors.textPrimary,
+                        ),
+                      ),
+                      SizedBox(height: 4.h),
+                      Text(
+                        'Pick up where you left off',
+                        style: TextStyle(fontSize: 13.sp, color: colors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                GestureDetector(
+                  onTap: _clearRecentSearches,
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 2.h, left: 12.w),
+                    child: Text(
+                      'Clear all',
+                      style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: colors.accentOrange),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 12.h),
+          _buildRecentSearches(colors),
+        ],
       ],
     );
   }
@@ -689,13 +666,8 @@ class _BrowsePageState extends State<BrowsePage> {
   ) {
     final categoryMatches = _findCategoryMatches(serviceProvider);
     final itemMatches = _findItemMatches(serviceProvider);
-    final visibleItemCount = math.min(
-      _visibleSearchItemCount,
-      itemMatches.length,
-    );
-    final visibleItemMatches = itemMatches
-        .take(visibleItemCount)
-        .toList(growable: false);
+    final visibleItemCount = math.min(_visibleSearchItemCount, itemMatches.length);
+    final visibleItemMatches = itemMatches.take(visibleItemCount).toList(growable: false);
 
     final hasQuery = _searchQuery.isNotEmpty;
     final hasQuickFilter = _activeQuickFilter != null;
@@ -703,25 +675,17 @@ class _BrowsePageState extends State<BrowsePage> {
 
     return NotificationListener<ScrollNotification>(
       onNotification: (notification) {
-        if (notification.metrics.pixels >=
-            notification.metrics.maxScrollExtent - 220) {
+        if (notification.metrics.pixels >= notification.metrics.maxScrollExtent - 220) {
           _loadMoreSearchItems(itemMatches.length);
         }
         return false;
       },
       child: ListView(
         controller: _scrollController,
-        padding: EdgeInsets.only(
-          top: _contentTopPadding(size, topInset),
-          bottom: 32.h,
-        ),
+        padding: EdgeInsets.only(top: _contentTopPadding(size, topInset), bottom: 32.h),
         children: [
           if (hasQuickFilter)
-            _buildSectionHeader(
-              colors,
-              '$_activeQuickFilter',
-              'Showing matches for this quick filter',
-            )
+            _buildSectionHeader(colors, '$_activeQuickFilter', 'Showing matches for this quick filter')
           else if (hasQuery)
             _buildSectionHeader(
               colors,
@@ -737,11 +701,7 @@ class _BrowsePageState extends State<BrowsePage> {
               padding: EdgeInsets.symmetric(horizontal: 20.w),
               child: Text(
                 'Try a quick filter',
-                style: TextStyle(
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w600,
-                  color: colors.textPrimary,
-                ),
+                style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
               ),
             ),
             SizedBox(height: 10.h),
@@ -753,21 +713,12 @@ class _BrowsePageState extends State<BrowsePage> {
                 children: _quickSearches.map((search) {
                   return ActionChip(
                     label: Text(search['label']!),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 8.w,
-                      vertical: 6.h,
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
                     onPressed: () => _setQuickFilter(search['label']!),
                     backgroundColor: colors.backgroundSecondary,
-                    labelStyle: TextStyle(
-                      fontSize: 12.sp,
-                      color: colors.textPrimary,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    labelStyle: TextStyle(fontSize: 12.sp, color: colors.textPrimary, fontWeight: FontWeight.w600),
                     shape: RoundedRectangleBorder(
-                      side: BorderSide(
-                        color: colors.inputBorder.withValues(alpha: 0.35),
-                      ),
+                      side: BorderSide(color: colors.inputBorder.withValues(alpha: 0.35)),
                       borderRadius: BorderRadius.circular(KBorderSize.border),
                     ),
                   );
@@ -775,27 +726,18 @@ class _BrowsePageState extends State<BrowsePage> {
               ),
             ),
           ] else if (!hasResults) ...[
-            _buildSearchNoResultsState(
-              colors,
-              'No matches found. Try another term or quick filter.',
-            ),
+            _buildSearchNoResultsState(colors, 'No matches found. Try another term or quick filter.'),
           ] else ...[
             if (categoryMatches.isNotEmpty) ...[
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20.w),
                 child: Text(
                   'Categories',
-                  style: TextStyle(
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w700,
-                    color: colors.textPrimary,
-                  ),
+                  style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
                 ),
               ),
               SizedBox(height: 8.h),
-              ...categoryMatches.map(
-                (category) => _buildCategorySearchResult(colors, category),
-              ),
+              ...categoryMatches.map((category) => _buildCategorySearchResult(colors, category)),
               SizedBox(height: 14.h),
             ],
             if (itemMatches.isNotEmpty) ...[
@@ -803,17 +745,11 @@ class _BrowsePageState extends State<BrowsePage> {
                 padding: EdgeInsets.symmetric(horizontal: 20.w),
                 child: Text(
                   'Items',
-                  style: TextStyle(
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w700,
-                    color: colors.textPrimary,
-                  ),
+                  style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
                 ),
               ),
               SizedBox(height: 8.h),
-              ...visibleItemMatches.map(
-                (item) => _buildItemSearchResult(colors, item),
-              ),
+              ...visibleItemMatches.map((item) => _buildItemSearchResult(colors, item)),
               if (_isLoadingMoreSearchItems)
                 Padding(
                   padding: EdgeInsets.only(top: 8.h),
@@ -823,24 +759,18 @@ class _BrowsePageState extends State<BrowsePage> {
                       height: 20.w,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          colors.accentOrange,
-                        ),
+                        valueColor: AlwaysStoppedAnimation<Color>(colors.accentOrange),
                       ),
                     ),
                   ),
                 ),
-              if (!_isLoadingMoreSearchItems &&
-                  visibleItemCount < itemMatches.length)
+              if (!_isLoadingMoreSearchItems && visibleItemCount < itemMatches.length)
                 Padding(
                   padding: EdgeInsets.only(top: 8.h),
                   child: Center(
                     child: Text(
                       'Scroll to load more',
-                      style: TextStyle(
-                        fontSize: 12.sp,
-                        color: colors.textSecondary,
-                      ),
+                      style: TextStyle(fontSize: 12.sp, color: colors.textSecondary),
                     ),
                   ),
                 ),
@@ -862,18 +792,13 @@ class _BrowsePageState extends State<BrowsePage> {
     Future.delayed(const Duration(milliseconds: 120), () {
       if (!mounted) return;
       setState(() {
-        _visibleSearchItemCount = math.min(
-          _visibleSearchItemCount + _searchItemsPageSize,
-          totalCount,
-        );
+        _visibleSearchItemCount = math.min(_visibleSearchItemCount + _searchItemsPageSize, totalCount);
         _isLoadingMoreSearchItems = false;
       });
     });
   }
 
-  List<_BrowseItemEntry> _collectSearchableItems(
-    ServiceProvider serviceProvider,
-  ) {
+  List<_BrowseItemEntry> _collectSearchableItems(ServiceProvider serviceProvider) {
     if (serviceProvider.isFoodService) {
       final provider = Provider.of<FoodProvider>(context, listen: false);
       final items = <_BrowseItemEntry>[];
@@ -891,46 +816,23 @@ class _BrowsePageState extends State<BrowsePage> {
 
     if (serviceProvider.isGroceryService) {
       final provider = Provider.of<GroceryProvider>(context, listen: false);
-      return provider.items
-          .map(
-            (item) => _BrowseItemEntry(
-              displayItem: item.toFoodItem(),
-              sourceItem: item,
-            ),
-          )
-          .toList();
+      return provider.items.map((item) => _BrowseItemEntry(displayItem: item.toFoodItem(), sourceItem: item)).toList();
     }
 
     if (serviceProvider.isPharmacyService) {
       final provider = Provider.of<PharmacyProvider>(context, listen: false);
-      return provider.items
-          .map(
-            (item) => _BrowseItemEntry(
-              displayItem: item.toFoodItem(),
-              sourceItem: item,
-            ),
-          )
-          .toList();
+      return provider.items.map((item) => _BrowseItemEntry(displayItem: item.toFoodItem(), sourceItem: item)).toList();
     }
 
     if (serviceProvider.isStoresService) {
       final provider = Provider.of<GrabMartProvider>(context, listen: false);
-      return provider.items
-          .map(
-            (item) => _BrowseItemEntry(
-              displayItem: item.toFoodItem(),
-              sourceItem: item,
-            ),
-          )
-          .toList();
+      return provider.items.map((item) => _BrowseItemEntry(displayItem: item.toFoodItem(), sourceItem: item)).toList();
     }
 
     return [];
   }
 
-  List<_BrowseCategoryEntry> _collectSearchableCategories(
-    ServiceProvider serviceProvider,
-  ) {
+  List<_BrowseCategoryEntry> _collectSearchableCategories(ServiceProvider serviceProvider) {
     if (serviceProvider.isFoodService) {
       final provider = Provider.of<FoodProvider>(context, listen: false);
       return provider.categories
@@ -958,9 +860,7 @@ class _BrowsePageState extends State<BrowsePage> {
               emoji: category.emoji,
               serviceType: 'groceries',
               isFood: false,
-              itemCount: provider.items
-                  .where((item) => item.categoryId == category.id)
-                  .length,
+              itemCount: provider.items.where((item) => item.categoryId == category.id).length,
             ),
           )
           .where((category) => category.itemCount > 0)
@@ -977,9 +877,7 @@ class _BrowsePageState extends State<BrowsePage> {
               emoji: category.emoji,
               serviceType: 'pharmacy',
               isFood: false,
-              itemCount: provider.items
-                  .where((item) => item.categoryId == category.id)
-                  .length,
+              itemCount: provider.items.where((item) => item.categoryId == category.id).length,
             ),
           )
           .where((category) => category.itemCount > 0)
@@ -996,9 +894,7 @@ class _BrowsePageState extends State<BrowsePage> {
               emoji: category.emoji,
               serviceType: 'convenience',
               isFood: false,
-              itemCount: provider.items
-                  .where((item) => item.categoryId == category.id)
-                  .length,
+              itemCount: provider.items.where((item) => item.categoryId == category.id).length,
             ),
           )
           .where((category) => category.itemCount > 0)
@@ -1008,9 +904,7 @@ class _BrowsePageState extends State<BrowsePage> {
     return [];
   }
 
-  List<_BrowseCategoryEntry> _findCategoryMatches(
-    ServiceProvider serviceProvider,
-  ) {
+  List<_BrowseCategoryEntry> _findCategoryMatches(ServiceProvider serviceProvider) {
     if (_searchQuery.isEmpty || _activeQuickFilter != null) {
       return [];
     }
@@ -1020,23 +914,14 @@ class _BrowsePageState extends State<BrowsePage> {
     final scoredCategories = <_ScoredCategoryMatch>[];
 
     for (final category in _collectSearchableCategories(serviceProvider)) {
-      final score = _scoreCategoryMatch(
-        category: category,
-        normalizedQuery: normalizedQuery,
-        queryTokens: queryTokens,
-      );
+      final score = _scoreCategoryMatch(category: category, normalizedQuery: normalizedQuery, queryTokens: queryTokens);
       if (score > 0) {
-        scoredCategories.add(
-          _ScoredCategoryMatch(category: category, score: score),
-        );
+        scoredCategories.add(_ScoredCategoryMatch(category: category, score: score));
       }
     }
 
     scoredCategories.sort((a, b) => b.score.compareTo(a.score));
-    return scoredCategories
-        .take(12)
-        .map((match) => match.category)
-        .toList(growable: false);
+    return scoredCategories.take(12).map((match) => match.category).toList(growable: false);
   }
 
   List<_BrowseItemEntry> _findItemMatches(ServiceProvider serviceProvider) {
@@ -1072,62 +957,40 @@ class _BrowsePageState extends State<BrowsePage> {
     scoredMatches.sort((a, b) {
       final scoreCompare = b.score.compareTo(a.score);
       if (scoreCompare != 0) return scoreCompare;
-      return b.item.displayItem.orderCount.compareTo(
-        a.item.displayItem.orderCount,
-      );
+      return b.item.displayItem.orderCount.compareTo(a.item.displayItem.orderCount);
     });
 
-    return scoredMatches
-        .take(120)
-        .map((match) => match.item)
-        .toList(growable: false);
+    return scoredMatches.take(120).map((match) => match.item).toList(growable: false);
   }
 
-  List<_BrowseItemEntry> _applyQuickFilter(
-    List<_BrowseItemEntry> items,
-    String filterLabel,
-  ) {
+  List<_BrowseItemEntry> _applyQuickFilter(List<_BrowseItemEntry> items, String filterLabel) {
     List<_BrowseItemEntry> filtered;
     switch (filterLabel) {
       case 'Fast delivery':
         filtered = items
-            .where(
-              (item) =>
-                  item.displayItem.deliveryTimeMinutes > 0 &&
-                  item.displayItem.deliveryTimeMinutes <= 30,
-            )
+            .where((item) => item.displayItem.deliveryTimeMinutes > 0 && item.displayItem.deliveryTimeMinutes <= 30)
             .toList();
         break;
       case 'Under ₵20':
         filtered = items.where((item) => item.displayItem.price <= 20).toList();
         break;
       case 'Top rated':
-        filtered = items
-            .where((item) => item.displayItem.rating >= 4.5)
-            .toList();
+        filtered = items.where((item) => item.displayItem.rating >= 4.5).toList();
         break;
       case 'On sale':
-        filtered = items
-            .where((item) => item.displayItem.discountPercentage > 0)
-            .toList();
+        filtered = items.where((item) => item.displayItem.discountPercentage > 0).toList();
         break;
       default:
         filtered = items;
         break;
     }
 
-    filtered.sort(
-      (a, b) => b.displayItem.orderCount.compareTo(a.displayItem.orderCount),
-    );
+    filtered.sort((a, b) => b.displayItem.orderCount.compareTo(a.displayItem.orderCount));
     return filtered;
   }
 
   String _normalizeText(String value) {
-    return value
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9\s]'), ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
+    return value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9\s]'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
   List<String> _expandedQueryTokens(String query) {
@@ -1140,9 +1003,7 @@ class _BrowsePageState extends State<BrowsePage> {
       expanded.add(token);
       final synonyms = _tokenSynonyms[token];
       if (synonyms != null) {
-        expanded.addAll(
-          synonyms.map(_normalizeText).where((value) => value.isNotEmpty),
-        );
+        expanded.addAll(synonyms.map(_normalizeText).where((value) => value.isNotEmpty));
       }
     }
     return expanded.toList(growable: false);
@@ -1313,35 +1174,25 @@ class _BrowsePageState extends State<BrowsePage> {
     return score >= 35 ? score : 0;
   }
 
-  Map<String, String> _buildCategoryNameLookup(
-    ServiceProvider serviceProvider,
-  ) {
+  Map<String, String> _buildCategoryNameLookup(ServiceProvider serviceProvider) {
     if (serviceProvider.isFoodService) {
       final provider = Provider.of<FoodProvider>(context, listen: false);
-      return {
-        for (final category in provider.categories) category.id: category.name,
-      };
+      return {for (final category in provider.categories) category.id: category.name};
     }
 
     if (serviceProvider.isGroceryService) {
       final provider = Provider.of<GroceryProvider>(context, listen: false);
-      return {
-        for (final category in provider.categories) category.id: category.name,
-      };
+      return {for (final category in provider.categories) category.id: category.name};
     }
 
     if (serviceProvider.isPharmacyService) {
       final provider = Provider.of<PharmacyProvider>(context, listen: false);
-      return {
-        for (final category in provider.categories) category.id: category.name,
-      };
+      return {for (final category in provider.categories) category.id: category.name};
     }
 
     if (serviceProvider.isStoresService) {
       final provider = Provider.of<GrabMartProvider>(context, listen: false);
-      return {
-        for (final category in provider.categories) category.id: category.name,
-      };
+      return {for (final category in provider.categories) category.id: category.name};
     }
 
     return const {};
@@ -1373,10 +1224,7 @@ class _BrowsePageState extends State<BrowsePage> {
     );
   }
 
-  Widget _buildCategorySearchResult(
-    AppColorsExtension colors,
-    _BrowseCategoryEntry category,
-  ) {
+  Widget _buildCategorySearchResult(AppColorsExtension colors, _BrowseCategoryEntry category) {
     return GestureDetector(
       onTap: () => _openCategoryFromSearch(category),
       child: Container(
@@ -1384,25 +1232,16 @@ class _BrowsePageState extends State<BrowsePage> {
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-          border: Border.all(
-            color: colors.inputBorder.withValues(alpha: 0.3),
-            width: 0.5,
-          ),
+          border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
         ),
         child: Row(
           children: [
             Container(
               width: 40.w,
               height: 40.h,
-              decoration: BoxDecoration(
-                color: colors.accentOrange.withValues(alpha: 0.14),
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: colors.accentOrange.withValues(alpha: 0.14), shape: BoxShape.circle),
               child: Center(
-                child: Text(
-                  category.emoji.isNotEmpty ? category.emoji : '📦',
-                  style: TextStyle(fontSize: 16.sp),
-                ),
+                child: Text(category.emoji.isNotEmpty ? category.emoji : '📦', style: TextStyle(fontSize: 16.sp)),
               ),
             ),
             SizedBox(width: 12.w),
@@ -1412,21 +1251,14 @@ class _BrowsePageState extends State<BrowsePage> {
                 children: [
                   Text(
                     category.name,
-                    style: TextStyle(
-                      fontSize: 15.sp,
-                      fontWeight: FontWeight.w600,
-                      color: colors.textPrimary,
-                    ),
+                    style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   SizedBox(height: 4.h),
                   Text(
                     '${category.itemCount} items',
-                    style: TextStyle(
-                      fontSize: 12.sp,
-                      color: colors.textSecondary,
-                    ),
+                    style: TextStyle(fontSize: 12.sp, color: colors.textSecondary),
                   ),
                 ],
               ),
@@ -1436,10 +1268,7 @@ class _BrowsePageState extends State<BrowsePage> {
               package: 'grab_go_shared',
               width: 20.w,
               height: 20.h,
-              colorFilter: ColorFilter.mode(
-                colors.textSecondary,
-                BlendMode.srcIn,
-              ),
+              colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
             ),
           ],
         ),
@@ -1447,10 +1276,7 @@ class _BrowsePageState extends State<BrowsePage> {
     );
   }
 
-  Widget _buildItemSearchResult(
-    AppColorsExtension colors,
-    _BrowseItemEntry item,
-  ) {
+  Widget _buildItemSearchResult(AppColorsExtension colors, _BrowseItemEntry item) {
     final source = item.sourceItem;
 
     if (source is FoodItem) {
@@ -1497,17 +1323,11 @@ class _BrowsePageState extends State<BrowsePage> {
     );
   }
 
-  Widget _buildSearchCardTrailing(
-    AppColorsExtension colors,
-    CartItem cartItem,
-  ) {
+  Widget _buildSearchCardTrailing(AppColorsExtension colors, CartItem cartItem) {
     return Consumer<CartProvider>(
       builder: (context, provider, _) {
         final includeFoodCustomizations = cartItem is FoodItem;
-        final isInCart = provider.hasItemInCart(
-          cartItem,
-          includeFoodCustomizations: includeFoodCustomizations,
-        );
+        final isInCart = provider.hasItemInCart(cartItem, includeFoodCustomizations: includeFoodCustomizations);
         final isItemPending = provider.isItemOperationPendingForDisplay(
           cartItem,
           includeFoodCustomizations: includeFoodCustomizations,
@@ -1530,13 +1350,8 @@ class _BrowsePageState extends State<BrowsePage> {
             padding: EdgeInsets.all(8.r),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: isInCart
-                  ? colors.accentOrange
-                  : colors.backgroundSecondary,
-              border: Border.all(
-                color: isInCart ? colors.accentOrange : colors.inputBorder,
-                width: 1,
-              ),
+              color: isInCart ? colors.accentOrange : colors.backgroundSecondary,
+              border: Border.all(color: isInCart ? colors.accentOrange : colors.inputBorder, width: 1),
             ),
             child: isItemPending
                 ? SizedBox(
@@ -1544,9 +1359,7 @@ class _BrowsePageState extends State<BrowsePage> {
                     height: 16.w,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        isInCart ? Colors.white : colors.accentOrange,
-                      ),
+                      valueColor: AlwaysStoppedAnimation<Color>(isInCart ? Colors.white : colors.accentOrange),
                     ),
                   )
                 : SvgPicture.asset(
@@ -1554,10 +1367,7 @@ class _BrowsePageState extends State<BrowsePage> {
                     package: 'grab_go_shared',
                     height: 16.h,
                     width: 16.w,
-                    colorFilter: ColorFilter.mode(
-                      isInCart ? Colors.white : colors.textPrimary,
-                      BlendMode.srcIn,
-                    ),
+                    colorFilter: ColorFilter.mode(isInCart ? Colors.white : colors.textPrimary, BlendMode.srcIn),
                   ),
           ),
         );
@@ -1619,12 +1429,7 @@ class _BrowsePageState extends State<BrowsePage> {
     );
   }
 
-  Widget _buildSectionHeader(
-    AppColorsExtension colors,
-    String title,
-    String subtitle, {
-    String? highlightedText,
-  }) {
+  Widget _buildSectionHeader(AppColorsExtension colors, String title, String subtitle, {String? highlightedText}) {
     final titleStyle = TextStyle(
       fontSize: 18.sp,
       fontFamily: 'Lato',
@@ -1674,22 +1479,16 @@ class _BrowsePageState extends State<BrowsePage> {
 
     final end = start + query.length;
     return [
-      if (start > 0)
-        TextSpan(text: title.substring(0, start), style: baseStyle),
+      if (start > 0) TextSpan(text: title.substring(0, start), style: baseStyle),
       TextSpan(
         text: title.substring(start, end),
         style: baseStyle.copyWith(color: highlightColor),
       ),
-      if (end < title.length)
-        TextSpan(text: title.substring(end), style: baseStyle),
+      if (end < title.length) TextSpan(text: title.substring(end), style: baseStyle),
     ];
   }
 
-  Widget _buildTrendingList(
-    AppColorsExtension colors,
-    bool isDark,
-    ServiceProvider serviceProvider,
-  ) {
+  Widget _buildTrendingList(AppColorsExtension colors, bool isDark, ServiceProvider serviceProvider) {
     if (serviceProvider.isFoodService) {
       return Consumer<FoodProvider>(
         builder: (context, provider, _) {
@@ -1711,14 +1510,12 @@ class _BrowsePageState extends State<BrowsePage> {
 
           return Column(
             children: trending.asMap().entries.map((entry) {
-              final index = entry.key;
               final item = entry.value;
               return _buildTrendingItem(
                 colors,
-                index + 1,
                 item.name,
                 '${item.orderCount} orders',
-                () => context.push('/foodDetails', extra: item),
+                () => _startSearchFromTerm(item.name),
               );
             }).toList(),
           );
@@ -1741,14 +1538,12 @@ class _BrowsePageState extends State<BrowsePage> {
 
           return Column(
             children: trending.asMap().entries.map((entry) {
-              final index = entry.key;
               final item = entry.value;
               return _buildTrendingItem(
                 colors,
-                index + 1,
                 item.name,
                 '${item.orderCount} orders',
-                () => context.push('/foodDetails', extra: item),
+                () => _startSearchFromTerm(item.name),
               );
             }).toList(),
           );
@@ -1771,14 +1566,12 @@ class _BrowsePageState extends State<BrowsePage> {
 
           return Column(
             children: trending.asMap().entries.map((entry) {
-              final index = entry.key;
               final item = entry.value;
               return _buildTrendingItem(
                 colors,
-                index + 1,
                 item.name,
                 '${item.orderCount} orders',
-                () => context.push('/foodDetails', extra: item),
+                () => _startSearchFromTerm(item.name),
               );
             }).toList(),
           );
@@ -1801,14 +1594,12 @@ class _BrowsePageState extends State<BrowsePage> {
 
           return Column(
             children: trending.asMap().entries.map((entry) {
-              final index = entry.key;
               final item = entry.value;
               return _buildTrendingItem(
                 colors,
-                index + 1,
                 item.name,
                 '${item.orderCount} orders',
-                () => context.push('/foodDetails', extra: item),
+                () => _startSearchFromTerm(item.name),
               );
             }).toList(),
           );
@@ -1819,13 +1610,7 @@ class _BrowsePageState extends State<BrowsePage> {
     return const SizedBox.shrink();
   }
 
-  Widget _buildTrendingItem(
-    AppColorsExtension colors,
-    int rank,
-    String name,
-    String subtitle,
-    VoidCallback onTap,
-  ) {
+  Widget _buildTrendingItem(AppColorsExtension colors, String name, String subtitle, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -1833,72 +1618,36 @@ class _BrowsePageState extends State<BrowsePage> {
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-          border: Border.all(
-            color: colors.inputBorder.withValues(alpha: 0.3),
-            width: 0.5,
-          ),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 32.w,
-              height: 32.h,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: rank <= 3
-                      ? [colors.accentOrange, colors.accentOrange]
-                      : [
-                          colors.backgroundSecondary,
-                          colors.backgroundSecondary,
-                        ],
-                ),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  '$rank',
-                  style: TextStyle(
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w700,
-                    color: rank <= 3 ? Colors.white : colors.textSecondary,
-                  ),
-                ),
+            Center(
+              child: SvgPicture.asset(
+                Assets.icons.search,
+                package: 'grab_go_shared',
+                width: 22.w,
+                height: 22.h,
+                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
               ),
             ),
-            SizedBox(width: 16.w),
+            SizedBox(width: 10.w),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     name,
-                    style: TextStyle(
-                      fontSize: 15.sp,
-                      fontWeight: FontWeight.w600,
-                      color: colors.textPrimary,
-                    ),
+                    style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   SizedBox(height: 4.h),
                   Text(
                     subtitle,
-                    style: TextStyle(
-                      fontSize: 12.sp,
-                      color: colors.textSecondary,
-                    ),
+                    style: TextStyle(fontSize: 12.sp, color: colors.textSecondary),
                   ),
                 ],
-              ),
-            ),
-            SvgPicture.asset(
-              Assets.icons.navArrowRight,
-              package: 'grab_go_shared',
-              width: 20.w,
-              height: 20.h,
-              colorFilter: ColorFilter.mode(
-                colors.textSecondary,
-                BlendMode.srcIn,
               ),
             ),
           ],
@@ -1907,11 +1656,7 @@ class _BrowsePageState extends State<BrowsePage> {
     );
   }
 
-  Widget _buildCategoriesList(
-    AppColorsExtension colors,
-    bool isDark,
-    ServiceProvider serviceProvider,
-  ) {
+  Widget _buildCategoriesList(AppColorsExtension colors, bool isDark, ServiceProvider serviceProvider) {
     if (serviceProvider.isFoodService) {
       return Consumer<FoodProvider>(
         builder: (context, provider, _) {
@@ -1919,9 +1664,7 @@ class _BrowsePageState extends State<BrowsePage> {
             return const SizedBox.shrink();
           }
 
-          final categories = provider.categories
-              .where((cat) => cat.items.isNotEmpty)
-              .toList();
+          final categories = provider.categories.where((cat) => cat.items.isNotEmpty).toList();
           categories.sort((a, b) => b.items.length.compareTo(a.items.length));
 
           if (categories.isEmpty) {
@@ -1954,19 +1697,13 @@ class _BrowsePageState extends State<BrowsePage> {
           }
 
           final categories = provider.categories.where((cat) {
-            final count = provider.items
-                .where((item) => item.categoryId == cat.id)
-                .length;
+            final count = provider.items.where((item) => item.categoryId == cat.id).length;
             return count > 0;
           }).toList();
 
           categories.sort((a, b) {
-            final countA = provider.items
-                .where((item) => item.categoryId == a.id)
-                .length;
-            final countB = provider.items
-                .where((item) => item.categoryId == b.id)
-                .length;
+            final countA = provider.items.where((item) => item.categoryId == a.id).length;
+            final countB = provider.items.where((item) => item.categoryId == b.id).length;
             return countB.compareTo(countA);
           });
 
@@ -2000,19 +1737,13 @@ class _BrowsePageState extends State<BrowsePage> {
           }
 
           final categories = provider.categories.where((cat) {
-            final count = provider.items
-                .where((item) => item.categoryId == cat.id)
-                .length;
+            final count = provider.items.where((item) => item.categoryId == cat.id).length;
             return count > 0;
           }).toList();
 
           categories.sort((a, b) {
-            final countA = provider.items
-                .where((item) => item.categoryId == a.id)
-                .length;
-            final countB = provider.items
-                .where((item) => item.categoryId == b.id)
-                .length;
+            final countA = provider.items.where((item) => item.categoryId == a.id).length;
+            final countB = provider.items.where((item) => item.categoryId == b.id).length;
             return countB.compareTo(countA);
           });
 
@@ -2046,19 +1777,13 @@ class _BrowsePageState extends State<BrowsePage> {
           }
 
           final categories = provider.categories.where((cat) {
-            final count = provider.items
-                .where((item) => item.categoryId == cat.id)
-                .length;
+            final count = provider.items.where((item) => item.categoryId == cat.id).length;
             return count > 0;
           }).toList();
 
           categories.sort((a, b) {
-            final countA = provider.items
-                .where((item) => item.categoryId == a.id)
-                .length;
-            final countB = provider.items
-                .where((item) => item.categoryId == b.id)
-                .length;
+            final countA = provider.items.where((item) => item.categoryId == a.id).length;
+            final countB = provider.items.where((item) => item.categoryId == b.id).length;
             return countB.compareTo(countA);
           });
 
@@ -2108,9 +1833,7 @@ class _BrowsePageState extends State<BrowsePage> {
           return GestureDetector(
             onTap: () => onTap(category),
             child: Padding(
-              padding: EdgeInsets.only(
-                right: index == categories.length - 1 ? 0 : 16.w,
-              ),
+              padding: EdgeInsets.only(right: index == categories.length - 1 ? 0 : 16.w),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -2120,10 +1843,7 @@ class _BrowsePageState extends State<BrowsePage> {
                       color: colors.accentOrange.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: Text(
-                      getEmoji(category),
-                      style: TextStyle(fontSize: 28.sp),
-                    ),
+                    child: Text(getEmoji(category), style: TextStyle(fontSize: 28.sp)),
                   ),
                   SizedBox(height: 8.h),
                   Text(
@@ -2146,51 +1866,44 @@ class _BrowsePageState extends State<BrowsePage> {
     );
   }
 
-  Widget _buildQuickSearches(AppColorsExtension colors) {
+  Widget _buildRecentSearches(AppColorsExtension colors) {
+    if (_recentSearches.isEmpty) {
+      return _buildEmptyState(colors, 'No recent searches yet');
+    }
+
     return Column(
-      children: _quickSearches.map((search) {
+      children: _recentSearches.map((term) {
         return GestureDetector(
-          onTap: () => _setQuickFilter(search['label']!),
+          onTap: () => _startSearchFromTerm(term),
           child: Container(
-            margin: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
-            decoration: BoxDecoration(
-              color: colors.backgroundPrimary,
-              borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-            ),
+            margin: EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
+            decoration: BoxDecoration(color: colors.backgroundPrimary),
             child: Row(
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        search['label']!,
-                        style: TextStyle(
-                          fontSize: 15.sp,
-                          fontWeight: FontWeight.w600,
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                      SizedBox(height: 2.h),
-                      Text(
-                        search['subtitle']!,
-                        style: TextStyle(
-                          fontSize: 12.sp,
-                          color: colors.textSecondary,
-                        ),
-                      ),
-                    ],
+                Center(
+                  child: SvgPicture.asset(
+                    Assets.icons.history,
+                    package: 'grab_go_shared',
+                    width: 22.w,
+                    height: 22.h,
+                    colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                   ),
                 ),
-                // Arrow
-                SvgPicture.asset(
-                  Assets.icons.navArrowRight,
-                  package: 'grab_go_shared',
-                  width: 20.w,
-                  height: 20.h,
-                  colorFilter: ColorFilter.mode(
-                    colors.textSecondary,
-                    BlendMode.srcIn,
+                SizedBox(width: 10.w),
+                Expanded(
+                  child: Text(
+                    term,
+                    style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => _removeRecentSearch(term),
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 4.h),
+                    child: Icon(Icons.close, size: 18.sp, color: colors.textSecondary),
                   ),
                 ),
               ],
@@ -2206,11 +1919,7 @@ class _BrowsePageState extends State<BrowsePage> {
       padding: EdgeInsets.all(40.r),
       child: Column(
         children: [
-          Icon(
-            Icons.search_off,
-            size: 48.sp,
-            color: colors.textSecondary.withValues(alpha: 0.5),
-          ),
+          Icon(Icons.search_off, size: 48.sp, color: colors.textSecondary.withValues(alpha: 0.5)),
           SizedBox(height: 16.h),
           Text(
             message,
@@ -2223,9 +1932,7 @@ class _BrowsePageState extends State<BrowsePage> {
   }
 
   Widget _buildSearchNoResultsState(AppColorsExtension colors, String message) {
-    final minHeight = (MediaQuery.sizeOf(context).height * 0.58)
-        .clamp(300.0, 520.0)
-        .toDouble();
+    final minHeight = (MediaQuery.sizeOf(context).height * 0.58).clamp(300.0, 520.0).toDouble();
     return Container(
       constraints: BoxConstraints(minHeight: minHeight),
       alignment: Alignment.center,
@@ -2233,12 +1940,7 @@ class _BrowsePageState extends State<BrowsePage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SvgPicture.asset(
-            Assets.icons.emptySearchIcon,
-            package: 'grab_go_shared',
-            width: 180.w,
-            height: 180.w,
-          ),
+          SvgPicture.asset(Assets.icons.emptySearchIcon, package: 'grab_go_shared', width: 180.w, height: 180.w),
           SizedBox(height: 16.h),
           Text(
             message,

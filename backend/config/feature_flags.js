@@ -57,4 +57,7 @@ module.exports = {
   codMaxOrderTotalGhs: parseFloatFlag('COD_MAX_ORDER_TOTAL_GHS', 250, { min: 0, max: 10000 }),
   codMaxConcurrentOrders: parseIntFlag('COD_MAX_CONCURRENT_ORDERS', 1, { min: 1, max: 5 }),
   codUpfrontIncludeRainFee: parseFlag('COD_UPFRONT_INCLUDE_RAIN_FEE', false),
+  isParcelEnabled: parseFlag('PARCEL_ENABLED', false),
+  isParcelScheduledEnabled: parseFlag('PARCEL_SCHEDULED_ENABLED', true),
+  isParcelReturnToSenderEnabled: parseFlag('PARCEL_RETURN_TO_SENDER_ENABLED', true),
 };

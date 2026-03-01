@@ -195,6 +195,35 @@ enum BuildingType {
   other
 }
 
+enum ParcelOrderStatus {
+  pending_payment
+  payment_processing
+  paid
+  awaiting_dispatch
+  dispatching
+  rider_assigned
+  picked_up
+  in_transit
+  delivery_attempt_failed
+  returning_to_sender
+  returned_to_sender
+  delivered
+  cancelled
+}
+
+enum ParcelScheduleType {
+  on_demand
+  scheduled
+}
+
+enum ReturnChargeStatus {
+  not_applicable
+  pending
+  paid
+  waived
+  failed
+}
+
 // ==================== MODELS ====================
 
 model Referral {
@@ -359,6 +388,8 @@ model User {
   favoriteGrabMartItems  UserFavoriteGrabMartItem[]
   orders                 Order[]                    @relation("CustomerOrders")
   riderOrders            Order[]                    @relation("RiderOrders")
+  parcelOrders           ParcelOrder[]              @relation("ParcelCustomerOrders")
+  riderParcelOrders      ParcelOrder[]              @relation("ParcelRiderOrders")
   checkoutSessions       CheckoutSession[]
   creditHolds            UserCreditHold[]
   carts                  Cart[]
@@ -1379,6 +1410,137 @@ model OrderActionAudit {
   @@map("order_action_audits")
 }
 
+model ParcelOrder {
+  id                 String            @id @default(cuid())
+  parcelNumber       String            @unique
+  customerId         String
+  riderId            String?
+  status             ParcelOrderStatus @default(pending_payment)
+  scheduleType       ParcelScheduleType @default(on_demand)
+  scheduledPickupAt  DateTime?
+  pickupWindowStartAt DateTime?
+  pickupWindowEndAt  DateTime?
+  dispatchReleaseAt  DateTime?
+  dispatchReleasedAt DateTime?
+
+  pickupAddressLine1 String
+  pickupAddressLine2 String?
+  pickupCity         String
+  pickupState        String?
+  pickupPostalCode   String?
+  pickupLatitude     Float
+  pickupLongitude    Float
+  senderName         String
+  senderPhone        String
+
+  dropoffAddressLine1 String
+  dropoffAddressLine2 String?
+  dropoffCity         String
+  dropoffState        String?
+  dropoffPostalCode   String?
+  dropoffLatitude     Float
+  dropoffLongitude    Float
+  recipientName       String
+  recipientPhone      String
+
+  packageCategory         String
+  packageDescription      String?
+  sizeTier                String
+  weightKg                Float
+  lengthCm                Float?
+  widthCm                 Float?
+  heightCm                Float?
+  declaredValueGhs        Float
+  isFragile               Boolean @default(false)
+  containsLiquid          Boolean @default(false)
+  isPerishable            Boolean @default(false)
+  containsHazardous       Boolean @default(false)
+  prohibitedItemsAccepted Boolean @default(false)
+  termsAcceptedAt         DateTime
+  termsVersionAccepted    String
+  liabilityCapGhs         Float
+  liabilityFormula        String
+  noInsuranceAcknowledgedAt DateTime?
+
+  paymentMethod      PaymentMethod
+  paymentProvider    PaymentProvider?
+  paymentReferenceId String?
+  paymentStatus      PaymentStatus @default(pending)
+  originalTripFee    Float         @default(0)
+  returnTripFee      Float         @default(0)
+  serviceFee         Float         @default(0)
+  tax                Float         @default(0)
+  totalAmount        Float         @default(0)
+  currency           Currency      @default(GHS)
+  returnChargeStatus ReturnChargeStatus @default(not_applicable)
+  returnChargeAmount Float         @default(0)
+  returnChargeReason String?
+
+  cancelledAt             DateTime?
+  pickedUpAt              DateTime?
+  inTransitAt             DateTime?
+  deliveryAttemptFailedAt DateTime?
+  returnedToSenderAt      DateTime?
+  deliveredAt             DateTime?
+  cancelReason            String?
+
+  deliveryVerificationRequired Boolean @default(true)
+  deliveryCodeHash        String?
+  deliveryCodeEncrypted   String?
+  deliveryCodeFailedAttempts Int      @default(0)
+  deliveryCodeLockedUntil DateTime?
+  deliveryCodeVerifiedAt  DateTime?
+  deliveryCodeVerifiedByRiderId String?
+  deliveryVerificationMethod DeliveryVerificationMethod?
+  deliveryProofPhotoUrl   String?
+  deliveryProofReason     String?
+  deliveryProofCapturedAt DateTime?
+  deliveryVerificationLat Float?
+  deliveryVerificationLng Float?
+  deliveryCodeResendCount Int @default(0)
+  deliveryCodeLastSentAt  DateTime?
+
+  originalTripEarning Float @default(0)
+  returnTripEarning   Float @default(0)
+  totalRiderEarning   Float @default(0)
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customer User  @relation("ParcelCustomerOrders", fields: [customerId], references: [id])
+  rider    User? @relation("ParcelRiderOrders", fields: [riderId], references: [id])
+  events   ParcelEvent[]
+
+  @@index([customerId])
+  @@index([riderId])
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([status, paymentStatus])
+  @@index([dispatchReleaseAt, status])
+  @@index([createdAt])
+  @@map("parcel_orders")
+}
+
+model ParcelEvent {
+  id            String @id @default(cuid())
+  parcelOrderId String
+  actorId       String?
+  actorRole     String?
+  eventType     String
+  reason        String?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+
+  parcelOrder ParcelOrder @relation(fields: [parcelOrderId], references: [id], onDelete: Cascade)
+
+  @@index([parcelOrderId])
+  @@index([actorId])
+  @@index([eventType])
+  @@map("parcel_events")
+}
+
 // ==================== CHAT ====================
 
 // ==================== PAYMENT ====================
@@ -1441,6 +1603,7 @@ model Rider {
   verificationStatus     VerificationStatus   @default(pending)
   rejectionReason        String?
   verifiedAt             DateTime?
+  parcelOptIn            Boolean              @default(false)
   agreedToTerms          Boolean              @default(false)
   agreedToLocationAccess Boolean              @default(false)
   agreedToAccuracy       Boolean              @default(false)

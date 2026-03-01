@@ -98,7 +98,7 @@ const riderStatusSchema = new mongoose.Schema({
   // Preferred order types (for scoring)
   preferredOrderTypes: [{
     type: String,
-    enum: ['food', 'grocery', 'pharmacy']
+    enum: ['food', 'grocery', 'pharmacy', 'grabmart', 'parcel']
   }],
   
   // Recently declined orders (for penalty scoring)

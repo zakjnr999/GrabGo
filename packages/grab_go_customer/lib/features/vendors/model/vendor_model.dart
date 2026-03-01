@@ -710,7 +710,11 @@ class VendorModel {
 
   bool get isTemporarilyUnavailableButOpen => isOpen && !isAcceptingOrders;
 
-  String get shortAvailabilityLabel => isAvailableForOrders ? 'Open' : 'Closed';
+  String get shortAvailabilityLabel => isAvailableForOrders
+      ? 'Open'
+      : isTemporarilyUnavailableButOpen
+      ? 'Not accepting'
+      : 'Closed';
 
   String get overlayAvailabilityLabel =>
       isTemporarilyUnavailableButOpen ? 'Not accepting' : "We're closed";

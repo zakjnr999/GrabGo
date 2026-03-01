@@ -179,6 +179,8 @@ class PharmacyItem implements CartItem {
       sellerName: storeName ?? 'Pharmacy',
       sellerId: storeId.hashCode % 1000000,
       restaurantId: storeId,
+      categoryId: categoryId,
+      categoryName: categoryName,
       restaurantImage: storeLogo ?? '',
       orderCount: orderCount,
       favoriteItemType: 'pharmacy_item',

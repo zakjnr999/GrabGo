@@ -289,7 +289,7 @@ class _CartItemState extends State<CartItem> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Container(
-                                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 5.h),
+                                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                                 decoration: BoxDecoration(
                                   color: colors.accentOrange.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(8.r),

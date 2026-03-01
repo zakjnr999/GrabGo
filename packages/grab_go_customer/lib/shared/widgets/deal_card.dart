@@ -35,19 +35,13 @@ class DealCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final effectiveAccentColor = accentColor ?? colors.accentOrange;
-    final reviewCountText = item.reviewCount > 0
-        ? " (${item.reviewCount})"
-        : "";
+    final reviewCountText = item.reviewCount > 0 ? " (${item.reviewCount})" : "";
     final size = MediaQuery.sizeOf(context);
     final baseWidth = cardWidth ?? (size.width * 0.78);
-    final resolvedWidth = cardWidth == null
-        ? baseWidth.clamp(230.0, 320.0)
-        : baseWidth.clamp(180.0, 320.0);
+    final resolvedWidth = cardWidth == null ? baseWidth.clamp(230.0, 320.0) : baseWidth.clamp(180.0, 320.0);
     final imageHeight = (resolvedWidth * 0.45).clamp(90.0, 125.0);
     final hasDiscount = discountPercent > 0;
-    final originalPrice = discountPercent >= 100
-        ? item.price
-        : item.price / (1 - discountPercent / 100);
+    final originalPrice = discountPercent >= 100 ? item.price : item.price / (1 - discountPercent / 100);
     final timeText = deliveryTime ?? item.estimatedDeliveryTime;
     final isOpen = item.isRestaurantOpen;
 
@@ -73,10 +67,7 @@ class DealCard extends StatelessWidget {
                     bottomRight: Radius.circular(KBorderSize.borderRadius4),
                   ),
                   child: CachedNetworkImage(
-                    imageUrl: ImageOptimizer.getPreviewUrl(
-                      item.image,
-                      width: 400,
-                    ),
+                    imageUrl: ImageOptimizer.getPreviewUrl(item.image, width: 400),
                     height: imageHeight,
                     width: double.infinity,
                     fit: BoxFit.cover,
@@ -89,10 +80,7 @@ class DealCard extends StatelessWidget {
                         child: SvgPicture.asset(
                           Assets.icons.utensilsCrossed,
                           package: 'grab_go_shared',
-                          colorFilter: ColorFilter.mode(
-                            colors.textSecondary,
-                            BlendMode.srcIn,
-                          ),
+                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                           width: 30.w,
                           height: 30,
                         ),
@@ -105,10 +93,7 @@ class DealCard extends StatelessWidget {
                         child: SvgPicture.asset(
                           Assets.icons.utensilsCrossed,
                           package: 'grab_go_shared',
-                          colorFilter: ColorFilter.mode(
-                            colors.textSecondary,
-                            BlendMode.srcIn,
-                          ),
+                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                           width: 30.w,
                           height: 30,
                         ),
@@ -124,9 +109,7 @@ class DealCard extends StatelessWidget {
                       width: 36.w,
                       height: 36.w,
                       decoration: BoxDecoration(
-                        borderRadius: const BorderRadius.only(
-                          topRight: Radius.circular(KBorderSize.borderMedium),
-                        ),
+                        borderRadius: const BorderRadius.only(topRight: Radius.circular(KBorderSize.borderMedium)),
                         gradient: RadialGradient(
                           center: const Alignment(1.0, -1.0),
                           radius: 1.15,
@@ -156,16 +139,11 @@ class DealCard extends StatelessWidget {
                           }
                         },
                         child: SvgPicture.asset(
-                          isFavorite
-                              ? Assets.icons.heartSolid
-                              : Assets.icons.heart,
+                          isFavorite ? Assets.icons.heartSolid : Assets.icons.heart,
                           package: 'grab_go_shared',
                           height: 24,
                           width: 24.w,
-                          colorFilter: ColorFilter.mode(
-                            isFavorite ? colors.error : Colors.white,
-                            BlendMode.srcIn,
-                          ),
+                          colorFilter: ColorFilter.mode(isFavorite ? colors.error : Colors.white, BlendMode.srcIn),
                         ),
                       ),
                     );
@@ -195,11 +173,7 @@ class DealCard extends StatelessWidget {
                           item.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w600,
-                            color: colors.textPrimary,
-                          ),
+                          style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
                         ),
                       ),
                       SvgPicture.asset(
@@ -207,19 +181,12 @@ class DealCard extends StatelessWidget {
                         package: 'grab_go_shared',
                         height: 13,
                         width: 13.w,
-                        colorFilter: ColorFilter.mode(
-                          effectiveAccentColor,
-                          BlendMode.srcIn,
-                        ),
+                        colorFilter: ColorFilter.mode(effectiveAccentColor, BlendMode.srcIn),
                       ),
                       SizedBox(width: 4.w),
                       Text(
                         '${item.rating.toStringAsFixed(1)}$reviewCountText',
-                        style: TextStyle(
-                          fontSize: 12.sp,
-                          fontWeight: FontWeight.w600,
-                          color: colors.textPrimary,
-                        ),
+                        style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
                       ),
                     ],
                   ),
@@ -228,11 +195,7 @@ class DealCard extends StatelessWidget {
                     children: [
                       Text(
                         item.sellerName,
-                        style: TextStyle(
-                          fontSize: 12.sp,
-                          fontWeight: FontWeight.w500,
-                          color: colors.textSecondary,
-                        ),
+                        style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -241,10 +204,7 @@ class DealCard extends StatelessWidget {
                         Container(
                           width: 3.w,
                           height: 3,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: colors.textSecondary,
-                          ),
+                          decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
                         ),
                         SizedBox(width: 8.w),
                         SvgPicture.asset(
@@ -252,10 +212,7 @@ class DealCard extends StatelessWidget {
                           package: 'grab_go_shared',
                           height: 12,
                           width: 12.w,
-                          colorFilter: ColorFilter.mode(
-                            colors.textSecondary,
-                            BlendMode.srcIn,
-                          ),
+                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                         ),
                         SizedBox(width: 4.w),
                         Flexible(
@@ -263,21 +220,14 @@ class DealCard extends StatelessWidget {
                             timeText,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 11.sp,
-                              fontWeight: FontWeight.w500,
-                              color: colors.textSecondary,
-                            ),
+                            style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
                           ),
                         ),
                       ] else ...[
                         Container(
                           width: 3.w,
                           height: 3,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: colors.textSecondary,
-                          ),
+                          decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
                         ),
                         SizedBox(width: 8.w),
                         Flexible(
@@ -285,11 +235,7 @@ class DealCard extends StatelessWidget {
                             "We're closed",
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 11.sp,
-                              fontWeight: FontWeight.w600,
-                              color: colors.error,
-                            ),
+                            style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: colors.error),
                           ),
                         ),
                       ],
@@ -299,21 +245,14 @@ class DealCard extends StatelessWidget {
                   Row(
                     children: [
                       Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 8.w,
-                          vertical: 4,
-                        ),
+                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4),
                         decoration: BoxDecoration(
                           color: effectiveAccentColor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8.r),
                         ),
                         child: Text(
                           'GHS ${(item.price * (1 - discountPercent / 100)).toStringAsFixed(2)}',
-                          style: TextStyle(
-                            fontSize: 13.sp,
-                            fontWeight: FontWeight.w700,
-                            color: effectiveAccentColor,
-                          ),
+                          style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: effectiveAccentColor),
                         ),
                       ),
                       SizedBox(width: 8.w),
@@ -335,15 +274,11 @@ class DealCard extends StatelessWidget {
                       Consumer<CartProvider>(
                         builder: (context, provider, _) {
                           final itemForCart = cartItem ?? item;
-                          final bool isInCart = provider.hasItemInCart(
+                          final bool isInCart = provider.hasItemInCart(itemForCart, includeFoodCustomizations: true);
+                          final bool isItemPending = provider.isItemOperationPendingForDisplay(
                             itemForCart,
                             includeFoodCustomizations: true,
                           );
-                          final bool isItemPending = provider
-                              .isItemOperationPendingForDisplay(
-                                itemForCart,
-                                includeFoodCustomizations: true,
-                              );
                           final actionItem = provider.resolveItemForCartAction(
                             itemForCart,
                             includeFoodCustomizations: true,
@@ -354,10 +289,7 @@ class DealCard extends StatelessWidget {
                               if (isInCart && actionItem != null) {
                                 provider.removeItemCompletely(actionItem);
                               } else {
-                                provider.addToCart(
-                                  itemForCart,
-                                  context: context,
-                                );
+                                provider.addToCart(itemForCart, context: context);
                               }
                             },
                             child: AnimatedContainer(
@@ -366,17 +298,12 @@ class DealCard extends StatelessWidget {
                               padding: EdgeInsets.all(10.r),
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: isInCart
-                                    ? effectiveAccentColor
-                                    : colors.backgroundSecondary,
+                                color: isInCart ? effectiveAccentColor : colors.backgroundSecondary,
                               ),
                               child: AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 200),
                                 transitionBuilder: (child, animation) {
-                                  return ScaleTransition(
-                                    scale: animation,
-                                    child: child,
-                                  );
+                                  return ScaleTransition(scale: animation, child: child);
                                 },
                                 child: isItemPending
                                     ? SizedBox(
@@ -385,26 +312,19 @@ class DealCard extends StatelessWidget {
                                         height: 18.w,
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2,
-                                          valueColor:
-                                              AlwaysStoppedAnimation<Color>(
-                                                isInCart
-                                                    ? Colors.white
-                                                    : colors.accentOrange,
-                                              ),
+                                          valueColor: AlwaysStoppedAnimation<Color>(
+                                            isInCart ? Colors.white : colors.accentOrange,
+                                          ),
                                         ),
                                       )
                                     : SvgPicture.asset(
-                                        isInCart
-                                            ? Assets.icons.check
-                                            : Assets.icons.cart,
+                                        isInCart ? Assets.icons.check : Assets.icons.cart,
                                         key: ValueKey(isInCart),
                                         package: 'grab_go_shared',
                                         height: 18,
                                         width: 18.w,
                                         colorFilter: ColorFilter.mode(
-                                          isInCart
-                                              ? Colors.white
-                                              : colors.textPrimary,
+                                          isInCart ? Colors.white : colors.textPrimary,
                                           BlendMode.srcIn,
                                         ),
                                       ),

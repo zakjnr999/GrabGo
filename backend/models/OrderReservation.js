@@ -13,6 +13,14 @@ const mongoose = require('mongoose');
  * 4. Process repeats until order is accepted or max attempts reached
  */
 const orderReservationSchema = new mongoose.Schema({
+    // Reservation target entity
+    entityType: {
+        type: String,
+        enum: ['order', 'parcel'],
+        default: 'order',
+        index: true
+    },
+
     // References PostgreSQL Order ID
     orderId: {
         type: String,
@@ -94,6 +102,9 @@ const orderReservationSchema = new mongoose.Schema({
         storeLogo: String,
         customerName: String,
         distance: Number, // Delivery distance in km
+        packageCategory: String,
+        packageWeightKg: Number,
+        declaredValueGhs: Number,
     },
     
     // When rider responded (if they did)
@@ -115,63 +126,85 @@ const orderReservationSchema = new mongoose.Schema({
     timestamps: true
 });
 
+const buildEntityScopeFilter = (entityType = 'order') =>
+    entityType === 'order'
+        ? { $or: [{ entityType: 'order' }, { entityType: { $exists: false } }] }
+        : { entityType };
+
+const withEntityScope = (query = {}, entityType = 'order') => {
+    const scopeFilter = buildEntityScopeFilter(entityType);
+    if (!query || Object.keys(query).length === 0) {
+        return scopeFilter;
+    }
+    return {
+        $and: [query, scopeFilter]
+    };
+};
+
 // Compound index for finding active reservation for an order
-orderReservationSchema.index({ orderId: 1, status: 1 });
+orderReservationSchema.index({ entityType: 1, orderId: 1, status: 1 });
 
 // Index for finding rider's active reservations
-orderReservationSchema.index({ riderId: 1, status: 1 });
+orderReservationSchema.index({ entityType: 1, riderId: 1, status: 1 });
 
 // TTL index to auto-cleanup old reservations after 1 hour
 orderReservationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 3600 });
 
 // Index for expiry job to find pending expired reservations
-orderReservationSchema.index({ status: 1, expiresAt: 1 });
+orderReservationSchema.index({ entityType: 1, status: 1, expiresAt: 1 });
+
+/**
+ * Static method: Build entity-scoped query
+ */
+orderReservationSchema.statics.buildEntityQuery = function(entityType = 'order', query = {}) {
+    return withEntityScope(query, entityType);
+};
 
 /**
  * Static method: Get active reservation for an order
  */
-orderReservationSchema.statics.getActiveForOrder = async function(orderId) {
-    return this.findOne({
+orderReservationSchema.statics.getActiveForOrder = async function(orderId, entityType = 'order') {
+    return this.findOne(withEntityScope({
         orderId,
         status: 'pending',
         expiresAt: { $gt: new Date() }
-    });
+    }, entityType));
 };
 
 /**
  * Static method: Get active reservation for a rider
  */
-orderReservationSchema.statics.getActiveForRider = async function(riderId) {
-    return this.findOne({
+orderReservationSchema.statics.getActiveForRider = async function(riderId, entityType = 'order') {
+    return this.findOne(withEntityScope({
         riderId,
         status: 'pending',
         expiresAt: { $gt: new Date() }
-    });
+    }, entityType));
 };
 
 /**
  * Static method: Check if order has any active reservation
  */
-orderReservationSchema.statics.isOrderReserved = async function(orderId) {
-    const reservation = await this.getActiveForOrder(orderId);
+orderReservationSchema.statics.isOrderReserved = async function(orderId, entityType = 'order') {
+    const reservation = await this.getActiveForOrder(orderId, entityType);
     return !!reservation;
 };
 
 /**
  * Static method: Get reservation history for an order
  */
-orderReservationSchema.statics.getOrderHistory = async function(orderId) {
-    return this.find({ orderId }).sort({ attemptNumber: 1 });
+orderReservationSchema.statics.getOrderHistory = async function(orderId, entityType = 'order') {
+    return this.find(withEntityScope({ orderId }, entityType)).sort({ attemptNumber: 1 });
 };
 
 /**
  * Static method: Find all expired pending reservations
  */
-orderReservationSchema.statics.findExpired = async function() {
-    return this.find({
+orderReservationSchema.statics.findExpired = async function(entityType = 'order') {
+    return this.find(withEntityScope({
         status: 'pending',
         expiresAt: { $lte: new Date() }
-    });
+    }, entityType));
 };
 
 /**

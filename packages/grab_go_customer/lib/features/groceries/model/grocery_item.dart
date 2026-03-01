@@ -241,6 +241,8 @@ class GroceryItem implements CartItem {
       sellerName: storeName ?? 'Grocery Store',
       sellerId: storeId.hashCode, // Use hash or parse strict int if available
       restaurantId: storeId,
+      categoryId: categoryId,
+      categoryName: categoryName,
       restaurantImage: storeLogo ?? '',
       price: price,
       rating: rating,

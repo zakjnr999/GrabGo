@@ -16,6 +16,10 @@ const socketService = require('./socket_service');
 const { sendToUser } = require('./fcm_service');
 const featureFlags = require('../config/feature_flags');
 
+const ORDER_RESERVATION_ENTITY = 'order';
+const buildOrderReservationQuery = (query = {}) =>
+    OrderReservation.buildEntityQuery(ORDER_RESERVATION_ENTITY, query);
+
 // Configuration
 const CONFIG = {
     DEFAULT_TIMEOUT_MS: 30000,     // 30 seconds default reservation window
@@ -312,7 +316,7 @@ async function dispatchOrder(orderId) {
         }
 
         // 2. Check for existing active reservation
-        const existingReservation = await OrderReservation.getActiveForOrder(orderId);
+        const existingReservation = await OrderReservation.getActiveForOrder(orderId, ORDER_RESERVATION_ENTITY);
         if (existingReservation) {
             console.log(`⚠️ [Dispatch] Order already has active reservation for rider: ${existingReservation.riderId}`);
             return { 
@@ -323,7 +327,9 @@ async function dispatchOrder(orderId) {
         }
 
         // 3. Get previous attempts for this order
-        const previousAttempts = await OrderReservation.find({ orderId }).sort({ attemptNumber: -1 }).limit(1);
+        const previousAttempts = await OrderReservation.find(
+            buildOrderReservationQuery({ orderId })
+        ).sort({ attemptNumber: -1 }).limit(1);
         const attemptNumber = previousAttempts.length > 0 ? previousAttempts[0].attemptNumber + 1 : 1;
 
         if (attemptNumber > CONFIG.MAX_ATTEMPTS) {
@@ -332,10 +338,12 @@ async function dispatchOrder(orderId) {
         }
 
         // Get list of riders who already declined/expired for this order
-        const excludedRiderIds = await OrderReservation.find({ 
-            orderId,
-            status: { $in: ['declined', 'expired'] }
-        }).distinct('riderId');
+        const excludedRiderIds = await OrderReservation.find(
+            buildOrderReservationQuery({
+                orderId,
+                status: { $in: ['declined', 'expired'] }
+            })
+        ).distinct('riderId');
 
         // 4. Find eligible riders
         const eligibleRiders = await findEligibleRiders(order, excludedRiderIds);
@@ -416,10 +424,12 @@ async function findEligibleRiders(order, excludedRiderIds = []) {
     }
 
     // Get riders who have active reservations already (to exclude)
-    const ridersWithActiveReservations = await OrderReservation.find({
-        status: 'pending',
-        expiresAt: { $gt: new Date() }
-    }).distinct('riderId');
+    const ridersWithActiveReservations = await OrderReservation.find(
+        buildOrderReservationQuery({
+            status: 'pending',
+            expiresAt: { $gt: new Date() }
+        })
+    ).distinct('riderId');
 
     // Combine excluded IDs
     const allExcludedIds = [...new Set([...excludedRiderIds, ...ridersWithActiveReservations])];
@@ -517,11 +527,13 @@ async function scoreRiders(riders, order) {
     const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
 
     const [declineIdsRaw, recentDeliveryRows, onTimeStatsByRider] = await Promise.all([
-        OrderReservation.find({
-            riderId: { $in: riderIds },
-            status: 'declined',
-            respondedAt: { $gte: fiveMinutesAgo },
-        }).distinct('riderId').catch((error) => {
+        OrderReservation.find(
+            buildOrderReservationQuery({
+                riderId: { $in: riderIds },
+                status: 'declined',
+                respondedAt: { $gte: fiveMinutesAgo },
+            })
+        ).distinct('riderId').catch((error) => {
             console.error('[Dispatch] Failed to fetch recent rider declines:', error.message);
             return [];
         }),
@@ -712,6 +724,7 @@ async function createReservation(order, scoredRider, attemptNumber) {
     const pickupLon = pickupLocation.longitude;
 
     const reservation = new OrderReservation({
+        entityType: ORDER_RESERVATION_ENTITY,
         orderId: order.id,
         orderNumber: order.orderNumber,
         riderId: rider.id,
@@ -749,11 +762,13 @@ async function createReservation(order, scoredRider, attemptNumber) {
  */
 async function calculateAdaptiveTimeout(riderId) {
     // Get rider's last 10 reservations
-    const history = await OrderReservation.find({
-        riderId,
-        status: { $in: ['accepted', 'declined'] },
-        respondedAt: { $ne: null }
-    })
+    const history = await OrderReservation.find(
+        buildOrderReservationQuery({
+            riderId,
+            status: { $in: ['accepted', 'declined'] },
+            respondedAt: { $ne: null }
+        })
+    )
     .sort({ createdAt: -1 })
     .limit(10);
 
@@ -838,6 +853,10 @@ async function acceptReservation(reservationId, riderId) {
         return { success: false, error: 'Reservation not found' };
     }
 
+    if (reservation.entityType && reservation.entityType !== ORDER_RESERVATION_ENTITY) {
+        return { success: false, error: 'Unsupported reservation entity for this flow' };
+    }
+
     if (reservation.riderId !== riderId) {
         return { success: false, error: 'Reservation belongs to another rider' };
     }
@@ -878,6 +897,10 @@ async function declineReservation(reservationId, riderId, reason = null) {
         return { success: false, error: 'Reservation not found' };
     }
 
+    if (reservation.entityType && reservation.entityType !== ORDER_RESERVATION_ENTITY) {
+        return { success: false, error: 'Unsupported reservation entity for this flow' };
+    }
+
     if (reservation.riderId !== riderId) {
         return { success: false, error: 'Reservation belongs to another rider' };
     }
@@ -908,7 +931,7 @@ async function declineReservation(reservationId, riderId, reason = null) {
 async function handleExpiredReservations() {
     console.log(`\n⏰ [Dispatch] Checking for expired reservations...`);
 
-    const expired = await OrderReservation.findExpired();
+    const expired = await OrderReservation.findExpired(ORDER_RESERVATION_ENTITY);
     console.log(`Found ${expired.length} expired reservations`);
 
     const results = [];
@@ -949,10 +972,12 @@ async function handleExpiredReservations() {
 async function updateRiderAcceptanceRate(riderId, accepted) {
     try {
         // Get rider's last 50 reservations
-        const history = await OrderReservation.find({
-            riderId,
-            status: { $in: ['accepted', 'declined', 'expired'] }
-        })
+        const history = await OrderReservation.find(
+            buildOrderReservationQuery({
+                riderId,
+                status: { $in: ['accepted', 'declined', 'expired'] }
+            })
+        )
         .sort({ createdAt: -1 })
         .limit(50);
 
@@ -977,17 +1002,19 @@ async function updateRiderAcceptanceRate(riderId, accepted) {
  * Get active reservation for a rider (used by rider app)
  */
 async function getActiveReservationForRider(riderId) {
-    return OrderReservation.getActiveForRider(riderId);
+    return OrderReservation.getActiveForRider(riderId, ORDER_RESERVATION_ENTITY);
 }
 
 /**
  * Cancel all reservations for an order (e.g., when customer cancels)
  */
 async function cancelOrderReservations(orderId) {
-    const reservations = await OrderReservation.find({
-        orderId,
-        status: 'pending'
-    });
+    const reservations = await OrderReservation.find(
+        buildOrderReservationQuery({
+            orderId,
+            status: 'pending'
+        })
+    );
 
     for (const reservation of reservations) {
         await reservation.cancel();

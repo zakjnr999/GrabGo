@@ -7,6 +7,14 @@ const prisma = require('../config/prisma');
 const cache = require('../utils/cache');
 const mlClient = require('../utils/ml_client');
 
+const ORDER_TRACKING_ENTITY = 'order';
+const buildOrderTrackingQuery = (query = {}) =>
+    OrderTracking.buildEntityQuery(ORDER_TRACKING_ENTITY, query);
+const buildOrderTrackingUpsertQuery = (orderId) => ({
+    orderId,
+    $or: [{ entityType: ORDER_TRACKING_ENTITY }, { entityType: { $exists: false } }]
+});
+
 const googleMapsClient = new Client({});
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
@@ -33,9 +41,10 @@ class TrackingService {
             const customerIdStr = customerId.toString();
 
             const tracking = await OrderTracking.findOneAndUpdate(
-                { orderId: orderIdStr },
+                buildOrderTrackingUpsertQuery(orderIdStr),
                 {
                     $set: {
+                        entityType: ORDER_TRACKING_ENTITY,
                         riderId: riderIdStr,
                         customerId: customerIdStr,
                         pickupLocation: {
@@ -49,6 +58,7 @@ class TrackingService {
                         lastUpdated: new Date()
                     },
                     $setOnInsert: {
+                        entityType: ORDER_TRACKING_ENTITY,
                         status: 'preparing'
                     }
                 },
@@ -78,10 +88,12 @@ class TrackingService {
 
             if (!trackingMeta) {
                 // Cache miss - fetch from MongoDB and cache it
-                const tracking = await OrderTracking.findOne({
-                    orderId: orderIdStr,
-                    status: { $nin: ['delivered', 'cancelled'] }
-                }).lean();
+                const tracking = await OrderTracking.findOne(
+                    buildOrderTrackingQuery({
+                        orderId: orderIdStr,
+                        status: { $nin: ['delivered', 'cancelled'] }
+                    })
+                ).lean();
 
                 if (!tracking) {
                     console.warn(`⚠️ Active tracking not found for order ${orderId}`);
@@ -243,7 +255,7 @@ class TrackingService {
             const latestLocation = locationBatch[locationBatch.length - 1];
 
             await OrderTracking.findOneAndUpdate(
-                { orderId },
+                buildOrderTrackingQuery({ orderId }),
                 {
                     $set: {
                         currentLocation: {
@@ -287,7 +299,7 @@ class TrackingService {
 
         // Fallback to MongoDB
         const tracking = await OrderTracking.findOne(
-            { orderId: orderIdStr },
+            buildOrderTrackingQuery({ orderId: orderIdStr }),
             { currentLocation: 1 }
         ).lean();
 
@@ -614,7 +626,7 @@ class TrackingService {
             }
 
             const tracking = await OrderTracking.findOneAndUpdate(
-                { orderId: orderIdStr },
+                buildOrderTrackingQuery({ orderId: orderIdStr }),
                 {
                     $set: {
                         status,
@@ -664,7 +676,9 @@ class TrackingService {
             // Try to get current location from Redis first (most up-to-date)
             const cachedLocation = await this.getRiderLocation(orderIdStr);
 
-            const tracking = await OrderTracking.findOne({ orderId: orderIdStr }).lean();
+            const tracking = await OrderTracking.findOne(
+                buildOrderTrackingQuery({ orderId: orderIdStr })
+            ).lean();
 
             if (!tracking) {
                 throw new Error('Tracking not found');

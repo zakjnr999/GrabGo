@@ -3,6 +3,10 @@ const OrderTracking = require('../models/OrderTracking');
 const socketService = require('./socket_service');
 const cache = require('../utils/cache');
 
+const ORDER_TRACKING_ENTITY = 'order';
+const buildOrderTrackingQuery = (query = {}) =>
+    OrderTracking.buildEntityQuery(ORDER_TRACKING_ENTITY, query);
+
 const GEOFENCE_EVENT_TTL_SECONDS = 30 * 60;
 const makeGeofenceEventKey = (orderId, eventType) =>
     `grabgo:tracking:geofence:${orderId}:${eventType}`;
@@ -32,10 +36,12 @@ class GeofenceService {
     // Check if rider entered any geofence zones
     async checkGeofences(orderId, riderLat, riderLng) {
         try {
-            const tracking = await OrderTracking.findOne({
-                orderId: orderId.toString(),
-                status: { $nin: ['delivered', 'cancelled'] }
-            });
+            const tracking = await OrderTracking.findOne(
+                buildOrderTrackingQuery({
+                    orderId: orderId.toString(),
+                    status: { $nin: ['delivered', 'cancelled'] }
+                })
+            );
 
             if (!tracking) return;
 

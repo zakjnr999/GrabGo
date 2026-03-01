@@ -103,8 +103,67 @@ function calculateRiderEarnings(order, tip = 0) {
     };
 }
 
+/**
+ * Calculate rider earnings for one parcel leg using provided pricing parameters.
+ * @param {number} distanceKm
+ * @param {Object} options
+ * @param {number} options.baseFee
+ * @param {number} options.ratePerKm
+ * @param {number} options.platformCommissionRate
+ * @returns {Object}
+ */
+function calculateParcelLegEarnings(
+    distanceKm,
+    {
+        baseFee = RIDER_BASE_FEE,
+        ratePerKm = RATE_PER_KM,
+        platformCommissionRate = PLATFORM_COMMISSION_RATE,
+    } = {}
+) {
+    const safeDistance = Number.isFinite(distanceKm) && distanceKm > 0 ? distanceKm : 0;
+    const gross = baseFee + safeDistance * ratePerKm;
+    const platformFee = gross * platformCommissionRate;
+    const net = gross - platformFee;
+
+    return {
+        distanceKm: parseFloat(safeDistance.toFixed(2)),
+        baseFee: parseFloat(baseFee.toFixed(2)),
+        distanceFee: parseFloat((safeDistance * ratePerKm).toFixed(2)),
+        platformFee: parseFloat(platformFee.toFixed(2)),
+        riderEarnings: parseFloat(net.toFixed(2)),
+    };
+}
+
+/**
+ * Calculate rider earnings for parcel flow with optional return-to-sender leg.
+ * totalRiderEarnings = originalTripEarning + returnTripEarning
+ * @param {Object} params
+ * @param {number} params.originalDistanceKm
+ * @param {number} params.returnDistanceKm
+ * @param {Object} options
+ * @returns {Object}
+ */
+function calculateParcelRoundTripEarnings(
+    { originalDistanceKm, returnDistanceKm = 0 },
+    options = {}
+) {
+    const originalTrip = calculateParcelLegEarnings(originalDistanceKm, options);
+    const returnTrip = calculateParcelLegEarnings(returnDistanceKm, options);
+    return {
+        originalTripEarning: originalTrip.riderEarnings,
+        returnTripEarning: returnTrip.riderEarnings,
+        totalRiderEarnings: parseFloat((originalTrip.riderEarnings + returnTrip.riderEarnings).toFixed(2)),
+        breakdown: {
+            originalTrip,
+            returnTrip,
+        },
+    };
+}
+
 module.exports = {
     calculateRiderEarnings,
+    calculateParcelLegEarnings,
+    calculateParcelRoundTripEarnings,
     calculateDistance,
     RIDER_BASE_FEE,
     RATE_PER_KM,

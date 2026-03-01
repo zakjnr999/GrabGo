@@ -588,7 +588,6 @@ app.use("/api/grabmart", require("./routes/grabmart"));
 app.use("/api/riders", require("./routes/riders"));
 app.use("/api/rider-analytics", require("./routes/rider_analytics"));
 app.use("/api/chats", require("./routes/chats"));
-app.use("/api/statuses", require("./routes/statuses"));
 app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/scheduled-notifications", require("./routes/scheduled_notifications"));
 app.use("/api/referral", require("./routes/referrals"));
@@ -596,6 +595,7 @@ app.use("/api/promotions", require("./routes/promotions"));
 app.use("/api/cart", require("./routes/cart"));
 app.use("/api/favorites", require("./routes/favorites"));
 app.use("/api/promo", require("./routes/promo"));
+app.use("/api/parcel", require("./routes/parcel"));
 app.use("/api/test", require("./routes/test"));
 app.use("/api/tracking", require("./routes/tracking_routes"));
 app.use("/api/credits", require("./routes/credits"));
@@ -644,7 +644,6 @@ app.use((err, req, res, next) => {
 });
 
 // Import cron jobs
-const { scheduleCleanup } = require("./jobs/statusCleanup");
 const { scheduleReferralCleanup } = require("./jobs/referralCleanup");
 const { initializeScheduler } = require("./jobs/notification_scheduler");
 const { initializeCartAbandonmentJob } = require("./jobs/cart_abandonment");
@@ -662,9 +661,6 @@ const cache = require("./utils/cache");
 
 // Initialize Redis cache (optional - falls back to memory cache)
 cache.initRedis();
-
-// Schedule status cleanup cron job (runs every hour)
-scheduleCleanup();
 
 // Schedule referral cleanup cron job (runs daily at 2:00 AM)
 scheduleReferralCleanup();

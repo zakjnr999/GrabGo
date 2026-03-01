@@ -3,6 +3,10 @@ const socketService = require('../services/socket_service');
 const OrderReservation = require('../models/OrderReservation');
 const cache = require('../utils/cache');
 
+const ORDER_RESERVATION_ENTITY = 'order';
+const buildOrderReservationQuery = (query = {}) =>
+    OrderReservation.buildEntityQuery(ORDER_RESERVATION_ENTITY, query);
+
 let isRunning = false;
 let intervalId = null;
 
@@ -23,10 +27,12 @@ async function processExpiredReservations() {
     isRunning = true;
 
     try {
-        const expiredReservations = await OrderReservation.find({
-            status: 'pending',
-            expiresAt: { $lte: new Date() }
-        });
+        const expiredReservations = await OrderReservation.find(
+            buildOrderReservationQuery({
+                status: 'pending',
+                expiresAt: { $lte: new Date() }
+            })
+        );
 
         if (expiredReservations.length === 0) {
             consecutiveErrors = 0;
@@ -94,10 +100,12 @@ async function updateRiderStats(riderId) {
     try {
         const RiderStatus = require('../models/RiderStatus');
         
-        const history = await OrderReservation.find({
-            riderId,
-            status: { $in: ['accepted', 'declined', 'expired'] }
-        })
+        const history = await OrderReservation.find(
+            buildOrderReservationQuery({
+                riderId,
+                status: { $in: ['accepted', 'declined', 'expired'] }
+            })
+        )
         .sort({ createdAt: -1 })
         .limit(50);
 
@@ -167,7 +175,7 @@ async function handleUnassignableOrder(orderId, orderNumber) {
                 
                 // Reset attempt count by clearing old reservations
                 await OrderReservation.updateMany(
-                    { orderId },
+                    buildOrderReservationQuery({ orderId }),
                     { $set: { status: 'cancelled' } }
                 );
 

@@ -9,6 +9,8 @@ class FoodItem implements CartItem {
   final String sellerName;
   final int sellerId;
   final String restaurantId;
+  final String categoryId;
+  final String? categoryName;
   final double price;
   final double rating;
   final int reviewCount;
@@ -77,6 +79,8 @@ class FoodItem implements CartItem {
     required this.sellerName,
     required this.sellerId,
     required this.restaurantId,
+    this.categoryId = '',
+    this.categoryName,
     required this.price,
     this.rating = 4.5,
     this.reviewCount = 0,
@@ -200,6 +204,21 @@ class FoodItem implements CartItem {
     final image = imageStr.isEmpty ? '' : imageStr;
 
     final description = json['description']?.toString() ?? '';
+    String categoryId = '';
+    String? categoryName;
+    if (json['category'] is Map) {
+      final category = Map<String, dynamic>.from(json['category']);
+      categoryId =
+          category['_id']?.toString() ?? category['id']?.toString() ?? '';
+      categoryName = category['name']?.toString();
+    } else if (json['category'] != null) {
+      categoryId = json['category'].toString();
+    }
+    if (categoryId.isEmpty) {
+      categoryId = json['categoryId']?.toString() ?? '';
+    }
+    categoryName ??=
+        json['categoryName']?.toString() ?? json['category_name']?.toString();
     // Mark items that need restaurant details to be fetched
     final safeSellerName = restaurantName.isEmpty && restaurantId.isNotEmpty
         ? 'Loading Restaurant...'
@@ -242,6 +261,8 @@ class FoodItem implements CartItem {
       sellerName: safeSellerName,
       sellerId: sellerIdInt,
       restaurantId: restaurantId,
+      categoryId: categoryId,
+      categoryName: categoryName,
       restaurantImage: safeRestaurantImage,
       price: parseDouble(json['price']),
       rating: parseDouble(
@@ -335,6 +356,8 @@ class FoodItem implements CartItem {
       sellerName: sellerName,
       sellerId: sellerId,
       restaurantId: restaurantId,
+      categoryId: categoryId,
+      categoryName: categoryName,
       restaurantImage: restaurantImage,
       price: priceOverride ?? price,
       rating: rating,
@@ -370,6 +393,8 @@ class FoodItem implements CartItem {
     'sellerName': sellerName,
     'sellerId': sellerId,
     'restaurantId': restaurantId,
+    'categoryId': categoryId,
+    'categoryName': categoryName,
     'restaurantImage': restaurantImage,
     'price': price,
     'rating': rating,

@@ -13,10 +13,16 @@ const locationSchema = new mongoose.Schema({
 });
 
 const orderTrackingSchema = new mongoose.Schema({
+    entityType: {
+        type: String,
+        enum: ['order', 'parcel'],
+        default: 'order',
+        index: true,
+    },
     orderId: {
         type: String, // References PostgreSQL Order ID
         required: true,
-        unique: true
+        index: true
     },
     riderId: {
         type: String, // References PostgreSQL User ID
@@ -66,7 +72,28 @@ const orderTrackingSchema = new mongoose.Schema({
     timestamps: true
 });
 
+const buildEntityScopeFilter = (entityType = 'order') =>
+    entityType === 'order'
+        ? { $or: [{ entityType: 'order' }, { entityType: { $exists: false } }] }
+        : { entityType };
+
+const withEntityScope = (query = {}, entityType = 'order') => {
+    const scopeFilter = buildEntityScopeFilter(entityType);
+    if (!query || Object.keys(query).length === 0) {
+        return scopeFilter;
+    }
+
+    return {
+        $and: [query, scopeFilter]
+    };
+};
+
+orderTrackingSchema.statics.buildEntityQuery = function(entityType = 'order', query = {}) {
+    return withEntityScope(query, entityType);
+};
+
 // Index for geospatial queries
-orderTrackingSchema.index({ orderId: 1, status: 1 });
+orderTrackingSchema.index({ entityType: 1, orderId: 1 }, { unique: true });
+orderTrackingSchema.index({ entityType: 1, orderId: 1, status: 1 });
 
 module.exports = mongoose.model('OrderTracking', orderTrackingSchema);

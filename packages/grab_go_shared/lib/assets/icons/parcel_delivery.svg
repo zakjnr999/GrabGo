@@ -1,0 +1,57 @@
+<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Floor Shadow (Matches the cart's shadow) -->
+  <polygon points="18,105 105,105 95,110 25,110" fill="rgba(0,0,0,0.05)" />
+
+  <!-- Back wedge shadow (Mirrors the cart's background basket depth) -->
+  <polygon points="25,35 60,35 90,95 25,95" fill="rgba(0,0,0,0.05)" />
+
+  <!-- Teal Box (Tilted backwards against the handle) -->
+  <g transform="rotate(-15, 40, 55)">
+    <rect x="35" y="20" width="25" height="35" rx="3" fill="#2A9D8F" />
+    <!-- White Tape -->
+    <rect x="35" y="32" width="25" height="5" fill="#FFF" />
+  </g>
+
+  <!-- Green Leaf accent (Matches the apple's leaf) -->
+  <path d="M40,15 Q48,5 56,12 Q48,20 40,15 Z" fill="#80B918" />
+
+  <!-- Red Mail Tube -->
+  <rect x="73" y="40" width="16" height="25" rx="4" fill="#E63946" />
+  <rect x="73" y="46" width="16" height="2" fill="#FFF" />
+  <rect x="73" y="54" width="16" height="2" fill="#FFF" />
+
+  <!-- Yellow Small Box -->
+  <rect x="70" y="65" width="22" height="30" rx="2" fill="#E9C46A" />
+
+  <!-- Main Orange Box -->
+  <rect x="30" y="50" width="40" height="45" rx="3" fill="#F4A261" />
+  <rect x="45" y="50" width="10" height="45" fill="#E76F51" />
+  
+  <!-- White Shipping Label (Matches the bottle label) -->
+  <rect x="58" y="65" width="10" height="14" rx="1" fill="#FFF" />
+  <line x1="60" y1="69" x2="66" y2="69" stroke="#E9C46A" stroke-width="2" stroke-linecap="round" />
+  <line x1="60" y1="74" x2="64" y2="74" stroke="#E9C46A" stroke-width="2" stroke-linecap="round" />
+
+  <!-- Hand Truck / Dolly Wireframe (Overlaps the boxes just like the grocery basket) -->
+  <!-- Main base -->
+  <line x1="18" y1="95" x2="98" y2="95" stroke="#475569" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <!-- Back handle spine -->
+  <line x1="25" y1="95" x2="25" y2="30" stroke="#475569" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <!-- Handle grip -->
+  <line x1="15" y1="30" x2="35" y2="30" stroke="#475569" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <!-- Diagonal brace over the orange box -->
+  <line x1="25" y1="75" x2="45" y2="95" stroke="#475569" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <!-- Front Lip to hold boxes -->
+  <line x1="95" y1="95" x2="95" y2="85" stroke="#475569" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Pink Cart Wheels -->
+  <circle cx="35" cy="105" r="7" fill="#EF476F" />
+  <circle cx="35" cy="105" r="2.5" fill="#FFF" />
+
+  <circle cx="85" cy="105" r="7" fill="#EF476F" />
+  <circle cx="85" cy="105" r="2.5" fill="#FFF" />
+
+  <!-- Sparkle & Speed Lines (Copied EXACTLY from the Groceries SVG for a flawless match) -->
+  <path d="M95,50 L108,35 L116,35" fill="none" stroke="#475569" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <line x1="106" y1="35" x2="118" y2="35" stroke="#EF476F" stroke-width="8" stroke-linecap="round" />
+</svg>
