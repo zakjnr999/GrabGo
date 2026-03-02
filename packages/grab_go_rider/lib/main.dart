@@ -6,6 +6,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:grab_go_rider/features/chat/view/chat_detail_page.dart';
 import 'package:grab_go_rider/features/orders/view/call_screen.dart';
+import 'package:grab_go_rider/features/orders/service/order_reservation_service.dart';
+import 'package:grab_go_rider/features/orders/view/available_orders.dart';
+import 'package:grab_go_rider/features/orders/view/order_confirmation_page.dart';
 import 'package:grab_go_rider/features/orders/service/rider_foreground_service.dart';
 import 'package:grab_go_rider/features/orders/viewmodel/rider_tracking_provider.dart';
 import 'package:grab_go_rider/shared/viewmodel/bottom_nav_provider.dart';
@@ -18,6 +21,11 @@ import 'package:provider/provider.dart';
 
 /// Global navigator key for navigation from outside widget tree
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+Map<String, dynamic>? _pendingNotificationTapData;
+Timer? _pendingNotificationRetryTimer;
+int _pendingNotificationRetryCount = 0;
+const int _maxPendingNotificationRetries = 40;
+bool _isProcessingPendingNotification = false;
 
 /// Background message handler - must be top-level
 @pragma('vm:entry-point')
@@ -79,46 +87,174 @@ Future<void> _initializeBackgroundServices() async {
 
 /// Handle notification tap - navigate to appropriate screen
 void _handleNotificationTap(Map<String, dynamic> data) {
-  final type = data['type'];
-  final chatId = data['chatId'];
-  final orderId = data['orderId'];
-
+  final normalizedData = Map<String, dynamic>.from(data);
+  final type = normalizedData['type'];
+  final chatId = normalizedData['chatId'];
+  final orderId = normalizedData['orderId'];
   debugPrint(
     '📲 Notification tapped: type=$type, chatId=$chatId, orderId=$orderId',
   );
 
-  // Delay navigation slightly to ensure app is ready
-  Future.delayed(const Duration(milliseconds: 500), () {
-    final navigator = navigatorKey.currentState;
-    if (navigator == null) {
-      debugPrint('⚠️ Navigator state not available');
+  _pendingNotificationTapData = normalizedData;
+  _pendingNotificationRetryCount = 0;
+  _schedulePendingNotificationProcessing();
+}
+
+void _schedulePendingNotificationProcessing({
+  Duration delay = const Duration(milliseconds: 500),
+}) {
+  _pendingNotificationRetryTimer?.cancel();
+  _pendingNotificationRetryTimer = Timer(
+    delay,
+    _tryProcessPendingNotificationTap,
+  );
+}
+
+void _tryProcessPendingNotificationTap() {
+  final data = _pendingNotificationTapData;
+  if (data == null || _isProcessingPendingNotification) return;
+
+  final navigator = navigatorKey.currentState;
+  final currentPath = appRouter.routerDelegate.currentConfiguration.uri.path;
+  final routeReady = currentPath.isNotEmpty && currentPath != '/';
+
+  if (navigator == null || !routeReady) {
+    _pendingNotificationRetryCount++;
+    if (_pendingNotificationRetryCount <= _maxPendingNotificationRetries) {
+      _schedulePendingNotificationProcessing(
+        delay: const Duration(milliseconds: 700),
+      );
       return;
     }
 
-    if (type == 'chat_message' && chatId != null) {
-      navigator.push(
-        MaterialPageRoute(
-          builder: (context) => ChatDetailPage(
-            chatId: chatId,
-            senderName: data['senderName'] ?? 'Chat',
-          ),
-        ),
+    if (navigator == null) {
+      debugPrint(
+        '⚠️ Dropping pending notification tap: navigator unavailable after retries',
       );
-    } else if (type == 'incoming_call') {
-      final callId = data['callId']?.toString() ?? '';
-      if (callId.isEmpty) {
-        return;
-      }
-
-      // Restore call details; UI presentation is handled by the root WebRTC listener.
-      unawaited(WebRTCService().hydrateIncomingCallFromCallId(callId));
-    } else if ((type == 'order_update' || type == 'rider_assignment') &&
-        orderId != null) {
-      // Navigate to order details - you can customize this route
-      debugPrint('Navigate to order: $orderId');
-      // TODO: Add order detail navigation when route is available
+      _pendingNotificationTapData = null;
+      return;
     }
-  });
+  }
+
+  _pendingNotificationTapData = null;
+  _isProcessingPendingNotification = true;
+  _processNotificationTapData(data, navigator);
+  _isProcessingPendingNotification = false;
+}
+
+void _processNotificationTapData(
+  Map<String, dynamic> data,
+  NavigatorState navigator,
+) {
+  final type = data['type'];
+  final chatId = data['chatId'];
+  final orderId = data['orderId'];
+
+  if (type == 'chat_message' && chatId != null) {
+    navigator.push(
+      MaterialPageRoute(
+        builder: (context) => ChatDetailPage(
+          chatId: chatId,
+          senderName: data['senderName'] ?? 'Chat',
+        ),
+      ),
+    );
+  } else if (type == 'incoming_call') {
+    final callId = data['callId']?.toString() ?? '';
+    if (callId.isEmpty) {
+      return;
+    }
+
+    // Restore call details; UI presentation is handled by the root WebRTC listener.
+    unawaited(WebRTCService().hydrateIncomingCallFromCallId(callId));
+  } else if (type == 'order_reserved') {
+    unawaited(_handleReservedOrderTap(navigator, data));
+  } else if ((type == 'order_update' || type == 'rider_assignment') &&
+      orderId != null) {
+    // Navigate to order details - you can customize this route
+    debugPrint('Navigate to order: $orderId');
+    // TODO: Add order detail navigation when route is available
+  }
+}
+
+void _showGlobalSnackBar(NavigatorState navigator, String message) {
+  final messenger = ScaffoldMessenger.maybeOf(navigator.context);
+  messenger?.showSnackBar(
+    SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
+  );
+}
+
+Future<void> _handleReservedOrderTap(
+  NavigatorState navigator,
+  Map<String, dynamic> data,
+) async {
+  try {
+    final tappedOrderId = data['orderId']?.toString();
+    debugPrint('📦 Handling order_reserved tap for order: $tappedOrderId');
+
+    final reservationService = OrderReservationService();
+
+    // Hydrate reservation state when opened from push/background.
+    final reservation = await reservationService.fetchActiveReservation();
+    if (reservation == null || reservation.isExpired) {
+      _showGlobalSnackBar(
+        navigator,
+        'This order request is no longer available.',
+      );
+      navigator.push(
+        MaterialPageRoute(builder: (context) => const AvailableOrders()),
+      );
+      return;
+    }
+
+    // Accept reservation on tap so rider lands directly in pickup flow.
+    final accepted = await reservationService.acceptReservation();
+    if (!accepted) {
+      final failureMessage =
+          reservationService.error ??
+          'Could not accept this order. It may have expired.';
+      _showGlobalSnackBar(navigator, failureMessage);
+      navigator.push(
+        MaterialPageRoute(builder: (context) => const AvailableOrders()),
+      );
+      return;
+    }
+
+    final order = reservation.order;
+    navigator.push(
+      MaterialPageRoute(
+        builder: (context) => OrderConfirmationPage(
+          orderId: reservation.orderId,
+          orderNumber: reservation.orderNumber,
+          orderStatus: 'ready',
+          orderInstructions: '',
+          customerName: order.customerName,
+          customerAddress: order.deliveryAddress,
+          customerPhone: '',
+          customerPhoto: null,
+          restaurantName: order.storeName,
+          restaurantAddress: order.pickupAddress,
+          restaurantLogo: order.storeLogo,
+          orderTotal: 'GHS ${order.totalAmount.toStringAsFixed(2)}',
+          orderItems: [
+            '${order.itemCount} item${order.itemCount == 1 ? '' : 's'}',
+          ],
+          specialInstructions: null,
+          riderEarnings: reservation.estimatedEarnings,
+          pickupLatitude: order.pickupLat,
+          pickupLongitude: order.pickupLon,
+          destinationLatitude: order.deliveryLat,
+          destinationLongitude: order.deliveryLon,
+        ),
+      ),
+    );
+  } catch (e) {
+    debugPrint('❌ Error handling reserved-order notification tap: $e');
+    _showGlobalSnackBar(navigator, 'Failed to open order from notification.');
+    navigator.push(
+      MaterialPageRoute(builder: (context) => const AvailableOrders()),
+    );
+  }
 }
 
 /// Handle FCM token refresh
@@ -163,6 +299,9 @@ class _GrabGoRiderAppState extends State<GrabGoRiderApp>
     PushNotificationService().clearBadge();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _schedulePendingNotificationProcessing(
+        delay: const Duration(milliseconds: 300),
+      );
       _setupWebRTCBindings();
       _initializeWebRTC();
     });
