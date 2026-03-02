@@ -117,6 +117,10 @@ router.get(
   authorize("rider", "admin"),
   async (req, res) => {
     try {
+      const availableOrderStatuses = featureFlags.isRiderAvailableIncludeConfirmed
+        ? ["confirmed", "preparing", "ready"]
+        : ["preparing", "ready"];
+
       // First, get IDs of orders that have active reservations (pending status, not expired)
       const activeReservations = await OrderReservation.find(
         buildOrderReservationQuery({
@@ -133,7 +137,7 @@ router.get(
           riderId: null,
           fulfillmentMode: "delivery",
           paymentStatus: { in: ["paid", "successful"] },
-          status: { in: ["preparing", "ready"] },
+          status: { in: availableOrderStatuses },
           // Exclude orders that have active reservations
           id: { notIn: reservedOrderIds }
         },
@@ -249,7 +253,12 @@ router.get(
       // Location-based filtering (optional)
       const riderLat = parseFloat(req.query.lat);
       const riderLon = parseFloat(req.query.lon);
-      let radius = parseFloat(req.query.radius) || 10; // Default 10 km
+      const maxRadiusKm = featureFlags.riderAvailableMaxRadiusKm || 20;
+      let radius = parseFloat(req.query.radius);
+      if (!Number.isFinite(radius) || radius <= 0) {
+        radius = 10; // Default 10 km
+      }
+      radius = Math.min(radius, maxRadiusKm);
 
       let filteredOrders = ordersWithEarnings;
       let filterApplied = false;
@@ -279,13 +288,10 @@ router.get(
         filteredOrders = ordersWithRiderDistance.filter(order => order.distanceToPickup <= radius);
 
         // Smart radius expansion if too few orders
-        if (filteredOrders.length < 5 && radius === 10) {
-          radius = 15;
-          filteredOrders = ordersWithRiderDistance.filter(order => order.distanceToPickup <= radius);
-          expandedRadius = true;
-        }
-        if (filteredOrders.length < 5 && radius === 15) {
-          radius = 20;
+        while (filteredOrders.length < 5 && radius < maxRadiusKm) {
+          const nextRadius = Math.min(radius + 5, maxRadiusKm);
+          if (nextRadius <= radius) break;
+          radius = nextRadius;
           filteredOrders = ordersWithRiderDistance.filter(order => order.distanceToPickup <= radius);
           expandedRadius = true;
         }
