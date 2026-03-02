@@ -691,10 +691,57 @@ const confirmCheckoutSessionPayment = async ({ sessionId, customer, reference, p
   }
 
   if (['paid', 'successful'].includes(session.paymentStatus)) {
+    let alreadyPaidOrders = session.orders;
+    const promotableOrderIds = alreadyPaidOrders
+      .filter(
+        (order) =>
+          order.fulfillmentMode === 'delivery' &&
+          order.status === 'pending' &&
+          ['paid', 'successful'].includes(order.paymentStatus) &&
+          featureFlags.isConfirmedPredispatchEnabled
+      )
+      .map((order) => order.id);
+
+    if (promotableOrderIds.length > 0) {
+      await prisma.order.updateMany({
+        where: { id: { in: promotableOrderIds } },
+        data: { status: 'confirmed' },
+      });
+      const promotedOrderIds = new Set(promotableOrderIds);
+      alreadyPaidOrders = alreadyPaidOrders.map((order) =>
+        promotedOrderIds.has(order.id) ? { ...order, status: 'confirmed' } : order
+      );
+    }
+
+    for (const updatedOrder of alreadyPaidOrders) {
+      if (
+        updatedOrder.fulfillmentMode !== 'pickup' &&
+        !updatedOrder.riderId &&
+        ['paid', 'successful'].includes(updatedOrder.paymentStatus) &&
+        isDispatchableStatus(updatedOrder.status)
+      ) {
+        dispatchService
+          .dispatchOrder(updatedOrder.id)
+          .then((result) => {
+            if (result.success) {
+              console.log(`✅ [CheckoutSession] Dispatch initiated for already-paid ${updatedOrder.orderNumber}`);
+            } else {
+              console.log(`⚠️ [CheckoutSession] Dispatch deferred for already-paid ${updatedOrder.orderNumber}: ${result.error}`);
+            }
+          })
+          .catch((error) => {
+            console.error(
+              `❌ [CheckoutSession] Dispatch failed for already-paid ${updatedOrder.orderNumber}:`,
+              error.message
+            );
+          });
+      }
+    }
+
     return {
       alreadyPaid: true,
       session,
-      childOrders: session.orders,
+      childOrders: alreadyPaidOrders,
       paymentScope: 'full_group_payment',
       externalPaymentAmount: roundCurrency(session.totalAmount || 0),
     };
@@ -777,12 +824,18 @@ const confirmCheckoutSessionPayment = async ({ sessionId, customer, reference, p
     const nextOrders = [];
 
     for (const order of session.orders) {
+      const shouldConfirmDeliveryAfterPayment =
+        featureFlags.isConfirmedPredispatchEnabled &&
+        order.fulfillmentMode === 'delivery' &&
+        order.status === 'pending';
+
       const updatedOrder = await tx.order.update({
         where: { id: order.id },
         data: {
           paymentStatus: 'paid',
           paymentProvider,
           paymentReferenceId: persistedReference,
+          ...(shouldConfirmDeliveryAfterPayment ? { status: 'confirmed' } : {}),
         },
         select: {
           id: true,

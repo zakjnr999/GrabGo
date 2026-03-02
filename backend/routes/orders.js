@@ -1790,19 +1790,44 @@ router.post(
       }
 
       if (["paid", "successful"].includes(order.paymentStatus)) {
+        let dispatchCandidate = order;
+        const shouldPromoteAlreadyPaidDeliveryToConfirmed =
+          featureFlags.isConfirmedPredispatchEnabled &&
+          order.fulfillmentMode === "delivery" &&
+          order.status === "pending" &&
+          (!order.isScheduledOrder || !!order.scheduledReleasedAt);
+
+        if (shouldPromoteAlreadyPaidDeliveryToConfirmed) {
+          await prisma.order.update({
+            where: { id: order.id },
+            data: { status: "confirmed" },
+          });
+          dispatchCandidate = { ...order, status: "confirmed" };
+        }
+
         if (
-          order.fulfillmentMode !== "pickup" &&
-          !order.riderId &&
-          shouldTriggerDispatchForOrder(order, order.status)
+          dispatchCandidate.fulfillmentMode !== "pickup" &&
+          !dispatchCandidate.riderId &&
+          shouldTriggerDispatchForOrder(
+            dispatchCandidate,
+            dispatchCandidate.status,
+          )
         ) {
-          dispatchService.dispatchOrder(order.id).then((result) => {
+          dispatchService.dispatchOrder(dispatchCandidate.id).then((result) => {
             if (result.success) {
-              console.log(`✅ Dispatch initiated for already-paid order ${order.orderNumber}`);
+              console.log(
+                `✅ Dispatch initiated for already-paid order ${dispatchCandidate.orderNumber}`,
+              );
             } else {
-              console.log(`⚠️ Dispatch deferred for already-paid order ${order.orderNumber}: ${result.error}`);
+              console.log(
+                `⚠️ Dispatch deferred for already-paid order ${dispatchCandidate.orderNumber}: ${result.error}`,
+              );
             }
           }).catch((err) => {
-            console.error(`❌ Dispatch error for already-paid order ${order.orderNumber}:`, err.message);
+            console.error(
+              `❌ Dispatch error for already-paid order ${dispatchCandidate.orderNumber}:`,
+              err.message,
+            );
           });
         }
 
@@ -1939,6 +1964,11 @@ router.post(
         order.fulfillmentMode === "delivery" &&
         order.status === "pending" &&
         !order.scheduledReleasedAt;
+      const shouldConfirmDeliveryAfterPayment =
+        featureFlags.isConfirmedPredispatchEnabled &&
+        order.fulfillmentMode === "delivery" &&
+        order.status === "pending" &&
+        !shouldKeepScheduledPending;
 
       await prisma.order.update({
         where: { id: order.id },
@@ -1947,6 +1977,7 @@ router.post(
           paymentProvider: provider || "paystack",
           paymentReferenceId: persistedReference,
           ...(shouldKeepScheduledPending ? { status: "pending" } : {}),
+          ...(shouldConfirmDeliveryAfterPayment ? { status: "confirmed" } : {}),
           ...(shouldConfirmPickup
             ? {
                 status: "confirmed",
