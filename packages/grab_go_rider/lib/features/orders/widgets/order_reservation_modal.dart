@@ -14,7 +14,13 @@ class OrderReservationModal extends StatefulWidget {
   final VoidCallback? onDeclined;
   final VoidCallback? onExpired;
 
-  const OrderReservationModal({super.key, required this.reservation, this.onAccepted, this.onDeclined, this.onExpired});
+  const OrderReservationModal({
+    super.key,
+    required this.reservation,
+    this.onAccepted,
+    this.onDeclined,
+    this.onExpired,
+  });
 
   static Future<void> show(
     BuildContext context,
@@ -44,7 +50,8 @@ class OrderReservationModal extends StatefulWidget {
   State<OrderReservationModal> createState() => _OrderReservationModalState();
 }
 
-class _OrderReservationModalState extends State<OrderReservationModal> with SingleTickerProviderStateMixin {
+class _OrderReservationModalState extends State<OrderReservationModal>
+    with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   Timer? _countdownTimer;
@@ -56,13 +63,14 @@ class _OrderReservationModalState extends State<OrderReservationModal> with Sing
   void initState() {
     super.initState();
     _remainingSeconds = (widget.reservation.remainingMs / 1000).ceil();
-    _pulseController = AnimationController(duration: const Duration(milliseconds: 800), vsync: this)
-      ..repeat(reverse: true);
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    )..repeat(reverse: true);
 
-    _pulseAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.1,
-    ).animate(CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
 
     // Start countdown
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -102,11 +110,15 @@ class _OrderReservationModalState extends State<OrderReservationModal> with Sing
     final service = OrderReservationService();
     final success = await service.acceptReservation();
 
-    if (mounted) {
-      Navigator.of(context).pop();
-      if (success) {
+    if (!mounted) return;
+
+    Navigator.of(context).pop();
+
+    if (success) {
+      // Let the bottom sheet dismissal finish before triggering navigation callbacks.
+      Future.delayed(const Duration(milliseconds: 150), () {
         widget.onAccepted?.call();
-      }
+      });
     }
   }
 
@@ -119,11 +131,14 @@ class _OrderReservationModalState extends State<OrderReservationModal> with Sing
     final service = OrderReservationService();
     final success = await service.declineReservation();
 
-    if (mounted) {
-      Navigator.of(context).pop();
-      if (success) {
+    if (!mounted) return;
+
+    Navigator.of(context).pop();
+
+    if (success) {
+      Future.delayed(const Duration(milliseconds: 100), () {
         widget.onDeclined?.call();
-      }
+      });
     }
   }
 
@@ -164,11 +179,19 @@ class _OrderReservationModalState extends State<OrderReservationModal> with Sing
                       children: [
                         Text(
                           'New Order Available!',
-                          style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w700),
+                          style: TextStyle(
+                            color: colors.textPrimary,
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                         Text(
                           order.storeName,
-                          style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
+                          style: TextStyle(
+                            color: colors.textSecondary,
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w400,
+                          ),
                         ),
                       ],
                     ),
@@ -176,16 +199,27 @@ class _OrderReservationModalState extends State<OrderReservationModal> with Sing
                     AnimatedBuilder(
                       animation: _pulseAnimation,
                       builder: (context, child) => Transform.scale(
-                        scale: _remainingSeconds <= 5 ? _pulseAnimation.value : 1.0,
+                        scale: _remainingSeconds <= 5
+                            ? _pulseAnimation.value
+                            : 1.0,
                         child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12.w,
+                            vertical: 8.h,
+                          ),
                           decoration: BoxDecoration(
                             color: _getTimerColor(),
-                            borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                            borderRadius: BorderRadius.circular(
+                              KBorderSize.borderRadius4,
+                            ),
                           ),
                           child: Text(
                             '${_remainingSeconds}s',
-                            style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w800),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
                       ),
@@ -208,12 +242,17 @@ class _OrderReservationModalState extends State<OrderReservationModal> with Sing
                   Row(
                     children: [
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                        borderRadius: BorderRadius.circular(
+                          KBorderSize.borderRadius4,
+                        ),
                         child: CachedNetworkImage(
                           height: size.width * 0.12,
                           width: size.width * 0.12,
                           fit: BoxFit.cover,
-                          imageUrl: ImageOptimizer.getPreviewUrl(order.storeLogo!, width: 200),
+                          imageUrl: ImageOptimizer.getPreviewUrl(
+                            order.storeLogo!,
+                            width: 200,
+                          ),
                           memCacheWidth: 200,
                           maxHeightDiskCache: 200,
                           placeholder: (context, url) => Container(
@@ -222,14 +261,19 @@ class _OrderReservationModalState extends State<OrderReservationModal> with Sing
                             padding: EdgeInsets.all(12.r),
                             decoration: BoxDecoration(
                               color: colors.accentGreen.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                              borderRadius: BorderRadius.circular(
+                                KBorderSize.borderRadius4,
+                              ),
                             ),
                             child: SvgPicture.asset(
                               Assets.icons.store,
                               package: 'grab_go_shared',
                               width: 24.w,
                               height: 24.w,
-                              colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                              colorFilter: ColorFilter.mode(
+                                colors.accentGreen,
+                                BlendMode.srcIn,
+                              ),
                             ),
                           ),
                           errorWidget: (context, url, error) => Container(
@@ -238,14 +282,19 @@ class _OrderReservationModalState extends State<OrderReservationModal> with Sing
                             padding: EdgeInsets.all(12.r),
                             decoration: BoxDecoration(
                               color: colors.accentGreen.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                              borderRadius: BorderRadius.circular(
+                                KBorderSize.borderRadius4,
+                              ),
                             ),
                             child: SvgPicture.asset(
                               Assets.icons.store,
                               package: 'grab_go_shared',
                               width: 24.w,
                               height: 24.w,
-                              colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                              colorFilter: ColorFilter.mode(
+                                colors.accentGreen,
+                                BlendMode.srcIn,
+                              ),
                             ),
                           ),
                         ),
@@ -257,14 +306,21 @@ class _OrderReservationModalState extends State<OrderReservationModal> with Sing
                           children: [
                             Text(
                               order.storeName,
-                              style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w700),
+                              style: TextStyle(
+                                color: colors.textPrimary,
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w700,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                             SizedBox(height: 4.h),
                             Text(
                               '${order.itemCount} item${order.itemCount > 1 ? 's' : ''}  •  ${order.orderType}',
-                              style: TextStyle(color: colors.textSecondary, fontSize: 13.sp),
+                              style: TextStyle(
+                                color: colors.textSecondary,
+                                fontSize: 13.sp,
+                              ),
                             ),
                           ],
                         ),
@@ -284,7 +340,10 @@ class _OrderReservationModalState extends State<OrderReservationModal> with Sing
                   Container(
                     height: 24.h,
                     width: 2.w,
-                    margin: EdgeInsets.symmetric(vertical: 4.h, horizontal: 8.w),
+                    margin: EdgeInsets.symmetric(
+                      vertical: 4.h,
+                      horizontal: 8.w,
+                    ),
                     decoration: BoxDecoration(
                       color: colors.textSecondary.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(1.r),
@@ -305,7 +364,8 @@ class _OrderReservationModalState extends State<OrderReservationModal> with Sing
                       Expanded(
                         child: _buildStatCard(
                           label: 'EARNINGS',
-                          value: 'GHS ${widget.reservation.estimatedEarnings.toStringAsFixed(2)}',
+                          value:
+                              'GHS ${widget.reservation.estimatedEarnings.toStringAsFixed(2)}',
                           colors: colors,
                         ),
                       ),
@@ -321,7 +381,8 @@ class _OrderReservationModalState extends State<OrderReservationModal> with Sing
                       Expanded(
                         child: _buildStatCard(
                           label: 'TO PICKUP',
-                          value: '${widget.reservation.distanceToPickup.toStringAsFixed(1)} km',
+                          value:
+                              '${widget.reservation.distanceToPickup.toStringAsFixed(1)} km',
                           colors: colors,
                         ),
                       ),
@@ -334,11 +395,20 @@ class _OrderReservationModalState extends State<OrderReservationModal> with Sing
           ),
 
           Container(
-            padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 16.h, bottom: padding.bottom + 20.h),
+            padding: EdgeInsets.only(
+              left: 20.w,
+              right: 20.w,
+              top: 16.h,
+              bottom: padding.bottom + 20.h,
+            ),
             decoration: BoxDecoration(
               color: colors.backgroundPrimary,
               boxShadow: [
-                BoxShadow(color: colors.shadow.withValues(alpha: 0.1), blurRadius: 5, offset: const Offset(0, -2)),
+                BoxShadow(
+                  color: colors.shadow.withValues(alpha: 0.1),
+                  blurRadius: 5,
+                  offset: const Offset(0, -2),
+                ),
               ],
             ),
             child: Row(
@@ -351,7 +421,11 @@ class _OrderReservationModalState extends State<OrderReservationModal> with Sing
                         ? colors.inputBorder.withValues(alpha: 0.5)
                         : colors.inputBorder,
                     borderRadius: KBorderSize.borderRadius4,
-                    textStyle: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                    textStyle: TextStyle(
+                      color: colors.textSecondary,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
                     height: 56.h,
                   ),
                 ),
@@ -360,12 +434,18 @@ class _OrderReservationModalState extends State<OrderReservationModal> with Sing
                   flex: 2,
                   child: AppButton(
                     onPressed: _handleAccept,
-                    buttonText: _isAccepting ? "Please wait..." : "Accept Order",
+                    buttonText: _isAccepting
+                        ? "Please wait..."
+                        : "Accept Order",
                     backgroundColor: _isAccepting || _isDeclining
                         ? colors.accentGreen.withValues(alpha: 0.5)
                         : colors.accentGreen,
                     borderRadius: KBorderSize.borderRadius4,
-                    textStyle: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                    textStyle: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
                     height: 56.h,
                   ),
                 ),
@@ -402,7 +482,11 @@ class _OrderReservationModalState extends State<OrderReservationModal> with Sing
               SizedBox(height: 2.h),
               Text(
                 address,
-                style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  color: colors.textPrimary,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w500,
+                ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -413,7 +497,11 @@ class _OrderReservationModalState extends State<OrderReservationModal> with Sing
     );
   }
 
-  Widget _buildStatCard({required String label, required String value, required AppColorsExtension colors}) {
+  Widget _buildStatCard({
+    required String label,
+    required String value,
+    required AppColorsExtension colors,
+  }) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
       decoration: BoxDecoration(
@@ -434,7 +522,11 @@ class _OrderReservationModalState extends State<OrderReservationModal> with Sing
           SizedBox(height: 2.h),
           Text(
             value,
-            style: TextStyle(color: colors.textPrimary, fontSize: 13.sp, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w700,
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),

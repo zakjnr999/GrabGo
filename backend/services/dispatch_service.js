@@ -438,26 +438,7 @@ async function findEligibleRiders(order, excludedRiderIds = []) {
     let radius = CONFIG.DEFAULT_RADIUS_KM;
     let eligibleRiders = [];
 
-    while (eligibleRiders.length < CONFIG.MIN_RIDERS_BEFORE_EXPAND && radius <= CONFIG.MAX_RADIUS_KM) {
-        const radiusInMeters = radius * 1000;
-        
-        // Query MongoDB for online riders within radius
-        const riderStatuses = await RiderStatus.find({
-            isOnline: true,
-            isOnDelivery: false,
-            isApproved: true,
-            riderId: { $nin: allExcludedIds },
-            location: {
-                $near: {
-                    $geometry: {
-                        type: 'Point',
-                        coordinates: [pickupLon, pickupLat]
-                    },
-                    $maxDistance: radiusInMeters
-                }
-            }
-        }).limit(20); // Limit to prevent overload
-
+    const mapRiderStatusesToEligible = async (riderStatuses) => {
         const riderIds = riderStatuses.map((status) => String(status.riderId));
         const riderUsers = riderIds.length > 0
             ? await prisma.user.findMany({
@@ -480,16 +461,16 @@ async function findEligibleRiders(order, excludedRiderIds = []) {
         const riderById = new Map(riderUsers.map((user) => [user.id, user]));
 
         // Build eligible riders from batched user fetch + Mongo rider status
-        eligibleRiders = [];
+        const mapped = [];
         for (const status of riderStatuses) {
             const riderId = String(status.riderId);
             const user = riderById.get(riderId);
 
             if (user && user.rider?.verificationStatus === 'approved') {
-                // Calculate distance
+                // Calculate distance to pickup for scoring and ETA estimation.
                 const distance = status.distanceTo(pickupLon, pickupLat);
-                
-                eligibleRiders.push({
+
+                mapped.push({
                     ...user,
                     _status: status,
                     _distanceToPickup: distance,
@@ -503,10 +484,51 @@ async function findEligibleRiders(order, excludedRiderIds = []) {
             }
         }
 
+        return mapped;
+    };
+
+    while (eligibleRiders.length < CONFIG.MIN_RIDERS_BEFORE_EXPAND && radius <= CONFIG.MAX_RADIUS_KM) {
+        const radiusInMeters = radius * 1000;
+        
+        // Query MongoDB for online riders within radius
+        const riderStatuses = await RiderStatus.find({
+            isOnline: true,
+            isOnDelivery: false,
+            isApproved: true,
+            riderId: { $nin: allExcludedIds },
+            location: {
+                $near: {
+                    $geometry: {
+                        type: 'Point',
+                        coordinates: [pickupLon, pickupLat]
+                    },
+                    $maxDistance: radiusInMeters
+                }
+            }
+        }).limit(20); // Limit to prevent overload
+
+        eligibleRiders = await mapRiderStatusesToEligible(riderStatuses);
+
         if (eligibleRiders.length < CONFIG.MIN_RIDERS_BEFORE_EXPAND) {
             radius += CONFIG.RADIUS_EXPANSION_KM;
             console.log(`📍 [Dispatch] Expanding radius to ${radius}km (found ${eligibleRiders.length} riders)`);
         }
+    }
+
+    if (eligibleRiders.length === 0 && featureFlags.isDispatchGeoFallbackEnabled) {
+        console.log('🧪 [Dispatch] Geo fallback enabled - retrying without distance constraint');
+
+        const fallbackStatuses = await RiderStatus.find({
+            isOnline: true,
+            isOnDelivery: false,
+            isApproved: true,
+            riderId: { $nin: allExcludedIds },
+        })
+            .sort({ lastActiveAt: -1 })
+            .limit(20);
+
+        eligibleRiders = await mapRiderStatusesToEligible(fallbackStatuses);
+        console.log(`🧪 [Dispatch] Geo fallback found ${eligibleRiders.length} eligible riders`);
     }
 
     return eligibleRiders;

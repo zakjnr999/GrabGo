@@ -53,6 +53,7 @@ module.exports = {
   isCodEnabled: parseFlag('COD_ENABLED', false),
   isRiderAvailableIncludeConfirmed: parseFlag('RIDER_AVAILABLE_INCLUDE_CONFIRMED', false),
   riderAvailableMaxRadiusKm: parseFloatFlag('RIDER_AVAILABLE_MAX_RADIUS_KM', 20, { min: 1, max: 200 }),
+  isDispatchGeoFallbackEnabled: parseFlag('DISPATCH_GEO_FALLBACK_ENABLED', false),
   codMinPrepaidDeliveredOrders: parseIntFlag('COD_MIN_PREPAID_DELIVERED_ORDERS', 3, { min: 0, max: 20 }),
   codNoShowDisableThreshold: parseIntFlag('COD_NO_SHOW_DISABLE_THRESHOLD', 1, { min: 1, max: 10 }),
   codRequirePhoneVerified: parseFlag('COD_REQUIRE_PHONE_VERIFIED', true),

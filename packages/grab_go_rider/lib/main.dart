@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -20,7 +19,8 @@ import 'package:grab_go_shared/shared/services/secure_storage_service.dart';
 import 'package:provider/provider.dart';
 
 /// Global navigator key for navigation from outside widget tree
-final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+GlobalKey<NavigatorState> get _routerNavigatorKey =>
+    appRouter.routerDelegate.navigatorKey;
 Map<String, dynamic>? _pendingNotificationTapData;
 Timer? _pendingNotificationRetryTimer;
 int _pendingNotificationRetryCount = 0;
@@ -37,20 +37,15 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase
   await Firebase.initializeApp();
 
-  // Set up background message handler
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  // Initialize secure storage first (for encrypted token/credential storage)
   await SecureStorageService.initialize();
 
-  // Then initialize cache service
   await CacheService.initialize();
   await _initializeBackgroundServices();
 
-  // Initialize foreground service for rider tracking
   await RiderForegroundService().initialize();
 
   runApp(
@@ -72,27 +67,24 @@ Future<void> _initializeBackgroundServices() async {
     await UserService().initialize();
     await SocketService().initialize();
 
-    // Initialize push notifications
     await PushNotificationService().initialize(
       onNotificationTap: _handleNotificationTap,
       onTokenRefresh: _handleTokenRefresh,
     );
 
-    // Register FCM token with backend if user is logged in
     await _registerFcmToken();
   } catch (e) {
     debugPrint('Error initializing background services: $e');
   }
 }
 
-/// Handle notification tap - navigate to appropriate screen
 void _handleNotificationTap(Map<String, dynamic> data) {
   final normalizedData = Map<String, dynamic>.from(data);
   final type = normalizedData['type'];
   final chatId = normalizedData['chatId'];
   final orderId = normalizedData['orderId'];
   debugPrint(
-    '📲 Notification tapped: type=$type, chatId=$chatId, orderId=$orderId',
+    'Notification tapped: type=$type, chatId=$chatId, orderId=$orderId',
   );
 
   _pendingNotificationTapData = normalizedData;
@@ -114,7 +106,7 @@ void _tryProcessPendingNotificationTap() {
   final data = _pendingNotificationTapData;
   if (data == null || _isProcessingPendingNotification) return;
 
-  final navigator = navigatorKey.currentState;
+  final navigator = _routerNavigatorKey.currentState;
   final currentPath = appRouter.routerDelegate.currentConfiguration.uri.path;
   final routeReady = currentPath.isNotEmpty && currentPath != '/';
 
@@ -129,7 +121,7 @@ void _tryProcessPendingNotificationTap() {
 
     if (navigator == null) {
       debugPrint(
-        '⚠️ Dropping pending notification tap: navigator unavailable after retries',
+        'Dropping pending notification tap: navigator unavailable after retries',
       );
       _pendingNotificationTapData = null;
       return;
@@ -165,13 +157,11 @@ void _processNotificationTapData(
       return;
     }
 
-    // Restore call details; UI presentation is handled by the root WebRTC listener.
     unawaited(WebRTCService().hydrateIncomingCallFromCallId(callId));
   } else if (type == 'order_reserved') {
     unawaited(_handleReservedOrderTap(navigator, data));
   } else if ((type == 'order_update' || type == 'rider_assignment') &&
       orderId != null) {
-    // Navigate to order details - you can customize this route
     debugPrint('Navigate to order: $orderId');
     // TODO: Add order detail navigation when route is available
   }
@@ -190,11 +180,10 @@ Future<void> _handleReservedOrderTap(
 ) async {
   try {
     final tappedOrderId = data['orderId']?.toString();
-    debugPrint('📦 Handling order_reserved tap for order: $tappedOrderId');
+    debugPrint('Handling order_reserved tap for order: $tappedOrderId');
 
     final reservationService = OrderReservationService();
 
-    // Hydrate reservation state when opened from push/background.
     final reservation = await reservationService.fetchActiveReservation();
     if (reservation == null || reservation.isExpired) {
       _showGlobalSnackBar(
@@ -207,7 +196,6 @@ Future<void> _handleReservedOrderTap(
       return;
     }
 
-    // Accept reservation on tap so rider lands directly in pickup flow.
     final accepted = await reservationService.acceptReservation();
     if (!accepted) {
       final failureMessage =
@@ -249,7 +237,7 @@ Future<void> _handleReservedOrderTap(
       ),
     );
   } catch (e) {
-    debugPrint('❌ Error handling reserved-order notification tap: $e');
+    debugPrint('Error handling reserved-order notification tap: $e');
     _showGlobalSnackBar(navigator, 'Failed to open order from notification.');
     navigator.push(
       MaterialPageRoute(builder: (context) => const AvailableOrders()),
@@ -257,12 +245,10 @@ Future<void> _handleReservedOrderTap(
   }
 }
 
-/// Handle FCM token refresh
 Future<void> _handleTokenRefresh(String token) async {
   await _registerFcmToken();
 }
 
-/// Register FCM token with backend
 Future<void> _registerFcmToken() async {
   try {
     final userService = UserService();
@@ -272,7 +258,7 @@ Future<void> _registerFcmToken() async {
     if (token == null) return;
 
     await userService.registerFcmToken(token, platform: 'android');
-    debugPrint('✅ FCM token registered with backend');
+    debugPrint('FCM token registered with backend');
   } catch (e) {
     debugPrint('Failed to register FCM token: $e');
   }
@@ -295,7 +281,6 @@ class _GrabGoRiderAppState extends State<GrabGoRiderApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Clear badge when app starts
     PushNotificationService().clearBadge();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -334,7 +319,7 @@ class _GrabGoRiderAppState extends State<GrabGoRiderApp>
     }
 
     _isIncomingCallScreenOpen = true;
-    final navContext = navigatorKey.currentContext ?? context;
+    final navContext = _routerNavigatorKey.currentContext ?? context;
     Navigator.of(navContext)
         .push(
           MaterialPageRoute(
@@ -382,7 +367,6 @@ class _GrabGoRiderAppState extends State<GrabGoRiderApp>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // Clear badge when app comes to foreground
       PushNotificationService().clearBadge();
     }
   }
@@ -397,7 +381,6 @@ class _GrabGoRiderAppState extends State<GrabGoRiderApp>
           splitScreenMode: true,
           builder: (context, child) {
             return MaterialApp.router(
-              key: navigatorKey,
               debugShowCheckedModeBanner: false,
               theme: AppTheme.lightTheme,
               darkTheme: AppTheme.darkTheme,

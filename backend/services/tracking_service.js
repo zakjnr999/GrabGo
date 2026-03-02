@@ -58,7 +58,6 @@ class TrackingService {
                         lastUpdated: new Date()
                     },
                     $setOnInsert: {
-                        entityType: ORDER_TRACKING_ENTITY,
                         status: 'preparing'
                     }
                 },
