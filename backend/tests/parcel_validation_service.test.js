@@ -71,6 +71,17 @@ describe('parcel_validation_service', () => {
     }).not.toThrow();
   });
 
+  it('accepts paystack payment method and normalizes storage method', () => {
+    const normalized = normalizeParcelInput({
+      ...makeValidPayload(),
+      paymentMethod: 'paystack',
+    });
+
+    expect(normalized.paymentMethod).toBe('online');
+    expect(normalized.paymentMethodApi).toBe('paystack');
+    expect(normalized.paymentProvider).toBe('paystack');
+  });
+
   it('builds liability snapshot capped to configured limit', () => {
     const liability = buildLiabilitySnapshot({ declaredValueGhs: 450 });
     expect(liability.liabilityCapGhs).toBe(450);

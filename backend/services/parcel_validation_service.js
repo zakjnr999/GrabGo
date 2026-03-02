@@ -1,4 +1,10 @@
 const parcelConfig = require('../config/parcel_config');
+const {
+  PARCEL_SIZE_TIERS,
+  PARCEL_SCHEDULE_TYPES,
+  PARCEL_PAYMENT_INPUT_VALUES,
+  normalizeParcelPaymentMethod,
+} = require('../contracts/parcel_contract');
 
 class ParcelValidationError extends Error {
   constructor(message, status = 400, code = 'PARCEL_VALIDATION_ERROR', details = []) {
@@ -10,9 +16,9 @@ class ParcelValidationError extends Error {
   }
 }
 
-const VALID_SIZE_TIERS = new Set(['small', 'medium', 'large', 'xlarge']);
-const VALID_SCHEDULE_TYPES = new Set(['on_demand', 'scheduled']);
-const VALID_PAYMENT_METHODS = new Set(['card', 'online']);
+const VALID_SIZE_TIERS = new Set(PARCEL_SIZE_TIERS);
+const VALID_SCHEDULE_TYPES = new Set(PARCEL_SCHEDULE_TYPES);
+const VALID_PAYMENT_METHODS = new Set(PARCEL_PAYMENT_INPUT_VALUES);
 
 const toNumber = (value) => {
   const parsed = Number(value);
@@ -175,8 +181,8 @@ const normalizeParcelInput = (payload = {}, options = {}) => {
     });
   }
 
-  const paymentMethod = normalizeString(payload.paymentMethod).toLowerCase() || 'card';
-  if (!VALID_PAYMENT_METHODS.has(paymentMethod)) {
+  const parsedPaymentMethod = normalizeParcelPaymentMethod(payload.paymentMethod, { fallback: 'card' });
+  if (!parsedPaymentMethod || !VALID_PAYMENT_METHODS.has(normalizeString(payload.paymentMethod).toLowerCase() || 'card')) {
     errors.push({
       field: 'paymentMethod',
       message: `Payment method must be one of: ${Array.from(VALID_PAYMENT_METHODS).join(', ')}`,
@@ -254,7 +260,9 @@ const normalizeParcelInput = (payload = {}, options = {}) => {
     prohibitedItemsAccepted: requireProhibitedItemsAcceptance
       ? true
       : normalizeBoolean(payload.prohibitedItemsAccepted),
-    paymentMethod,
+    paymentMethod: parsedPaymentMethod ? parsedPaymentMethod.storageMethod : 'card',
+    paymentMethodApi: parsedPaymentMethod ? parsedPaymentMethod.apiMethod : 'card',
+    paymentProvider: parsedPaymentMethod ? parsedPaymentMethod.provider : null,
     scheduleType,
     scheduledPickupAt,
     notes: normalizeString(payload.notes),

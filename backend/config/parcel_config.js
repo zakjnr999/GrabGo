@@ -1,5 +1,16 @@
+const readEnv = (nameOrNames) => {
+  const names = Array.isArray(nameOrNames) ? nameOrNames : [nameOrNames];
+  for (const name of names) {
+    const rawValue = process.env[name];
+    if (rawValue !== undefined && rawValue !== null && rawValue !== '') {
+      return rawValue;
+    }
+  }
+  return undefined;
+};
+
 const parseFloatEnv = (name, fallback, { min = Number.MIN_SAFE_INTEGER, max = Number.MAX_SAFE_INTEGER } = {}) => {
-  const rawValue = process.env[name];
+  const rawValue = readEnv(name);
   if (rawValue === undefined || rawValue === null || rawValue === '') {
     return fallback;
   }
@@ -12,7 +23,7 @@ const parseFloatEnv = (name, fallback, { min = Number.MIN_SAFE_INTEGER, max = Nu
 };
 
 const parseIntEnv = (name, fallback, { min = Number.MIN_SAFE_INTEGER, max = Number.MAX_SAFE_INTEGER } = {}) => {
-  const rawValue = process.env[name];
+  const rawValue = readEnv(name);
   if (rawValue === undefined || rawValue === null || rawValue === '') {
     return fallback;
   }
@@ -25,7 +36,7 @@ const parseIntEnv = (name, fallback, { min = Number.MIN_SAFE_INTEGER, max = Numb
 };
 
 const parseFlag = (name, fallback) => {
-  const rawValue = process.env[name];
+  const rawValue = readEnv(name);
   if (rawValue === undefined || rawValue === null || rawValue === '') {
     return fallback;
   }
@@ -36,8 +47,22 @@ const parseFlag = (name, fallback) => {
   return fallback;
 };
 
+const parseStringEnv = (name, fallback) => {
+  const rawValue = readEnv(name);
+  if (rawValue === undefined || rawValue === null || rawValue === '') {
+    return fallback;
+  }
+  return String(rawValue).trim();
+};
+
+const parseOnlineProvider = () => {
+  const configured = parseStringEnv('PARCEL_ONLINE_PAYMENT_PROVIDER', 'paystack').toLowerCase();
+  const supportedProviders = new Set(['paystack']);
+  return supportedProviders.has(configured) ? configured : 'paystack';
+};
+
 module.exports = {
-  maxDeclaredValueGhs: parseFloatEnv('PARCEL_MAX_DECLARED_VALUE_GHS', 500, {
+  maxDeclaredValueGhs: parseFloatEnv(['PARCEL_MAX_DECLARED_VALUE_GHS', 'MAX_DECLARED_VALUE'], 500, {
     min: 1,
     max: 100000,
   }),
@@ -46,7 +71,11 @@ module.exports = {
     max: 100000,
   }),
   liabilityFormula: process.env.PARCEL_LIABILITY_FORMULA || 'min(declared_value, 500 GHS)',
+  liabilityDisclaimer:
+    process.env.PARCEL_LIABILITY_DISCLAIMER ||
+    'Parcel deliveries are uninsured in MVP. Liability is capped to the lower of declared value and configured cap.',
   termsVersion: process.env.PARCEL_TERMS_VERSION || 'parcel-v1',
+  onlinePaymentProvider: parseOnlineProvider(),
   scheduleToleranceMinutes: parseIntEnv('PARCEL_SCHEDULE_TOLERANCE_MINUTES', 15, {
     min: 0,
     max: 180,

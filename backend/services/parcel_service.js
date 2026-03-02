@@ -1,6 +1,13 @@
 const prisma = require('../config/prisma');
 const featureFlags = require('../config/feature_flags');
 const parcelConfig = require('../config/parcel_config');
+const {
+  PARCEL_API_PAYMENT_METHODS,
+  PARCEL_PAYMENT_INPUT_VALUES,
+  PARCEL_STORAGE_PAYMENT_METHODS,
+  PARCEL_PAYMENT_METHOD_ALIASES,
+  normalizeParcelPaymentMethod,
+} = require('../contracts/parcel_contract');
 const paystackService = require('./paystack_service');
 const {
   ParcelValidationError,
@@ -99,27 +106,29 @@ const getParcelWhereForUser = (user, parcelId) => {
 };
 
 const ensureValidPaymentMethod = (method) => {
-  const normalized = String(method || '').toLowerCase();
-  if (normalized !== 'card' && normalized !== 'online') {
+  const normalized = normalizeParcelPaymentMethod(method, { fallback: null });
+  if (!normalized) {
     throw new ParcelValidationError(
-      'Parcel supports prepaid card/online payment only',
+      `Parcel supports prepaid payment only via: ${PARCEL_API_PAYMENT_METHODS.join(', ')}`,
       400,
       'PARCEL_PREPAID_ONLY'
     );
   }
-  return normalized === 'online' ? 'online' : 'card';
+  return normalized.storageMethod;
 };
 
 const ensureSupportedPaymentProvider = (provider) => {
-  const normalized = String(provider || 'paystack').trim().toLowerCase();
-  if (normalized !== 'paystack') {
+  const normalized = String(provider || parcelConfig.onlinePaymentProvider || 'paystack')
+    .trim()
+    .toLowerCase();
+  if (normalized !== parcelConfig.onlinePaymentProvider) {
     throw new ParcelValidationError(
       'Unsupported payment provider for parcel flow',
       400,
       'UNSUPPORTED_PAYMENT_PROVIDER'
     );
   }
-  return 'paystack';
+  return parcelConfig.onlinePaymentProvider;
 };
 
 const getParcelConfig = () => ({
@@ -131,8 +140,16 @@ const getParcelConfig = () => ({
   maxDeclaredValueGhs: parcelConfig.maxDeclaredValueGhs,
   liabilityCapGhs: parcelConfig.liabilityCapGhs,
   liabilityFormula: parcelConfig.liabilityFormula,
+  liabilityDisclaimer: parcelConfig.liabilityDisclaimer,
   termsVersion: parcelConfig.termsVersion,
   scheduleToleranceMinutes: parcelConfig.scheduleToleranceMinutes,
+  paymentMethods: {
+    apiAccepted: PARCEL_API_PAYMENT_METHODS,
+    acceptedInputValues: PARCEL_PAYMENT_INPUT_VALUES,
+    storageValues: PARCEL_STORAGE_PAYMENT_METHODS,
+    aliases: PARCEL_PAYMENT_METHOD_ALIASES,
+    onlinePaymentProvider: parcelConfig.onlinePaymentProvider,
+  },
 });
 
 const createQuote = (payload) => {
@@ -152,9 +169,14 @@ const createQuote = (payload) => {
       maxDeclaredValueGhs: parcelConfig.maxDeclaredValueGhs,
       liabilityCapGhs: Math.min(parcelConfig.liabilityCapGhs, normalized.declaredValueGhs),
       liabilityFormula: parcelConfig.liabilityFormula,
+      liabilityDisclaimer: parcelConfig.liabilityDisclaimer,
       insuranceEnabled: false,
       noInsuranceEnabled: parcelConfig.noInsuranceEnabled,
       termsVersion: parcelConfig.termsVersion,
+      paymentMethods: {
+        apiAccepted: PARCEL_API_PAYMENT_METHODS,
+        aliases: PARCEL_PAYMENT_METHOD_ALIASES,
+      },
     },
   };
 };
@@ -226,6 +248,7 @@ const createParcelOrder = async ({ user, payload }) => {
     liabilityFormula: liability.liabilityFormula,
 
     paymentMethod,
+    paymentProvider: normalized.paymentProvider || null,
     paymentStatus: 'pending',
     originalTripFee: quote.quote.subtotal,
     returnTripFee: quote.returnPolicy.customerChargeEnabled ? quote.returnPolicy.returnTripFeeEstimate : 0,
@@ -372,7 +395,7 @@ const initializePaystackForParcel = async ({ user, parcelId }) => {
   await prisma.parcelOrder.update({
     where: { id: parcel.id },
     data: {
-      paymentProvider: 'paystack',
+      paymentProvider: parcelConfig.onlinePaymentProvider,
       paymentReferenceId: init.reference || reference,
       paymentStatus: 'processing',
       status: 'payment_processing',
@@ -387,7 +410,7 @@ const initializePaystackForParcel = async ({ user, parcelId }) => {
     metadata: {
       reference: init.reference || reference,
       amount: Number(parcel.totalAmount || 0),
-      provider: 'paystack',
+      provider: parcelConfig.onlinePaymentProvider,
     },
   });
 
@@ -399,7 +422,12 @@ const initializePaystackForParcel = async ({ user, parcelId }) => {
   };
 };
 
-const confirmParcelPayment = async ({ user, parcelId, reference, provider = 'paystack' }) => {
+const confirmParcelPayment = async ({
+  user,
+  parcelId,
+  reference,
+  provider = parcelConfig.onlinePaymentProvider,
+}) => {
   ensureParcelFeatureEnabled();
   const paymentProvider = ensureSupportedPaymentProvider(provider);
 
