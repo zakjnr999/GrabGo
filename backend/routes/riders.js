@@ -117,9 +117,8 @@ router.get(
   authorize("rider", "admin"),
   async (req, res) => {
     try {
-      const availableOrderStatuses = featureFlags.isRiderAvailableIncludeConfirmed
-        ? ["confirmed", "preparing", "ready"]
-        : ["preparing", "ready"];
+      const riderId = req.user.id;
+      const dispatchableStatuses = ["preparing", "ready"];
 
       // First, get IDs of orders that have active reservations (pending status, not expired)
       const activeReservations = await OrderReservation.find(
@@ -127,20 +126,46 @@ router.get(
           status: 'pending',
           expiresAt: { $gt: new Date() }
         })
-      ).select('orderId');
+      ).select('orderId riderId');
 
       const reservedOrderIds = activeReservations.map(r => r.orderId);
+      const reservedForCurrentRiderIds = activeReservations
+        .filter((r) => String(r.riderId) === String(riderId))
+        .map((r) => r.orderId);
       console.log(`🔒 ${reservedOrderIds.length} orders currently reserved, excluding from available list`);
 
+      const includeConfirmedForReservedRider =
+        featureFlags.isRiderAvailableIncludeConfirmed &&
+        reservedForCurrentRiderIds.length > 0;
+
+      const availableOrderWhere = {
+        riderId: null,
+        fulfillmentMode: "delivery",
+        paymentStatus: { in: ["paid", "successful"] },
+        ...(includeConfirmedForReservedRider
+          ? {
+              OR: [
+                {
+                  status: { in: dispatchableStatuses },
+                  // Exclude orders that have active reservations
+                  id: { notIn: reservedOrderIds },
+                },
+                {
+                  // Confirmed orders are reservation-only.
+                  status: "confirmed",
+                  id: { in: reservedForCurrentRiderIds },
+                },
+              ],
+            }
+          : {
+              status: { in: dispatchableStatuses },
+              // Exclude orders that have active reservations
+              id: { notIn: reservedOrderIds },
+            }),
+      };
+
       const availableOrders = await prisma.order.findMany({
-        where: {
-          riderId: null,
-          fulfillmentMode: "delivery",
-          paymentStatus: { in: ["paid", "successful"] },
-          status: { in: availableOrderStatuses },
-          // Exclude orders that have active reservations
-          id: { notIn: reservedOrderIds }
-        },
+        where: availableOrderWhere,
         select: {
           id: true,
           orderNumber: true,
