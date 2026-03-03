@@ -1,5 +1,6 @@
 const parcelConfig = require('../config/parcel_config');
 const { calculateDistance, estimateDeliveryTime } = require('../utils/distance');
+const { calculateRainFee } = require('./pricing_service');
 const {
   calculateParcelLegEarnings,
   calculateParcelRoundTripEarnings,
@@ -65,7 +66,7 @@ const calculateReturnTripFee = ({ distanceKm, estimatedMinutes }) => {
   };
 };
 
-const calculateParcelQuote = ({ pickup, dropoff, sizeTier, weightKg }) => {
+const calculateParcelQuote = async ({ pickup, dropoff, sizeTier, weightKg }) => {
   const { distanceKm, estimatedMinutes } = calculateLegDistanceAndDuration({ pickup, dropoff });
   const originalTrip = calculateOriginalTripFee({
     distanceKm,
@@ -77,7 +78,11 @@ const calculateParcelQuote = ({ pickup, dropoff, sizeTier, weightKg }) => {
   const serviceFee = roundCurrency(originalTrip.subtotal * toNumber(parcelConfig.pricing.serviceFeeRate, 0));
   const taxableAmount = originalTrip.subtotal + serviceFee;
   const tax = roundCurrency(taxableAmount * toNumber(parcelConfig.pricing.taxRate, 0));
-  const total = roundCurrency(originalTrip.subtotal + serviceFee + tax);
+  const rainFee = await calculateRainFee({
+    deliveryLocation: dropoff,
+    vendorLocation: pickup,
+  });
+  const total = roundCurrency(originalTrip.subtotal + serviceFee + tax + rainFee);
 
   const returnTrip = calculateReturnTripFee({ distanceKm, estimatedMinutes });
   const riderEarnings = calculateParcelRoundTripEarnings(
@@ -99,6 +104,7 @@ const calculateParcelQuote = ({ pickup, dropoff, sizeTier, weightKg }) => {
       subtotal: originalTrip.subtotal,
       serviceFee,
       tax,
+      rainFee,
       total,
       currency: 'GHS',
       breakdown: originalTrip,

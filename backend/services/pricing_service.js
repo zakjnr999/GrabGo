@@ -638,5 +638,6 @@ const calculateOrderPricing = async ({
 module.exports = {
     calculateCartPricing,
     calculateCartGroupsPricing,
-    calculateOrderPricing
+    calculateOrderPricing,
+    calculateRainFee: getRainFee,
 };

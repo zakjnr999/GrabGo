@@ -337,6 +337,7 @@ class ParcelQuoteSummary {
   final double subtotal;
   final double serviceFee;
   final double tax;
+  final double rainFee;
   final double total;
   final String currency;
   final ParcelQuoteBreakdown breakdown;
@@ -347,6 +348,7 @@ class ParcelQuoteSummary {
     required this.subtotal,
     required this.serviceFee,
     required this.tax,
+    required this.rainFee,
     required this.total,
     required this.currency,
     required this.breakdown,
@@ -359,6 +361,7 @@ class ParcelQuoteSummary {
       subtotal: _asDouble(json['subtotal']),
       serviceFee: _asDouble(json['serviceFee']),
       tax: _asDouble(json['tax']),
+      rainFee: _asDouble(json['rainFee']),
       total: _asDouble(json['total']),
       currency: _asString(json['currency'], 'GHS'),
       breakdown: ParcelQuoteBreakdown.fromJson(
@@ -485,6 +488,7 @@ class ParcelOrderSummary {
   final String paymentStatus;
   final String? paymentMethod;
   final double totalAmount;
+  final double rainFee;
   final String currency;
   final DateTime? createdAt;
 
@@ -494,6 +498,7 @@ class ParcelOrderSummary {
     required this.status,
     required this.paymentStatus,
     required this.totalAmount,
+    required this.rainFee,
     required this.currency,
     this.paymentMethod,
     this.createdAt,
@@ -515,6 +520,7 @@ class ParcelOrderSummary {
           ? null
           : _asString(json['paymentMethod']),
       totalAmount: _asDouble(json['totalAmount']),
+      rainFee: _asDouble(json['rainFee']),
       currency: _asString(json['currency'], 'GHS'),
       createdAt: parsedCreatedAt,
     );
@@ -573,6 +579,7 @@ class ParcelOrderDetailModel {
   final String? paymentProvider;
   final String? paymentReferenceId;
   final double totalAmount;
+  final double rainFee;
   final String currency;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -604,6 +611,7 @@ class ParcelOrderDetailModel {
     required this.status,
     required this.paymentStatus,
     required this.totalAmount,
+    required this.rainFee,
     required this.currency,
     required this.scheduleType,
     required this.pickupAddressLine1,
@@ -667,6 +675,7 @@ class ParcelOrderDetailModel {
           ? null
           : _asString(json['paymentReferenceId']),
       totalAmount: _asDouble(json['totalAmount']),
+      rainFee: _asDouble(json['rainFee']),
       currency: _asString(json['currency'], 'GHS'),
       createdAt: parsedCreatedAt,
       updatedAt: parsedUpdatedAt,
@@ -708,6 +717,7 @@ class ParcelOrderDetailModel {
       paymentStatus: paymentStatus,
       paymentMethod: paymentMethod,
       totalAmount: totalAmount,
+      rainFee: rainFee,
       currency: currency,
       createdAt: createdAt,
     );

@@ -39,7 +39,7 @@ router.get('/config', async (_req, res) => {
 
 router.post('/quote', protect, async (req, res) => {
   try {
-    const quote = parcelService.createQuote(req.body || {});
+    const quote = await parcelService.createQuote(req.body || {});
     return res.json({
       success: true,
       message: 'Parcel quote generated successfully',

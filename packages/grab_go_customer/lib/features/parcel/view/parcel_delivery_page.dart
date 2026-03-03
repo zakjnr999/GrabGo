@@ -8,7 +8,8 @@ import 'package:grab_go_customer/features/parcel/widgets/order_actions.dart';
 import 'package:grab_go_customer/features/parcel/widgets/order_card.dart';
 import 'package:grab_go_customer/features/parcel/widgets/order_detail_sheet.dart';
 import 'package:grab_go_customer/shared/models/address_model.dart';
-import 'package:grab_go_customer/shared/services/paystack_service.dart' as paystack;
+import 'package:grab_go_customer/shared/services/paystack_service.dart'
+    as paystack;
 import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_customer/shared/viewmodels/native_location_provider.dart';
 import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
@@ -104,7 +105,9 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
 
     final lat = location.latitude ?? 5.6037;
     final lng = location.longitude ?? -0.1870;
-    final baseAddress = (location.address.isNotEmpty ? location.address : 'Current pickup location');
+    final baseAddress = (location.address.isNotEmpty
+        ? location.address
+        : 'Current pickup location');
 
     _pickupAddressController.text = baseAddress;
     _pickupLatController.text = lat.toStringAsFixed(6);
@@ -129,14 +132,24 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
   bool _validateFormInputs() {
     final errors = <String, String?>{};
 
-    void requireField(TextEditingController controller, String key, String label) {
+    void requireField(
+      TextEditingController controller,
+      String key,
+      String label,
+    ) {
       final error = _required(controller.text, label);
       if (error != null) {
         errors[key] = error;
       }
     }
 
-    void requireNumber(TextEditingController controller, String key, String label, {double? min, double? max}) {
+    void requireNumber(
+      TextEditingController controller,
+      String key,
+      String label, {
+      double? min,
+      double? max,
+    }) {
       final value = _parseDouble(controller.text);
       if (value == null) {
         errors[key] = '$label must be a valid number';
@@ -151,19 +164,56 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
 
     requireField(_pickupAddressController, _pickupAddressKey, 'Pickup address');
     requireField(_pickupCityController, _pickupCityKey, 'Pickup city');
-    requireNumber(_pickupLatController, _pickupLatKey, 'Pickup latitude', min: -90, max: 90);
-    requireNumber(_pickupLngController, _pickupLngKey, 'Pickup longitude', min: -180, max: 180);
+    requireNumber(
+      _pickupLatController,
+      _pickupLatKey,
+      'Pickup latitude',
+      min: -90,
+      max: 90,
+    );
+    requireNumber(
+      _pickupLngController,
+      _pickupLngKey,
+      'Pickup longitude',
+      min: -180,
+      max: 180,
+    );
     requireField(_senderNameController, _senderNameKey, 'Sender name');
     requireField(_senderPhoneController, _senderPhoneKey, 'Sender phone');
 
-    requireField(_dropoffAddressController, _dropoffAddressKey, 'Dropoff address');
+    requireField(
+      _dropoffAddressController,
+      _dropoffAddressKey,
+      'Dropoff address',
+    );
     requireField(_dropoffCityController, _dropoffCityKey, 'Dropoff city');
-    requireNumber(_dropoffLatController, _dropoffLatKey, 'Dropoff latitude', min: -90, max: 90);
-    requireNumber(_dropoffLngController, _dropoffLngKey, 'Dropoff longitude', min: -180, max: 180);
+    requireNumber(
+      _dropoffLatController,
+      _dropoffLatKey,
+      'Dropoff latitude',
+      min: -90,
+      max: 90,
+    );
+    requireNumber(
+      _dropoffLngController,
+      _dropoffLngKey,
+      'Dropoff longitude',
+      min: -180,
+      max: 180,
+    );
     requireField(_recipientNameController, _recipientNameKey, 'Recipient name');
-    requireField(_recipientPhoneController, _recipientPhoneKey, 'Recipient phone');
+    requireField(
+      _recipientPhoneController,
+      _recipientPhoneKey,
+      'Recipient phone',
+    );
 
-    requireNumber(_declaredValueController, _declaredValueKey, 'Declared value', min: 0.01);
+    requireNumber(
+      _declaredValueController,
+      _declaredValueKey,
+      'Declared value',
+      min: 0.01,
+    );
     requireNumber(_weightController, _weightKey, 'Weight', min: 0.01);
 
     setState(() {
@@ -194,7 +244,14 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
     final declaredValue = _parseDouble(_declaredValueController.text);
     final weight = _parseDouble(_weightController.text);
 
-    if ([pickupLat, pickupLng, dropoffLat, dropoffLng, declaredValue, weight].contains(null)) {
+    if ([
+      pickupLat,
+      pickupLng,
+      dropoffLat,
+      dropoffLng,
+      declaredValue,
+      weight,
+    ].contains(null)) {
       return null;
     }
 
@@ -229,11 +286,16 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
     if (!_validateFormInputs()) return;
     final request = _buildQuoteRequest();
     if (request == null) {
-      _showToast('Please enter valid numeric values for coordinates, weight and declared value.');
+      _showToast(
+        'Please enter valid numeric values for coordinates, weight and declared value.',
+      );
       return;
     }
 
-    LoadingDialog.instance().show(context: context, text: 'Getting parcel quote...');
+    LoadingDialog.instance().show(
+      context: context,
+      text: 'Getting parcel quote...',
+    );
     try {
       await provider.requestQuote(request);
     } finally {
@@ -242,7 +304,8 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
     if (!mounted) return;
 
     setState(() {
-      _isQuoteReadyForOrder = provider.errorMessage == null && provider.latestQuote != null;
+      _isQuoteReadyForOrder =
+          provider.errorMessage == null && provider.latestQuote != null;
     });
   }
 
@@ -259,7 +322,9 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
 
     final baseRequest = _buildQuoteRequest();
     if (baseRequest == null) {
-      _showToast('Please enter valid numeric values for coordinates, weight and declared value.');
+      _showToast(
+        'Please enter valid numeric values for coordinates, weight and declared value.',
+      );
       return;
     }
 
@@ -300,7 +365,9 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
   }
 
   void _showToast(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), behavior: SnackBarBehavior.floating));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    );
   }
 
   bool _canRetryPayment(ParcelOrderSummary order) {
@@ -309,7 +376,12 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
   }
 
   bool _canCancelOrder(ParcelOrderSummary order) {
-    const cancellableStatuses = {'pending_payment', 'payment_processing', 'paid', 'awaiting_dispatch'};
+    const cancellableStatuses = {
+      'pending_payment',
+      'payment_processing',
+      'paid',
+      'awaiting_dispatch',
+    };
     return cancellableStatuses.contains(order.status.toLowerCase());
   }
 
@@ -349,7 +421,9 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
   }
 
   Future<void> _pickStopOnMap({required bool isPickup}) async {
-    final result = await context.push('/confirm-address?returnTo=previous&mode=select');
+    final result = await context.push(
+      '/confirm-address?returnTo=previous&mode=select',
+    );
     if (!mounted || result == null) return;
 
     AddressModel? selectedAddress;
@@ -358,7 +432,9 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
     } else if (result is Map<String, dynamic>) {
       selectedAddress = AddressModel.fromJson(result);
     } else if (result is Map) {
-      selectedAddress = AddressModel.fromJson(Map<String, dynamic>.from(result));
+      selectedAddress = AddressModel.fromJson(
+        Map<String, dynamic>.from(result),
+      );
     } else if (result == true) {
       selectedAddress = context.read<NativeLocationProvider>().confirmedAddress;
     }
@@ -370,7 +446,9 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
 
     final city = _resolveCityFromAddress(
       selectedAddress,
-      isPickup ? _pickupCityController.text.trim() : _dropoffCityController.text.trim(),
+      isPickup
+          ? _pickupCityController.text.trim()
+          : _dropoffCityController.text.trim(),
     );
 
     setState(() {
@@ -378,12 +456,18 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
         _pickupAddressController.text = selectedAddress!.formattedAddress;
         _pickupCityController.text = city;
         _pickupLatController.text = selectedAddress.latitude.toStringAsFixed(6);
-        _pickupLngController.text = selectedAddress.longitude.toStringAsFixed(6);
+        _pickupLngController.text = selectedAddress.longitude.toStringAsFixed(
+          6,
+        );
       } else {
         _dropoffAddressController.text = selectedAddress!.formattedAddress;
         _dropoffCityController.text = city;
-        _dropoffLatController.text = selectedAddress.latitude.toStringAsFixed(6);
-        _dropoffLngController.text = selectedAddress.longitude.toStringAsFixed(6);
+        _dropoffLatController.text = selectedAddress.latitude.toStringAsFixed(
+          6,
+        );
+        _dropoffLngController.text = selectedAddress.longitude.toStringAsFixed(
+          6,
+        );
       }
       _isQuoteReadyForOrder = false;
     });
@@ -407,7 +491,10 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
     );
   }
 
-  Future<void> _payForOrder(ParcelProvider provider, ParcelOrderSummary order) async {
+  Future<void> _payForOrder(
+    ParcelProvider provider,
+    ParcelOrderSummary order,
+  ) async {
     final init = await provider.initializePaystack(order.id);
     if (!mounted) return;
     if (init == null) {
@@ -432,7 +519,10 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
       return;
     }
 
-    final confirmation = await provider.confirmPayment(order.id, reference: result.reference ?? init.reference);
+    final confirmation = await provider.confirmPayment(
+      order.id,
+      reference: result.reference ?? init.reference,
+    );
     if (!mounted) return;
     if (confirmation == null) {
       _showToast(provider.errorMessage ?? 'Payment confirmation failed.');
@@ -440,11 +530,16 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
     }
 
     _showToast(
-      confirmation.alreadyPaid ? 'Payment was already confirmed for this parcel.' : 'Payment confirmed successfully.',
+      confirmation.alreadyPaid
+          ? 'Payment was already confirmed for this parcel.'
+          : 'Payment confirmed successfully.',
     );
   }
 
-  Future<void> _cancelOrder(ParcelProvider provider, ParcelOrderSummary order) async {
+  Future<void> _cancelOrder(
+    ParcelProvider provider,
+    ParcelOrderSummary order,
+  ) async {
     final cancelled = await provider.cancelOrder(order.id);
     if (!mounted) return;
     if (cancelled == null) {
@@ -464,7 +559,9 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
       statusBarColor: colors.backgroundPrimary,
       statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       systemNavigationBarColor: colors.backgroundPrimary,
-      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      systemNavigationBarIconBrightness: isDark
+          ? Brightness.light
+          : Brightness.dark,
     );
 
     SystemChrome.setSystemUIOverlayStyle(systemUiOverlayStyle);
@@ -478,21 +575,32 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
           child: Consumer<ParcelProvider>(
             builder: (context, provider, _) {
               final config = provider.config;
-              final isPaymentBusy = provider.isInitializingPayment || provider.isConfirmingPayment;
-              final isAnyOrderActionBusy = isPaymentBusy || provider.isCancellingOrder;
+              final isPaymentBusy =
+                  provider.isInitializingPayment ||
+                  provider.isConfirmingPayment;
+              final isAnyOrderActionBusy =
+                  isPaymentBusy || provider.isCancellingOrder;
               final showCreateOrderCta = _isQuoteReadyForOrder;
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: EdgeInsets.only(top: padding.top + 10, left: 20.w, right: 20.w, bottom: 16.h),
+                    padding: EdgeInsets.only(
+                      top: padding.top + 10,
+                      left: 20.w,
+                      right: 20.w,
+                      bottom: 16.h,
+                    ),
                     child: Row(
                       children: [
                         Container(
                           height: 44,
                           width: 44,
-                          decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
+                          decoration: BoxDecoration(
+                            color: colors.backgroundSecondary,
+                            shape: BoxShape.circle,
+                          ),
                           child: Material(
                             color: Colors.transparent,
                             child: InkWell(
@@ -503,7 +611,10 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
                                 child: SvgPicture.asset(
                                   Assets.icons.navArrowLeft,
                                   package: 'grab_go_shared',
-                                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                                  colorFilter: ColorFilter.mode(
+                                    colors.textPrimary,
+                                    BlendMode.srcIn,
+                                  ),
                                 ),
                               ),
                             ),
@@ -525,7 +636,10 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
                         Container(
                           height: 44,
                           width: 44,
-                          decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
+                          decoration: BoxDecoration(
+                            color: colors.backgroundSecondary,
+                            shape: BoxShape.circle,
+                          ),
                           child: Material(
                             color: Colors.transparent,
                             child: InkWell(
@@ -536,7 +650,10 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
                                 child: SvgPicture.asset(
                                   Assets.icons.squareMenu,
                                   package: 'grab_go_shared',
-                                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                                  colorFilter: ColorFilter.mode(
+                                    colors.textPrimary,
+                                    BlendMode.srcIn,
+                                  ),
                                 ),
                               ),
                             ),
@@ -545,7 +662,11 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
                       ],
                     ),
                   ),
-                  Divider(color: colors.backgroundSecondary, height: 1.h, thickness: 1),
+                  Divider(
+                    color: colors.backgroundSecondary,
+                    height: 1.h,
+                    thickness: 1,
+                  ),
                   Expanded(
                     child: AppRefreshIndicator(
                       onRefresh: _refreshOrders,
@@ -572,7 +693,11 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
                                 ),
                                 child: Text(
                                   provider.errorMessage!,
-                                  style: TextStyle(color: colors.error, fontSize: 13.sp, fontWeight: FontWeight.w600),
+                                  style: TextStyle(
+                                    color: colors.error,
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                               SizedBox(height: 12.h),
@@ -592,7 +717,11 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
                                     onTap: () => _pickStopOnMap(isPickup: true),
                                   ),
                                   SizedBox(height: 8.h),
-                                  _buildTextField(_pickupCityController, 'Pickup city', fieldKey: _pickupCityKey),
+                                  _buildTextField(
+                                    _pickupCityController,
+                                    'Pickup city',
+                                    fieldKey: _pickupCityKey,
+                                  ),
                                   SizedBox(height: 8.h),
                                   Row(
                                     children: [
@@ -601,7 +730,10 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
                                           _pickupLatController,
                                           'Pickup latitude',
                                           fieldKey: _pickupLatKey,
-                                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                          keyboardType:
+                                              const TextInputType.numberWithOptions(
+                                                decimal: true,
+                                              ),
                                         ),
                                       ),
                                       SizedBox(width: 10.w),
@@ -610,7 +742,10 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
                                           _pickupLngController,
                                           'Pickup longitude',
                                           fieldKey: _pickupLngKey,
-                                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                          keyboardType:
+                                              const TextInputType.numberWithOptions(
+                                                decimal: true,
+                                              ),
                                         ),
                                       ),
                                     ],
@@ -633,7 +768,11 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
                               ),
                             ),
                             SizedBox(height: 10.h),
-                            Divider(color: colors.backgroundSecondary, height: 32.h, thickness: 1),
+                            Divider(
+                              color: colors.backgroundSecondary,
+                              height: 32.h,
+                              thickness: 1,
+                            ),
                             SizedBox(height: 10.h),
                             _buildSectionCard(
                               title: 'Recipient',
@@ -647,10 +786,15 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
                                   SizedBox(height: 8.h),
                                   _buildMapPickTile(
                                     title: 'Pick dropoff address on map',
-                                    onTap: () => _pickStopOnMap(isPickup: false),
+                                    onTap: () =>
+                                        _pickStopOnMap(isPickup: false),
                                   ),
                                   SizedBox(height: 8.h),
-                                  _buildTextField(_dropoffCityController, 'Dropoff city', fieldKey: _dropoffCityKey),
+                                  _buildTextField(
+                                    _dropoffCityController,
+                                    'Dropoff city',
+                                    fieldKey: _dropoffCityKey,
+                                  ),
                                   SizedBox(height: 8.h),
                                   Row(
                                     children: [
@@ -659,7 +803,10 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
                                           _dropoffLatController,
                                           'Dropoff latitude',
                                           fieldKey: _dropoffLatKey,
-                                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                          keyboardType:
+                                              const TextInputType.numberWithOptions(
+                                                decimal: true,
+                                              ),
                                         ),
                                       ),
                                       SizedBox(width: 10.w),
@@ -668,7 +815,10 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
                                           _dropoffLngController,
                                           'Dropoff longitude',
                                           fieldKey: _dropoffLngKey,
-                                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                          keyboardType:
+                                              const TextInputType.numberWithOptions(
+                                                decimal: true,
+                                              ),
                                         ),
                                       ),
                                     ],
@@ -691,7 +841,11 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
                               ),
                             ),
                             SizedBox(height: 10.h),
-                            Divider(color: colors.backgroundSecondary, height: 32.h, thickness: 1),
+                            Divider(
+                              color: colors.backgroundSecondary,
+                              height: 32.h,
+                              thickness: 1,
+                            ),
                             SizedBox(height: 10.h),
                             _buildSectionCard(
                               title: 'Parcel Details',
@@ -704,7 +858,10 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
                                           _declaredValueController,
                                           'Declared value (GHS)',
                                           fieldKey: _declaredValueKey,
-                                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                          keyboardType:
+                                              const TextInputType.numberWithOptions(
+                                                decimal: true,
+                                              ),
                                         ),
                                       ),
                                       SizedBox(width: 10.w),
@@ -713,7 +870,10 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
                                           _weightController,
                                           'Weight (kg)',
                                           fieldKey: _weightKey,
-                                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                          keyboardType:
+                                              const TextInputType.numberWithOptions(
+                                                decimal: true,
+                                              ),
                                         ),
                                       ),
                                     ],
@@ -737,7 +897,10 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
                                   _buildChoiceSelector(
                                     title: 'Payment method',
                                     selected: _paymentMethod,
-                                    choices: const [('paystack', 'Paystack'), ('card', 'Card')],
+                                    choices: const [
+                                      ('paystack', 'Paystack'),
+                                      ('card', 'Card'),
+                                    ],
                                     onSelected: (value) => setState(() {
                                       _paymentMethod = value;
                                       _isQuoteReadyForOrder = false;
@@ -750,12 +913,15 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
                                       _acceptProhibited = value;
                                       _isQuoteReadyForOrder = false;
                                     }),
-                                    title: 'I confirm this parcel has no prohibited items',
+                                    title:
+                                        'I confirm this parcel has no prohibited items',
                                   ),
                                   _buildConsentTile(
                                     value: _acceptTerms,
-                                    onChanged: (value) => setState(() => _acceptTerms = value),
-                                    title: 'I accept parcel terms and liability policy',
+                                    onChanged: (value) =>
+                                        setState(() => _acceptTerms = value),
+                                    title:
+                                        'I accept parcel terms and liability policy',
                                   ),
                                 ],
                               ),
@@ -763,7 +929,9 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
                             SizedBox(height: 14.h),
                             if (provider.latestQuote != null)
                               Padding(
-                                padding: EdgeInsets.symmetric(horizontal: -20.w),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: -20.w,
+                                ),
                                 child: _QuoteCard(quote: provider.latestQuote!),
                               ),
                             if (provider.latestOrder != null) ...[
@@ -771,16 +939,29 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
                               OrderCard(
                                 title: 'Latest Order',
                                 order: provider.latestOrder!,
-                                createdAtLabel: _formatDate(provider.latestOrder!.createdAt),
+                                createdAtLabel: _formatDate(
+                                  provider.latestOrder!.createdAt,
+                                ),
                               ),
                               SizedBox(height: 8.h),
                               OrderActions(
                                 isBusy: isAnyOrderActionBusy,
                                 canPay: _canRetryPayment(provider.latestOrder!),
-                                canCancel: _canCancelOrder(provider.latestOrder!),
-                                onViewDetails: () => _viewOrder(provider, provider.latestOrder!.id),
-                                onPay: () => _payForOrder(provider, provider.latestOrder!),
-                                onCancel: () => _cancelOrder(provider, provider.latestOrder!),
+                                canCancel: _canCancelOrder(
+                                  provider.latestOrder!,
+                                ),
+                                onViewDetails: () => _viewOrder(
+                                  provider,
+                                  provider.latestOrder!.id,
+                                ),
+                                onPay: () => _payForOrder(
+                                  provider,
+                                  provider.latestOrder!,
+                                ),
+                                onCancel: () => _cancelOrder(
+                                  provider,
+                                  provider.latestOrder!,
+                                ),
                               ),
                             ],
                             if (provider.isLoadingOrderDetail)
@@ -820,22 +1001,44 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
                     ),
                   ),
                   Container(
-                    padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 16.h, bottom: padding.bottom + 16.h),
+                    padding: EdgeInsets.only(
+                      left: 20.w,
+                      right: 20.w,
+                      top: 16.h,
+                      bottom: padding.bottom + 16.h,
+                    ),
                     decoration: BoxDecoration(
                       color: colors.backgroundPrimary,
-                      border: Border(top: BorderSide(color: colors.backgroundSecondary, width: 1)),
+                      border: Border(
+                        top: BorderSide(
+                          color: colors.backgroundSecondary,
+                          width: 1,
+                        ),
+                      ),
                     ),
                     child: AppButton(
                       width: double.infinity,
                       onPressed: showCreateOrderCta
-                          ? (provider.isCreatingOrder ? () {} : () => _createOrder(provider))
+                          ? (provider.isCreatingOrder
+                                ? () {}
+                                : () => _createOrder(provider))
                           : _getQuote,
-                      isLoading: showCreateOrderCta ? provider.isCreatingOrder : false,
-                      buttonText: showCreateOrderCta ? 'Create Order' : 'Get Quote',
+                      isLoading: showCreateOrderCta
+                          ? provider.isCreatingOrder
+                          : false,
+                      buttonText: showCreateOrderCta
+                          ? 'Create Order'
+                          : 'Get Quote',
                       height: KWidgetSize.buttonHeight.h,
                       borderRadius: KBorderSize.borderMedium,
-                      textStyle: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w800),
-                      backgroundColor: showCreateOrderCta ? colors.accentOrange : colors.accentOrange,
+                      textStyle: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      backgroundColor: showCreateOrderCta
+                          ? colors.accentOrange
+                          : colors.accentOrange,
                     ),
                   ),
                 ],
@@ -872,7 +1075,10 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
     );
   }
 
-  Widget _buildMapPickTile({required String title, required VoidCallback onTap}) {
+  Widget _buildMapPickTile({
+    required String title,
+    required VoidCallback onTap,
+  }) {
     final colors = context.appColors;
     return GestureDetector(
       onTap: onTap,
@@ -890,13 +1096,20 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
               package: 'grab_go_shared',
               height: 18.h,
               width: 18.w,
-              colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(
+                colors.accentOrange,
+                BlendMode.srcIn,
+              ),
             ),
             SizedBox(width: 12.w),
             Expanded(
               child: Text(
                 title,
-                style: TextStyle(color: colors.accentOrange, fontSize: 13.sp, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  color: colors.accentOrange,
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
             SvgPicture.asset(
@@ -904,7 +1117,10 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
               package: 'grab_go_shared',
               height: 16.h,
               width: 16.w,
-              colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(
+                colors.accentOrange,
+                BlendMode.srcIn,
+              ),
             ),
           ],
         ),
@@ -927,7 +1143,10 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
       borderRadius: KBorderSize.borderMedium,
       errorText: _fieldErrors[fieldKey],
       contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
-      hintStyle: TextStyle(color: context.appColors.textSecondary, fontSize: 13.sp),
+      hintStyle: TextStyle(
+        color: context.appColors.textSecondary,
+        fontSize: 13.sp,
+      ),
       onChanged: (_) {
         _clearFieldError(fieldKey);
         _markQuoteStale();
@@ -954,7 +1173,11 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
         children: [
           Text(
             title,
-            style: TextStyle(color: colors.textPrimary, fontSize: 13.sp, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              color: colors.textPrimary,
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           SizedBox(height: 10.h),
           Wrap(
@@ -969,18 +1192,29 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
                   duration: const Duration(milliseconds: 220),
                   curve: Curves.easeInOutCubic,
                   builder: (context, progress, _) {
-                    final backgroundColor = Color.lerp(colors.backgroundSecondary, colors.accentOrange, progress);
+                    final backgroundColor = Color.lerp(
+                      colors.backgroundSecondary,
+                      colors.accentOrange,
+                      progress,
+                    );
                     final borderColor = Color.lerp(
                       colors.inputBorder.withValues(alpha: 0.45),
                       colors.accentOrange,
                       progress,
                     );
-                    final textColor = Color.lerp(colors.textPrimary, Colors.white, progress);
+                    final textColor = Color.lerp(
+                      colors.textPrimary,
+                      Colors.white,
+                      progress,
+                    );
 
                     return Transform.scale(
                       scale: 0.985 + (0.015 * progress),
                       child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 14.w,
+                          vertical: 8.h,
+                        ),
                         decoration: BoxDecoration(
                           color: backgroundColor,
                           borderRadius: BorderRadius.circular(20.r),
@@ -990,7 +1224,9 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
                           choice.$2,
                           style: TextStyle(
                             color: textColor,
-                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
                             fontSize: 13.sp,
                           ),
                         ),
@@ -1006,7 +1242,11 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
     );
   }
 
-  Widget _buildConsentTile({required bool value, required ValueChanged<bool> onChanged, required String title}) {
+  Widget _buildConsentTile({
+    required bool value,
+    required ValueChanged<bool> onChanged,
+    required String title,
+  }) {
     final colors = context.appColors;
     return Container(
       margin: EdgeInsets.only(bottom: 8.h),
@@ -1022,7 +1262,11 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
         onChanged: (next) => onChanged(next ?? false),
         title: Text(
           title,
-          style: TextStyle(color: colors.textPrimary, fontSize: 13.sp, fontWeight: FontWeight.w600),
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontSize: 13.sp,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );
@@ -1042,7 +1286,11 @@ class _PolicyCard extends StatelessWidget {
       children: [
         Text(
           'Parcel Policy',
-          style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w800, fontSize: 15.sp),
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontWeight: FontWeight.w800,
+            fontSize: 15.sp,
+          ),
         ),
         SizedBox(height: 8.h),
         Text(
@@ -1076,7 +1324,8 @@ class _QuoteCard extends StatelessWidget {
 
   const _QuoteCard({required this.quote});
 
-  String _formatMoney(String currency, double value) => '$currency ${value.toStringAsFixed(2)}';
+  String _formatMoney(String currency, double value) =>
+      '$currency ${value.toStringAsFixed(2)}';
 
   Widget _buildSummaryRow(
     AppColorsExtension colors, {
@@ -1113,7 +1362,11 @@ class _QuoteCard extends StatelessWidget {
     final summary = quote.quote;
     final breakdown = summary.breakdown;
     final deliveryFee =
-        breakdown.baseFee + breakdown.distanceFee + breakdown.timeFee + breakdown.sizeFee + breakdown.weightFee;
+        breakdown.baseFee +
+        breakdown.distanceFee +
+        breakdown.timeFee +
+        breakdown.sizeFee +
+        breakdown.weightFee;
     final currency = summary.currency;
 
     return ClipRRect(
@@ -1132,7 +1385,11 @@ class _QuoteCard extends StatelessWidget {
                 padding: EdgeInsets.fromLTRB(14.w, 16.h, 14.w, 12.h),
                 child: Text(
                   'Quote Summary',
-                  style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w800),
+                  style: TextStyle(
+                    color: colors.textPrimary,
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ),
@@ -1149,15 +1406,24 @@ class _QuoteCard extends StatelessWidget {
                   padding: EdgeInsets.all(12.r),
                   decoration: BoxDecoration(
                     color: colors.backgroundPrimary,
-                    borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                    border: Border.all(color: colors.inputBorder.withValues(alpha: 0.35), width: 0.8),
+                    borderRadius: BorderRadius.circular(
+                      KBorderSize.borderMedium,
+                    ),
+                    border: Border.all(
+                      color: colors.inputBorder.withValues(alpha: 0.35),
+                      width: 0.8,
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Order Items',
-                        style: TextStyle(color: colors.textPrimary, fontSize: 12.sp, fontWeight: FontWeight.w800),
+                        style: TextStyle(
+                          color: colors.textPrimary,
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                       SizedBox(height: 10.h),
                       Row(
@@ -1165,12 +1431,20 @@ class _QuoteCard extends StatelessWidget {
                           Expanded(
                             child: Text(
                               'Parcel Delivery x1',
-                              style: TextStyle(color: colors.textPrimary, fontSize: 12.sp, fontWeight: FontWeight.w700),
+                              style: TextStyle(
+                                color: colors.textPrimary,
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                           Text(
                             _formatMoney(currency, summary.subtotal),
-                            style: TextStyle(color: colors.textPrimary, fontSize: 12.sp, fontWeight: FontWeight.w700),
+                            style: TextStyle(
+                              color: colors.textPrimary,
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ],
                       ),
@@ -1178,11 +1452,31 @@ class _QuoteCard extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: 10.h),
-                _buildSummaryRow(colors, label: 'Subtotal', value: _formatMoney(currency, summary.subtotal)),
+                _buildSummaryRow(
+                  colors,
+                  label: 'Subtotal',
+                  value: _formatMoney(currency, summary.subtotal),
+                ),
                 SizedBox(height: 6.h),
-                _buildSummaryRow(colors, label: 'Delivery Fee', value: _formatMoney(currency, deliveryFee)),
+                _buildSummaryRow(
+                  colors,
+                  label: 'Delivery Fee',
+                  value: _formatMoney(currency, deliveryFee),
+                ),
                 SizedBox(height: 6.h),
-                _buildSummaryRow(colors, label: 'Service Fee', value: _formatMoney(currency, summary.serviceFee)),
+                _buildSummaryRow(
+                  colors,
+                  label: 'Service Fee',
+                  value: _formatMoney(currency, summary.serviceFee),
+                ),
+                if (summary.rainFee > 0) ...[
+                  SizedBox(height: 6.h),
+                  _buildSummaryRow(
+                    colors,
+                    label: 'Rain Surcharge',
+                    value: _formatMoney(currency, summary.rainFee),
+                  ),
+                ],
                 SizedBox(height: 8.h),
                 _buildSummaryRow(
                   colors,
@@ -1193,7 +1487,11 @@ class _QuoteCard extends StatelessWidget {
                 SizedBox(height: 8.h),
                 Text(
                   'Est. Delivery: ${summary.estimatedMinutes} min • ${summary.distanceKm.toStringAsFixed(2)} km',
-                  style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),

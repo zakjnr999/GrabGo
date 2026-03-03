@@ -26,9 +26,7 @@ const NON_AUTHORITATIVE_LIFECYCLE_STATUSES = new Set(['confirmed', 'ready', 'on_
 
 class TrackingService {
     constructor() {
-        // Track pending location updates per order (for batching)
         this.pendingLocations = new Map();
-        // Track last MongoDB persist time per order
         this.lastPersistTime = new Map();
     }
     /**

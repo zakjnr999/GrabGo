@@ -7,8 +7,8 @@ describe('parcel_pricing_service', () => {
   const pickup = { latitude: 5.6037, longitude: -0.187 };
   const dropoff = { latitude: 5.65, longitude: -0.16 };
 
-  it('returns quote with return-to-sender policy and rider earnings', () => {
-    const result = calculateParcelQuote({
+  it('returns quote with return-to-sender policy and rider earnings', async () => {
+    const result = await calculateParcelQuote({
       pickup,
       dropoff,
       sizeTier: 'medium',

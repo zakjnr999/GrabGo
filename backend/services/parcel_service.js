@@ -57,7 +57,7 @@ const isParcelNumberConflict = (error) => {
   return error?.code === 'P2002' && targetString.includes('parcelNumber');
 };
 
-const buildQuotePayload = (normalizedInput) => calculateParcelQuote({
+const buildQuotePayload = async (normalizedInput) => calculateParcelQuote({
   pickup: normalizedInput.pickup,
   dropoff: normalizedInput.dropoff,
   sizeTier: normalizedInput.sizeTier,
@@ -152,7 +152,7 @@ const getParcelConfig = () => ({
   },
 });
 
-const createQuote = (payload) => {
+const createQuote = async (payload) => {
   ensureParcelFeatureEnabled();
 
   const normalized = normalizeParcelInput(payload, {
@@ -161,7 +161,7 @@ const createQuote = (payload) => {
     requireProhibitedItemsAcceptance: false,
   });
 
-  const quote = buildQuotePayload(normalized);
+  const quote = await buildQuotePayload(normalized);
 
   return {
     ...quote,
@@ -190,7 +190,7 @@ const createParcelOrder = async ({ user, payload }) => {
   });
 
   const paymentMethod = ensureValidPaymentMethod(normalized.paymentMethod);
-  const quote = buildQuotePayload(normalized);
+  const quote = await buildQuotePayload(normalized);
   const scheduleWindow = buildScheduleWindow({
     scheduleType: normalized.scheduleType,
     scheduledPickupAt: normalized.scheduledPickupAt,
@@ -251,6 +251,7 @@ const createParcelOrder = async ({ user, payload }) => {
     paymentProvider: normalized.paymentProvider || null,
     paymentStatus: 'pending',
     originalTripFee: quote.quote.subtotal,
+    rainFee: quote.quote.rainFee,
     returnTripFee: quote.returnPolicy.customerChargeEnabled ? quote.returnPolicy.returnTripFeeEstimate : 0,
     serviceFee: quote.quote.serviceFee,
     tax: quote.quote.tax,
@@ -299,6 +300,7 @@ const createParcelOrder = async ({ user, payload }) => {
       scheduleType: normalized.scheduleType,
       declaredValueGhs: normalized.declaredValueGhs,
       totalAmount: quote.quote.total,
+      rainFee: quote.quote.rainFee,
       returnChargeEnabled: quote.returnPolicy.customerChargeEnabled,
       returnChargeEstimate: quote.returnPolicy.returnTripFeeEstimate,
     },

@@ -1470,6 +1470,7 @@ model ParcelOrder {
   returnTripFee      Float         @default(0)
   serviceFee         Float         @default(0)
   tax                Float         @default(0)
+  rainFee            Float         @default(0)
   totalAmount        Float         @default(0)
   currency           Currency      @default(GHS)
   returnChargeStatus ReturnChargeStatus @default(not_applicable)
