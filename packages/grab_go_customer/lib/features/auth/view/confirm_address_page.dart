@@ -17,7 +17,12 @@ import 'package:provider/provider.dart';
 
 class ConfirmAddressPage extends StatefulWidget {
   final bool returnToPrevious;
-  const ConfirmAddressPage({super.key, this.returnToPrevious = false});
+  final bool selectionOnly;
+  const ConfirmAddressPage({
+    super.key,
+    this.returnToPrevious = false,
+    this.selectionOnly = false,
+  });
 
   @override
   State<ConfirmAddressPage> createState() => _ConfirmAddressPageState();
@@ -25,7 +30,8 @@ class ConfirmAddressPage extends StatefulWidget {
 
 class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
   GoogleMapController? _mapController;
-  final DraggableScrollableController _sheetController = DraggableScrollableController();
+  final DraggableScrollableController _sheetController =
+      DraggableScrollableController();
   final FocusNode _searchFocusNode = FocusNode();
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _unitController = TextEditingController();
@@ -82,10 +88,16 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
   }
 
   Future<void> _initializeLocation() async {
-    final locationProvider = Provider.of<NativeLocationProvider>(context, listen: false);
+    final locationProvider = Provider.of<NativeLocationProvider>(
+      context,
+      listen: false,
+    );
     if (locationProvider.hasLocation) {
       setState(() {
-        _currentMapPosition = LatLng(locationProvider.latitude!, locationProvider.longitude!);
+        _currentMapPosition = LatLng(
+          locationProvider.latitude!,
+          locationProvider.longitude!,
+        );
         _currentAddress = locationProvider.address;
       });
     } else {
@@ -107,7 +119,11 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
           setState(() => _isReverseGeocoding = false);
           if (isManual) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Unable to get your current location. Please check your permissions.')),
+              const SnackBar(
+                content: Text(
+                  'Unable to get your current location. Please check your permissions.',
+                ),
+              ),
             );
           }
         }
@@ -116,7 +132,9 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
       if (mounted) {
         setState(() => _isReverseGeocoding = false);
         if (isManual) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
         }
       }
     }
@@ -166,7 +184,12 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
     try {
       final cacheKey = _cacheKey(position);
       final cached = _addressCache[cacheKey];
-      final address = cached ?? await LocationService.getAddressFromCoordinates(position.latitude, position.longitude);
+      final address =
+          cached ??
+          await LocationService.getAddressFromCoordinates(
+            position.latitude,
+            position.longitude,
+          );
 
       if (mounted && requestId == _geocodingRequestId) {
         _addressCache[cacheKey] = address;
@@ -200,7 +223,11 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
   void _revealSheet() {
     if (_sheetController.isAttached) {
       if (_sheetController.size < 0.24) {
-        _sheetController.animateTo(0.48, duration: const Duration(milliseconds: 280), curve: Curves.easeOutCubic);
+        _sheetController.animateTo(
+          0.48,
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutCubic,
+        );
       }
     } else if (!_pendingReveal) {
       _pendingReveal = true;
@@ -221,15 +248,26 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
 
   void _collapseSheet() {
     if (_sheetController.isAttached) {
-      _sheetController.animateTo(0.18, duration: const Duration(milliseconds: 220), curve: Curves.easeOutCubic);
+      _sheetController.animateTo(
+        0.18,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+      );
     }
   }
 
-  Future<void> _showBuildingTypePicker(AppColorsExtension colors, bool isDark) async {
+  Future<void> _showBuildingTypePicker(
+    AppColorsExtension colors,
+    bool isDark,
+  ) async {
     final selected = await showModalBottomSheet<BuildingType>(
       context: context,
       backgroundColor: colors.backgroundPrimary,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(KBorderSize.border.r))),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(KBorderSize.border.r),
+        ),
+      ),
       builder: (context) {
         return SafeArea(
           top: false,
@@ -254,7 +292,11 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
                   padding: EdgeInsets.symmetric(horizontal: 20.w),
                   child: Text(
                     "Select Building Type",
-                    style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w800,
+                      color: colors.textPrimary,
+                    ),
                   ),
                 ),
                 SizedBox(height: KSpacing.md.h),
@@ -266,7 +308,9 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
                       type.name.capitalize(),
                       style: TextStyle(
                         fontSize: isSelected ? 16.sp : 14.sp,
-                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        fontWeight: isSelected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
                         color: colors.textPrimary,
                       ),
                     ),
@@ -287,11 +331,17 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
     }
   }
 
-  Future<void> _showDeliveryInstructionsPicker(AppColorsExtension colors) async {
+  Future<void> _showDeliveryInstructionsPicker(
+    AppColorsExtension colors,
+  ) async {
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: colors.backgroundPrimary,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(KBorderSize.border.r))),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(KBorderSize.border.r),
+        ),
+      ),
       builder: (context) {
         return SafeArea(
           top: false,
@@ -316,11 +366,20 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
                   padding: EdgeInsets.symmetric(horizontal: 20.w),
                   child: Text(
                     "Delivery Instructions",
-                    style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w800,
+                      color: colors.textPrimary,
+                    ),
                   ),
                 ),
                 SizedBox(height: KSpacing.md.h),
-                ...["Leave at door", "Ring doorbell", "Text on arrival", "Call on arrival"].map((label) {
+                ...[
+                  "Leave at door",
+                  "Ring doorbell",
+                  "Text on arrival",
+                  "Call on arrival",
+                ].map((label) {
                   final isSelected = _selectedDeliveryInstruction == label;
                   return ListTile(
                     contentPadding: EdgeInsets.symmetric(horizontal: 20.w),
@@ -328,7 +387,9 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
                       label,
                       style: TextStyle(
                         fontSize: 14.sp,
-                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        fontWeight: isSelected
+                            ? FontWeight.w700
+                            : FontWeight.w500,
                         color: colors.textPrimary,
                       ),
                     ),
@@ -348,7 +409,9 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
                     "Custom",
                     style: TextStyle(
                       fontSize: _showCustomDeliveryInstruction ? 16.sp : 14.sp,
-                      fontWeight: _showCustomDeliveryInstruction ? FontWeight.w700 : FontWeight.w500,
+                      fontWeight: _showCustomDeliveryInstruction
+                          ? FontWeight.w700
+                          : FontWeight.w500,
                       color: colors.textPrimary,
                     ),
                   ),
@@ -371,8 +434,12 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
   }
 
   void _onPlaceSelected(Prediction prediction) {
-    final lat = prediction.lat != null ? double.tryParse(prediction.lat!) : null;
-    final lng = prediction.lng != null ? double.tryParse(prediction.lng!) : null;
+    final lat = prediction.lat != null
+        ? double.tryParse(prediction.lat!)
+        : null;
+    final lng = prediction.lng != null
+        ? double.tryParse(prediction.lng!)
+        : null;
 
     if (lat != null && lng != null) {
       _geocodingRequestId++;
@@ -389,7 +456,8 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
   }
 
   Future<void> _confirmAddress() async {
-    if (_selectedLabel == AddressLabel.other && _customLabelController.text.trim().isEmpty) {
+    if (_selectedLabel == AddressLabel.other &&
+        _customLabelController.text.trim().isEmpty) {
       if (mounted) {
         AppToastMessage.show(
           context: context,
@@ -405,7 +473,9 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
       longitude: _currentMapPosition.longitude,
       formattedAddress: _currentAddress,
       label: _selectedLabel,
-      customLabel: _selectedLabel == AddressLabel.other ? _customLabelController.text.trim() : null,
+      customLabel: _selectedLabel == AddressLabel.other
+          ? _customLabelController.text.trim()
+          : null,
       buildingType: _selectedBuildingType,
       unitNumber: _unitController.text,
       floor: _floorController.text,
@@ -414,11 +484,23 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
       isDefault: true,
     );
 
+    if (widget.selectionOnly) {
+      if (mounted) {
+        context.pop(addressModel);
+      }
+      return;
+    }
+
     setState(() => _isSyncing = true);
 
     try {
-      final locationProvider = Provider.of<NativeLocationProvider>(context, listen: false);
-      debugPrint('📍 ConfirmAddressPage: Confirming address: ${addressModel.formattedAddress}');
+      final locationProvider = Provider.of<NativeLocationProvider>(
+        context,
+        listen: false,
+      );
+      debugPrint(
+        '📍 ConfirmAddressPage: Confirming address: ${addressModel.formattedAddress}',
+      );
       await locationProvider.setConfirmedAddress(addressModel);
 
       if (mounted) {
@@ -441,10 +523,12 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
   }
 
   String _buildDeliveryInstructions() {
-    if (_selectedDeliveryInstruction != null && _selectedDeliveryInstruction!.isNotEmpty) {
+    if (_selectedDeliveryInstruction != null &&
+        _selectedDeliveryInstruction!.isNotEmpty) {
       return _selectedDeliveryInstruction!;
     }
-    if (_showCustomDeliveryInstruction && _instructionsController.text.trim().isNotEmpty) {
+    if (_showCustomDeliveryInstruction &&
+        _instructionsController.text.trim().isNotEmpty) {
       return _instructionsController.text.trim();
     }
     return "";
@@ -468,7 +552,9 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
             Positioned.fill(
               child: _ConfirmAddressMap(
                 initialPosition: _currentMapPosition,
-                mapStyle: GrabGoMapStyles.forBrightness(Theme.of(context).brightness),
+                mapStyle: GrabGoMapStyles.forBrightness(
+                  Theme.of(context).brightness,
+                ),
                 onMapCreated: (controller) {
                   _mapController = controller;
                 },
@@ -485,15 +571,29 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
                   children: [
                     if (!_hasMovedMap)
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 6.h,
+                        ),
                         decoration: BoxDecoration(
                           color: colors.backgroundPrimary,
-                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius20.r),
-                          boxShadow: [BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 10)],
+                          borderRadius: BorderRadius.circular(
+                            KBorderSize.borderRadius20.r,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withAlpha(10),
+                              blurRadius: 10,
+                            ),
+                          ],
                         ),
                         child: Text(
                           "Drag map to refine location",
-                          style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w600,
+                            color: colors.textPrimary,
+                          ),
                         ),
                       ),
                     if (!_hasMovedMap) SizedBox(height: 8.h),
@@ -502,15 +602,24 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
                         padding: EdgeInsets.all(4.r),
                         decoration: BoxDecoration(
                           color: colors.backgroundPrimary,
-                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius20.r),
-                          boxShadow: [BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 10)],
+                          borderRadius: BorderRadius.circular(
+                            KBorderSize.borderRadius20.r,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withAlpha(10),
+                              blurRadius: 10,
+                            ),
+                          ],
                         ),
                         child: SizedBox(
                           width: 16.w,
                           height: 16.h,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation(colors.accentOrange),
+                            valueColor: AlwaysStoppedAnimation(
+                              colors.accentOrange,
+                            ),
                           ),
                         ),
                       ),
@@ -519,7 +628,10 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
                       Assets.icons.mapPinSimpleFill,
                       package: 'grab_go_shared',
                       height: 48.h,
-                      colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                      colorFilter: ColorFilter.mode(
+                        colors.accentOrange,
+                        BlendMode.srcIn,
+                      ),
                     ),
                   ],
                 ),
@@ -572,7 +684,13 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
         shape: BoxShape.circle,
-        boxShadow: [BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(10),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Material(
         color: Colors.transparent,
@@ -584,7 +702,10 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
             child: SvgPicture.asset(
               Assets.icons.navArrowLeft,
               package: 'grab_go_shared',
-              colorFilter: ColorFilter.mode(colors.iconPrimary, BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(
+                colors.iconPrimary,
+                BlendMode.srcIn,
+              ),
             ),
           ),
         ),
@@ -599,7 +720,13 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
         borderRadius: BorderRadius.circular(KBorderSize.border.r),
-        boxShadow: [BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(10),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: GooglePlaceAutoCompleteTextField(
         textEditingController: _searchController,
@@ -608,7 +735,11 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
         isCrossBtnShown: false,
         inputDecoration: InputDecoration(
           hintText: "Search location...",
-          hintStyle: TextStyle(color: colors.textSecondary, fontSize: 15.sp, fontWeight: FontWeight.w500),
+          hintStyle: TextStyle(
+            color: colors.textSecondary,
+            fontSize: 15.sp,
+            fontWeight: FontWeight.w500,
+          ),
           prefixIcon: Padding(
             padding: EdgeInsets.only(right: 12.w),
             child: SvgPicture.asset(
@@ -616,7 +747,10 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
               package: 'grab_go_shared',
               width: 20.w,
               height: 20.w,
-              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(
+                colors.textPrimary,
+                BlendMode.srcIn,
+              ),
             ),
           ),
           suffixIcon: _searchController.text.isNotEmpty
@@ -627,7 +761,8 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
                         _searchController.clear();
                         _searchFocusNode.unfocus();
                         try {
-                          final state = iconContext.findAncestorStateOfType<State>();
+                          final state = iconContext
+                              .findAncestorStateOfType<State>();
                           (state as dynamic).clearData();
                         } catch (_) {}
                         setState(() {});
@@ -639,15 +774,24 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
                           package: 'grab_go_shared',
                           width: 20.w,
                           height: 20.w,
-                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                          colorFilter: ColorFilter.mode(
+                            colors.textSecondary,
+                            BlendMode.srcIn,
+                          ),
                         ),
                       ),
                     );
                   },
                 )
               : null,
-          suffixIconConstraints: BoxConstraints(minWidth: 20.w, minHeight: 20.w),
-          prefixIconConstraints: BoxConstraints(minWidth: 20.w, minHeight: 20.w),
+          suffixIconConstraints: BoxConstraints(
+            minWidth: 20.w,
+            minHeight: 20.w,
+          ),
+          prefixIconConstraints: BoxConstraints(
+            minWidth: 20.w,
+            minHeight: 20.w,
+          ),
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,
@@ -659,7 +803,8 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
         debounceTime: 400,
         countries: const ["gh"],
         isLatLngRequired: true,
-        getPlaceDetailWithLatLng: (Prediction prediction) => _onPlaceSelected(prediction),
+        getPlaceDetailWithLatLng: (Prediction prediction) =>
+            _onPlaceSelected(prediction),
         itemClick: (Prediction prediction) {
           _searchController.text = prediction.description ?? "";
         },
@@ -674,7 +819,10 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
                   package: 'grab_go_shared',
                   width: 16.w,
                   height: 16.h,
-                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                  colorFilter: ColorFilter.mode(
+                    colors.accentOrange,
+                    BlendMode.srcIn,
+                  ),
                 ),
                 SizedBox(width: 12.w),
                 Expanded(
@@ -682,16 +830,26 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        prediction.structuredFormatting?.mainText ?? prediction.description ?? '',
-                        style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                        prediction.structuredFormatting?.mainText ??
+                            prediction.description ??
+                            '',
+                        style: TextStyle(
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w600,
+                          color: colors.textPrimary,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      if (prediction.structuredFormatting?.secondaryText != null) ...[
+                      if (prediction.structuredFormatting?.secondaryText !=
+                          null) ...[
                         SizedBox(height: 2.h),
                         Text(
                           prediction.structuredFormatting!.secondaryText!,
-                          style: TextStyle(fontSize: 12.sp, color: colors.textSecondary),
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            color: colors.textSecondary,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -724,7 +882,13 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
         shape: BoxShape.circle,
-        boxShadow: [BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(10),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Material(
         color: Colors.transparent,
@@ -736,7 +900,10 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
             child: SvgPicture.asset(
               icon,
               package: 'grab_go_shared',
-              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(
+                colors.textPrimary,
+                BlendMode.srcIn,
+              ),
               width: 22.w,
               height: 22.w,
             ),
@@ -761,7 +928,9 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
           decoration: BoxDecoration(
             color: colors.backgroundPrimary,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(KBorderSize.border.r)),
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(KBorderSize.border.r),
+            ),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withAlpha(10),
@@ -805,7 +974,11 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
 
                       Text(
                         "Address Label",
-                        style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                        style: TextStyle(
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w800,
+                          color: colors.textPrimary,
+                        ),
                       ),
                       SizedBox(height: KSpacing.sm.h),
                       Wrap(
@@ -824,19 +997,28 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
                                 _selectedLabel = label;
                               });
                               if (label == AddressLabel.other) {
-                                WidgetsBinding.instance.addPostFrameCallback((_) {
-                                  if (mounted) _customLabelFocusNode.requestFocus();
+                                WidgetsBinding.instance.addPostFrameCallback((
+                                  _,
+                                ) {
+                                  if (mounted) {
+                                    _customLabelFocusNode.requestFocus();
+                                  }
                                 });
                               }
                             },
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
                               decoration: BoxDecoration(
-                                color: isSelected ? colors.accentOrange : colors.backgroundSecondary,
+                                color: isSelected
+                                    ? colors.accentOrange
+                                    : colors.backgroundSecondary,
                                 borderRadius: BorderRadius.circular(20.r),
                               ),
 
-                              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 14.w,
+                                vertical: 8.h,
+                              ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
@@ -846,15 +1028,25 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
                                     width: 16.r,
                                     height: 16.r,
                                     colorFilter: isSelected
-                                        ? const ColorFilter.mode(Colors.white, BlendMode.srcIn)
-                                        : ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                        ? const ColorFilter.mode(
+                                            Colors.white,
+                                            BlendMode.srcIn,
+                                          )
+                                        : ColorFilter.mode(
+                                            colors.textSecondary,
+                                            BlendMode.srcIn,
+                                          ),
                                   ),
                                   SizedBox(width: 4.w),
                                   Text(
                                     label.name,
                                     style: TextStyle(
-                                      color: isSelected ? Colors.white : colors.textSecondary,
-                                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : colors.textSecondary,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
                                       fontSize: 13.sp,
                                     ),
                                   ),
@@ -875,7 +1067,8 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
                                 child: AppTextInput(
                                   controller: _customLabelController,
                                   focusNode: _customLabelFocusNode,
-                                  hintText: "Custom label (e.g., Parents' House)",
+                                  hintText:
+                                      "Custom label (e.g., Parents' House)",
                                   fillColor: colors.backgroundSecondary,
                                   borderRadius: KBorderSize.borderMedium,
                                 ),
@@ -886,16 +1079,25 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
 
                       Text(
                         "Building Type",
-                        style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                        style: TextStyle(
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w800,
+                          color: colors.textPrimary,
+                        ),
                       ),
                       SizedBox(height: KSpacing.sm.h),
                       GestureDetector(
                         onTap: () => _showBuildingTypePicker(colors, isDark),
                         child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16.w,
+                            vertical: 12.h,
+                          ),
                           decoration: BoxDecoration(
                             color: colors.backgroundSecondary,
-                            borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                            borderRadius: BorderRadius.circular(
+                              KBorderSize.borderMedium,
+                            ),
                           ),
                           child: Row(
                             children: [
@@ -914,7 +1116,10 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
                                 package: 'grab_go_shared',
                                 width: 18.w,
                                 height: 18.h,
-                                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                colorFilter: ColorFilter.mode(
+                                  colors.textSecondary,
+                                  BlendMode.srcIn,
+                                ),
                               ),
                             ],
                           ),
@@ -924,7 +1129,11 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
 
                       Text(
                         "Further Details",
-                        style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                        style: TextStyle(
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w800,
+                          color: colors.textPrimary,
+                        ),
                       ),
                       SizedBox(height: KSpacing.md.h),
                       Row(
@@ -952,16 +1161,25 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
 
                       Text(
                         "Delivery Instructions",
-                        style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                        style: TextStyle(
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w800,
+                          color: colors.textPrimary,
+                        ),
                       ),
                       SizedBox(height: KSpacing.md.h),
                       GestureDetector(
                         onTap: () => _showDeliveryInstructionsPicker(colors),
                         child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16.w,
+                            vertical: 12.h,
+                          ),
                           decoration: BoxDecoration(
                             color: colors.backgroundSecondary,
-                            borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                            borderRadius: BorderRadius.circular(
+                              KBorderSize.borderMedium,
+                            ),
                           ),
                           child: Row(
                             children: [
@@ -986,7 +1204,10 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
                                 package: 'grab_go_shared',
                                 width: 18.w,
                                 height: 18.h,
-                                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                colorFilter: ColorFilter.mode(
+                                  colors.textSecondary,
+                                  BlendMode.srcIn,
+                                ),
                               ),
                             ],
                           ),
@@ -998,12 +1219,15 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
                         switchOutCurve: Curves.easeInCubic,
                         child: _showCustomDeliveryInstruction
                             ? Padding(
-                                key: const ValueKey("custom_delivery_instruction_inline"),
+                                key: const ValueKey(
+                                  "custom_delivery_instruction_inline",
+                                ),
                                 padding: EdgeInsets.only(top: KSpacing.md.h),
                                 child: AppTextInput(
                                   controller: _instructionsController,
                                   focusNode: _customInstructionFocusNode,
-                                  hintText: "Enter custom delivery instructions",
+                                  hintText:
+                                      "Enter custom delivery instructions",
                                   fillColor: colors.backgroundSecondary,
                                   borderRadius: KBorderSize.borderMedium,
                                 ),
@@ -1018,7 +1242,12 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
               Container(
                 padding: EdgeInsets.only(top: 12.h),
                 decoration: BoxDecoration(
-                  border: Border(top: BorderSide(color: colors.backgroundSecondary, width: 1)),
+                  border: Border(
+                    top: BorderSide(
+                      color: colors.backgroundSecondary,
+                      width: 1,
+                    ),
+                  ),
                 ),
                 child: AppButton(
                   onPressed: _confirmAddress,
@@ -1028,10 +1257,16 @@ class _ConfirmAddressPageState extends State<ConfirmAddressPage> {
                   width: double.infinity,
                   height: KWidgetSize.buttonHeight.h,
                   borderRadius: KBorderSize.borderMedium,
-                  textStyle: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                  textStyle: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-              SizedBox(height: MediaQuery.of(context).padding.bottom + KSpacing.md.h),
+              SizedBox(
+                height: MediaQuery.of(context).padding.bottom + KSpacing.md.h,
+              ),
             ],
           ),
         );
@@ -1084,7 +1319,10 @@ class _ConfirmAddressMapState extends State<_ConfirmAddressMap> {
   Widget build(BuildContext context) {
     return RepaintBoundary(
       child: GoogleMap(
-        initialCameraPosition: CameraPosition(target: widget.initialPosition, zoom: 16),
+        initialCameraPosition: CameraPosition(
+          target: widget.initialPosition,
+          zoom: 16,
+        ),
         onMapCreated: widget.onMapCreated,
         style: widget.mapStyle,
         onCameraMove: _onCameraMoveDebounced,

@@ -30,8 +30,6 @@ import 'package:grab_go_customer/features/vendors/viewmodel/vendor_provider.dart
 import 'package:grab_go_customer/core/api/api_client.dart';
 import 'package:provider/provider.dart';
 
-final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
@@ -179,7 +177,7 @@ class _MyAppState extends State<GrabGoCustomerApp> with WidgetsBindingObserver {
     }
 
     _isIncomingCallScreenOpen = true;
-    final navContext = navigatorKey.currentContext ?? context;
+    final navContext = rootNavigatorKey.currentContext ?? context;
     Navigator.of(navContext)
         .push(
           MaterialPageRoute(
@@ -242,7 +240,6 @@ class _MyAppState extends State<GrabGoCustomerApp> with WidgetsBindingObserver {
           splitScreenMode: true,
           builder: (context, child) {
             return MaterialApp.router(
-              key: navigatorKey,
               debugShowCheckedModeBanner: false,
               theme: AppTheme.lightTheme,
               darkTheme: AppTheme.darkTheme,

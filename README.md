@@ -1,6 +1,6 @@
 # GrabGo - Multi-Service Delivery Platform
 
-> A comprehensive multi-service delivery platform built with Flutter and Node.js, featuring food delivery, grocery shopping, pharmacy delivery, and ride-hailing services across multiple client applications with a robust backend API.
+> A comprehensive multi-service delivery platform built with Flutter and Node.js, featuring food delivery, grocery shopping, pharmacy delivery, parcel delivery, and ride-hailing services across multiple client applications with a robust backend API.
 
 ![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20Web-blue)
 ![Flutter](https://img.shields.io/badge/Flutter-3.10+-02569B?logo=flutter)
@@ -15,6 +15,7 @@
 - **Food Delivery** - Browse restaurants, order meals, track deliveries in real-time
 - **Grocery Shopping (GrabMart)** - Shop for groceries from local stores with quick delivery
 - **Pharmacy Delivery** - Order medications and health products with prescription support
+- **Parcel Delivery** - Send packages with instant quotes, policy guardrails, and delivery lifecycle controls
 - **Ride-Hailing** - Request rides with real-time driver tracking (coming soon)
 
 ### Customer App (Mobile)
@@ -31,6 +32,8 @@
 - Voice/Video calling with riders via WebRTC
 - Payments via Paystack (card/online) plus policy-based Cash on Delivery (COD)
 - Gift orders with recipient details, optional note, and delivery verification code
+- Parcel delivery flow with quote -> create order -> paystack payment -> lifecycle actions
+- Parcel policy UX with declared value cap, liability disclaimer, and mandatory terms acceptance
 - Restaurant promotional stories (Instagram-style with reactions & comments)
 - Favorites management for restaurants, stores, pharmacies, and items
 - Order history with one-tap reorder
@@ -96,6 +99,10 @@
 - Scheduled-order release job for paid delivery orders
 - Tracking resilience hardening (customer fallback polling + rider offline queue + health state UI)
 - OTP system via Arkesel (SMS + WhatsApp) with Redis rate limiting/lockouts
+- Parcel delivery MVP (feature-flagged backend + customer flow + API contract freeze)
+  - Quote and pricing engine with return-to-sender policy + rider earnings split
+  - Insurance disabled for MVP with liability cap + max declared value guardrails
+  - Paystack payment initialization/confirmation and order lifecycle actions
 
 ## Project Structure
 
@@ -121,6 +128,7 @@ GrabGo/
 │   │   ├── restaurants.js       # Restaurant management
 │   │   ├── groceries.js         # Grocery store operations
 │   │   ├── pharmacies.js        # Pharmacy operations
+│   │   ├── parcel.js            # Parcel quote, order, payment, and lifecycle operations
 │   │   ├── chats.js             # Real-time messaging
 │   │   ├── payments.js          # Payment processing
 │   │   ├── credits.js           # Wallet credits & transactions
@@ -135,6 +143,9 @@ GrabGo/
 │   │   ├── analytic_service.js  # Delivery analytics & metrics
 │   │   ├── cod_service.js       # COD eligibility and policy checks
 │   │   ├── delivery_verification_service.js # Gift delivery verification
+│   │   ├── parcel_validation_service.js # Parcel validation + policy guardrails
+│   │   ├── parcel_pricing_service.js # Parcel quote pricing + rider earnings
+│   │   ├── parcel_service.js    # Parcel order lifecycle orchestration
 │   │   ├── pickup_order_service.js # Pickup lifecycle operations
 │   │   ├── scheduled_order_service.js # Scheduled delivery validation
 │   │   ├── credit_service.js    # Wallet credits and hold/release
@@ -169,6 +180,7 @@ GrabGo/
 │   │       ├── groceries/       # Grocery shopping
 │   │       ├── pharmacy/        # Pharmacy ordering
 │   │       ├── grabmart/        # GrabMart marketplace
+│   │       ├── parcel/          # Parcel quote, order creation, and order management
 │   │       ├── cart/            # Shopping cart
 │   │       ├── order/           # Order management & tracking
 │   │       ├── chat/            # In-app messaging
@@ -338,7 +350,7 @@ dart run build_runner build --delete-conflicting-outputs
 
 ### Customer App Highlights
 
-- **Service Categories**: Food, Groceries, Pharmacy (expandable)
+- **Service Categories**: Food, Groceries, Pharmacy, Parcel (expandable)
 - **Smart Search**: Search across restaurants, stores, items, and categories
 - **Advanced Filters**: Price range, ratings, delivery time, dietary preferences
 - **Cart Management**: Per-vendor carts with fulfillment mode (delivery/pickup)
@@ -347,6 +359,8 @@ dart run build_runner build --delete-conflicting-outputs
 - **Chat System**: Rich messaging with text, voice notes, images, and emoji reactions
 - **Voice/Video Calls**: WebRTC-powered calls with riders
 - **Payment Options**: Paystack + policy-based COD
+- **Parcel Delivery**: Quote pricing, policy snapshot, create order, paystack payment, cancel/retry flow
+- **Parcel Guardrails**: Declared value cap, liability cap/disclaimer, prohibited-items and terms acceptance
 - **Gift Orders**: Recipient details, gift note, and delivery code verification flow
 - **Wallet Credits**: Checkout calculation, hold/release, and transaction history
 - **Stories**: Instagram-style promotional content with reactions and comments
@@ -519,6 +533,21 @@ dart run build_runner build --delete-conflicting-outputs
 - `POST /api/orders/:orderId/pickup/verify-code` - Verify pickup OTP
 - `POST /api/orders/:orderId/delivery-code/resend` - Resend gift delivery code
 - `POST /api/orders/:orderId/delivery-proof/photo` - Upload fallback proof photo
+
+### Parcel (`/api/parcel`)
+
+- `GET /api/parcel/config` - Parcel feature flags, liability policy, and accepted payment contract
+- `POST /api/parcel/quote` - Generate parcel quote, fee breakdown, ETA, return policy, rider earnings
+- `POST /api/parcel/orders` - Create parcel order (requires terms + prohibited-items acceptance)
+- `GET /api/parcel/orders` - List parcel orders for current role
+- `GET /api/parcel/orders/:parcelId` - Parcel order details
+- `POST /api/parcel/orders/:parcelId/paystack/initialize` - Initialize parcel paystack payment
+- `POST /api/parcel/orders/:parcelId/confirm-payment` - Confirm parcel payment status
+- `POST /api/parcel/orders/:parcelId/cancel` - Cancel parcel in allowed states
+- `POST /api/parcel/orders/:parcelId/delivery-code/resend` - Resend parcel delivery code
+- `POST /api/parcel/orders/:parcelId/return-to-sender` - Initiate return-to-sender flow (rider route)
+- `POST /api/parcel/orders/:parcelId/confirm-returned` - Confirm returned-to-sender completion (rider route)
+- Contract reference: `backend/docs/parcel_api_contract.md`
 
 ### Tracking (`/api/tracking`)
 

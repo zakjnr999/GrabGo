@@ -6,6 +6,7 @@ import 'package:grab_go_customer/features/auth/view/notification_permission.dart
 import 'package:grab_go_customer/features/grabmart/model/grabmart_item.dart';
 import 'package:grab_go_customer/features/home/navigation/bottom_navigator.dart';
 import 'package:grab_go_customer/features/order/view/vendor_rating.dart';
+import 'package:grab_go_customer/features/parcel/view/parcel_orders_page.dart';
 import 'package:grab_go_customer/features/pharmacy/model/pharmacy_item.dart';
 import 'package:grab_go_customer/features/profile/view/settings_page.dart';
 import 'package:grab_go_customer/features/status/view/status_page.dart';
@@ -49,6 +50,8 @@ import 'package:grab_go_customer/features/profile/view/credits_screen.dart';
 import 'package:grab_go_customer/features/order/view/payment_complete.dart';
 import 'package:grab_go_customer/features/order/view/payment_confirming.dart';
 import 'package:grab_go_customer/features/order/view/payment_failed.dart';
+import 'package:grab_go_customer/features/parcel/view/parcel_delivery_page.dart';
+import 'package:grab_go_customer/features/parcel/viewmodel/parcel_provider.dart';
 import 'package:grab_go_customer/features/restaurant/view/restaurants.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/splash_screen.dart';
@@ -57,8 +60,12 @@ import 'package:grab_go_customer/features/auth/view/confirm_address_page.dart';
 import 'package:grab_go_customer/features/auth/view/location_picker_page.dart';
 import 'package:grab_go_customer/features/browse/view/category_items_page.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
 final GoRouter appRouter = GoRouter(
+  navigatorKey: rootNavigatorKey,
   initialLocation: "/",
   redirect: (BuildContext context, GoRouterState state) {
     final uri = state.uri;
@@ -1037,6 +1044,50 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
+      path: "/parcel",
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: ChangeNotifierProvider(
+            create: (_) => ParcelProvider(),
+            child: const ParcelDeliveryPage(),
+          ),
+          transitionDuration: const Duration(milliseconds: 400),
+          reverseTransitionDuration: const Duration(milliseconds: 400),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.horizontal,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/parcel/orders",
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: ChangeNotifierProvider(
+            create: (_) => ParcelProvider(),
+            child: const ParcelOrdersPage(),
+          ),
+          transitionDuration: const Duration(milliseconds: 400),
+          reverseTransitionDuration: const Duration(milliseconds: 400),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.horizontal,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
       path: "/allStatuses",
       pageBuilder: (context, state) {
         final category = state.extra as StatusCategory?;
@@ -1103,9 +1154,13 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (context, state) {
         final returnToPrevious =
             state.uri.queryParameters['returnTo'] == 'previous';
+        final selectionOnly = state.uri.queryParameters['mode'] == 'select';
         return CustomTransitionPage(
           key: state.pageKey,
-          child: ConfirmAddressPage(returnToPrevious: returnToPrevious),
+          child: ConfirmAddressPage(
+            returnToPrevious: returnToPrevious,
+            selectionOnly: selectionOnly,
+          ),
           transitionDuration: const Duration(milliseconds: 400),
           reverseTransitionDuration: const Duration(milliseconds: 400),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {

@@ -26,7 +26,11 @@ class ServiceSelector extends StatefulWidget {
 }
 
 class _ServiceSelectorState extends State<ServiceSelector> {
-  static const List<String> _emojiFallbackFonts = ['Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji'];
+  static const List<String> _emojiFallbackFonts = [
+    'Noto Color Emoji',
+    'Apple Color Emoji',
+    'Segoe UI Emoji',
+  ];
 
   int selectedIndex = 0;
 
@@ -38,6 +42,8 @@ class _ServiceSelectorState extends State<ServiceSelector> {
         return Assets.icons.pharmacyIcon;
       case 'convenience':
         return Assets.icons.grabmartIcon;
+      case 'parcel':
+        return Assets.icons.parcelDelivery;
       case 'more':
         return Assets.icons.moreServicesIcon;
       default:
@@ -46,7 +52,9 @@ class _ServiceSelectorState extends State<ServiceSelector> {
   }
 
   Widget _buildEmoji(BuildContext context, String emoji, double size) {
-    final baseColor = DefaultTextStyle.of(context).style.color ?? context.appColors.textPrimary;
+    final baseColor =
+        DefaultTextStyle.of(context).style.color ??
+        context.appColors.textPrimary;
 
     return Text(
       emoji,
@@ -54,14 +62,27 @@ class _ServiceSelectorState extends State<ServiceSelector> {
       softWrap: false,
       overflow: TextOverflow.visible,
       textScaler: TextScaler.noScaling,
-      style: TextStyle(inherit: false, color: baseColor, fontSize: size, fontFamilyFallback: _emojiFallbackFonts),
+      style: TextStyle(
+        inherit: false,
+        color: baseColor,
+        fontSize: size,
+        fontFamilyFallback: _emojiFallbackFonts,
+      ),
     );
   }
 
-  Widget _buildServiceIcon(BuildContext context, ServiceModel service, double size, {double opacity = 1}) {
+  Widget _buildServiceIcon(
+    BuildContext context,
+    ServiceModel service,
+    double size, {
+    double opacity = 1,
+  }) {
     final iconPath = _serviceIconAsset(service.id);
     if (iconPath == null) {
-      return Opacity(opacity: opacity, child: _buildEmoji(context, service.emoji, size));
+      return Opacity(
+        opacity: opacity,
+        child: _buildEmoji(context, service.emoji, size),
+      );
     }
 
     return Opacity(
@@ -69,7 +90,11 @@ class _ServiceSelectorState extends State<ServiceSelector> {
       child: SizedBox(
         width: size,
         height: size,
-        child: SvgPicture.asset(iconPath, package: 'grab_go_shared', fit: BoxFit.contain),
+        child: SvgPicture.asset(
+          iconPath,
+          package: 'grab_go_shared',
+          fit: BoxFit.contain,
+        ),
       ),
     );
   }
@@ -78,14 +103,18 @@ class _ServiceSelectorState extends State<ServiceSelector> {
   void initState() {
     super.initState();
     if (widget.initialSelectedService != null) {
-      final index = widget.services.indexWhere((service) => service.id == widget.initialSelectedService!.id);
+      final index = widget.services.indexWhere(
+        (service) => service.id == widget.initialSelectedService!.id,
+      );
       selectedIndex = index >= 0 ? index : 0;
     } else {
       selectedIndex = 0;
     }
     if (widget.triggerInitialSelection) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && widget.services.isNotEmpty && selectedIndex < widget.services.length) {
+        if (mounted &&
+            widget.services.isNotEmpty &&
+            selectedIndex < widget.services.length) {
           widget.onServiceSelected(widget.services[selectedIndex]);
         }
       });
@@ -102,12 +131,15 @@ class _ServiceSelectorState extends State<ServiceSelector> {
     }
 
     // Update selected index when services list changes
-    if (widget.services.length != oldWidget.services.length || !_servicesEqual(widget.services, oldWidget.services)) {
+    if (widget.services.length != oldWidget.services.length ||
+        !_servicesEqual(widget.services, oldWidget.services)) {
       int newIndex = selectedIndex;
 
       // Try to preserve the selected service if it still exists in the new list
       if (widget.initialSelectedService != null) {
-        final index = widget.services.indexWhere((service) => service.id == widget.initialSelectedService!.id);
+        final index = widget.services.indexWhere(
+          (service) => service.id == widget.initialSelectedService!.id,
+        );
         if (index >= 0) {
           newIndex = index;
         } else {
@@ -135,10 +167,15 @@ class _ServiceSelectorState extends State<ServiceSelector> {
         }
       }
     } else if (widget.initialSelectedService != null &&
-        widget.initialSelectedService!.id != oldWidget.initialSelectedService?.id) {
+        widget.initialSelectedService!.id !=
+            oldWidget.initialSelectedService?.id) {
       // Initial selected service changed, update selection
-      final index = widget.services.indexWhere((service) => service.id == widget.initialSelectedService!.id);
-      if (index >= 0 && index != selectedIndex && index < widget.services.length) {
+      final index = widget.services.indexWhere(
+        (service) => service.id == widget.initialSelectedService!.id,
+      );
+      if (index >= 0 &&
+          index != selectedIndex &&
+          index < widget.services.length) {
         setState(() {
           selectedIndex = index;
         });
@@ -203,7 +240,12 @@ class _ServiceSelectorState extends State<ServiceSelector> {
                     Positioned(
                       right: -12,
                       bottom: -12,
-                      child: _buildServiceIcon(context, service, 66.sp, opacity: isSelected ? 0.2 : 0.08),
+                      child: _buildServiceIcon(
+                        context,
+                        service,
+                        66.sp,
+                        opacity: isSelected ? 0.2 : 0.08,
+                      ),
                     ),
                     if (isSelected)
                       Positioned(
@@ -211,20 +253,28 @@ class _ServiceSelectorState extends State<ServiceSelector> {
                         right: 6.r,
                         child: Container(
                           padding: EdgeInsets.all(3.r),
-                          decoration: BoxDecoration(color: colors.accentOrange, shape: BoxShape.circle),
+                          decoration: BoxDecoration(
+                            color: colors.accentOrange,
+                            shape: BoxShape.circle,
+                          ),
                           child: Container(
                             height: 14.h,
                             width: 14.w,
                             decoration: BoxDecoration(
                               color: colors.accentOrange,
-                              borderRadius: BorderRadius.circular(KBorderSize.border),
+                              borderRadius: BorderRadius.circular(
+                                KBorderSize.border,
+                              ),
                             ),
                             child: SvgPicture.asset(
                               Assets.icons.check,
                               package: "grab_go_shared",
                               height: 10.h,
                               width: 10.w,
-                              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                              colorFilter: const ColorFilter.mode(
+                                Colors.white,
+                                BlendMode.srcIn,
+                              ),
                             ),
                           ),
                         ),
@@ -241,8 +291,12 @@ class _ServiceSelectorState extends State<ServiceSelector> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color: isSelected ? colors.accentOrange : colors.textPrimary,
-                                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w700,
+                                color: isSelected
+                                    ? colors.accentOrange
+                                    : colors.textPrimary,
+                                fontWeight: isSelected
+                                    ? FontWeight.w800
+                                    : FontWeight.w700,
                                 fontSize: 15.sp,
                                 fontFamily: "Lato",
                                 letterSpacing: 0.2,

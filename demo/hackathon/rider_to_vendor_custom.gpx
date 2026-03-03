@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="GrabGo Hackathon Demo Generator" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>GrabGo Rider to Vendor (Custom)</name>
+    <desc>Auto-generated route from rider start to pickup.</desc>
+    <time>2026-03-03T10:00:00Z</time>
+  </metadata>
+  <wpt lat="5.5646133" lon="-0.1823567"><name>Rider Start</name></wpt>
+  <wpt lat="5.6037000" lon="-0.1870000"><name>Vendor Pickup</name></wpt>
+  <trk>
+    <name>Rider to Vendor (Custom)</name>
+    <trkseg>
+      <trkpt lat="5.5646133" lon="-0.1823567"><time>2026-03-03T10:00:00Z</time></trkpt>
+      <trkpt lat="5.5716489" lon="-0.1836925"><time>2026-03-03T10:00:20Z</time></trkpt>
+      <trkpt lat="5.5786845" lon="-0.1836783"><time>2026-03-03T10:00:40Z</time></trkpt>
+      <trkpt lat="5.5849384" lon="-0.1851712"><time>2026-03-03T10:01:00Z</time></trkpt>
+      <trkpt lat="5.5919740" lon="-0.1853570"><time>2026-03-03T10:01:20Z</time></trkpt>
+      <trkpt lat="5.5982279" lon="-0.1864999"><time>2026-03-03T10:01:40Z</time></trkpt>
+      <trkpt lat="5.6037000" lon="-0.1870000"><time>2026-03-03T10:02:00Z</time></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

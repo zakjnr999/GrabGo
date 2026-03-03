@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:grab_go_customer/features/chat/view/chats_details.dart';
 import 'package:grab_go_customer/features/status/view/story_viewer.dart';
-import 'package:grab_go_customer/main.dart';
+import 'package:grab_go_customer/shared/utils/routes.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
 /// Parse boolean value from dynamic data (handles both string and boolean)
@@ -54,7 +54,7 @@ void handleNotificationTap(Map<String, dynamic> data) {
 
   Future.delayed(const Duration(milliseconds: 500), () async {
     try {
-      final context = navigatorKey.currentContext;
+      final context = rootNavigatorKey.currentContext;
       if (context == null) {
         debugPrint('⚠️ Navigation context is null');
         return;

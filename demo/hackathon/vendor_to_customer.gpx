@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="GrabGo Hackathon Demo" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>GrabGo Vendor to Customer</name>
+    <desc>Leg 2 for hackathon presentation: rider delivers order to customer.</desc>
+    <time>2026-03-03T10:10:00Z</time>
+  </metadata>
+
+  <wpt lat="5.6037000" lon="-0.1870000">
+    <name>Vendor Pickup</name>
+  </wpt>
+  <wpt lat="5.57457729677039" lon="-0.215160772204399">
+    <name>Customer Dropoff</name>
+  </wpt>
+
+  <trk>
+    <name>Vendor to Customer</name>
+    <trkseg>
+      <trkpt lat="5.6037000" lon="-0.1870000"><time>2026-03-03T10:10:00Z</time></trkpt>
+      <trkpt lat="5.602800" lon="-0.187800"><time>2026-03-03T10:10:15Z</time></trkpt>
+      <trkpt lat="5.601800" lon="-0.188900"><time>2026-03-03T10:10:30Z</time></trkpt>
+      <trkpt lat="5.600700" lon="-0.190100"><time>2026-03-03T10:10:45Z</time></trkpt>
+      <trkpt lat="5.599300" lon="-0.191700"><time>2026-03-03T10:11:00Z</time></trkpt>
+      <trkpt lat="5.598000" lon="-0.193400"><time>2026-03-03T10:11:15Z</time></trkpt>
+      <trkpt lat="5.596800" lon="-0.195100"><time>2026-03-03T10:11:30Z</time></trkpt>
+      <trkpt lat="5.595600" lon="-0.196800"><time>2026-03-03T10:11:45Z</time></trkpt>
+      <trkpt lat="5.594200" lon="-0.198500"><time>2026-03-03T10:12:00Z</time></trkpt>
+      <trkpt lat="5.592800" lon="-0.200400"><time>2026-03-03T10:12:15Z</time></trkpt>
+      <trkpt lat="5.591400" lon="-0.202100"><time>2026-03-03T10:12:30Z</time></trkpt>
+      <trkpt lat="5.589900" lon="-0.203800"><time>2026-03-03T10:12:45Z</time></trkpt>
+      <trkpt lat="5.588300" lon="-0.205700"><time>2026-03-03T10:13:00Z</time></trkpt>
+      <trkpt lat="5.586600" lon="-0.207600"><time>2026-03-03T10:13:15Z</time></trkpt>
+      <trkpt lat="5.584800" lon="-0.209500"><time>2026-03-03T10:13:30Z</time></trkpt>
+      <trkpt lat="5.582900" lon="-0.211300"><time>2026-03-03T10:13:45Z</time></trkpt>
+      <trkpt lat="5.580800" lon="-0.213000"><time>2026-03-03T10:14:00Z</time></trkpt>
+      <trkpt lat="5.578700" lon="-0.214300"><time>2026-03-03T10:14:15Z</time></trkpt>
+      <trkpt lat="5.576500" lon="-0.215000"><time>2026-03-03T10:14:30Z</time></trkpt>
+      <trkpt lat="5.57457729677039" lon="-0.215160772204399"><time>2026-03-03T10:14:45Z</time></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

@@ -6,7 +6,12 @@ class ServiceModel {
   final String emoji;
   final String colorHex; // For future service-specific theming
 
-  const ServiceModel({required this.id, required this.name, required this.emoji, required this.colorHex});
+  const ServiceModel({
+    required this.id,
+    required this.name,
+    required this.emoji,
+    required this.colorHex,
+  });
 
   @override
   bool operator ==(Object other) {
@@ -48,8 +53,21 @@ class AppServices {
     colorHex: AppColors.serviceGrabMartHex,
   );
 
+  static const ServiceModel parcel = ServiceModel(
+    id: 'parcel',
+    name: 'Parcel',
+    emoji: '📦',
+    colorHex: '#546E7A',
+  );
+
   /// List of all available services (main services only)
-  static const List<ServiceModel> all = [food, groceries, pharmacy, convenience];
+  static const List<ServiceModel> all = [
+    food,
+    groceries,
+    pharmacy,
+    convenience,
+    parcel,
+  ];
 
   /// Get service by ID
   static ServiceModel? getById(String id) {
