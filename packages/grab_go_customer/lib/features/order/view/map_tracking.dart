@@ -41,8 +41,9 @@ class _MapTrackingState extends State<MapTracking> {
 
   Future<TrackingProvider> _initializeTrackingServices() async {
     final token = await CacheService.getAuthToken();
+    final isDemoMode = AppConfig.trackingDemoMode;
 
-    if (token == null || token.isEmpty) {
+    if (!isDemoMode && (token == null || token.isEmpty)) {
       throw Exception('Auth token not found');
     }
 
@@ -50,7 +51,10 @@ class _MapTrackingState extends State<MapTracking> {
     disposeTrackingServices();
 
     // Setup services first
-    setupTrackingServices(baseUrl: AppConfig.apiBaseUrl, token: token);
+    setupTrackingServices(
+      baseUrl: AppConfig.apiBaseUrl,
+      token: (token == null || token.isEmpty) ? 'demo-token' : token,
+    );
 
     // Now get the provider from GetIt
     final provider = trackingLocator<TrackingProvider>();

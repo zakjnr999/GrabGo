@@ -8,7 +8,9 @@ import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:grab_go_rider/features/orders/service/rider_foreground_service.dart';
 import 'package:grab_go_rider/features/orders/service/rider_tracking_service.dart';
 import 'package:grab_go_shared/shared/services/cache_service.dart';
+import 'package:grab_go_shared/shared/utils/config.dart';
 import 'package:grab_go_shared/shared/utils/colors.dart';
+import 'package:grab_go_shared/shared/utils/tracking_telemetry.dart';
 import 'package:grab_go_shared/shared/widgets/custom_map_markers.dart';
 
 /// State for the rider tracking provider
@@ -61,10 +63,13 @@ class RiderTrackingProvider with ChangeNotifier {
   // Location data
   double? _latitude;
   double? _longitude;
+  double? _rawLatitude;
+  double? _rawLongitude;
   double? _speed;
   double? _accuracy;
   double? _distanceRemaining;
   double? _etaMinutes;
+  LatLng? _smoothedLivePosition;
 
   // Pickup and destination coordinates
   double? _pickupLatitude;
@@ -78,11 +83,21 @@ class RiderTrackingProvider with ChangeNotifier {
   Set<Circle> _circles = {};
   GoogleMapController? _mapController;
   final Map<String, BitmapDescriptor> _markerIconCache = {};
+  List<LatLng> _routeCoordinates = const [];
+  int _routeProgressIndex = 0;
   LatLng? _lastAnimatedPosition;
   Timer? _markerAnimationTimer;
 
   // Geofence radius in meters
   static const double _geofenceRadius = 50.0;
+  static const bool _trackingDemoMode = AppConfig.trackingDemoMode;
+  static const Duration _demoTickInterval = Duration(seconds: 2);
+  static const int _demoRoutePoints = 36;
+  static const double _demoNearbyThresholdMeters = 350.0;
+  static const double _demoSpeedMetersPerMinute = 260.0;
+  static const double _gpsSmoothingResetDistanceMeters = 120.0;
+  static const double _gpsSmoothingMinAlpha = 0.22;
+  static const double _gpsSmoothingMaxAlpha = 0.86;
 
   // Background service listener
   StreamSubscription<Map<String, dynamic>?>? _backgroundServiceSubscription;
@@ -99,6 +114,7 @@ class RiderTrackingProvider with ChangeNotifier {
   // Geolocator subscription
   StreamSubscription<Position>? _positionSubscription;
   Timer? _locationUpdateTimer;
+  Timer? _demoSimulationTimer;
   DateTime? _lastLocationUpdateTime;
   bool _isSendingLocation = false;
   RiderTrackingConnectionHealth _connectionHealth =
@@ -106,6 +122,15 @@ class RiderTrackingProvider with ChangeNotifier {
   DateTime? _lastBackendSuccessAt;
   DateTime? _lastBackendFailureAt;
   int _consecutiveBackendFailures = 0;
+  final Random _adaptiveIntervalRandom = Random();
+  List<LatLng> _demoRoute = const [];
+  int _demoRouteIndex = 0;
+  bool _isLocalDemoSession = false;
+  final TrackingTelemetryCollector _telemetry = TrackingTelemetryCollector(
+    scope: 'rider_tracking',
+  );
+
+  bool get _useDemoMode => _isLocalDemoSession || _trackingDemoMode;
 
   // ============================================
   // Getters
@@ -145,6 +170,9 @@ class RiderTrackingProvider with ChangeNotifier {
       _trackingService.hasPendingLocationUpdates;
   DateTime? get lastBackendSuccessAt => _lastBackendSuccessAt;
   DateTime? get lastBackendFailureAt => _lastBackendFailureAt;
+  TrackingTelemetrySnapshot get telemetrySnapshot =>
+      _telemetry.snapshot(staleThreshold: const Duration(seconds: 35));
+  Map<String, dynamic> get telemetryDebugData => telemetrySnapshot.toJson();
 
   String? get lastError => _lastError;
   DateTime? get lastErrorTime => _lastErrorTime;
@@ -196,15 +224,119 @@ class RiderTrackingProvider with ChangeNotifier {
   void _onBackgroundLocationUpdate(Map<String, dynamic>? data) {
     if (data == null || _isDisposed) return;
 
-    _latitude = data['latitude'] as double?;
-    _longitude = data['longitude'] as double?;
-    _speed = data['speed'] as double?;
-    _accuracy = data['accuracy'] as double?;
-    _distanceRemaining = data['distanceRemaining'] as double?;
-    _etaMinutes = data['etaMinutes'] as double?;
+    final latitude = (data['latitude'] as num?)?.toDouble();
+    final longitude = (data['longitude'] as num?)?.toDouble();
+    final speed = (data['speed'] as num?)?.toDouble();
+    final accuracy = (data['accuracy'] as num?)?.toDouble();
+
+    if (latitude != null && longitude != null) {
+      _setLivePosition(
+        latitude: latitude,
+        longitude: longitude,
+        speed: speed,
+        accuracy: accuracy,
+      );
+    }
+
+    _distanceRemaining = (data['distanceRemaining'] as num?)?.toDouble();
+    _etaMinutes = (data['etaMinutes'] as num?)?.toDouble();
     _markBackendSendSuccess();
 
     notifyListeners();
+  }
+
+  void _setLivePosition({
+    required double latitude,
+    required double longitude,
+    double? speed,
+    double? accuracy,
+    bool applySmoothing = true,
+    bool resetSmoothing = false,
+  }) {
+    if (!_isValidCoordinate(latitude, longitude)) {
+      _telemetry.recordInvalidCoordinateDrop();
+      debugPrint(
+        '⚠️ Ignoring invalid location update: lat=$latitude, lon=$longitude',
+      );
+      return;
+    }
+
+    _telemetry.recordLocationSample();
+
+    _rawLatitude = latitude;
+    _rawLongitude = longitude;
+    _speed = speed;
+    _accuracy = accuracy;
+
+    final rawPosition = LatLng(latitude, longitude);
+    final targetPosition = applySmoothing
+        ? _smoothLivePosition(
+            rawPosition: rawPosition,
+            speed: speed,
+            accuracy: accuracy,
+            reset: resetSmoothing,
+          )
+        : rawPosition;
+
+    if (!applySmoothing || resetSmoothing) {
+      _smoothedLivePosition = targetPosition;
+    }
+
+    _latitude = targetPosition.latitude;
+    _longitude = targetPosition.longitude;
+  }
+
+  bool _isValidCoordinate(double latitude, double longitude) {
+    return latitude.isFinite &&
+        longitude.isFinite &&
+        latitude >= -90 &&
+        latitude <= 90 &&
+        longitude >= -180 &&
+        longitude <= 180;
+  }
+
+  LatLng _smoothLivePosition({
+    required LatLng rawPosition,
+    double? speed,
+    double? accuracy,
+    bool reset = false,
+  }) {
+    if (reset || _smoothedLivePosition == null) {
+      _smoothedLivePosition = rawPosition;
+      return rawPosition;
+    }
+
+    final previous = _smoothedLivePosition!;
+    final jumpDistance = _calculateDistanceMeters(previous, rawPosition);
+    if (jumpDistance >= _gpsSmoothingResetDistanceMeters) {
+      _smoothedLivePosition = rawPosition;
+      return rawPosition;
+    }
+
+    // Adaptive low-pass filter:
+    // - higher speed => less smoothing (higher alpha)
+    // - better accuracy => less smoothing lag
+    final speedFactor = ((speed ?? 0) / 16.0).clamp(0.0, 1.0).toDouble();
+    final normalizedAccuracy =
+        (((accuracy ?? 20).clamp(5.0, 80.0) - 5.0) / 75.0).toDouble();
+    final accuracyFactor = (1.0 - normalizedAccuracy).clamp(0.0, 1.0);
+    final blendFactor = ((speedFactor * 0.65) + (accuracyFactor * 0.35)).clamp(
+      0.0,
+      1.0,
+    );
+    final alpha =
+        (_gpsSmoothingMinAlpha +
+                ((_gpsSmoothingMaxAlpha - _gpsSmoothingMinAlpha) * blendFactor))
+            .clamp(_gpsSmoothingMinAlpha, _gpsSmoothingMaxAlpha)
+            .toDouble();
+
+    final smoothed = LatLng(
+      previous.latitude + ((rawPosition.latitude - previous.latitude) * alpha),
+      previous.longitude +
+          ((rawPosition.longitude - previous.longitude) * alpha),
+    );
+    _smoothedLivePosition = smoothed;
+    return smoothed;
   }
 
   // ============================================
@@ -221,6 +353,7 @@ class RiderTrackingProvider with ChangeNotifier {
     required double pickupLongitude,
     required double destinationLatitude,
     required double destinationLongitude,
+    bool useDemoSimulation = false,
   }) async {
     if (_activeOrderId != null && _activeOrderId != orderId) {
       debugPrint('⚠️ Already tracking order $_activeOrderId, stopping first');
@@ -228,15 +361,31 @@ class RiderTrackingProvider with ChangeNotifier {
     }
 
     _setState(RiderTrackingState.initializing);
+    _stopDemoSimulation();
     _activeOrderId = orderId;
     _activeCustomerId = customerId;
     _activeRiderId = riderId;
+    _telemetry.startSession(sessionId: orderId);
 
     // Store coordinates for map
     _pickupLatitude = pickupLatitude;
     _pickupLongitude = pickupLongitude;
     _destinationLatitude = destinationLatitude;
     _destinationLongitude = destinationLongitude;
+
+    _isLocalDemoSession = _trackingDemoMode || useDemoSimulation;
+
+    if (_useDemoMode) {
+      return _initializeDemoTracking(
+        orderId: orderId,
+        riderId: riderId,
+        customerId: customerId,
+        pickupLatitude: pickupLatitude,
+        pickupLongitude: pickupLongitude,
+        destinationLatitude: destinationLatitude,
+        destinationLongitude: destinationLongitude,
+      );
+    }
 
     try {
       debugPrint('🚀 Initializing tracking for order: $orderId');
@@ -288,8 +437,340 @@ class RiderTrackingProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> _initializeDemoTracking({
+    required String orderId,
+    required String riderId,
+    required String customerId,
+    required double pickupLatitude,
+    required double pickupLongitude,
+    required double destinationLatitude,
+    required double destinationLongitude,
+  }) async {
+    final pickup = LatLng(pickupLatitude, pickupLongitude);
+    final destination = LatLng(destinationLatitude, destinationLongitude);
+    final demoStart = _buildDemoRiderStartPosition(
+      pickup: pickup,
+      destination: destination,
+    );
+
+    _trackingInfo = TrackingInfo(
+      orderId: orderId,
+      riderId: riderId,
+      customerId: customerId,
+      status: TrackingStatus.preparing.toApiValue(),
+      currentLocation: LocationDto(
+        latitude: demoStart.latitude,
+        longitude: demoStart.longitude,
+      ),
+      pickupLocation: LocationDto(
+        latitude: pickup.latitude,
+        longitude: pickup.longitude,
+      ),
+      destination: LocationDto(
+        latitude: destination.latitude,
+        longitude: destination.longitude,
+      ),
+      distanceRemaining: _calculateDistanceMeters(demoStart, pickup),
+      estimatedArrival: DateTime.now().add(const Duration(minutes: 12)),
+      route: null,
+    );
+
+    _currentStatus = TrackingStatus.preparing;
+    _config = TrackingConfig.waitingAtPickup;
+    _setLivePosition(
+      latitude: demoStart.latitude,
+      longitude: demoStart.longitude,
+      applySmoothing: false,
+      resetSmoothing: true,
+    );
+    _lastAnimatedPosition = demoStart;
+    _syncDemoLegMetricsFromCurrentPosition(status: TrackingStatus.preparing);
+    _markBackendSendSuccess();
+
+    await _setupMapElements();
+    _startDemoSimulation();
+    _setState(RiderTrackingState.active);
+    return true;
+  }
+
+  Future<bool> _resumeDemoTracking(String orderId) async {
+    final pickupLat = _pickupLatitude ?? 5.60372;
+    final pickupLng = _pickupLongitude ?? -0.18700;
+    final destinationLat = _destinationLatitude ?? 5.57458;
+    final destinationLng = _destinationLongitude ?? -0.21516;
+
+    return _initializeDemoTracking(
+      orderId: orderId,
+      riderId: _activeRiderId ?? 'demo-rider',
+      customerId: _activeCustomerId ?? 'demo-customer',
+      pickupLatitude: pickupLat,
+      pickupLongitude: pickupLng,
+      destinationLatitude: destinationLat,
+      destinationLongitude: destinationLng,
+    );
+  }
+
+  List<LatLng> _buildDemoRoute(LatLng from, LatLng to, int points) {
+    final safePoints = max(points, 36);
+    final dLat = to.latitude - from.latitude;
+    final dLng = to.longitude - from.longitude;
+    final straightDistance = sqrt((dLat * dLat) + (dLng * dLng));
+    if (straightDistance < 1e-10) {
+      return [from, to];
+    }
+
+    final unitLat = dLat / straightDistance;
+    final unitLng = dLng / straightDistance;
+    final perpLat = -unitLng;
+    final perpLng = unitLat;
+    final totalMeters = _calculateDistanceMeters(from, to);
+    final lateralMeters = min(max(totalMeters * 0.14, 220.0), 560.0);
+    final branchLeadMeters = min(max(totalMeters * 0.06, 70.0), 210.0);
+
+    LatLng corridorPoint(
+      double t, {
+      double lateralFactor = 0,
+      double forwardMeters = 0,
+    }) {
+      final progress = t.clamp(0.0, 1.0);
+      final base = LatLng(
+        from.latitude + (dLat * progress),
+        from.longitude + (dLng * progress),
+      );
+      return _offsetLatLng(
+        base,
+        northMeters:
+            (perpLat * lateralMeters * lateralFactor) +
+            (unitLat * forwardMeters),
+        eastMeters:
+            (perpLng * lateralMeters * lateralFactor) +
+            (unitLng * forwardMeters),
+      );
+    }
+
+    // Intentionally zig-zag through off-corridor waypoints so the demo route
+    // looks like real urban navigation with branch turns and rejoins.
+    final waypoints = <LatLng>[
+      from,
+      corridorPoint(0.08, lateralFactor: 0.22),
+      corridorPoint(0.16, lateralFactor: 0.92, forwardMeters: branchLeadMeters),
+      corridorPoint(0.24, lateralFactor: 0.18),
+      corridorPoint(0.34, lateralFactor: -0.52),
+      corridorPoint(
+        0.44,
+        lateralFactor: -1.15,
+        forwardMeters: -branchLeadMeters * 0.4,
+      ),
+      corridorPoint(0.53, lateralFactor: -0.28),
+      corridorPoint(0.62, lateralFactor: 0.55),
+      corridorPoint(
+        0.72,
+        lateralFactor: 1.02,
+        forwardMeters: branchLeadMeters * 0.3,
+      ),
+      corridorPoint(0.81, lateralFactor: 0.32),
+      corridorPoint(0.9, lateralFactor: -0.4),
+      to,
+    ];
+
+    final segments = waypoints.length - 1;
+    final pointsPerSegment = max(4, safePoints ~/ segments);
+    final route = <LatLng>[];
+
+    for (int i = 0; i < segments; i++) {
+      final segmentStart = waypoints[i];
+      final segmentEnd = waypoints[i + 1];
+
+      for (int step = 0; step <= pointsPerSegment; step++) {
+        if (i > 0 && step == 0) continue;
+        final t = step / pointsPerSegment;
+        final easedT = t * t * (3 - (2 * t));
+        route.add(
+          LatLng(
+            segmentStart.latitude +
+                ((segmentEnd.latitude - segmentStart.latitude) * easedT),
+            segmentStart.longitude +
+                ((segmentEnd.longitude - segmentStart.longitude) * easedT),
+          ),
+        );
+      }
+    }
+
+    if (route.isEmpty ||
+        route.last.latitude != to.latitude ||
+        route.last.longitude != to.longitude) {
+      route.add(to);
+    }
+
+    return route;
+  }
+
+  LatLng _offsetLatLng(
+    LatLng point, {
+    required double northMeters,
+    required double eastMeters,
+  }) {
+    const metersPerDegreeLat = 111320.0;
+    final latRadians = point.latitude * pi / 180;
+    final metersPerDegreeLng =
+        metersPerDegreeLat * max(cos(latRadians).abs(), 0.2);
+
+    final deltaLat = northMeters / metersPerDegreeLat;
+    final deltaLng = eastMeters / metersPerDegreeLng;
+    return LatLng(point.latitude + deltaLat, point.longitude + deltaLng);
+  }
+
+  LatLng _buildDemoRiderStartPosition({
+    required LatLng pickup,
+    required LatLng destination,
+  }) {
+    final dLat = pickup.latitude - destination.latitude;
+    final dLng = pickup.longitude - destination.longitude;
+    final magnitude = sqrt((dLat * dLat) + (dLng * dLng));
+    final unitLat = magnitude < 1e-9 ? 1.0 : dLat / magnitude;
+    final unitLng = magnitude < 1e-9 ? 0.0 : dLng / magnitude;
+    final corridorDistance = _calculateDistanceMeters(pickup, destination);
+    final offsetMeters = min(max(corridorDistance * 0.4, 1600.0), 3600.0);
+
+    return _offsetLatLng(
+      pickup,
+      northMeters: unitLat * offsetMeters,
+      eastMeters: unitLng * offsetMeters,
+    );
+  }
+
+  LatLng? _demoTargetForStatus([TrackingStatus? status]) {
+    final effectiveStatus = status ?? _currentStatus;
+
+    if ((effectiveStatus == TrackingStatus.preparing ||
+            effectiveStatus == TrackingStatus.pickedUp) &&
+        _pickupLatitude != null &&
+        _pickupLongitude != null) {
+      return LatLng(_pickupLatitude!, _pickupLongitude!);
+    }
+
+    if (_destinationLatitude != null && _destinationLongitude != null) {
+      return LatLng(_destinationLatitude!, _destinationLongitude!);
+    }
+
+    return null;
+  }
+
+  void _syncDemoLegMetricsFromCurrentPosition({TrackingStatus? status}) {
+    if (_latitude == null || _longitude == null) {
+      _distanceRemaining = null;
+      _etaMinutes = null;
+      return;
+    }
+
+    final target = _demoTargetForStatus(status);
+    if (target == null) {
+      _distanceRemaining = null;
+      _etaMinutes = null;
+      return;
+    }
+
+    final current = LatLng(_latitude!, _longitude!);
+    final remaining = _calculateDistanceMeters(current, target);
+    _distanceRemaining = remaining;
+    _etaMinutes = max(remaining / _demoSpeedMetersPerMinute, 0.0);
+  }
+
+  void _startDemoSimulation() {
+    if (!_useDemoMode ||
+        _currentStatus == TrackingStatus.delivered ||
+        _currentStatus == TrackingStatus.cancelled ||
+        _activeOrderId == null ||
+        _latitude == null ||
+        _longitude == null) {
+      return;
+    }
+
+    final target = _demoTargetForStatus();
+    if (target == null) {
+      return;
+    }
+
+    final currentPosition = LatLng(_latitude!, _longitude!);
+    if (_routeCoordinates.length >= 2 &&
+        _calculateDistanceMeters(_routeCoordinates.last, target) <= 40) {
+      _demoRoute = List<LatLng>.from(_routeCoordinates);
+    } else {
+      _demoRoute = _buildDemoRoute(currentPosition, target, _demoRoutePoints);
+      _routeCoordinates = List<LatLng>.from(_demoRoute);
+      _routeProgressIndex = 0;
+      _updateRouteProgressForPosition(currentPosition, forceRebuild: true);
+    }
+
+    if (_demoRoute.isNotEmpty &&
+        _calculateDistanceMeters(_demoRoute.first, currentPosition) > 20) {
+      _demoRoute = [currentPosition, ..._demoRoute];
+    }
+
+    _demoRouteIndex = 0;
+
+    _demoSimulationTimer?.cancel();
+    _demoSimulationTimer = Timer.periodic(_demoTickInterval, (_) {
+      _advanceDemoSimulation();
+    });
+  }
+
+  void _advanceDemoSimulation() {
+    if (_activeOrderId == null || _demoRoute.isEmpty) {
+      _stopDemoSimulation();
+      return;
+    }
+
+    final target = _demoTargetForStatus();
+    if (target == null) {
+      _stopDemoSimulation();
+      return;
+    }
+
+    if (_demoRouteIndex >= _demoRoute.length - 1) {
+      _distanceRemaining = 0;
+      _etaMinutes = 0;
+      _markBackendSendSuccess();
+      notifyListeners();
+      _stopDemoSimulation();
+      return;
+    }
+
+    _demoRouteIndex += 1;
+    final point = _demoRoute[_demoRouteIndex];
+    _setLivePosition(
+      latitude: point.latitude,
+      longitude: point.longitude,
+      applySmoothing: false,
+      resetSmoothing: true,
+    );
+
+    final remaining = _calculateDistanceMeters(point, target);
+    _distanceRemaining = remaining;
+    _etaMinutes = max(remaining / _demoSpeedMetersPerMinute, 0.0);
+
+    if (_currentStatus == TrackingStatus.inTransit &&
+        remaining <= _demoNearbyThresholdMeters) {
+      _currentStatus = TrackingStatus.nearby;
+    }
+
+    _updateRiderMarker();
+    _markBackendSendSuccess();
+    notifyListeners();
+  }
+
+  void _stopDemoSimulation() {
+    _demoSimulationTimer?.cancel();
+    _demoSimulationTimer = null;
+    _demoRoute = const [];
+    _demoRouteIndex = 0;
+  }
+
   /// Start the foreground service for background location tracking
   Future<void> _startForegroundService() async {
+    if (_useDemoMode) {
+      return;
+    }
     try {
       final authToken = await CacheService.getAuthToken();
       if (authToken == null ||
@@ -316,6 +797,9 @@ class RiderTrackingProvider with ChangeNotifier {
 
   /// Stop the foreground service
   Future<void> _stopForegroundService() async {
+    if (_useDemoMode) {
+      return;
+    }
     try {
       await _foregroundService.stopService();
       debugPrint('✅ Foreground service stopped');
@@ -325,8 +809,20 @@ class RiderTrackingProvider with ChangeNotifier {
   }
 
   /// Resume tracking for an existing order (e.g., after app restart)
-  Future<bool> resumeTracking(String orderId) async {
+  Future<bool> resumeTracking(
+    String orderId, {
+    bool useDemoSimulation = false,
+  }) async {
     _setState(RiderTrackingState.initializing);
+    _stopDemoSimulation();
+    _telemetry.startSession(sessionId: orderId);
+
+    _isLocalDemoSession =
+        _trackingDemoMode || useDemoSimulation || _isLocalDemoSession;
+
+    if (_useDemoMode) {
+      return _resumeDemoTracking(orderId);
+    }
 
     try {
       await _trackingService.hydratePendingLocationQueue();
@@ -389,6 +885,7 @@ class RiderTrackingProvider with ChangeNotifier {
   Future<void> stopTracking() async {
     debugPrint('🛑 Stopping tracking for order: $_activeOrderId');
 
+    _stopDemoSimulation();
     _stopLocationUpdates();
     await _stopForegroundService();
     _resetState();
@@ -420,13 +917,22 @@ class RiderTrackingProvider with ChangeNotifier {
     return await _updateStatus(TrackingStatus.pickedUp);
   }
 
+  /// Re-sync preparing status while rider is still at pickup stage.
+  Future<bool> markAsPreparing() async {
+    return await _updateStatus(TrackingStatus.preparing);
+  }
+
   /// Mark that rider is now in transit to customer
   Future<bool> markAsInTransit() async {
     final success = await _updateStatus(TrackingStatus.inTransit);
     if (success) {
-      // Switch to high-frequency updates for active delivery
-      _config = TrackingConfig.activeDelivery;
-      await _restartLocationUpdates();
+      if (_useDemoMode) {
+        _startDemoSimulation();
+      } else {
+        // Switch to high-frequency updates for active delivery
+        _config = TrackingConfig.activeDelivery;
+        await _restartLocationUpdates();
+      }
     }
     return success;
   }
@@ -461,6 +967,14 @@ class RiderTrackingProvider with ChangeNotifier {
 
   /// Upload fallback delivery proof photo for gift order verification.
   Future<DeliveryProofUploadResult> uploadDeliveryProofPhoto(File photo) async {
+    if (_useDemoMode) {
+      return DeliveryProofUploadResult(
+        success: true,
+        message: 'Demo mode: proof accepted',
+        photoUrl: photo.path,
+      );
+    }
+
     if (_activeOrderId == null) {
       const result = DeliveryProofUploadResult(
         success: false,
@@ -484,6 +998,14 @@ class RiderTrackingProvider with ChangeNotifier {
 
   /// Ask backend to resend delivery verification code to recipient.
   Future<DeliveryCodeResendResult> resendDeliveryCodeToRecipient() async {
+    if (_useDemoMode) {
+      return DeliveryCodeResendResult(
+        success: true,
+        message: 'Demo mode: delivery code resent',
+        resentAt: DateTime.now(),
+      );
+    }
+
     if (_activeOrderId == null) {
       const result = DeliveryCodeResendResult(
         success: false,
@@ -511,6 +1033,57 @@ class RiderTrackingProvider with ChangeNotifier {
     if (_activeOrderId == null) {
       debugPrint('⚠️ No active order to update status');
       return false;
+    }
+
+    if (_useDemoMode) {
+      final previousStatus = _currentStatus;
+      _currentStatus = newStatus;
+
+      if (newStatus == TrackingStatus.inTransit &&
+          previousStatus != TrackingStatus.inTransit &&
+          _pickupLatitude != null &&
+          _pickupLongitude != null) {
+        // Start delivery leg from vendor once rider confirms pickup.
+        _setLivePosition(
+          latitude: _pickupLatitude!,
+          longitude: _pickupLongitude!,
+          applySmoothing: false,
+          resetSmoothing: true,
+        );
+        _lastAnimatedPosition = LatLng(_latitude!, _longitude!);
+      }
+
+      _syncDemoLegMetricsFromCurrentPosition(status: newStatus);
+      if (_trackingInfo != null) {
+        _trackingInfo = TrackingInfo(
+          orderId: _trackingInfo!.orderId,
+          riderId: _trackingInfo!.riderId,
+          customerId: _trackingInfo!.customerId,
+          status: newStatus.toApiValue(),
+          currentLocation: _trackingInfo!.currentLocation,
+          pickupLocation: _trackingInfo!.pickupLocation,
+          destination: _trackingInfo!.destination,
+          distanceRemaining: _distanceRemaining,
+          estimatedArrival: DateTime.now().add(
+            Duration(minutes: (_etaMinutes ?? 0).ceil()),
+          ),
+          route: _trackingInfo!.route,
+        );
+      }
+
+      _createSimplePolyline();
+      _updateRiderMarker();
+
+      if (newStatus == TrackingStatus.cancelled ||
+          newStatus == TrackingStatus.delivered) {
+        _stopDemoSimulation();
+      } else {
+        _startDemoSimulation();
+      }
+
+      _markBackendSendSuccess();
+      notifyListeners();
+      return true;
     }
 
     try {
@@ -591,6 +1164,10 @@ class RiderTrackingProvider with ChangeNotifier {
   }
 
   void _updateNotificationForStatus(TrackingStatus status) {
+    if (_useDemoMode) {
+      return;
+    }
+
     String title;
     String content;
 
@@ -667,14 +1244,11 @@ class RiderTrackingProvider with ChangeNotifier {
           },
         );
 
-    // Also use a timer to ensure regular updates to backend
-    _locationUpdateTimer = Timer.periodic(
-      Duration(milliseconds: _config.updateIntervalMs),
-      (_) => _sendLocationToBackend(),
-    );
+    // Start adaptive one-shot scheduling for backend sends.
+    _scheduleNextLocationSend();
 
     debugPrint(
-      '✅ Location updates started (interval: ${_config.updateIntervalMs}ms)',
+      '✅ Location updates started (adaptive interval: ${_computeAdaptiveLocationIntervalMs()}ms)',
     );
   }
 
@@ -691,6 +1265,92 @@ class RiderTrackingProvider with ChangeNotifier {
     await _startLocationUpdates();
   }
 
+  void _scheduleNextLocationSend({bool immediate = false}) {
+    _locationUpdateTimer?.cancel();
+    if (_activeOrderId == null ||
+        _state != RiderTrackingState.active ||
+        _currentStatus == TrackingStatus.delivered ||
+        _currentStatus == TrackingStatus.cancelled) {
+      _locationUpdateTimer = null;
+      return;
+    }
+
+    final baseDelayMs = immediate ? 0 : _computeAdaptiveLocationIntervalMs();
+    final delayMs = immediate
+        ? 0
+        : _withAdaptiveIntervalJitter(baseDelayMs).clamp(1000, 60000).toInt();
+    _telemetry.recordScheduledInterval(delayMs);
+
+    _locationUpdateTimer = Timer(Duration(milliseconds: delayMs), () async {
+      if (_isDisposed ||
+          _activeOrderId == null ||
+          _state != RiderTrackingState.active) {
+        _locationUpdateTimer = null;
+        return;
+      }
+      await _sendLocationToBackend();
+      if (_activeOrderId != null &&
+          _state == RiderTrackingState.active &&
+          _currentStatus != TrackingStatus.delivered &&
+          _currentStatus != TrackingStatus.cancelled &&
+          !_isDisposed) {
+        _scheduleNextLocationSend();
+      }
+    });
+  }
+
+  int _computeAdaptiveLocationIntervalMs() {
+    final speedMps = (_speed ?? 0).clamp(0.0, 30.0).toDouble();
+    final isActiveLeg =
+        _currentStatus == TrackingStatus.inTransit ||
+        _currentStatus == TrackingStatus.nearby;
+
+    int intervalMs;
+    if (isActiveLeg) {
+      if (speedMps >= 12.0) {
+        intervalMs = 3500;
+      } else if (speedMps >= 7.0) {
+        intervalMs = 4300;
+      } else if (speedMps >= 3.0) {
+        intervalMs = 5200;
+      } else if (speedMps >= 1.2) {
+        intervalMs = 6200;
+      } else {
+        intervalMs = 7600;
+      }
+    } else {
+      if (speedMps >= 5.0) {
+        intervalMs = 9000;
+      } else if (speedMps >= 2.0) {
+        intervalMs = 11000;
+      } else {
+        intervalMs = 15000;
+      }
+    }
+
+    final hasNetworkPressure =
+        _trackingService.hasPendingLocationUpdates ||
+        _consecutiveBackendFailures > 0 ||
+        _connectionHealth != RiderTrackingConnectionHealth.live;
+
+    if (hasNetworkPressure) {
+      final pendingFactor = min(_trackingService.pendingLocationCount, 5);
+      final failureFactor = min(_consecutiveBackendFailures, 5);
+      final multiplier = 1.0 + (pendingFactor * 0.08) + (failureFactor * 0.15);
+      intervalMs = (intervalMs * multiplier).round();
+    }
+
+    final minIntervalMs = isActiveLeg ? 3000 : 7000;
+    final maxIntervalMs = isActiveLeg ? 12000 : 30000;
+    return intervalMs.clamp(minIntervalMs, maxIntervalMs).toInt();
+  }
+
+  int _withAdaptiveIntervalJitter(int intervalMs) {
+    final jitterFactor = 0.9 + (_adaptiveIntervalRandom.nextDouble() * 0.2);
+    final jittered = (intervalMs * jitterFactor).round();
+    return max(jittered, 1000);
+  }
+
   LocationSettings _buildLocationSettings() {
     if (_config.highAccuracy) {
       return const LocationSettings(
@@ -705,10 +1365,18 @@ class RiderTrackingProvider with ChangeNotifier {
   }
 
   void _onPositionUpdate(Position position) {
-    _latitude = position.latitude;
-    _longitude = position.longitude;
-    _speed = position.speed;
-    _accuracy = position.accuracy;
+    if (!_isValidCoordinate(position.latitude, position.longitude)) {
+      _telemetry.recordInvalidCoordinateDrop();
+      _handleLocationError();
+      return;
+    }
+
+    _setLivePosition(
+      latitude: position.latitude,
+      longitude: position.longitude,
+      speed: position.speed,
+      accuracy: position.accuracy,
+    );
 
     // Clear errors on successful location
     _consecutiveErrors = 0;
@@ -720,14 +1388,16 @@ class RiderTrackingProvider with ChangeNotifier {
     notifyListeners();
 
     // Send to backend (throttled by timer, but can send immediately on significant movement)
+    final adaptiveIntervalMs = _computeAdaptiveLocationIntervalMs();
     final shouldSendImmediately =
         _lastLocationUpdateTime == null ||
         DateTime.now().difference(_lastLocationUpdateTime!).inMilliseconds >
-            (_config.updateIntervalMs ~/ 2);
+            (adaptiveIntervalMs ~/ 2);
 
     if (shouldSendImmediately && position.accuracy < 50) {
       // Only send if accuracy is reasonable
       _sendLocationToBackend();
+      _scheduleNextLocationSend();
     }
   }
 
@@ -735,7 +1405,14 @@ class RiderTrackingProvider with ChangeNotifier {
     if (_isSendingLocation) {
       return;
     }
-    if (_activeOrderId == null || _latitude == null || _longitude == null) {
+    final latitudeForBackend = _rawLatitude ?? _latitude;
+    final longitudeForBackend = _rawLongitude ?? _longitude;
+    if (_activeOrderId == null ||
+        latitudeForBackend == null ||
+        longitudeForBackend == null) {
+      return;
+    }
+    if (!_isValidCoordinate(latitudeForBackend, longitudeForBackend)) {
       return;
     }
 
@@ -746,11 +1423,15 @@ class RiderTrackingProvider with ChangeNotifier {
     }
 
     _isSendingLocation = true;
+    final sendStopwatch = Stopwatch()..start();
+    _telemetry.recordBackendSendAttempt(
+      pendingQueueDepth: _trackingService.pendingLocationCount,
+    );
     try {
       final response = await _trackingService.updateLocation(
         orderId: _activeOrderId!,
-        latitude: _latitude!,
-        longitude: _longitude!,
+        latitude: latitudeForBackend,
+        longitude: longitudeForBackend,
         speed: _speed ?? 0,
         accuracy: _accuracy ?? 0,
       );
@@ -760,6 +1441,11 @@ class RiderTrackingProvider with ChangeNotifier {
         _etaMinutes = response.etaMinutes;
         _lastLocationUpdateTime = DateTime.now();
         _markBackendSendSuccess();
+        _telemetry.recordBackendSendResult(
+          success: true,
+          latency: sendStopwatch.elapsed,
+          pendingQueueDepth: _trackingService.pendingLocationCount,
+        );
 
         // Update status if backend changed it (e.g., nearby detection)
         final newStatus = TrackingStatus.fromString(response.status);
@@ -771,11 +1457,21 @@ class RiderTrackingProvider with ChangeNotifier {
         notifyListeners();
       } else {
         _markBackendSendFailure();
+        _telemetry.recordBackendSendResult(
+          success: false,
+          latency: sendStopwatch.elapsed,
+          pendingQueueDepth: _trackingService.pendingLocationCount,
+        );
         _handleLocationError();
       }
     } catch (e) {
       debugPrint('❌ Error sending location to backend: $e');
       _markBackendSendFailure();
+      _telemetry.recordBackendSendResult(
+        success: false,
+        latency: sendStopwatch.elapsed,
+        pendingQueueDepth: _trackingService.pendingLocationCount,
+      );
       _handleLocationError();
     } finally {
       _isSendingLocation = false;
@@ -790,11 +1486,18 @@ class RiderTrackingProvider with ChangeNotifier {
           timeLimit: Duration(seconds: 10),
         ),
       );
+      if (!_isValidCoordinate(position.latitude, position.longitude)) {
+        throw Exception('Received invalid current GPS coordinates');
+      }
 
-      _latitude = position.latitude;
-      _longitude = position.longitude;
-      _speed = position.speed;
-      _accuracy = position.accuracy;
+      _setLivePosition(
+        latitude: position.latitude,
+        longitude: position.longitude,
+        speed: position.speed,
+        accuracy: position.accuracy,
+        applySmoothing: false,
+        resetSmoothing: true,
+      );
       debugPrint('📍 Got current position: $_latitude, $_longitude');
       notifyListeners();
     } catch (e) {
@@ -803,8 +1506,20 @@ class RiderTrackingProvider with ChangeNotifier {
       try {
         final lastPosition = await Geolocator.getLastKnownPosition();
         if (lastPosition != null) {
-          _latitude = lastPosition.latitude;
-          _longitude = lastPosition.longitude;
+          if (!_isValidCoordinate(
+            lastPosition.latitude,
+            lastPosition.longitude,
+          )) {
+            return;
+          }
+          _setLivePosition(
+            latitude: lastPosition.latitude,
+            longitude: lastPosition.longitude,
+            speed: lastPosition.speed,
+            accuracy: lastPosition.accuracy,
+            applySmoothing: false,
+            resetSmoothing: true,
+          );
           debugPrint('📍 Using last known position: $_latitude, $_longitude');
           notifyListeners();
         }
@@ -837,6 +1552,21 @@ class RiderTrackingProvider with ChangeNotifier {
 
   void _syncConnectionHealth() {
     final previous = _connectionHealth;
+
+    if (_useDemoMode) {
+      _connectionHealth = _activeOrderId == null
+          ? RiderTrackingConnectionHealth.offline
+          : RiderTrackingConnectionHealth.live;
+      _telemetry.recordHealthTransition(
+        from: previous.name,
+        to: _connectionHealth.name,
+      );
+      if (previous != _connectionHealth) {
+        notifyListeners();
+      }
+      return;
+    }
+
     final now = DateTime.now();
     final recentSuccess =
         _lastBackendSuccessAt != null &&
@@ -851,6 +1581,11 @@ class RiderTrackingProvider with ChangeNotifier {
     } else {
       _connectionHealth = RiderTrackingConnectionHealth.live;
     }
+
+    _telemetry.recordHealthTransition(
+      from: previous.name,
+      to: _connectionHealth.name,
+    );
 
     if (previous != _connectionHealth) {
       notifyListeners();
@@ -869,23 +1604,38 @@ class RiderTrackingProvider with ChangeNotifier {
   }
 
   void _setError(String message) {
+    final previousHealth = _connectionHealth;
     _lastError = message;
     _lastErrorTime = DateTime.now();
     _connectionHealth = RiderTrackingConnectionHealth.offline;
+    _telemetry.recordHealthTransition(
+      from: previousHealth.name,
+      to: _connectionHealth.name,
+    );
     _setState(RiderTrackingState.error);
     debugPrint('❌ RiderTrackingProvider: $message');
     notifyListeners();
   }
 
   void _resetState() {
+    _stopDemoSimulation();
+    _isLocalDemoSession = false;
     _activeOrderId = null;
     _activeCustomerId = null;
     _activeRiderId = null;
     _currentStatus = TrackingStatus.preparing;
     _trackingInfo = null;
+    _latitude = null;
+    _longitude = null;
+    _rawLatitude = null;
+    _rawLongitude = null;
+    _speed = null;
+    _accuracy = null;
+    _smoothedLivePosition = null;
     _distanceRemaining = null;
     _etaMinutes = null;
     _lastError = null;
+    _lastErrorTime = null;
     _consecutiveErrors = 0;
     _lastLocationUpdateTime = null;
     _isSendingLocation = false;
@@ -901,6 +1651,8 @@ class RiderTrackingProvider with ChangeNotifier {
     _markers = {};
     _polylines = {};
     _circles = {};
+    _routeCoordinates = const [];
+    _routeProgressIndex = 0;
     _lastAnimatedPosition = null;
     _setState(RiderTrackingState.idle);
   }
@@ -936,15 +1688,13 @@ class RiderTrackingProvider with ChangeNotifier {
   /// Setup markers and polylines on the map
   Future<void> _setupMapElements() async {
     final markers = <Marker>{};
-    const primaryColor = AppColors.serviceFood;
+    const primaryColor = AppColors.accentGreen;
 
     // 1. Add Rider marker (current location - "You")
     if (_latitude != null && _longitude != null) {
       if (!_markerIconCache.containsKey('rider')) {
-        _markerIconCache['rider'] = await CustomMapMarkers.createRiderMarker(
-          name: 'You',
-          primaryColor: primaryColor,
-        );
+        _markerIconCache['rider'] =
+            await CustomMapMarkers.createRiderVehicleMarker(size: 58);
       }
 
       markers.add(
@@ -954,6 +1704,8 @@ class RiderTrackingProvider with ChangeNotifier {
           icon: _markerIconCache['rider']!,
           infoWindow: const InfoWindow(title: 'You', snippet: 'Your location'),
           anchor: const Offset(0.5, 0.5),
+          flat: true,
+          rotation: 0,
           zIndexInt: 10,
         ),
       );
@@ -962,23 +1714,23 @@ class RiderTrackingProvider with ChangeNotifier {
 
     // 2. Add Restaurant/Pickup marker
     if (_pickupLatitude != null && _pickupLongitude != null) {
-      if (!_markerIconCache.containsKey('pickup')) {
-        _markerIconCache['pickup'] = await CustomMapMarkers.createStoreMarker(
-          name: 'Pickup',
-          primaryColor: primaryColor,
-        );
+      if (!_markerIconCache.containsKey('pickup_pin_v4')) {
+        _markerIconCache['pickup_pin_v4'] =
+            await CustomMapMarkers.createStoreTapPinMarker(
+              primaryColor: primaryColor,
+            );
       }
 
       markers.add(
         Marker(
           markerId: const MarkerId('pickup'),
           position: LatLng(_pickupLatitude!, _pickupLongitude!),
-          icon: _markerIconCache['pickup']!,
+          icon: _markerIconCache['pickup_pin_v4']!,
           infoWindow: const InfoWindow(
             title: 'Restaurant',
             snippet: 'Pickup location',
           ),
-          anchor: const Offset(0.5, 0.5),
+          anchor: const Offset(0.5, 0.8),
           zIndexInt: 5,
         ),
       );
@@ -986,11 +1738,10 @@ class RiderTrackingProvider with ChangeNotifier {
 
     // 3. Add Customer/Destination marker with home icon
     if (_destinationLatitude != null && _destinationLongitude != null) {
-      if (!_markerIconCache.containsKey('destination')) {
-        _markerIconCache['destination'] =
-            await CustomMapMarkers.createDestinationMarker(
-              name: 'Delivery',
-              primaryColor: AppColors.serviceGrocery,
+      if (!_markerIconCache.containsKey('destination_pin_v4')) {
+        _markerIconCache['destination_pin_v4'] =
+            await CustomMapMarkers.createHomeTapPinMarker(
+              primaryColor: AppColors.accentGreen,
             );
       }
 
@@ -998,12 +1749,12 @@ class RiderTrackingProvider with ChangeNotifier {
         Marker(
           markerId: const MarkerId('destination'),
           position: LatLng(_destinationLatitude!, _destinationLongitude!),
-          icon: _markerIconCache['destination']!,
+          icon: _markerIconCache['destination_pin_v4']!,
           infoWindow: const InfoWindow(
             title: 'Customer',
             snippet: 'Delivery address',
           ),
-          anchor: const Offset(0.5, 0.5),
+          anchor: const Offset(0.5, 0.8),
           zIndexInt: 5,
         ),
       );
@@ -1028,8 +1779,8 @@ class RiderTrackingProvider with ChangeNotifier {
   /// Setup geofence circles around pickup and destination
   void _setupGeofenceCircles() {
     final circles = <Circle>{};
-    const pickupColor = AppColors.serviceFood;
-    const deliveryColor = AppColors.serviceGrocery;
+    const pickupColor = AppColors.accentGreen;
+    const deliveryColor = AppColors.accentGreen;
 
     // Pickup geofence circle
     if (_pickupLatitude != null && _pickupLongitude != null) {
@@ -1072,15 +1823,19 @@ class RiderTrackingProvider with ChangeNotifier {
           .map((point) => LatLng(point.latitude, point.longitude))
           .toList();
 
-      final routePolyline = Polyline(
-        polylineId: const PolylineId('route'),
-        points: polylineCoordinates,
-        color: AppColors.serviceFood.withValues(alpha: 0.7),
-        width: 4,
-        patterns: [PatternItem.dash(15), PatternItem.gap(10)],
-      );
+      if (polylineCoordinates.length < 2) {
+        _createSimplePolyline();
+        return;
+      }
 
-      _polylines = {routePolyline};
+      _routeCoordinates = polylineCoordinates;
+      _routeProgressIndex = 0;
+      _updateRouteProgressForPosition(
+        _latitude != null && _longitude != null
+            ? LatLng(_latitude!, _longitude!)
+            : polylineCoordinates.first,
+        forceRebuild: true,
+      );
       notifyListeners();
     } catch (e) {
       debugPrint('❌ Error creating polyline: $e');
@@ -1090,6 +1845,18 @@ class RiderTrackingProvider with ChangeNotifier {
 
   /// Create a simple polyline connecting rider -> pickup -> destination
   void _createSimplePolyline() {
+    if (_useDemoMode) {
+      final current = currentLatLng;
+      final target = _demoTargetForStatus();
+      if (current == null || target == null) return;
+
+      _routeCoordinates = _buildDemoRoute(current, target, _demoRoutePoints);
+      _routeProgressIndex = 0;
+      _updateRouteProgressForPosition(current, forceRebuild: true);
+      notifyListeners();
+      return;
+    }
+
     final points = <LatLng>[];
 
     // Add rider position
@@ -1108,15 +1875,13 @@ class RiderTrackingProvider with ChangeNotifier {
     }
 
     if (points.length >= 2) {
-      _polylines = {
-        Polyline(
-          polylineId: const PolylineId('route'),
-          points: points,
-          color: AppColors.serviceFood.withValues(alpha: 0.5),
-          width: 4,
-          patterns: [PatternItem.dash(15), PatternItem.gap(10)],
-        ),
-      };
+      _routeCoordinates = points;
+      _routeProgressIndex = 0;
+      _updateRouteProgressForPosition(
+        _routeCoordinates.first,
+        forceRebuild: true,
+      );
+      notifyListeners();
     }
   }
 
@@ -1125,17 +1890,15 @@ class RiderTrackingProvider with ChangeNotifier {
     if (_latitude == null || _longitude == null) return;
 
     final newPosition = LatLng(_latitude!, _longitude!);
+    _updateRouteProgressForPosition(newPosition);
 
     // Check if rider marker exists, if not create it
     final hasRiderMarker = _markers.any((m) => m.markerId.value == 'rider');
     if (!hasRiderMarker) {
       // Create rider marker if it doesn't exist
-      const primaryColor = AppColors.serviceFood;
       if (!_markerIconCache.containsKey('rider')) {
-        _markerIconCache['rider'] = await CustomMapMarkers.createRiderMarker(
-          name: 'You',
-          primaryColor: primaryColor,
-        );
+        _markerIconCache['rider'] =
+            await CustomMapMarkers.createRiderVehicleMarker(size: 58);
       }
 
       _markers = {
@@ -1146,6 +1909,8 @@ class RiderTrackingProvider with ChangeNotifier {
           icon: _markerIconCache['rider']!,
           infoWindow: const InfoWindow(title: 'You', snippet: 'Your location'),
           anchor: const Offset(0.5, 0.5),
+          flat: true,
+          rotation: 0,
           zIndexInt: 10,
         ),
       };
@@ -1207,6 +1972,20 @@ class RiderTrackingProvider with ChangeNotifier {
     return (bearing + 360) % 360;
   }
 
+  double _calculateDistanceMeters(LatLng start, LatLng end) {
+    const double earthRadius = 6371000;
+    final lat1 = start.latitude * pi / 180;
+    final lat2 = end.latitude * pi / 180;
+    final dLat = (end.latitude - start.latitude) * pi / 180;
+    final dLng = (end.longitude - start.longitude) * pi / 180;
+
+    final a =
+        sin(dLat / 2) * sin(dLat / 2) +
+        cos(lat1) * cos(lat2) * sin(dLng / 2) * sin(dLng / 2);
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return earthRadius * c;
+  }
+
   /// Update rider marker position
   void _updateRiderMarkerPosition(LatLng newPosition, double rotation) {
     _markers = _markers.map((marker) {
@@ -1214,10 +1993,109 @@ class RiderTrackingProvider with ChangeNotifier {
         return marker.copyWith(
           positionParam: newPosition,
           rotationParam: rotation,
+          flatParam: true,
         );
       }
       return marker;
     }).toSet();
+  }
+
+  void _updateRouteProgressForPosition(
+    LatLng position, {
+    bool forceRebuild = false,
+  }) {
+    if (_routeCoordinates.length < 2) return;
+
+    final int nearestIndex = _findNearestRouteIndex(position);
+    if (nearestIndex <= _routeProgressIndex && !forceRebuild) {
+      return;
+    }
+
+    if (nearestIndex > _routeProgressIndex) {
+      _routeProgressIndex = nearestIndex;
+    }
+
+    final activePath = _routeCoordinates.skip(_routeProgressIndex).toList();
+    final passedPath = _routeCoordinates.take(_routeProgressIndex + 1).toList();
+
+    final nextPolylines = <Polyline>{};
+
+    if (activePath.length >= 2) {
+      nextPolylines.add(
+        Polyline(
+          polylineId: const PolylineId('route_active'),
+          points: activePath,
+          color: AppColors.accentGreen,
+          width: 6,
+          startCap: Cap.roundCap,
+          endCap: Cap.roundCap,
+          jointType: JointType.round,
+        ),
+      );
+    }
+
+    if (passedPath.length >= 2) {
+      nextPolylines.add(
+        Polyline(
+          polylineId: const PolylineId('route_passed'),
+          points: passedPath,
+          color: AppColors.accentGreen.withValues(alpha: 0.3),
+          width: 6,
+          startCap: Cap.roundCap,
+          endCap: Cap.roundCap,
+          jointType: JointType.round,
+        ),
+      );
+    }
+
+    final showUpcomingDeliveryPreview =
+        (_currentStatus == TrackingStatus.preparing ||
+            _currentStatus == TrackingStatus.pickedUp) &&
+        _pickupLatitude != null &&
+        _pickupLongitude != null &&
+        _destinationLatitude != null &&
+        _destinationLongitude != null;
+
+    if (showUpcomingDeliveryPreview) {
+      nextPolylines.add(
+        Polyline(
+          polylineId: const PolylineId('route_upcoming'),
+          points: [
+            LatLng(_pickupLatitude!, _pickupLongitude!),
+            LatLng(_destinationLatitude!, _destinationLongitude!),
+          ],
+          color: AppColors.accentGreen.withValues(alpha: 0.42),
+          width: 5,
+          startCap: Cap.roundCap,
+          endCap: Cap.roundCap,
+          jointType: JointType.round,
+        ),
+      );
+    }
+
+    _polylines = nextPolylines;
+  }
+
+  int _findNearestRouteIndex(LatLng position) {
+    if (_routeCoordinates.isEmpty) return 0;
+
+    final int lowerBound = _routeProgressIndex == 0
+        ? 0
+        : max(0, _routeProgressIndex - 2);
+    int nearestIndex = _routeProgressIndex;
+    double nearestDistance = double.infinity;
+
+    for (int i = lowerBound; i < _routeCoordinates.length; i++) {
+      final distance = _calculateDistanceMeters(position, _routeCoordinates[i]);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = i;
+      }
+    }
+
+    return nearestIndex < _routeProgressIndex
+        ? _routeProgressIndex
+        : nearestIndex;
   }
 
   /// Animate camera to show all markers
@@ -1271,6 +2149,8 @@ class RiderTrackingProvider with ChangeNotifier {
   @override
   void dispose() {
     _isDisposed = true;
+    _stopDemoSimulation();
+    _isLocalDemoSession = false;
     _stopLocationUpdates();
     _backgroundServiceSubscription?.cancel();
     _backgroundServiceSubscription = null;

@@ -72,6 +72,7 @@ dependencies:
   flutter_polyline_points: ^2.1.0
   battery_plus: ^7.0.0
   vibration: ^3.0.0
+  confetti: ^0.8.0
 
 dev_dependencies:
   flutter_test:

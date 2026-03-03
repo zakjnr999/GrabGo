@@ -26,6 +26,7 @@
     "docs:lint": "npx @redocly/cli lint docs/openapi.yaml",
     "docs:serve": "npx serve docs -l 8080",
     "seed:rating-metrics": "node scripts/seed_rating_metrics.js",
+    "create:rider": "node scripts/create_rider_account.js",
     "test:food-customization": "node scripts/test_food_customization.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",

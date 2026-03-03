@@ -221,6 +221,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/empty_cart.svg
   String get emptyCart => 'lib/assets/icons/empty_cart.svg';
 
+  /// File path: lib/assets/icons/empty_favorites.svg
+  String get emptyFavorites => 'lib/assets/icons/empty_favorites.svg';
+
   /// File path: lib/assets/icons/empty_orders_screen.svg
   String get emptyOrdersScreen => 'lib/assets/icons/empty_orders_screen.svg';
 
@@ -422,6 +425,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/package.svg
   String get package => 'lib/assets/icons/package.svg';
 
+  /// File path: lib/assets/icons/parcel_delivery.svg
+  String get parcelDelivery => 'lib/assets/icons/parcel_delivery.svg';
+
   /// File path: lib/assets/icons/party-popper.svg
   String get partyPopper => 'lib/assets/icons/party-popper.svg';
 
@@ -461,6 +467,9 @@ class $LibAssetsIconsGen {
 
   /// File path: lib/assets/icons/refresh.svg
   String get refresh => 'lib/assets/icons/refresh.svg';
+
+  /// File path: lib/assets/icons/rider_marker_icon.svg
+  String get riderMarkerIcon => 'lib/assets/icons/rider_marker_icon.svg';
 
   /// File path: lib/assets/icons/rider_onboarding_one.png
   AssetGenImage get riderOnboardingOne =>
@@ -652,6 +661,7 @@ class $LibAssetsIconsGen {
     edit,
     emoji,
     emptyCart,
+    emptyFavorites,
     emptyOrdersScreen,
     emptySearchIcon,
     expand,
@@ -716,6 +726,7 @@ class $LibAssetsIconsGen {
     orderTrackSample,
     packageDelivered,
     package,
+    parcelDelivery,
     partyPopper,
     pause,
     percentageCircle,
@@ -729,6 +740,7 @@ class $LibAssetsIconsGen {
     position,
     profileCircle,
     refresh,
+    riderMarkerIcon,
     riderOnboardingOne,
     riderOnboardingThree,
     riderOnboardingTwo,

@@ -28,8 +28,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   List<TransactionModel> _recentTransactions = [];
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -44,8 +43,7 @@ class _HomePageState extends State<HomePage>
   bool isLoadingOrders = true;
   String? ordersError;
   List<AvailableOrderDto> _availableOrders = [];
-  final AvailableOrdersService _availableOrdersService =
-      AvailableOrdersService();
+  final AvailableOrdersService _availableOrdersService = AvailableOrdersService();
   final OrderReservationService _reservationService = OrderReservationService();
 
   Timer? _locationUpdateTimer;
@@ -121,12 +119,10 @@ class _HomePageState extends State<HomePage>
     String message;
     switch (reason) {
       case 'inactivity':
-        message =
-            'You were set offline due to inactivity. Go online when ready!';
+        message = 'You were set offline due to inactivity. Go online when ready!';
         break;
       case 'low_battery':
-        message =
-            'You were set offline because your battery was critically low.';
+        message = 'You were set offline because your battery was critically low.';
         break;
       case 'unresponsive':
         message = 'You were set offline after missing multiple order requests.';
@@ -190,8 +186,7 @@ class _HomePageState extends State<HomePage>
         gravity: ToastGravity.CENTER,
         radius: KBorderSize.borderRadius4,
         showIcon: false,
-        message:
-            'Failed to ${value ? "go online" : "go offline"}. Please try again.',
+        message: 'Failed to ${value ? "go online" : "go offline"}. Please try again.',
       );
     }
   }
@@ -210,10 +205,7 @@ class _HomePageState extends State<HomePage>
       Position? position;
       try {
         position = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            timeLimit: Duration(seconds: 10),
-          ),
+          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 10)),
         );
       } catch (e) {
         debugPrint('Error getting location for update: $e');
@@ -224,9 +216,7 @@ class _HomePageState extends State<HomePage>
       try {
         batteryLevel = await _battery.batteryLevel;
         final batteryState = await _battery.batteryState;
-        isCharging =
-            batteryState == BatteryState.charging ||
-            batteryState == BatteryState.full;
+        isCharging = batteryState == BatteryState.charging || batteryState == BatteryState.full;
       } catch (e) {
         debugPrint('Error getting battery for update: $e');
       }
@@ -238,9 +228,7 @@ class _HomePageState extends State<HomePage>
           batteryLevel: batteryLevel,
           isCharging: isCharging,
         );
-        debugPrint(
-          'Location & battery updated: (${position.latitude}, ${position.longitude}), $batteryLevel%',
-        );
+        debugPrint('Location & battery updated: (${position.latitude}, ${position.longitude}), $batteryLevel%');
       }
     } catch (e) {
       debugPrint('Error in periodic update: $e');
@@ -265,9 +253,7 @@ class _HomePageState extends State<HomePage>
               message: 'Order accepted! Navigate to pickup location.',
               backgroundColor: AppColors.accentGreen,
             );
-            debugPrint(
-              '✅ Reservation accepted from popup. Opening order details for ${reservation.orderId}',
-            );
+            debugPrint('✅ Reservation accepted from popup. Opening order details for ${reservation.orderId}');
             _openReservationOrderConfirmation(reservation);
           },
           onDeclined: () {
@@ -325,9 +311,7 @@ class _HomePageState extends State<HomePage>
           reservation,
           onAccepted: () {
             _loadAvailableOrders();
-            debugPrint(
-              '✅ Active reservation accepted. Opening order details for ${reservation.orderId}',
-            );
+            debugPrint('✅ Active reservation accepted. Opening order details for ${reservation.orderId}');
             _openReservationOrderConfirmation(reservation);
           },
           onDeclined: () {},
@@ -337,9 +321,7 @@ class _HomePageState extends State<HomePage>
     });
   }
 
-  Future<void> _openReservationOrderConfirmation(
-    OrderReservation reservation,
-  ) async {
+  Future<void> _openReservationOrderConfirmation(OrderReservation reservation) async {
     if (!mounted) return;
 
     // Prevent push from being dropped while modal pop animation is still running.
@@ -362,9 +344,7 @@ class _HomePageState extends State<HomePage>
           restaurantAddress: order.pickupAddress,
           restaurantLogo: order.storeLogo,
           orderTotal: 'GHS ${order.totalAmount.toStringAsFixed(2)}',
-          orderItems: [
-            '${order.itemCount} item${order.itemCount == 1 ? '' : 's'}',
-          ],
+          orderItems: ['${order.itemCount} item${order.itemCount == 1 ? '' : 's'}'],
           specialInstructions: null,
           riderEarnings: reservation.estimatedEarnings,
           pickupLatitude: order.pickupLat,
@@ -377,10 +357,8 @@ class _HomePageState extends State<HomePage>
   }
 
   void _setupAnimations() {
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
-      vsync: this,
-    )..repeat(reverse: false);
+    _pulseController = AnimationController(duration: const Duration(milliseconds: 2000), vsync: this)
+      ..repeat(reverse: false);
 
     _pulseAnimation = Tween<double>(begin: 0.85, end: 1.0).animate(
       CurvedAnimation(
@@ -436,16 +414,10 @@ class _HomePageState extends State<HomePage>
       barrierDismissible: true,
       builder: (context) => AlertDialog(
         backgroundColor: colors.backgroundPrimary,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.borderRadius4)),
         title: Text(
           'Delivery Window Ending!',
-          style: TextStyle(
-            fontSize: 18.sp,
-            color: colors.textPrimary,
-            fontWeight: FontWeight.w700,
-          ),
+          style: TextStyle(fontSize: 18.sp, color: colors.textPrimary, fontWeight: FontWeight.w700),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -459,10 +431,7 @@ class _HomePageState extends State<HomePage>
               child: SvgPicture.asset(
                 Assets.icons.timer,
                 package: 'grab_go_shared',
-                colorFilter: ColorFilter.mode(
-                  colors.accentGreen,
-                  BlendMode.srcIn,
-                ),
+                colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
                 width: 40.w,
                 height: 40.h,
               ),
@@ -470,21 +439,13 @@ class _HomePageState extends State<HomePage>
             SizedBox(height: 24.h),
             Text(
               'Order #${warning.orderNumber}',
-              style: TextStyle(
-                color: colors.textPrimary,
-                fontSize: 16.sp,
-                fontWeight: FontWeight.w600,
-              ),
+              style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
             ),
             SizedBox(height: 12.h),
             Text(
               '${warning.minutesRemaining} minutes remaining to complete this delivery. Please hurry!',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: colors.textSecondary,
-                fontSize: 14.sp,
-                height: 1.5,
-              ),
+              style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, height: 1.5),
             ),
           ],
         ),
@@ -498,11 +459,7 @@ class _HomePageState extends State<HomePage>
             padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
             backgroundColor: colors.accentGreen,
             borderRadius: KBorderSize.borderRadius4,
-            textStyle: TextStyle(
-              color: Colors.white,
-              fontSize: 14.sp,
-              fontWeight: FontWeight.w700,
-            ),
+            textStyle: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
           ),
         ],
       ),
@@ -554,10 +511,7 @@ class _HomePageState extends State<HomePage>
       }
 
       final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          distanceFilter: 100,
-        ),
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 100),
       );
 
       if (!mounted) return;
@@ -568,9 +522,7 @@ class _HomePageState extends State<HomePage>
 
       _reservationService.updateLocation(position.latitude, position.longitude);
 
-      debugPrint(
-        'Location obtained: ${position.latitude}, ${position.longitude}',
-      );
+      debugPrint('Location obtained: ${position.latitude}, ${position.longitude}');
     } catch (e) {
       debugPrint('Error getting location: $e');
     }
@@ -584,10 +536,7 @@ class _HomePageState extends State<HomePage>
     });
 
     try {
-      final result = await _availableOrdersService.getAvailableOrders(
-        lat: _currentLat,
-        lon: _currentLon,
-      );
+      final result = await _availableOrdersService.getAvailableOrders(lat: _currentLat, lon: _currentLon);
 
       if (!mounted) return;
       setState(() {
@@ -692,10 +641,7 @@ class _HomePageState extends State<HomePage>
     }
   }
 
-  Color _getTransactionTypeColor(
-    TransactionType type,
-    AppColorsExtension colors,
-  ) {
+  Color _getTransactionTypeColor(TransactionType type, AppColorsExtension colors) {
     switch (type) {
       case TransactionType.delivery:
         return colors.accentGreen;
@@ -734,9 +680,7 @@ class _HomePageState extends State<HomePage>
                 padding: EdgeInsets.all(8.r),
                 decoration: BoxDecoration(
                   color: iconColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(
-                    KBorderSize.borderRadius4,
-                  ),
+                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                 ),
                 child: SvgPicture.asset(
                   icon,
@@ -748,31 +692,19 @@ class _HomePageState extends State<HomePage>
               ),
               Text(
                 title,
-                style: TextStyle(
-                  color: colors.textSecondary,
-                  fontSize: 11.sp,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w500),
               ),
             ],
           ),
           SizedBox(height: 12.h),
           Text(
             value,
-            style: TextStyle(
-              color: colors.textPrimary,
-              fontSize: 20.sp,
-              fontWeight: FontWeight.w700,
-            ),
+            style: TextStyle(color: colors.textPrimary, fontSize: 20.sp, fontWeight: FontWeight.w700),
           ),
           SizedBox(height: 2.h),
           Text(
             subtitle,
-            style: TextStyle(
-              color: colors.textSecondary,
-              fontSize: 11.sp,
-              fontWeight: FontWeight.w400,
-            ),
+            style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w400),
           ),
         ],
       ),
@@ -788,9 +720,7 @@ class _HomePageState extends State<HomePage>
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
         systemNavigationBarDividerColor: Colors.transparent,
-        systemNavigationBarIconBrightness: isDart
-            ? Brightness.light
-            : Brightness.dark,
+        systemNavigationBarIconBrightness: isDart ? Brightness.light : Brightness.dark,
         systemNavigationBarColor: colors.backgroundSecondary,
       ),
       child: Scaffold(
@@ -804,17 +734,12 @@ class _HomePageState extends State<HomePage>
               child: Column(
                 children: [
                   Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 20.w,
-                      vertical: 16.h,
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
                     child: Container(
                       padding: EdgeInsets.all(16.w),
                       decoration: BoxDecoration(
                         color: colors.backgroundPrimary,
-                        borderRadius: BorderRadius.circular(
-                          KBorderSize.borderRadius4,
-                        ),
+                        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                       ),
                       child: Row(
                         children: [
@@ -829,14 +754,9 @@ class _HomePageState extends State<HomePage>
                                           width: 48.w * _rippleAnimation.value,
                                           height: 48.w * _rippleAnimation.value,
                                           decoration: BoxDecoration(
-                                            color: colors.accentGreen
-                                                .withValues(
-                                                  alpha:
-                                                      0.15 *
-                                                      (1 -
-                                                          _rippleAnimation
-                                                              .value),
-                                                ),
+                                            color: colors.accentGreen.withValues(
+                                              alpha: 0.15 * (1 - _rippleAnimation.value),
+                                            ),
                                             shape: BoxShape.circle,
                                           ),
                                         ),
@@ -844,8 +764,7 @@ class _HomePageState extends State<HomePage>
                                           width: 48.w,
                                           height: 48.w,
                                           decoration: BoxDecoration(
-                                            color: colors.accentGreen
-                                                .withValues(alpha: 0.1),
+                                            color: colors.accentGreen.withValues(alpha: 0.1),
                                             shape: BoxShape.circle,
                                           ),
                                         ),
@@ -859,12 +778,9 @@ class _HomePageState extends State<HomePage>
                                               shape: BoxShape.circle,
                                               boxShadow: [
                                                 BoxShadow(
-                                                  color: colors.accentGreen
-                                                      .withValues(alpha: 0.3),
-                                                  blurRadius:
-                                                      8 * _pulseAnimation.value,
-                                                  spreadRadius:
-                                                      2 * _pulseAnimation.value,
+                                                  color: colors.accentGreen.withValues(alpha: 0.3),
+                                                  blurRadius: 8 * _pulseAnimation.value,
+                                                  spreadRadius: 2 * _pulseAnimation.value,
                                                 ),
                                               ],
                                             ),
@@ -883,8 +799,7 @@ class _HomePageState extends State<HomePage>
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
                                         border: Border.all(
-                                          color: colors.textSecondary
-                                              .withValues(alpha: 0.1),
+                                          color: colors.textSecondary.withValues(alpha: 0.1),
                                           width: 2,
                                         ),
                                       ),
@@ -894,9 +809,7 @@ class _HomePageState extends State<HomePage>
                                       height: 40.w,
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: colors.textSecondary.withValues(
-                                          alpha: 0.1,
-                                        ),
+                                        color: colors.textSecondary.withValues(alpha: 0.1),
                                       ),
                                       child: Center(
                                         child: SvgPicture.asset(
@@ -905,9 +818,7 @@ class _HomePageState extends State<HomePage>
                                           width: 20.w,
                                           height: 20.w,
                                           colorFilter: ColorFilter.mode(
-                                            colors.textSecondary.withValues(
-                                              alpha: 0.6,
-                                            ),
+                                            colors.textSecondary.withValues(alpha: 0.6),
                                             BlendMode.srcIn,
                                           ),
                                         ),
@@ -924,9 +835,7 @@ class _HomePageState extends State<HomePage>
                                     ? Text(
                                         _isCheckingStatus
                                             ? "Checking status..."
-                                            : (onlineStatus
-                                                  ? "Going offline..."
-                                                  : "Going online..."),
+                                            : (onlineStatus ? "Going offline..." : "Going online..."),
                                         style: TextStyle(
                                           color: colors.textSecondary,
                                           fontSize: 16.sp,
@@ -934,9 +843,7 @@ class _HomePageState extends State<HomePage>
                                         ),
                                       )
                                     : Text(
-                                        onlineStatus
-                                            ? "You're Online"
-                                            : "You're Offline",
+                                        onlineStatus ? "You're Online" : "You're Offline",
                                         style: TextStyle(
                                           color: colors.textPrimary,
                                           fontSize: 16.sp,
@@ -948,9 +855,7 @@ class _HomePageState extends State<HomePage>
                                   _isCheckingStatus
                                       ? "Please wait..."
                                       : _isTogglingStatus
-                                      ? (onlineStatus
-                                            ? "Stopping order alerts..."
-                                            : "Preparing to receive orders...")
+                                      ? (onlineStatus ? "Stopping order alerts..." : "Preparing to receive orders...")
                                       : onlineStatus
                                       ? "Ready to accept deliveries"
                                       : "You won't receive new orders",
@@ -967,14 +872,11 @@ class _HomePageState extends State<HomePage>
                             value: onlineStatus,
                             onChanged: (_isCheckingStatus || _isTogglingStatus)
                                 ? (_) {}
-                                : (value) =>
-                                      _handleOnlineStatusToggle(value, colors),
-                            activeColor:
-                                (_isCheckingStatus || _isTogglingStatus)
+                                : (value) => _handleOnlineStatusToggle(value, colors),
+                            activeColor: (_isCheckingStatus || _isTogglingStatus)
                                 ? colors.accentGreen.withValues(alpha: 0.5)
                                 : colors.accentGreen,
-                            inactiveColor:
-                                (_isCheckingStatus || _isTogglingStatus)
+                            inactiveColor: (_isCheckingStatus || _isTogglingStatus)
                                 ? colors.border.withValues(alpha: 0.5)
                                 : colors.border,
                             thumbColor: colors.backgroundPrimary,
@@ -1020,8 +922,7 @@ class _HomePageState extends State<HomePage>
                     child: GestureDetector(
                       onTap: onlineStatus
                           ? () {
-                              final hasAvailableOrders =
-                                  (_statistics?.totalOrders ?? 0) > 0;
+                              final hasAvailableOrders = (_statistics?.totalOrders ?? 0) > 0;
                               if (ordersError != null) {
                                 _loadAvailableOrders();
                                 return;
@@ -1042,9 +943,7 @@ class _HomePageState extends State<HomePage>
                               : (_statistics?.totalOrders ?? 0) == 0
                               ? colors.backgroundPrimary
                               : colors.accentGreen.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(
-                            KBorderSize.borderRadius4,
-                          ),
+                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                         ),
                         child: Row(
                           children: [
@@ -1056,10 +955,7 @@ class _HomePageState extends State<HomePage>
                                     package: "grab_go_shared",
                                     height: 40.h,
                                     width: 40.w,
-                                    colorFilter: ColorFilter.mode(
-                                      colors.error,
-                                      BlendMode.srcIn,
-                                    ),
+                                    colorFilter: ColorFilter.mode(colors.error, BlendMode.srcIn),
                                   )
                                 : Assets.images.deliveryPackage.image(
                                     height: 100.h,
@@ -1082,18 +978,10 @@ class _HomePageState extends State<HomePage>
                                       children: [
                                         (totalOrders > 5)
                                             ? Container(
-                                                padding: EdgeInsets.symmetric(
-                                                  horizontal: 8.w,
-                                                  vertical: 4.h,
-                                                ),
+                                                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                                                 decoration: BoxDecoration(
-                                                  color: colors.accentOrange
-                                                      .withValues(alpha: 0.2),
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                        KBorderSize
-                                                            .borderRadius4,
-                                                      ),
+                                                  color: colors.accentOrange.withValues(alpha: 0.2),
+                                                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                                                 ),
                                                 child: Text(
                                                   "Rush Hour",
@@ -1146,18 +1034,13 @@ class _HomePageState extends State<HomePage>
                                 ],
                               ),
                             ),
-                            if (onlineStatus &&
-                                ordersError == null &&
-                                (_statistics?.totalOrders ?? 0) > 0)
+                            if (onlineStatus && ordersError == null && (_statistics?.totalOrders ?? 0) > 0)
                               SvgPicture.asset(
                                 Assets.icons.navArrowRight,
                                 package: "grab_go_shared",
                                 width: 24.w,
                                 height: 24.w,
-                                colorFilter: ColorFilter.mode(
-                                  colors.accentGreen,
-                                  BlendMode.srcIn,
-                                ),
+                                colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
                               ),
                             if (!onlineStatus)
                               SvgPicture.asset(
@@ -1187,22 +1070,13 @@ class _HomePageState extends State<HomePage>
                           children: [
                             Text(
                               "Recent Transactions",
-                              style: TextStyle(
-                                color: colors.textPrimary,
-                                fontSize: 18.sp,
-                                fontWeight: FontWeight.w700,
-                              ),
+                              style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w700),
                             ),
                             Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 12.w,
-                                vertical: 6.h,
-                              ),
+                              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                               decoration: BoxDecoration(
                                 color: colors.backgroundPrimary,
-                                borderRadius: BorderRadius.circular(
-                                  KBorderSize.borderRadius4,
-                                ),
+                                borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -1221,10 +1095,7 @@ class _HomePageState extends State<HomePage>
                                     package: 'grab_go_shared',
                                     width: 14.w,
                                     height: 14.h,
-                                    colorFilter: ColorFilter.mode(
-                                      colors.textPrimary,
-                                      BlendMode.srcIn,
-                                    ),
+                                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                                   ),
                                 ],
                               ),
@@ -1238,33 +1109,21 @@ class _HomePageState extends State<HomePage>
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: _recentTransactions.length,
-                          separatorBuilder: (context, index) =>
-                              SizedBox(height: 12.h),
+                          separatorBuilder: (context, index) => SizedBox(height: 12.h),
                           itemBuilder: (context, index) {
                             final transaction = _recentTransactions[index];
-                            final typeColor = _getTransactionTypeColor(
-                              transaction.type,
-                              colors,
-                            );
-                            final iconPath = _getTransactionIcon(
-                              transaction.type,
-                            );
-                            final typeLabel = _getTransactionTypeLabel(
-                              transaction.type,
-                            );
+                            final typeColor = _getTransactionTypeColor(transaction.type, colors);
+                            final iconPath = _getTransactionIcon(transaction.type);
+                            final typeLabel = _getTransactionTypeLabel(transaction.type);
 
                             final timeFormat = DateFormat('MMM dd, hh:mm a');
-                            final timeString = timeFormat.format(
-                              transaction.dateTime,
-                            );
+                            final timeString = timeFormat.format(transaction.dateTime);
 
                             return Container(
                               padding: EdgeInsets.all(14.w),
                               decoration: BoxDecoration(
                                 color: colors.backgroundPrimary,
-                                borderRadius: BorderRadius.circular(
-                                  KBorderSize.borderRadius4,
-                                ),
+                                borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                               ),
                               child: Row(
                                 children: [
@@ -1273,9 +1132,7 @@ class _HomePageState extends State<HomePage>
                                     height: 48.w,
                                     decoration: BoxDecoration(
                                       color: typeColor.withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(
-                                        KBorderSize.borderRadius4,
-                                      ),
+                                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                                     ),
                                     child: Center(
                                       child: SvgPicture.asset(
@@ -1283,18 +1140,14 @@ class _HomePageState extends State<HomePage>
                                         package: 'grab_go_shared',
                                         width: 24.w,
                                         height: 24.w,
-                                        colorFilter: ColorFilter.mode(
-                                          typeColor,
-                                          BlendMode.srcIn,
-                                        ),
+                                        colorFilter: ColorFilter.mode(typeColor, BlendMode.srcIn),
                                       ),
                                     ),
                                   ),
                                   SizedBox(width: 16.w),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           transaction.description,
@@ -1344,17 +1197,10 @@ class _HomePageState extends State<HomePage>
                                       ),
                                       SizedBox(height: 2.h),
                                       Container(
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: 6.w,
-                                          vertical: 2.h,
-                                        ),
+                                        padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
                                         decoration: BoxDecoration(
-                                          color: colors.success.withValues(
-                                            alpha: 0.15,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            4,
-                                          ),
+                                          color: colors.success.withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(4),
                                         ),
                                         child: Text(
                                           transaction.status.name.toUpperCase(),
@@ -1397,36 +1243,24 @@ class _HomePageState extends State<HomePage>
           child: FloatingActionButton.extended(
             onPressed: () => context.push("/chatlist"),
             extendedPadding: EdgeInsets.all(10.r),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.borderRadius4)),
             backgroundColor: colors.accentGreen,
             elevation: 0,
             label: Text(
               "Messages",
-              style: TextStyle(
-                fontSize: 12.sp,
-                fontWeight: FontWeight.w600,
-                color: colors.backgroundPrimary,
-              ),
+              style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600, color: colors.backgroundPrimary),
             ),
             icon: Badge(
               backgroundColor: colors.error,
               label: Text(
                 '2',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 10.sp,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(color: Colors.white, fontSize: 10.sp, fontWeight: FontWeight.w600),
               ),
               child: Container(
                 padding: EdgeInsets.all(8.r),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(
-                    KBorderSize.borderRadius4,
-                  ),
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                 ),
                 child: SvgPicture.asset(
                   Assets.icons.chatBubble,

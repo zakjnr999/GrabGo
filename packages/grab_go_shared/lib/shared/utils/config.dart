@@ -1,7 +1,8 @@
 class AppConfig {
   // Payment Configuration
-  static const String paystackPublicKey = String.fromEnvironment('PAYSTACK_PUBLIC_KEY');
-
+  static const String paystackPublicKey = String.fromEnvironment(
+    'PAYSTACK_PUBLIC_KEY',
+  );
 
   // API Configuration
   static const String apiBaseUrl = String.fromEnvironment('API_BASE_URL');
@@ -14,13 +15,26 @@ class AppConfig {
   );
 
   // App Configuration
-  static const String appName = String.fromEnvironment('APP_NAME', defaultValue: 'GrabGo');
+  static const String appName = String.fromEnvironment(
+    'APP_NAME',
+    defaultValue: 'GrabGo',
+  );
   static const String currency = 'GHS';
   static const String defaultCountry = 'Ghana';
 
   // Development Configuration
-  static const bool isDevelopment = bool.fromEnvironment('DEVELOPMENT', defaultValue: false);
-  static const bool enableLogging = bool.fromEnvironment('ENABLE_LOGGING', defaultValue: false);
+  static const bool isDevelopment = bool.fromEnvironment(
+    'DEVELOPMENT',
+    defaultValue: false,
+  );
+  static const bool enableLogging = bool.fromEnvironment(
+    'ENABLE_LOGGING',
+    defaultValue: false,
+  );
+  static const bool trackingDemoMode = bool.fromEnvironment(
+    'TRACKING_DEMO_MODE',
+    defaultValue: false,
+  );
 
   // Validation methods to ensure required environment variables are set
   static void validateConfiguration() {
@@ -43,8 +57,12 @@ class AppConfig {
     return {
       'APP_NAME': appName,
       'API_BASE_URL': apiBaseUrl.isNotEmpty ? apiBaseUrl : 'NOT_SET',
-      'PAYSTACK_PUBLIC_KEY': paystackPublicKey.isNotEmpty ? '${paystackPublicKey.substring(0, 7)}***' : 'NOT_SET',
-      'API_KEY': apiKey.isNotEmpty ? '***${apiKey.substring(apiKey.length - 3)}' : 'NOT_SET',
+      'PAYSTACK_PUBLIC_KEY': paystackPublicKey.isNotEmpty
+          ? '${paystackPublicKey.substring(0, 7)}***'
+          : 'NOT_SET',
+      'API_KEY': apiKey.isNotEmpty
+          ? '***${apiKey.substring(apiKey.length - 3)}'
+          : 'NOT_SET',
       'CURRENCY': currency,
       'COUNTRY': defaultCountry,
       'DEVELOPMENT': isDevelopment.toString(),

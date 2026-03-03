@@ -1,15 +1,14 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:grab_go_rider/features/chat/view/chat_detail_page.dart';
 import 'package:grab_go_rider/features/orders/service/available_orders_service.dart';
 import 'package:grab_go_rider/features/orders/viewmodel/rider_tracking_provider.dart';
 import 'package:grab_go_rider/features/orders/widgets/cancel_order_dialog.dart';
-import 'package:grab_go_rider/features/orders/widgets/external_navigation_helper.dart';
 import 'package:grab_go_rider/features/orders/widgets/photo_proof_capture.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -20,8 +19,10 @@ class DeliveryTrackingPage extends StatefulWidget {
   final String customerName;
   final String customerAddress;
   final String customerPhone;
+  final String? customerPhoto;
   final String restaurantName;
   final String restaurantAddress;
+  final String? restaurantLogo;
   final String orderTotal;
   final List<String> orderItems;
   final String? specialInstructions;
@@ -39,6 +40,7 @@ class DeliveryTrackingPage extends StatefulWidget {
   final String? giftRecipientName;
   final String? giftRecipientPhone;
   final String? deliveryVerificationMethod;
+  final bool testTrigger;
 
   const DeliveryTrackingPage({
     super.key,
@@ -46,8 +48,10 @@ class DeliveryTrackingPage extends StatefulWidget {
     required this.customerName,
     required this.customerAddress,
     required this.customerPhone,
+    this.customerPhoto,
     required this.restaurantName,
     required this.restaurantAddress,
+    this.restaurantLogo,
     required this.orderTotal,
     required this.orderItems,
     this.specialInstructions,
@@ -64,6 +68,7 @@ class DeliveryTrackingPage extends StatefulWidget {
     this.giftRecipientName,
     this.giftRecipientPhone,
     this.deliveryVerificationMethod,
+    this.testTrigger = false,
   });
 
   @override
@@ -71,8 +76,13 @@ class DeliveryTrackingPage extends StatefulWidget {
 }
 
 class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
+  static const Duration _sheetAnimationDuration = Duration(milliseconds: 280);
+  static const Curve _sheetAnimationCurve = Curves.easeOutCubic;
+
+  RiderTrackingProvider? _trackingProvider;
   late String _currentPhase;
-  bool _showBottomSheet = true;
+  bool _showBottomSheet = false;
+  double _bottomSheetDragDistance = 0;
   bool _isInitializing = true;
   String? _initError;
 
@@ -80,14 +90,84 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
   bool _hasArrivedAtPickup = false;
   bool _hasArrivedAtCustomer = false;
   bool _isCompletingDelivery = false;
+  bool _isProcessingStageAction = false;
 
   @override
   void initState() {
     super.initState();
-    _currentPhase = widget.phase ?? "pickup";
+    _currentPhase = _deriveInitialPhaseFromRoute();
+    _hasArrivedAtPickup = widget.hasPickedUp == true || _currentPhase == "delivery";
     // Initialize tracking when page loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _trackingProvider = context.read<RiderTrackingProvider>();
+      _trackingProvider?.addListener(_onTrackingProviderChanged);
       _initializeTracking();
+    });
+  }
+
+  @override
+  void dispose() {
+    _trackingProvider?.removeListener(_onTrackingProviderChanged);
+    _trackingProvider = null;
+    super.dispose();
+  }
+
+  String _deriveInitialPhaseFromRoute() {
+    if (widget.hasPickedUp == true) return "delivery";
+    if ((widget.phase ?? "").toLowerCase() == "delivery") return "delivery";
+    return "pickup";
+  }
+
+  String _phaseFromTrackingStatus(String statusName) {
+    switch (statusName) {
+      case 'preparing':
+        return "pickup";
+      case 'pickedUp':
+      case 'inTransit':
+      case 'nearby':
+      case 'delivered':
+      case 'cancelled':
+        return "delivery";
+      default:
+        return "pickup";
+    }
+  }
+
+  bool _arrivedAtPickupFromStatus(String statusName) {
+    return statusName != 'preparing';
+  }
+
+  bool _arrivedAtCustomerFromStatus(String statusName) {
+    return statusName == 'nearby' || statusName == 'delivered';
+  }
+
+  void _onTrackingProviderChanged() {
+    final provider = _trackingProvider;
+    if (!mounted || provider == null || !provider.hasActiveSession) return;
+    _syncUiStateFromProvider(provider);
+  }
+
+  void _syncUiStateFromProvider(RiderTrackingProvider provider, {bool force = false}) {
+    if (!provider.hasActiveSession && !force) return;
+
+    final statusName = provider.currentStatus.name;
+    final nextPhase = _phaseFromTrackingStatus(statusName);
+    final nextHasArrivedAtPickup = _arrivedAtPickupFromStatus(statusName) || _hasArrivedAtPickup;
+    final nextHasArrivedAtCustomer = _arrivedAtCustomerFromStatus(statusName);
+
+    if (!force &&
+        nextPhase == _currentPhase &&
+        nextHasArrivedAtPickup == _hasArrivedAtPickup &&
+        nextHasArrivedAtCustomer == _hasArrivedAtCustomer) {
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _currentPhase = nextPhase;
+      _hasArrivedAtPickup = nextHasArrivedAtPickup;
+      _hasArrivedAtCustomer = nextHasArrivedAtCustomer;
     });
   }
 
@@ -104,6 +184,32 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
     debugPrint('   destinationLatitude: ${widget.destinationLatitude}');
     debugPrint('   destinationLongitude: ${widget.destinationLongitude}');
     debugPrint('   deliveryVerificationRequired: ${widget.deliveryVerificationRequired}');
+    debugPrint('   testTrigger: ${widget.testTrigger}');
+
+    if (widget.testTrigger) {
+      debugPrint('🧪 Test trigger active: starting local demo tracking session');
+      final initialized = await trackingProvider.initializeTracking(
+        orderId: widget.orderId,
+        riderId: widget.riderId ?? "demo-rider",
+        customerId: widget.customerId ?? "demo-customer",
+        pickupLatitude: widget.pickupLatitude ?? 5.60372,
+        pickupLongitude: widget.pickupLongitude ?? -0.18700,
+        destinationLatitude: widget.destinationLatitude ?? 5.57458,
+        destinationLongitude: widget.destinationLongitude ?? -0.21516,
+        useDemoSimulation: true,
+      );
+
+      setState(() {
+        _currentPhase = "pickup";
+        _hasArrivedAtPickup = false;
+        _isInitializing = false;
+        if (!initialized) {
+          _initError = trackingProvider.lastError ?? 'Failed to initialize demo tracking';
+        }
+      });
+      _syncUiStateFromProvider(trackingProvider, force: true);
+      return;
+    }
 
     // Check if we have the required data for tracking initialization
     if (widget.customerId == null ||
@@ -124,6 +230,9 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
           _initError = 'Could not initialize tracking. Using offline mode.';
         }
       });
+      if (success) {
+        _syncUiStateFromProvider(trackingProvider, force: true);
+      }
       return;
     }
 
@@ -136,6 +245,7 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
       setState(() {
         _isInitializing = false;
       });
+      _syncUiStateFromProvider(trackingProvider, force: true);
       return;
     }
 
@@ -157,12 +267,54 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         _initError = trackingProvider.lastError ?? 'Failed to initialize tracking';
       }
     });
+    if (success) {
+      _syncUiStateFromProvider(trackingProvider, force: true);
+    }
+  }
+
+  void _expandBottomSheet() {
+    if (_showBottomSheet) return;
+    setState(() {
+      _showBottomSheet = true;
+    });
+  }
+
+  void _collapseBottomSheet() {
+    if (!_showBottomSheet) return;
+    setState(() {
+      _showBottomSheet = false;
+    });
+  }
+
+  Future<void> _refreshTrackingData(AppColorsExtension colors) async {
+    final trackingProvider = context.read<RiderTrackingProvider>();
+    final refreshed = await _runWithLoadingDialog(
+      colors: colors,
+      message: "Refreshing tracking...",
+      task: () => trackingProvider.resumeTracking(widget.orderId, useDemoSimulation: widget.testTrigger),
+    );
+
+    if (!mounted) return;
+    if (refreshed) {
+      _syncUiStateFromProvider(trackingProvider, force: true);
+      _showToast(colors: colors, message: "Tracking refreshed", backgroundColor: colors.accentGreen);
+      return;
+    }
+
+    _showToast(
+      colors: colors,
+      message: trackingProvider.lastError ?? "Could not refresh tracking. Please try again.",
+      backgroundColor: colors.error,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    final size = MediaQuery.of(context).size;
+    final mediaQuery = MediaQuery.of(context);
+    final size = mediaQuery.size;
+    final bottomSafeArea = mediaQuery.padding.bottom;
+    final collapsedPreviewHeight = bottomSafeArea + 72.h;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -175,62 +327,6 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
       ),
       child: Scaffold(
         backgroundColor: colors.backgroundSecondary,
-        extendBodyBehindAppBar: true,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          leading: Container(
-            margin: EdgeInsets.all(8.w),
-            decoration: BoxDecoration(
-              color: colors.backgroundPrimary.withValues(alpha: 0.9),
-              shape: BoxShape.circle,
-              border: Border.all(color: colors.border.withValues(alpha: 0.3), width: 1),
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => context.pop(),
-                customBorder: const CircleBorder(),
-                child: Padding(
-                  padding: EdgeInsets.all(10.r),
-                  child: SvgPicture.asset(
-                    Assets.icons.navArrowLeft,
-                    package: 'grab_go_shared',
-                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          actions: [
-            Container(
-              margin: EdgeInsets.all(8.w),
-              decoration: BoxDecoration(
-                color: colors.backgroundPrimary.withValues(alpha: 0.9),
-                shape: BoxShape.circle,
-                border: Border.all(color: colors.border.withValues(alpha: 0.3), width: 1),
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () {
-                    _showCallOptions(context, colors);
-                  },
-                  customBorder: const CircleBorder(),
-                  child: Padding(
-                    padding: EdgeInsets.all(10.r),
-                    child: SvgPicture.asset(
-                      Assets.icons.phone,
-                      package: 'grab_go_shared',
-                      colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
         body: Stack(
           children: [
             // Google Maps
@@ -262,28 +358,159 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                     liteModeEnabled: false,
                     // Apply custom GrabGo branded style from shared package
                     style: GrabGoMapStyles.forBrightness(Theme.of(context).brightness),
-                    padding: EdgeInsets.only(bottom: _showBottomSheet ? size.height * 0.45 : 80.h),
+                    padding: EdgeInsets.only(bottom: _showBottomSheet ? size.height * 0.45 : collapsedPreviewHeight),
                     onMapCreated: (GoogleMapController controller) {
                       trackingProvider.setMapController(controller);
                     },
                     onTap: (_) {
-                      setState(() {
-                        _showBottomSheet = !_showBottomSheet;
-                      });
+                      if (_showBottomSheet) {
+                        _collapseBottomSheet();
+                      } else {
+                        _expandBottomSheet();
+                      }
                     },
                   );
                 },
               ),
             ),
 
-            // Map control buttons (recenter)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 8.h,
+              left: 16.w,
+              right: 16.w,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    height: 48,
+                    width: 48,
+                    decoration: BoxDecoration(
+                      color: colors.backgroundPrimary,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(30),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => context.pop(),
+                        customBorder: const CircleBorder(),
+                        child: Padding(
+                          padding: EdgeInsets.all(10.r),
+                          child: SvgPicture.asset(
+                            Assets.icons.navArrowLeft,
+                            package: 'grab_go_shared',
+                            colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Container(
+                    height: 48,
+                    width: 48,
+                    decoration: BoxDecoration(
+                      color: colors.backgroundPrimary,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(30),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => {},
+                        customBorder: const CircleBorder(),
+                        child: Padding(
+                          padding: EdgeInsets.all(11.r),
+                          child: SvgPicture.asset(
+                            Assets.icons.headsetHelp,
+                            package: 'grab_go_shared',
+                            colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 12.h,
+              left: 0,
+              right: 0,
+              child: Consumer<RiderTrackingProvider>(
+                builder: (context, trackingProvider, child) {
+                  return IgnorePointer(
+                    child: Center(
+                      child: _buildMapStatusPill(
+                        isDark: isDark,
+                        colors: colors,
+                        connectionHealth: trackingProvider.connectionHealth,
+                        pendingUpdates: trackingProvider.pendingLocationUpdates,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+
             Positioned(
               right: 16.w,
-              bottom: _showBottomSheet ? size.height * 0.52 : 100.h,
+              top: MediaQuery.of(context).padding.top + 58.h,
+              child: _buildMapControlButton(
+                icon: Assets.icons.expand,
+                onTap: () {
+                  final provider = context.read<RiderTrackingProvider>();
+                  provider.animateCameraToFitMarkers();
+                },
+                colors: colors,
+                isDark: isDark,
+              ),
+
+              // child: _buildMapControlButton(
+              //   icon: Assets.icons.sendDiagonal,
+              //   onTap: () {
+              //     final provider = context.read<RiderTrackingProvider>();
+              //     provider.animateCameraToFitMarkers();
+              //   },
+              //   colors: colors,
+              //   isDark: isDark,
+              // ),
+            ),
+
+            Positioned(
+              left: 16.w,
+              top: MediaQuery.of(context).padding.top + 58.h,
+              child: _buildMapControlButton(
+                icon: Assets.icons.refresh,
+                onTap: () => _refreshTrackingData(colors),
+                colors: colors,
+                isDark: isDark,
+              ),
+            ),
+
+            AnimatedPositioned(
+              duration: _sheetAnimationDuration,
+              curve: _sheetAnimationCurve,
+              right: 16.w,
+              bottom: _showBottomSheet ? (size.height * 0.45) + 14.h : collapsedPreviewHeight + 10.h,
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   _buildMapControlButton(
-                    icon: Icons.my_location,
+                    icon: Assets.icons.crosshair,
                     onTap: () {
                       final provider = context.read<RiderTrackingProvider>();
                       provider.centerOnRider();
@@ -291,211 +518,191 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                     colors: colors,
                     isDark: isDark,
                   ),
-                  SizedBox(height: 8.h),
-                  _buildMapControlButton(
-                    icon: Icons.zoom_out_map,
-                    onTap: () {
-                      final provider = context.read<RiderTrackingProvider>();
-                      provider.animateCameraToFitMarkers();
-                    },
-                    colors: colors,
-                    isDark: isDark,
+                  SizedBox(height: 10.h),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                    decoration: BoxDecoration(color: colors.accentGreen, borderRadius: BorderRadius.circular(999.r)),
+                    child: Row(
+                      children: [
+                        SvgPicture.asset(
+                          Assets.icons.sendDiagonal,
+                          package: 'grab_go_shared',
+                          width: 16.w,
+                          height: 16.h,
+                          colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                        ),
+                        SizedBox(width: 6.w),
+
+                        Text(
+                          "Navigate",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
 
-            if (_showBottomSheet)
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: Consumer<RiderTrackingProvider>(
-                  builder: (context, trackingProvider, child) {
-                    // Get ETA and distance from provider, with fallbacks
-                    final etaMinutes = trackingProvider.etaMinutes ?? (_currentPhase == "pickup" ? 12.0 : 15.0);
-                    final distanceKm = trackingProvider.distanceKm ?? (_currentPhase == "pickup" ? 4.5 : 5.2);
-                    final isTracking = trackingProvider.isTracking;
-                    final connectionHealth = trackingProvider.connectionHealth;
-                    final pendingUpdates = trackingProvider.pendingLocationUpdates;
-                    final shouldShowHealthBanner =
-                        _isInitializing || _initError != null || trackingProvider.hasActiveSession || isTracking;
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: IgnorePointer(
+                ignoring: !_showBottomSheet,
+                child: AnimatedSlide(
+                  duration: _sheetAnimationDuration,
+                  curve: _sheetAnimationCurve,
+                  offset: _showBottomSheet ? Offset.zero : const Offset(0, 1),
+                  child: Consumer<RiderTrackingProvider>(
+                    builder: (context, trackingProvider, child) {
+                      // Get ETA and distance from provider, with fallbacks
+                      final etaMinutes = trackingProvider.etaMinutes ?? (_currentPhase == "pickup" ? 12.0 : 15.0);
+                      final distanceKm = trackingProvider.distanceKm ?? (_currentPhase == "pickup" ? 4.5 : 5.2);
+                      final connectionHealth = trackingProvider.connectionHealth;
+                      final bottomSafeArea = MediaQuery.of(context).padding.bottom;
 
-                    return Container(
-                      height: size.height * 0.52,
-                      decoration: BoxDecoration(
-                        color: colors.backgroundPrimary,
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(KBorderSize.borderRadius20),
-                          topRight: Radius.circular(KBorderSize.borderRadius20),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
-                            spreadRadius: 0,
-                            blurRadius: 12,
-                            offset: const Offset(0, -2),
+                      return Container(
+                        height: size.height * 0.45,
+                        decoration: BoxDecoration(
+                          color: colors.backgroundPrimary,
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(KBorderSize.borderRadius20),
+                            topRight: Radius.circular(KBorderSize.borderRadius20),
                           ),
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            margin: EdgeInsets.only(top: 12.h),
-                            width: 40.w,
-                            height: 4.h,
-                            decoration: BoxDecoration(
-                              color: colors.textSecondary.withValues(alpha: 0.3),
-                              borderRadius: BorderRadius.circular(2.r),
+                          boxShadow: [
+                            BoxShadow(
+                              color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
+                              spreadRadius: 0,
+                              blurRadius: 12,
+                              offset: const Offset(0, -2),
                             ),
-                          ),
-                          Expanded(
-                            child: SingleChildScrollView(
-                              physics: const ClampingScrollPhysics(),
-                              padding: EdgeInsets.fromLTRB(20.w, 14.h, 20.w, 20.h),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (_isInitializing)
-                                    _buildTrackingStatusBanner(
-                                      colors: colors,
-                                      icon: Icons.sync,
-                                      message: 'Initializing tracking...',
-                                      color: colors.accentBlue,
-                                    )
-                                  else if (_initError != null)
-                                    _buildTrackingStatusBanner(
-                                      colors: colors,
-                                      icon: Icons.warning_amber_rounded,
-                                      message: _initError!,
-                                      color: colors.accentOrange,
-                                    )
-                                  else if (trackingProvider.hasActiveSession || isTracking)
-                                    _buildTrackingStatusBanner(
-                                      colors: colors,
-                                      icon: _bannerIconForConnectionHealth(connectionHealth),
-                                      message: _bannerMessageForConnectionHealth(
-                                        connectionHealth,
-                                        pendingUpdates: pendingUpdates,
-                                      ),
-                                      color: _bannerColorForConnectionHealth(colors, connectionHealth),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onVerticalDragStart: (_) {
+                                _bottomSheetDragDistance = 0;
+                              },
+                              onVerticalDragUpdate: (details) {
+                                _bottomSheetDragDistance += details.delta.dy;
+                              },
+                              onVerticalDragEnd: (details) {
+                                final velocity = details.primaryVelocity ?? 0;
+                                if (_bottomSheetDragDistance > 28 || velocity > 500) {
+                                  _collapseBottomSheet();
+                                }
+                                _bottomSheetDragDistance = 0;
+                              },
+                              child: Padding(
+                                padding: EdgeInsets.only(top: 10.h, bottom: 8.h),
+                                child: Center(
+                                  child: Container(
+                                    width: 40.w,
+                                    height: 4.h,
+                                    decoration: BoxDecoration(
+                                      color: colors.textSecondary.withValues(alpha: 0.3),
+                                      borderRadius: BorderRadius.circular(2.r),
                                     ),
-                                  if (shouldShowHealthBanner) SizedBox(height: 12.h),
-                                  Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              "ORDER TRACKING",
-                                              style: TextStyle(
-                                                color: colors.textSecondary,
-                                                fontSize: 11.sp,
-                                                fontWeight: FontWeight.w600,
-                                                letterSpacing: 0.5,
-                                              ),
-                                            ),
-                                            SizedBox(height: 4.h),
-                                            Text(
-                                              widget.orderId,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                color: colors.textPrimary,
-                                                fontSize: 18.sp,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      SizedBox(width: 12.w),
-                                      _buildPhaseChip(colors),
-                                    ],
                                   ),
-                                  SizedBox(height: 14.h),
-                                  _buildSectionLabel("NEXT STOP", colors),
-                                  SizedBox(height: 8.h),
-                                  _buildDestinationInfo(colors),
-                                  SizedBox(height: 14.h),
-                                  _buildSectionLabel("LIVE METRICS", colors),
-                                  SizedBox(height: 8.h),
-                                  Row(
-                                    children: [
-                                      _buildMetricCard(
-                                        icon: Assets.icons.timer,
-                                        label: "ETA",
-                                        value: "${etaMinutes.toInt()} min",
-                                        accent: colors.accentOrange,
-                                        colors: colors,
-                                      ),
-                                      SizedBox(width: 10.w),
-                                      _buildMetricCard(
-                                        icon: Assets.icons.mapPin,
-                                        label: "Distance",
-                                        value: "${distanceKm.toStringAsFixed(1)} km",
-                                        accent: colors.accentBlue,
-                                        colors: colors,
-                                      ),
-                                      SizedBox(width: 10.w),
-                                      _buildMetricCard(
-                                        icon: Assets.icons.navArrowRight,
-                                        label: "Signal",
-                                        value: connectionHealth == RiderTrackingConnectionHealth.live
-                                            ? "Live"
-                                            : connectionHealth == RiderTrackingConnectionHealth.degraded
-                                            ? "Retrying"
-                                            : "Offline",
-                                        accent: _bannerColorForConnectionHealth(colors, connectionHealth),
-                                        colors: colors,
-                                      ),
-                                    ],
-                                  ),
-                                  SizedBox(height: 18.h),
-                                  _buildActionButtons(colors),
-                                  SizedBox(height: 6.h),
-                                ],
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
-
-            if (!_showBottomSheet)
-              Positioned(
-                bottom: 20.h,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: FloatingActionButton.extended(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.borderRadius4)),
-                    onPressed: () {
-                      setState(() {
-                        _showBottomSheet = true;
-                      });
+                            Expanded(
+                              child: SingleChildScrollView(
+                                physics: const ClampingScrollPhysics(),
+                                padding: EdgeInsets.fromLTRB(20.w, 4.h, 20.w, 12.h),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildSectionLabel("NEXT STOP", colors),
+                                    SizedBox(height: 8.h),
+                                    _buildDestinationInfo(colors),
+                                    SizedBox(height: 14.h),
+                                    _buildSectionLabel("LIVE METRICS", colors),
+                                    SizedBox(height: 8.h),
+                                    Row(
+                                      children: [
+                                        _buildMetricCard(
+                                          label: "ETA",
+                                          value: "${etaMinutes.toInt()} min",
+                                          accent: colors.accentOrange,
+                                          colors: colors,
+                                        ),
+                                        SizedBox(width: 10.w),
+                                        _buildMetricCard(
+                                          label: "DISTANCE",
+                                          value: "${distanceKm.toStringAsFixed(1)} km",
+                                          accent: colors.accentBlue,
+                                          colors: colors,
+                                        ),
+                                        SizedBox(width: 10.w),
+                                        _buildMetricCard(
+                                          label: "SIGNAL",
+                                          value: connectionHealth == RiderTrackingConnectionHealth.live
+                                              ? "Live"
+                                              : connectionHealth == RiderTrackingConnectionHealth.degraded
+                                              ? "Retrying"
+                                              : "Offline",
+                                          accent: _bannerColorForConnectionHealth(colors, connectionHealth),
+                                          colors: colors,
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: 8.h),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            Container(
+                              padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, bottomSafeArea + 12.h),
+                              decoration: BoxDecoration(
+                                color: colors.backgroundPrimary,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: colors.shadow.withValues(alpha: 0.08),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, -2),
+                                  ),
+                                ],
+                              ),
+                              child: _buildActionButtons(colors),
+                            ),
+                          ],
+                        ),
+                      );
                     },
-                    backgroundColor: colors.backgroundPrimary,
-                    icon: SvgPicture.asset(
-                      Assets.icons.mapPin,
-                      package: 'grab_go_shared',
-                      width: 20.w,
-                      height: 20.w,
-                      colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                    ),
-                    label: Text(
-                      "Show Details",
-                      style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w600),
-                    ),
                   ),
                 ),
               ),
+            ),
+
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: IgnorePointer(
+                ignoring: _showBottomSheet,
+                child: AnimatedSlide(
+                  duration: _sheetAnimationDuration,
+                  curve: _sheetAnimationCurve,
+                  offset: _showBottomSheet ? const Offset(0, 1) : Offset.zero,
+                  child: Consumer<RiderTrackingProvider>(
+                    builder: (context, trackingProvider, child) {
+                      return _buildBottomSheetPreview(colors: colors, isDark: isDark, provider: trackingProvider);
+                    },
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -513,56 +720,52 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
     }
   }
 
-  IconData _bannerIconForConnectionHealth(RiderTrackingConnectionHealth health) {
-    switch (health) {
-      case RiderTrackingConnectionHealth.live:
-        return Icons.gps_fixed;
-      case RiderTrackingConnectionHealth.degraded:
-        return Icons.sync_problem;
-      case RiderTrackingConnectionHealth.offline:
-        return Icons.cloud_off;
-    }
-  }
-
-  String _bannerMessageForConnectionHealth(RiderTrackingConnectionHealth health, {required int pendingUpdates}) {
-    switch (health) {
-      case RiderTrackingConnectionHealth.live:
-        return 'Live tracking active';
-      case RiderTrackingConnectionHealth.degraded:
-        if (pendingUpdates > 0) {
-          return 'Tracking degraded: $pendingUpdates update(s) queued for retry';
-        }
-        return 'Tracking degraded: retrying connection';
-      case RiderTrackingConnectionHealth.offline:
-        if (pendingUpdates > 0) {
-          return 'Offline: $pendingUpdates update(s) queued until network recovers';
-        }
-        return 'Offline: waiting for network to recover';
-    }
-  }
-
-  Widget _buildTrackingStatusBanner({
+  Widget _buildMapStatusPill({
+    required bool isDark,
     required AppColorsExtension colors,
-    required IconData icon,
-    required String message,
-    required Color color,
+    required RiderTrackingConnectionHealth connectionHealth,
+    required int pendingUpdates,
   }) {
+    final phaseLabel = _currentPhase == "pickup" ? "PICKUP" : "IN TRANSIT";
+    final statusAccent = _isInitializing
+        ? colors.accentBlue
+        : _initError != null
+        ? colors.accentOrange
+        : _bannerColorForConnectionHealth(colors, connectionHealth);
+    final statusLabel = _isInitializing
+        ? "INITIALIZING"
+        : _initError != null
+        ? "OFFLINE MODE"
+        : connectionHealth == RiderTrackingConnectionHealth.live
+        ? "LIVE TRACKING"
+        : connectionHealth == RiderTrackingConnectionHealth.degraded
+        ? (pendingUpdates > 0 ? "SYNCING" : "RECONNECTING")
+        : "OFFLINE";
+    final chipLabel = "$statusLabel • $phaseLabel";
+
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-        border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
+        color: colors.backgroundPrimary.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(999.r),
+        boxShadow: [
+          BoxShadow(
+            color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(30),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: Row(
+      child: Column(
         children: [
-          Icon(icon, color: color, size: 16.w),
-          SizedBox(width: 8.w),
-          Expanded(
-            child: Text(
-              message,
-              style: TextStyle(color: color, fontSize: 12.sp, fontWeight: FontWeight.w500),
-            ),
+          Text(
+            'STATUS',
+            style: TextStyle(color: colors.textSecondary, fontSize: 8.sp, fontWeight: FontWeight.w800),
+          ),
+          SizedBox(height: 2.h),
+          Text(
+            chipLabel,
+            style: TextStyle(color: statusAccent, fontSize: 10.sp, fontWeight: FontWeight.w700, letterSpacing: 0.4),
           ),
         ],
       ),
@@ -572,23 +775,81 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
   Widget _buildSectionLabel(String text, AppColorsExtension colors) {
     return Text(
       text,
-      style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w600, letterSpacing: 0.5),
+      style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w700, letterSpacing: 0.5),
     );
   }
 
-  Widget _buildPhaseChip(AppColorsExtension colors) {
+  Widget _buildBottomSheetPreview({
+    required AppColorsExtension colors,
+    required bool isDark,
+    required RiderTrackingProvider provider,
+  }) {
+    final bottomSafeArea = MediaQuery.of(context).padding.bottom;
     final isPickup = _currentPhase == "pickup";
-    final accent = isPickup ? colors.accentOrange : colors.accentGreen;
+    final destinationName = isPickup ? widget.restaurantName : widget.customerName;
+    final etaMinutes = provider.etaMinutes ?? (isPickup ? 12.0 : 15.0);
+    final distanceKm = provider.distanceKm ?? (isPickup ? 4.5 : 5.2);
 
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 7.h),
-      decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-      ),
-      child: Text(
-        isPickup ? "PICKUP" : "IN TRANSIT",
-        style: TextStyle(color: accent, fontSize: 11.sp, fontWeight: FontWeight.w700, letterSpacing: 0.4),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(KBorderSize.borderRadius20),
+          topRight: Radius.circular(KBorderSize.borderRadius20),
+        ),
+        onTap: _expandBottomSheet,
+        child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.fromLTRB(18.w, 12.h, 18.w, bottomSafeArea + 12.h),
+          decoration: BoxDecoration(
+            color: colors.backgroundPrimary,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(KBorderSize.borderRadius20),
+              topRight: Radius.circular(KBorderSize.borderRadius20),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(12),
+                blurRadius: 12,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      "Next stop: $destinationName",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: colors.textPrimary, fontSize: 13.5.sp, fontWeight: FontWeight.w700),
+                    ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      "${etaMinutes.toInt()} min • ${distanceKm.toStringAsFixed(1)} km",
+                      style: TextStyle(color: colors.textSecondary, fontSize: 11.5.sp, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: 8.w),
+              IconButton(
+                onPressed: _expandBottomSheet,
+                icon: SvgPicture.asset(
+                  Assets.icons.navArrowUp,
+                  package: 'grab_go_shared',
+                  width: 20.w,
+                  height: 20.w,
+                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -603,25 +864,9 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
       decoration: BoxDecoration(
         color: colors.backgroundSecondary,
         borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-        border: Border.all(color: colors.border.withValues(alpha: 0.35), width: 1),
       ),
       child: Row(
         children: [
-          Container(
-            padding: EdgeInsets.all(8.r),
-            decoration: BoxDecoration(
-              color: (isPickup ? colors.accentOrange : colors.accentViolet).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-            ),
-            child: SvgPicture.asset(
-              isPickup ? Assets.icons.chefHat : Assets.icons.user,
-              package: 'grab_go_shared',
-              width: 20.w,
-              height: 20.w,
-              colorFilter: ColorFilter.mode(isPickup ? colors.accentOrange : colors.accentViolet, BlendMode.srcIn),
-            ),
-          ),
-          SizedBox(width: 12.w),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -645,25 +890,51 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
               ],
             ),
           ),
-          GestureDetector(
-            onTap: () => _showCallOptions(context, colors),
-            child: Container(
-              width: 40.w,
-              height: 40.w,
-              decoration: BoxDecoration(
-                color: colors.accentGreen.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-              ),
-              child: Center(
-                child: SvgPicture.asset(
-                  Assets.icons.phone,
-                  package: 'grab_go_shared',
-                  width: 18.w,
-                  height: 18.w,
-                  colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              GestureDetector(
+                onTap: () => _openCustomerChat(colors),
+                child: Container(
+                  width: 40.w,
+                  height: 40.w,
+                  decoration: BoxDecoration(
+                    color: colors.accentGreen.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                  ),
+                  child: Center(
+                    child: SvgPicture.asset(
+                      Assets.icons.chatBubble,
+                      package: 'grab_go_shared',
+                      width: 18.w,
+                      height: 18.w,
+                      colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                    ),
+                  ),
                 ),
               ),
-            ),
+              SizedBox(width: 8.w),
+              GestureDetector(
+                onTap: () => {},
+                child: Container(
+                  width: 40.w,
+                  height: 40.w,
+                  decoration: BoxDecoration(
+                    color: colors.accentGreen.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                  ),
+                  child: Center(
+                    child: SvgPicture.asset(
+                      Assets.icons.phone,
+                      package: 'grab_go_shared',
+                      width: 18.w,
+                      height: 18.w,
+                      colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -671,7 +942,6 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
   }
 
   Widget _buildMetricCard({
-    required String icon,
     required String label,
     required String value,
     required Color accent,
@@ -683,41 +953,23 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         decoration: BoxDecoration(
           color: colors.backgroundSecondary,
           borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-          border: Border.all(color: colors.border.withValues(alpha: 0.25)),
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  padding: EdgeInsets.all(6.r),
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                  ),
-                  child: SvgPicture.asset(
-                    icon,
-                    package: 'grab_go_shared',
-                    width: 14.w,
-                    height: 14.w,
-                    colorFilter: ColorFilter.mode(accent, BlendMode.srcIn),
-                  ),
-                ),
-                SizedBox(width: 6.w),
-                Flexible(
-                  child: Text(
-                    label,
-                    style: TextStyle(color: colors.textSecondary, fontSize: 10.sp, fontWeight: FontWeight.w500),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                Text(
+                  label,
+                  style: TextStyle(color: colors.textSecondary, fontSize: 10.sp, fontWeight: FontWeight.w700),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
-            SizedBox(height: 8.h),
+            SizedBox(height: 2.h),
             Text(
               value,
               style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w700),
@@ -732,115 +984,67 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
 
   Widget _buildActionButtons(AppColorsExtension colors) {
     final isPickup = _currentPhase == "pickup";
+    final isStageBusy = _isProcessingStageAction;
+    final isStageLoading = isStageBusy || _isCompletingDelivery;
+    final canShowCancel = isPickup;
 
-    final stageLabel = isPickup
+    final stageLabel = isStageBusy
+        ? "Processing..."
+        : isPickup
         ? (!_hasArrivedAtPickup ? "I've Arrived" : "Confirm Pickup")
         : (!_hasArrivedAtCustomer ? "I've Arrived" : (_isCompletingDelivery ? "Completing..." : "Complete Delivery"));
-
-    final stageIcon = !_hasArrivedAtPickup && isPickup
-        ? Assets.icons.mapPin
-        : !_hasArrivedAtCustomer && !isPickup
-        ? Assets.icons.mapPin
-        : Assets.icons.check;
-
-    final stageAction = isPickup
+    final stageAction = isStageBusy
+        ? () {}
+        : isPickup
         ? (!_hasArrivedAtPickup ? () => _confirmArrivalAtPickup(colors) : () => _showPickupConfirmDialog(colors))
         : (!_hasArrivedAtCustomer
               ? () => _confirmArrivalAtCustomer(colors)
               : (_isCompletingDelivery ? () {} : () => _startDeliveryCompletion(colors)));
 
-    return Column(
+    if (!canShowCancel) {
+      return AppButton(
+        onPressed: stageAction,
+        buttonText: stageLabel,
+        isLoading: isStageLoading,
+        backgroundColor: colors.accentGreen,
+        width: double.infinity,
+        borderRadius: KBorderSize.borderRadius4,
+        height: 60.h,
+        textStyle: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w700),
+      );
+    }
+
+    return Row(
       children: [
-        _buildActionButton(
-          icon: Assets.icons.map,
-          label: isPickup ? "Navigate to Restaurant" : "Navigate to Customer",
-          onPressed: () => _openExternalNavigation(isPickup: isPickup),
-          backgroundColor: colors.accentGreen,
-          colors: colors,
+        Expanded(
+          child: AppButton(
+            onPressed: isStageLoading ? () {} : () => _showCancelOrderDialog(colors),
+            buttonText: "Cancel",
+            backgroundColor: colors.backgroundSecondary,
+            borderRadius: KBorderSize.borderRadius4,
+            height: 56.h,
+            textStyle: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w700),
+          ),
         ),
-        SizedBox(height: 10.h),
-        Row(
-          children: [
-            Expanded(
-              child: _buildActionButton(
-                icon: stageIcon,
-                label: stageLabel,
-                onPressed: stageAction,
-                backgroundColor: !_hasArrivedAtPickup && isPickup
-                    ? colors.accentOrange
-                    : !_hasArrivedAtCustomer && !isPickup
-                    ? colors.accentOrange
-                    : colors.accentBlue,
-                colors: colors,
-              ),
-            ),
-            SizedBox(width: 10.w),
-            Expanded(
-              child: _buildActionButton(
-                icon: Assets.icons.xmark,
-                label: "Cancel",
-                onPressed: () => _showCancelOrderDialog(colors),
-                backgroundColor: colors.error.withValues(alpha: 0.1),
-                borderColor: colors.error.withValues(alpha: 0.28),
-                textColor: colors.error,
-                colors: colors,
-              ),
-            ),
-          ],
+        SizedBox(width: 10.w),
+        Expanded(
+          flex: 2,
+          child: AppButton(
+            onPressed: stageAction,
+            buttonText: stageLabel,
+            isLoading: isStageLoading,
+            backgroundColor: colors.accentGreen,
+            borderRadius: KBorderSize.borderRadius4,
+            height: 56.h,
+            textStyle: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w700),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildActionButton({
-    required String icon,
-    required String label,
-    required VoidCallback onPressed,
-    required Color backgroundColor,
-    required AppColorsExtension colors,
-    Color textColor = Colors.white,
-    Color? borderColor,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-        child: Container(
-          padding: EdgeInsets.symmetric(vertical: 14.h, horizontal: 8.w),
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-            border: borderColor != null ? Border.all(color: borderColor, width: 1) : null,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SvgPicture.asset(
-                icon,
-                package: 'grab_go_shared',
-                width: 18.w,
-                height: 18.w,
-                colorFilter: ColorFilter.mode(textColor, BlendMode.srcIn),
-              ),
-              SizedBox(width: 8.w),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: textColor, fontSize: 13.sp, fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showPickupConfirmDialog(AppColorsExtension colors) {
-    AppDialog.show(
+  Future<void> _showPickupConfirmDialog(AppColorsExtension colors) async {
+    final confirmed = await AppDialog.show(
       context: context,
       title: "Confirm Pickup?",
       message: "Have you picked up the order from the restaurant?",
@@ -850,12 +1054,10 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
       primaryButtonColor: colors.accentGreen,
       borderRadius: KBorderSize.borderRadius4,
       buttonBorderRadius: KBorderSize.borderRadius4,
-      onPrimaryPressed: () {
-        Navigator.pop(context);
-        _confirmPickup(colors);
-      },
-      onSecondaryPressed: () => Navigator.pop(context),
     );
+
+    if (!mounted || confirmed != true) return;
+    await _confirmPickup(colors);
   }
 
   Future<void> _confirmPickup(AppColorsExtension colors) async {
@@ -867,11 +1069,10 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
     if (!mounted) return;
 
     if (!pickedUpSuccess) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(trackingProvider.lastError ?? "Failed to update order status. Please try again."),
-          backgroundColor: colors.error,
-        ),
+      _showToast(
+        colors: colors,
+        message: trackingProvider.lastError ?? "Failed to update order status. Please try again.",
+        backgroundColor: colors.error,
       );
       return;
     }
@@ -883,11 +1084,10 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
     if (!mounted) return;
 
     if (!inTransitSuccess) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(trackingProvider.lastError ?? "Failed to update order status. Please try again."),
-          backgroundColor: colors.error,
-        ),
+      _showToast(
+        colors: colors,
+        message: trackingProvider.lastError ?? "Failed to update order status. Please try again.",
+        backgroundColor: colors.error,
       );
       return;
     }
@@ -898,11 +1098,10 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
       _currentPhase = "delivery";
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text("Pickup confirmed! You can now navigate to customer."),
-        backgroundColor: colors.accentGreen,
-      ),
+    _showToast(
+      colors: colors,
+      message: "Pickup confirmed! You can now navigate to customer.",
+      backgroundColor: colors.accentGreen,
     );
   }
 
@@ -921,7 +1120,6 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
 
     // Update tracking status via provider
     final trackingProvider = context.read<RiderTrackingProvider>();
-    final messenger = ScaffoldMessenger.of(context);
     Map<String, dynamic>? deliveryVerification;
 
     try {
@@ -940,11 +1138,10 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         } else {
           final reason = fallbackReason?.trim() ?? '';
           if (proofPhoto == null || reason.isEmpty) {
-            messenger.showSnackBar(
-              SnackBar(
-                content: const Text("Photo and fallback reason are required to complete this delivery."),
-                backgroundColor: colors.error,
-              ),
+            _showToast(
+              colors: colors,
+              message: "Photo and fallback reason are required to complete this delivery.",
+              backgroundColor: colors.error,
             );
             return;
           }
@@ -953,11 +1150,10 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
           if (!mounted) return;
 
           if (!uploadResult.success || uploadResult.photoUrl == null || uploadResult.photoUrl!.isEmpty) {
-            messenger.showSnackBar(
-              SnackBar(
-                content: Text(uploadResult.message ?? "Failed to upload delivery proof photo."),
-                backgroundColor: colors.error,
-              ),
+            _showToast(
+              colors: colors,
+              message: uploadResult.message ?? "Failed to upload delivery proof photo.",
+              backgroundColor: colors.error,
             );
             return;
           }
@@ -987,21 +1183,28 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
       if (!mounted) return;
 
       if (!success) {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(trackingProvider.lastError ?? "Failed to complete delivery. Please try again."),
-            backgroundColor: colors.error,
-          ),
+        _showToast(
+          colors: colors,
+          message: trackingProvider.lastError ?? "Failed to complete delivery. Please try again.",
+          backgroundColor: colors.error,
         );
         return;
       }
 
-      messenger.showSnackBar(
-        SnackBar(content: const Text("Order delivered successfully!"), backgroundColor: colors.accentGreen),
-      );
+      _showToast(colors: colors, message: "Order delivered successfully!", backgroundColor: colors.accentGreen);
 
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) context.pop();
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (!mounted) return;
+        context.go(
+          "/delivery-success",
+          extra: {
+            'orderId': widget.orderId,
+            'vendorName': widget.restaurantName,
+            'vendorLogo': widget.restaurantLogo,
+            'customerName': widget.customerName,
+            'customerPhoto': widget.customerPhoto,
+          },
+        );
       });
     } finally {
       if (mounted) {
@@ -1020,12 +1223,12 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
     _showPhotoProofDialog(colors);
   }
 
-  void _showDeliveryVerificationDialog(AppColorsExtension colors) {
+  Future<void> _showDeliveryVerificationDialog(AppColorsExtension colors) async {
     final recipientLabel = widget.giftRecipientName?.trim().isNotEmpty == true
         ? widget.giftRecipientName!.trim()
         : "recipient";
 
-    AppDialog.show(
+    final useCode = await AppDialog.show(
       context: context,
       title: "Delivery Verification Required",
       message:
@@ -1036,15 +1239,14 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
       primaryButtonColor: colors.accentGreen,
       borderRadius: KBorderSize.borderRadius4,
       buttonBorderRadius: KBorderSize.borderRadius4,
-      onPrimaryPressed: () {
-        Navigator.pop(context);
-        _showDeliveryCodeDialog(colors);
-      },
-      onSecondaryPressed: () {
-        Navigator.pop(context);
-        _showFallbackPhotoCaptureDialog(colors);
-      },
     );
+
+    if (!mounted) return;
+    if (useCode == true) {
+      _showDeliveryCodeDialog(colors);
+    } else if (useCode == false) {
+      _showFallbackPhotoCaptureDialog(colors);
+    }
   }
 
   void _showDeliveryCodeDialog(AppColorsExtension colors) {
@@ -1109,15 +1311,12 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
 
                           setDialogState(() => isResending = false);
 
-                          ScaffoldMessenger.of(this.context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                result.success
-                                    ? (result.message ?? "Delivery code resent to recipient.")
-                                    : (result.message ?? "Failed to resend delivery code."),
-                              ),
-                              backgroundColor: result.success ? colors.accentGreen : colors.error,
-                            ),
+                          _showToast(
+                            colors: colors,
+                            message: result.success
+                                ? (result.message ?? "Delivery code resent to recipient.")
+                                : (result.message ?? "Failed to resend delivery code."),
+                            backgroundColor: result.success ? colors.accentGreen : colors.error,
                           );
                         },
                   child: Text(
@@ -1147,11 +1346,10 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                     : () async {
                         final code = codeController.text.trim();
                         if (code.length != 4 || int.tryParse(code) == null) {
-                          ScaffoldMessenger.of(this.context).showSnackBar(
-                            SnackBar(
-                              content: const Text("Delivery code must be exactly 4 digits."),
-                              backgroundColor: colors.error,
-                            ),
+                          _showToast(
+                            colors: colors,
+                            message: "Delivery code must be exactly 4 digits.",
+                            backgroundColor: colors.error,
                           );
                           return;
                         }
@@ -1182,11 +1380,10 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
       },
       onSkip: () {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text("Photo proof is required for fallback verification."),
-            backgroundColor: colors.error,
-          ),
+        _showToast(
+          colors: colors,
+          message: "Photo proof is required for fallback verification.",
+          backgroundColor: colors.error,
         );
         _showDeliveryVerificationDialog(colors);
       },
@@ -1254,9 +1451,7 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
             onPressed: () {
               final reason = reasonController.text.trim();
               if (reason.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: const Text("Please provide a fallback reason."), backgroundColor: colors.error),
-                );
+                _showToast(colors: colors, message: "Please provide a fallback reason.", backgroundColor: colors.error);
                 return;
               }
 
@@ -1279,69 +1474,101 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
     });
   }
 
-  // ============== PRODUCTION FEATURES ==============
+  Future<void> _confirmArrivalAtPickup(AppColorsExtension colors) async {
+    if (_isProcessingStageAction) return;
 
-  /// Confirm arrival at restaurant (pickup location)
-  void _confirmArrivalAtPickup(AppColorsExtension colors) {
-    AppDialog.show(
+    final confirmed = await AppDialog.show(
       context: context,
-      title: "Arrived at Restaurant?",
+      title: "Arrived at Vendor?",
       message: "Confirm that you have arrived at ${widget.restaurantName}",
       type: AppDialogType.question,
       primaryButtonText: "Yes, I've Arrived",
       secondaryButtonText: "Not Yet",
-      primaryButtonColor: colors.accentOrange,
+      primaryButtonColor: colors.accentGreen,
       borderRadius: KBorderSize.borderRadius4,
       buttonBorderRadius: KBorderSize.borderRadius4,
-      onPrimaryPressed: () {
-        Navigator.pop(context);
-        setState(() {
-          _hasArrivedAtPickup = true;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text("Great! Collect the order and confirm pickup."),
-            backgroundColor: colors.accentOrange,
-          ),
-        );
-      },
-      onSecondaryPressed: () => Navigator.pop(context),
+    );
+
+    if (!mounted || confirmed != true) return;
+
+    setState(() {
+      _isProcessingStageAction = true;
+    });
+
+    final trackingProvider = context.read<RiderTrackingProvider>();
+    final syncSuccess = await _runWithLoadingDialog(
+      colors: colors,
+      message: "Updating arrival status...",
+      task: () => trackingProvider.markAsPreparing(),
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      if (syncSuccess) {
+        _hasArrivedAtPickup = true;
+      }
+      _isProcessingStageAction = false;
+    });
+
+    _showToast(
+      colors: colors,
+      message: syncSuccess
+          ? "Great! Collect the order and confirm pickup."
+          : (trackingProvider.lastError ?? "Failed to update arrival. Please try again."),
+      backgroundColor: syncSuccess ? colors.accentGreen : colors.error,
     );
   }
 
   /// Confirm arrival at customer location
-  void _confirmArrivalAtCustomer(AppColorsExtension colors) {
-    // Capture provider before showing dialog
-    final trackingProvider = context.read<RiderTrackingProvider>();
-    final messenger = ScaffoldMessenger.of(context);
+  Future<void> _confirmArrivalAtCustomer(AppColorsExtension colors) async {
+    if (_isProcessingStageAction) return;
 
-    AppDialog.show(
+    final trackingProvider = context.read<RiderTrackingProvider>();
+
+    final confirmed = await AppDialog.show(
       context: context,
       title: "Arrived at Customer?",
       message: "Confirm that you have arrived at the delivery location",
       type: AppDialogType.question,
       primaryButtonText: "Yes, I've Arrived",
       secondaryButtonText: "Not Yet",
-      primaryButtonColor: colors.accentOrange,
+      primaryButtonColor: colors.accentGreen,
       borderRadius: KBorderSize.borderRadius4,
       buttonBorderRadius: KBorderSize.borderRadius4,
-      onPrimaryPressed: () {
-        Navigator.pop(context);
-        setState(() {
-          _hasArrivedAtCustomer = true;
-        });
-        // Notify backend that rider has arrived nearby
-        trackingProvider.markAsNearby();
+    );
 
-        messenger.showSnackBar(
-          SnackBar(content: const Text("Customer notified of your arrival!"), backgroundColor: colors.accentOrange),
-        );
-      },
-      onSecondaryPressed: () => Navigator.pop(context),
+    if (!mounted || confirmed != true) return;
+
+    setState(() {
+      _isProcessingStageAction = true;
+    });
+
+    final syncSuccess = await _runWithLoadingDialog(
+      colors: colors,
+      message: "Notifying customer of arrival...",
+      task: () => trackingProvider.markAsNearby(),
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _isProcessingStageAction = false;
+      _hasArrivedAtCustomer = syncSuccess;
+    });
+
+    AppToastMessage.show(
+      context: context,
+      showIcon: false,
+      backgroundColor: syncSuccess ? colors.accentGreen : colors.error,
+      maxLines: 2,
+      radius: KBorderSize.borderRadius4,
+      message: syncSuccess
+          ? "Customer notified of your arrival!"
+          : (trackingProvider.lastError ?? "Failed to notify customer. Please try again."),
     );
   }
 
-  /// Show photo proof capture dialog before completing delivery
   void _showPhotoProofDialog(AppColorsExtension colors) {
     PhotoProofCapture.show(
       context: context,
@@ -1352,36 +1579,31 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
       onPhotoCapture: (photo) {
         _confirmDelivery(colors, proofPhoto: photo);
       },
-      onSkip: () {
-        // Show warning about skipping photo
-        AppDialog.show(
+      onSkip: () async {
+        final shouldSkip = await AppDialog.show(
           context: context,
           title: "Skip Photo Proof?",
           message: "Without a photo, you may not be protected in case of a delivery dispute. Are you sure?",
           type: AppDialogType.warning,
           primaryButtonText: "Skip Anyway",
           secondaryButtonText: "Take Photo",
-          primaryButtonColor: colors.accentOrange,
+          primaryButtonColor: colors.accentGreen,
           borderRadius: KBorderSize.borderRadius4,
           buttonBorderRadius: KBorderSize.borderRadius4,
-          onPrimaryPressed: () {
-            Navigator.pop(context);
-            _confirmDelivery(colors);
-          },
-          onSecondaryPressed: () {
-            Navigator.pop(context);
-            _showPhotoProofDialog(colors);
-          },
         );
+
+        if (!mounted) return;
+        if (shouldSkip == true) {
+          _confirmDelivery(colors);
+        } else if (shouldSkip == false) {
+          _showPhotoProofDialog(colors);
+        }
       },
     );
   }
 
-  /// Show cancel order dialog with reason selection
   void _showCancelOrderDialog(AppColorsExtension colors) {
-    // Capture provider reference before showing dialog
     final trackingProvider = context.read<RiderTrackingProvider>();
-    final messenger = ScaffoldMessenger.of(context);
     final orderService = AvailableOrdersService();
 
     CancelOrderDialog.show(
@@ -1389,169 +1611,140 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
       orderId: widget.orderId,
       orderNumber: 'Order ${widget.orderId}',
       onConfirm: (reason, notes) async {
-        debugPrint('🚫 Cancelling order: ${reason.apiValue}${notes != null ? " - $notes" : ""}');
+        debugPrint('Cancelling order: ${reason.apiValue}${notes != null ? " - $notes" : ""}');
 
-        // Call the backend to properly cancel and release the order
         final success = await orderService.cancelOrder(widget.orderId, reason: reason.apiValue, notes: notes);
 
         if (!mounted) return;
 
         if (success) {
-          // Stop tracking after successful cancellation
           await trackingProvider.stopTracking();
-
-          messenger.showSnackBar(
-            SnackBar(
-              content: const Text("Order cancelled and released for other riders."),
-              backgroundColor: colors.error,
-            ),
+          if (!mounted) return;
+          _showToast(
+            colors: colors,
+            message: 'Order cancelled and released for other riders.',
+            backgroundColor: colors.accentGreen,
           );
           Future.delayed(const Duration(seconds: 1), () {
             if (mounted) context.pop();
           });
         } else {
-          messenger.showSnackBar(
-            SnackBar(content: const Text("Failed to cancel order. Please try again."), backgroundColor: colors.error),
+          _showToast(
+            colors: colors,
+            message: 'Failed to cancel order. Please try again.',
+            backgroundColor: colors.error,
           );
         }
       },
     );
   }
 
-  /// Open external navigation app (Google Maps or Waze)
-  void _openExternalNavigation({required bool isPickup}) {
-    final trackingProvider = context.read<RiderTrackingProvider>();
+  Future<void> _openCustomerChat(AppColorsExtension colors) async {
+    try {
+      final chats = await ChatService().getChats();
+      if (!mounted) return;
 
-    double? destLat;
-    double? destLng;
-    String destName;
+      ChatConversationDto? matchedChat;
+      for (final chat in chats) {
+        final matchesOrderId = chat.orderId != null && chat.orderId == widget.orderId;
+        final matchesOrderNumber = chat.orderNumber != null && chat.orderNumber == widget.orderId;
+        final matchesCustomerId = widget.customerId != null && chat.otherUserId == widget.customerId;
 
-    if (isPickup) {
-      destLat = trackingProvider.pickupLatitude ?? widget.pickupLatitude;
-      destLng = trackingProvider.pickupLongitude ?? widget.pickupLongitude;
-      destName = widget.restaurantName;
-    } else {
-      destLat = trackingProvider.destinationLatitude ?? widget.destinationLatitude;
-      destLng = trackingProvider.destinationLongitude ?? widget.destinationLongitude;
-      destName = widget.customerAddress;
-    }
+        if (matchesOrderId || matchesOrderNumber || matchesCustomerId) {
+          matchedChat = chat;
+          break;
+        }
+      }
 
-    if (destLat != null && destLng != null) {
-      ExternalNavigationHelper.showNavigationOptions(
-        context: context,
-        destinationLat: destLat,
-        destinationLng: destLng,
-        destinationName: destName,
+      if (matchedChat == null) {
+        _showToast(
+          colors: colors,
+          message: "Customer chat is not ready yet. Please try again shortly.",
+          backgroundColor: colors.accentOrange,
+        );
+        return;
+      }
+
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ChatDetailPage(
+            chatId: matchedChat!.id,
+            senderName: matchedChat.otherUserName ?? "Customer",
+            profilePicture: matchedChat.otherUserProfilePicture,
+            orderId: matchedChat.orderNumber ?? matchedChat.orderId ?? widget.orderId,
+            isSupport: false,
+          ),
+        ),
       );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text("Location coordinates not available"), backgroundColor: context.appColors.error),
-      );
+    } catch (_) {
+      if (!mounted) return;
+      _showToast(colors: colors, message: "Could not open customer chat right now.", backgroundColor: colors.error);
     }
   }
 
-  void _showCallOptions(BuildContext context, AppColorsExtension colors) {
-    showModalBottomSheet(
+  void _showToast({
+    required AppColorsExtension colors,
+    required String message,
+    required Color backgroundColor,
+    int maxLines = 2,
+  }) {
+    if (!mounted) return;
+    AppToastMessage.show(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: BoxDecoration(
-          color: colors.backgroundPrimary,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(KBorderSize.borderRadius4),
-            topRight: Radius.circular(KBorderSize.borderRadius4),
-          ),
-        ),
-        padding: EdgeInsets.all(20.w),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40.w,
-              height: 4.h,
-              margin: EdgeInsets.only(bottom: 20.h),
-              decoration: BoxDecoration(
-                color: colors.textSecondary.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(2.r),
-              ),
-            ),
-            ListTile(
-              leading: Container(
-                padding: EdgeInsets.all(10.r),
-                decoration: BoxDecoration(
-                  color: colors.accentOrange.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                ),
-                child: SvgPicture.asset(
-                  Assets.icons.chefHat,
-                  package: 'grab_go_shared',
-                  width: 20.w,
-                  height: 20.w,
-                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                ),
-              ),
-              title: Text(
-                "Call Restaurant",
-                style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
-              ),
-              subtitle: Text(
-                "Contact restaurant for order details",
-                style: TextStyle(color: colors.textSecondary, fontSize: 12.sp),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-              },
-            ),
-            Divider(color: colors.border),
-            ListTile(
-              leading: Container(
-                padding: EdgeInsets.all(10.r),
-                decoration: BoxDecoration(
-                  color: colors.accentViolet.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                ),
-                child: SvgPicture.asset(
-                  Assets.icons.user,
-                  package: 'grab_go_shared',
-                  width: 20.w,
-                  height: 20.w,
-                  colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
-                ),
-              ),
-              title: Text(
-                "Call Customer",
-                style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
-              ),
-              subtitle: Text(
-                widget.customerPhone,
-                style: TextStyle(color: colors.textSecondary, fontSize: 12.sp),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-              },
-            ),
-            SizedBox(height: 20.h),
-          ],
-        ),
-      ),
+      showIcon: false,
+      backgroundColor: backgroundColor,
+      maxLines: maxLines,
+      radius: KBorderSize.borderRadius4,
+      message: message,
     );
   }
 
+  Future<T> _runWithLoadingDialog<T>({
+    required AppColorsExtension colors,
+    required String message,
+    required Future<T> Function() task,
+  }) async {
+    final visibleStopwatch = Stopwatch()..start();
+    const minVisibleDuration = Duration(milliseconds: 320);
+
+    if (mounted) {
+      // Reset any stale singleton state before showing a new loading overlay.
+      LoadingDialog.instance().hide();
+      LoadingDialog.instance().show(context: context, text: message, spinColor: colors.accentGreen);
+      // Give the overlay one frame to render before running work.
+      await Future<void>.delayed(const Duration(milliseconds: 16));
+    }
+
+    try {
+      return await task();
+    } finally {
+      final remaining = minVisibleDuration - visibleStopwatch.elapsed;
+      if (remaining > Duration.zero) {
+        await Future<void>.delayed(remaining);
+      }
+      if (mounted) {
+        LoadingDialog.instance().hide();
+      }
+    }
+  }
+
   Widget _buildMapControlButton({
-    required IconData icon,
+    required String icon,
     required VoidCallback onTap,
     required AppColorsExtension colors,
     required bool isDark,
   }) {
     return Container(
-      width: 44.w,
-      height: 44.w,
+      width: 48,
+      height: 48,
+      padding: EdgeInsets.all(10.w),
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(15),
+            color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(30),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -1562,7 +1755,13 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         child: InkWell(
           onTap: onTap,
           customBorder: const CircleBorder(),
-          child: Icon(icon, color: colors.textPrimary, size: 22.sp),
+          child: SvgPicture.asset(
+            icon,
+            package: 'grab_go_shared',
+            width: 22.w,
+            height: 22.w,
+            colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+          ),
         ),
       ),
     );

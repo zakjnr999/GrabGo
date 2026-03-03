@@ -2,10 +2,11 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/svg.dart';
+import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:image_picker/image_picker.dart';
 
-/// A widget for capturing photo proof of delivery
 class PhotoProofCapture extends StatefulWidget {
   final String orderId;
   final String orderNumber;
@@ -125,52 +126,16 @@ class _PhotoProofCaptureState extends State<PhotoProofCapture> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Handle bar
-            Center(
-              child: Container(
-                width: 40.w,
-                height: 4.h,
-                margin: EdgeInsets.only(bottom: 16.h),
-                decoration: BoxDecoration(
-                  color: colors.textSecondary.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(2.r),
-                ),
-              ),
-            ),
             // Header
-            Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(10.r),
-                  decoration: BoxDecoration(
-                    color: colors.accentGreen.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                  ),
-                  child: Icon(Icons.camera_alt_outlined, color: colors.accentGreen, size: 24.w),
-                ),
-                SizedBox(width: 12.w),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.title,
-                        style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w700),
-                      ),
-                      Text(
-                        widget.orderNumber,
-                        style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            Text(
+              widget.title,
+              style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w700),
             ),
-            SizedBox(height: 16.h),
+            SizedBox(height: 6.h),
             // Description
             Text(
               widget.description,
-              style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w400),
+              style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w400),
             ),
             SizedBox(height: 20.h),
             // Photo preview or capture area
@@ -232,44 +197,28 @@ class _PhotoProofCaptureState extends State<PhotoProofCapture> {
             else
               Column(
                 children: [
-                  SizedBox(
+                  AppButton(
+                    onPressed: () => _isCapturing ? null : _capturePhoto,
+                    buttonText: 'Take Photo',
+                    isLoading: _isCapturing ? true : false,
+                    backgroundColor: colors.accentGreen,
                     width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _isCapturing ? null : _capturePhoto,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colors.accentGreen,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: colors.accentGreen.withValues(alpha: 0.5),
-                        padding: EdgeInsets.symmetric(vertical: 14.h),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.borderRadius4)),
-                        elevation: 0,
-                      ),
-                      icon: _isCapturing
-                          ? SizedBox(
-                              width: 18.w,
-                              height: 18.w,
-                              child: const CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                              ),
-                            )
-                          : Icon(Icons.camera_alt, size: 18.w),
-                      label: Text(
-                        _isCapturing ? 'Opening Camera...' : 'Take Photo',
-                        style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600),
-                      ),
-                    ),
+                    borderRadius: KBorderSize.borderRadius4,
+                    height: 60.h,
+                    textStyle: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w700),
                   ),
                   SizedBox(height: 12.h),
-                  TextButton(
+                  AppButton(
                     onPressed: () {
                       Navigator.pop(context);
                       widget.onSkip();
                     },
-                    child: Text(
-                      'Skip (Not Recommended)',
-                      style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w500),
-                    ),
+                    buttonText: "Skit (Not Recommended)",
+                    width: double.infinity,
+                    backgroundColor: colors.backgroundSecondary,
+                    borderRadius: KBorderSize.borderRadius4,
+                    height: 56.h,
+                    textStyle: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -286,12 +235,17 @@ class _PhotoProofCaptureState extends State<PhotoProofCapture> {
       decoration: BoxDecoration(
         color: colors.backgroundSecondary,
         borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-        border: Border.all(color: colors.border, width: 1, style: BorderStyle.solid),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.photo_camera_outlined, size: 48.w, color: colors.textSecondary),
+          SvgPicture.asset(
+            Assets.icons.camera,
+            package: 'grab_go_shared',
+            width: 48.w,
+            height: 48.w,
+            colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+          ),
           SizedBox(height: 12.h),
           Text(
             'No photo taken yet',

@@ -8,7 +8,6 @@ import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:go_router/go_router.dart';
 import '../../../shared/widgets/custom_input_bottom_sheet.dart';
 
-/// Rating screen shown after delivery success animation
 class RiderRating extends StatefulWidget {
   final String orderId;
   final String? riderName;
@@ -30,7 +29,6 @@ class RiderRatingState extends State<RiderRating> {
 
   final List<String> _selectedComment = [];
 
-  // Get dynamic description based on rating
   String _getRatingDescription(int rating) {
     switch (rating) {
       case 5:
@@ -48,10 +46,8 @@ class RiderRatingState extends State<RiderRating> {
     }
   }
 
-  // Get dynamic feedback chips based on rating
   List<String> _getFeedbackChips(int rating) {
     if (rating >= 4) {
-      // Positive feedback for 4-5 stars
       return [
         'Friendly rider',
         'On time delivery',
@@ -61,10 +57,8 @@ class RiderRatingState extends State<RiderRating> {
         'Followed instructions',
       ];
     } else if (rating == 3) {
-      // Neutral/improvement feedback for 3 stars
       return ['Slightly late', 'Could be friendlier', 'Missed instructions', 'Average service', 'Needs improvement'];
     } else if (rating >= 1) {
-      // Negative feedback for 1-2 stars
       return [
         'Very late',
         'Rude behavior',
@@ -85,7 +79,6 @@ class RiderRatingState extends State<RiderRating> {
 
   Future<void> _submitRating() async {
     if (_riderRating == 0 || _foodRating == 0) {
-      // Show error - ratings required
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: const Text('Please rate both the rider and food'), backgroundColor: context.appColors.error),
       );
@@ -96,18 +89,13 @@ class RiderRatingState extends State<RiderRating> {
 
     try {
       // TODO: Submit rating to backend
-      await Future.delayed(const Duration(seconds: 1)); // Simulate API call
+      await Future.delayed(const Duration(seconds: 1));
 
       if (mounted) {
-        // Show success message
-
-        // Navigate back to home or order history
         context.go('/homepage');
       }
     } catch (e) {
-      if (mounted) {
-        // Failed to sumbit
-      }
+      if (mounted) {}
     } finally {
       if (mounted) {
         setState(() => isSubmitting = false);

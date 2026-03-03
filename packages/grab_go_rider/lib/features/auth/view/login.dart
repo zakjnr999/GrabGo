@@ -292,20 +292,23 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                       scale: scaleAnimation,
                       child: FadeTransition(
                         opacity: fadeAnimation,
-                        child: Container(
-                          height: 80.h,
-                          width: 80.w,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                            color: colors.accentGreen.withValues(alpha: 0.15),
-                          ),
-                          child: Center(
-                            child: SvgPicture.asset(
-                              Assets.icons.deliveryGuyIcon,
-                              package: "grab_go_shared",
-                              height: 50.h,
-                              width: 50.w,
-                              colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                        child: GestureDetector(
+                          onTap: () => context.push('/delivery-tracking'),
+                          child: Container(
+                            height: 80.h,
+                            width: 80.w,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                              color: colors.accentGreen.withValues(alpha: 0.15),
+                            ),
+                            child: Center(
+                              child: SvgPicture.asset(
+                                Assets.icons.deliveryGuyIcon,
+                                package: "grab_go_shared",
+                                height: 50.h,
+                                width: 50.w,
+                                colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                              ),
                             ),
                           ),
                         ),

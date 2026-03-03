@@ -20,7 +20,8 @@ class _PrefsKeys {
 /// Foreground service for rider location tracking
 /// Keeps location updates running even when app is in background
 class RiderForegroundService {
-  static final RiderForegroundService _instance = RiderForegroundService._internal();
+  static final RiderForegroundService _instance =
+      RiderForegroundService._internal();
   factory RiderForegroundService() => _instance;
   RiderForegroundService._internal();
 
@@ -35,7 +36,11 @@ class RiderForegroundService {
     }
 
     await _service.configure(
-      iosConfiguration: IosConfiguration(autoStart: false, onForeground: _onStart, onBackground: _onIosBackground),
+      iosConfiguration: IosConfiguration(
+        autoStart: false,
+        onForeground: _onStart,
+        onBackground: _onIosBackground,
+      ),
       androidConfiguration: AndroidConfiguration(
         onStart: _onStart,
         autoStart: false,
@@ -68,7 +73,9 @@ class RiderForegroundService {
     );
 
     await flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.createNotificationChannel(channel);
 
     debugPrint('✅ Rider tracking notification channel created');
@@ -145,7 +152,8 @@ void _onStart(ServiceInstance service) async {
   String? orderId = prefs.getString(_PrefsKeys.orderId);
   String? riderId = prefs.getString(_PrefsKeys.riderId);
   String? authToken = prefs.getString(_PrefsKeys.authToken);
-  String currentStatus = prefs.getString(_PrefsKeys.currentStatus) ?? 'preparing';
+  String currentStatus =
+      prefs.getString(_PrefsKeys.currentStatus) ?? 'preparing';
 
   if (orderId == null || riderId == null || authToken == null) {
     debugPrint('❌ Missing tracking data, stopping service');
@@ -158,18 +166,56 @@ void _onStart(ServiceInstance service) async {
   // Track consecutive errors
   int consecutiveErrors = 0;
   const maxErrors = 10;
+  double lastObservedSpeedMps = 0;
 
-  // Calculate update interval based on status
+  bool isValidCoordinate(double latitude, double longitude) {
+    return latitude.isFinite &&
+        longitude.isFinite &&
+        latitude >= -90 &&
+        latitude <= 90 &&
+        longitude >= -180 &&
+        longitude <= 180;
+  }
+
+  // Calculate update interval based on status, speed and connectivity pressure.
   int getUpdateInterval() {
     final status = prefs.getString(_PrefsKeys.currentStatus) ?? currentStatus;
-    switch (status) {
-      case 'in_transit':
-      case 'inTransit':
-      case 'nearby':
-        return 5000;
-      default:
-        return 15000;
+    final speedMps = lastObservedSpeedMps.clamp(0.0, 30.0).toDouble();
+    final isActiveLeg =
+        status == 'in_transit' || status == 'inTransit' || status == 'nearby';
+
+    int intervalMs;
+    if (isActiveLeg) {
+      if (speedMps >= 12.0) {
+        intervalMs = 3500;
+      } else if (speedMps >= 7.0) {
+        intervalMs = 4300;
+      } else if (speedMps >= 3.0) {
+        intervalMs = 5200;
+      } else if (speedMps >= 1.2) {
+        intervalMs = 6200;
+      } else {
+        intervalMs = 7800;
+      }
+    } else {
+      if (speedMps >= 5.0) {
+        intervalMs = 9000;
+      } else if (speedMps >= 2.0) {
+        intervalMs = 11000;
+      } else {
+        intervalMs = 15000;
+      }
     }
+
+    if (consecutiveErrors >= 6) {
+      intervalMs = (intervalMs * 1.8).round();
+    } else if (consecutiveErrors >= 3) {
+      intervalMs = (intervalMs * 1.35).round();
+    }
+
+    final minIntervalMs = isActiveLeg ? 3000 : 7000;
+    final maxIntervalMs = isActiveLeg ? 14000 : 30000;
+    return intervalMs.clamp(minIntervalMs, maxIntervalMs).toInt();
   }
 
   // Listen for stop command
@@ -253,46 +299,64 @@ void _onStart(ServiceInstance service) async {
               ),
       );
 
-      debugPrint('📍 Background location: ${position.latitude}, ${position.longitude}');
-
-      final response = await trackingService.updateLocation(
-        orderId: orderId!,
-        latitude: position.latitude,
-        longitude: position.longitude,
-        speed: position.speed,
-        accuracy: position.accuracy,
-      );
-
-      if (response != null) {
-        consecutiveErrors = 0;
-
-        // Update notification with ETA
-        if (service is AndroidServiceInstance) {
-          String notificationContent;
-          if (response.distanceRemaining > 0) {
-            final distanceKm = response.distanceKm.toStringAsFixed(1);
-            final eta = response.etaMinutes.round();
-            notificationContent = '$distanceKm km away • ETA: $eta min';
-          } else {
-            notificationContent = 'Tracking active';
-          }
-
-          service.setForegroundNotificationInfo(title: 'Delivering Order', content: notificationContent);
+      if (!isValidCoordinate(position.latitude, position.longitude)) {
+        consecutiveErrors++;
+        debugPrint(
+          '⚠️ Invalid background GPS coordinate (error $consecutiveErrors/$maxErrors)',
+        );
+      } else {
+        if (position.speed.isFinite && position.speed >= 0) {
+          lastObservedSpeedMps = position.speed;
         }
 
-        // Send location data to UI if listening
-        service.invoke('locationUpdate', {
-          'latitude': position.latitude,
-          'longitude': position.longitude,
-          'speed': position.speed,
-          'accuracy': position.accuracy,
-          'distanceRemaining': response.distanceRemaining,
-          'etaMinutes': response.etaMinutes,
-          'timestamp': DateTime.now().toIso8601String(),
-        });
-      } else {
-        consecutiveErrors++;
-        debugPrint('⚠️ Location update failed (error $consecutiveErrors/$maxErrors)');
+        debugPrint(
+          '📍 Background location: ${position.latitude}, ${position.longitude}',
+        );
+
+        final response = await trackingService.updateLocation(
+          orderId: orderId!,
+          latitude: position.latitude,
+          longitude: position.longitude,
+          speed: position.speed,
+          accuracy: position.accuracy,
+        );
+
+        if (response != null) {
+          consecutiveErrors = 0;
+
+          // Update notification with ETA
+          if (service is AndroidServiceInstance) {
+            String notificationContent;
+            if (response.distanceRemaining > 0) {
+              final distanceKm = response.distanceKm.toStringAsFixed(1);
+              final eta = response.etaMinutes.round();
+              notificationContent = '$distanceKm km away • ETA: $eta min';
+            } else {
+              notificationContent = 'Tracking active';
+            }
+
+            service.setForegroundNotificationInfo(
+              title: 'Delivering Order',
+              content: notificationContent,
+            );
+          }
+
+          // Send location data to UI if listening
+          service.invoke('locationUpdate', {
+            'latitude': position.latitude,
+            'longitude': position.longitude,
+            'speed': position.speed,
+            'accuracy': position.accuracy,
+            'distanceRemaining': response.distanceRemaining,
+            'etaMinutes': response.etaMinutes,
+            'timestamp': DateTime.now().toIso8601String(),
+          });
+        } else {
+          consecutiveErrors++;
+          debugPrint(
+            '⚠️ Location update failed (error $consecutiveErrors/$maxErrors)',
+          );
+        }
       }
     } catch (e) {
       consecutiveErrors++;
@@ -306,8 +370,9 @@ void _onStart(ServiceInstance service) async {
       return;
     }
 
-    // Schedule next update with dynamic interval based on current status
-    Future.delayed(Duration(milliseconds: getUpdateInterval()), runLocationUpdate);
+    // Schedule next update with adaptive interval based on status/speed/network pressure.
+    final nextIntervalMs = getUpdateInterval();
+    Future.delayed(Duration(milliseconds: nextIntervalMs), runLocationUpdate);
   }
 
   // Start the location update loop

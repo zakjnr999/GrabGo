@@ -106,6 +106,7 @@
         "cached_network_image",
         "change_app_package_name",
         "chopper",
+        "confetti",
         "crypto",
         "cupertino_icons",
         "dio",
@@ -1052,6 +1053,14 @@
       ]
     },
     {
+      "name": "confetti",
+      "version": "0.8.0",
+      "dependencies": [
+        "flutter",
+        "vector_math"
+      ]
+    },
+    {
       "name": "vibration",
       "version": "3.1.5",
       "dependencies": [
@@ -1229,14 +1238,6 @@
       "name": "cupertino_icons",
       "version": "1.0.8",
       "dependencies": []
-    },
-    {
-      "name": "confetti",
-      "version": "0.8.0",
-      "dependencies": [
-        "flutter",
-        "vector_math"
-      ]
     },
     {
       "name": "google_places_flutter",

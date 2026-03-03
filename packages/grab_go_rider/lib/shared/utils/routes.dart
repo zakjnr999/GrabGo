@@ -32,7 +32,10 @@ import 'package:grab_go_rider/features/settings/view/personal_information_page.d
 import 'package:grab_go_rider/features/settings/view/bank_account_page.dart';
 import 'package:grab_go_rider/features/settings/view/documents_page.dart';
 import 'package:grab_go_rider/features/orders/view/delivery_tracking_page.dart';
+import 'package:grab_go_rider/features/orders/view/delivery_success_page.dart';
 import 'package:grab_go_rider/features/orders/view/order_confirmation_page.dart';
+import 'package:grab_go_rider/features/orders/view/rating_onboarding_page.dart';
+import 'package:grab_go_rider/features/orders/view/vendor_rating_page.dart';
 import 'package:grab_go_rider/features/settings/view/withdrawal-page.dart';
 import 'package:grab_go_rider/shared/widgets/bottom_navigation.dart';
 import 'package:grab_go_rider/core/view/splash_screen.dart';
@@ -726,9 +729,11 @@ final GoRouter appRouter = GoRouter(
             customerAddress:
                 extra?['customerAddress'] ?? "123 Main Street, Accra, Ghana",
             customerPhone: extra?['customerPhone'] ?? "+233 123 456 789",
+            customerPhoto: extra?['customerPhoto'] ?? extra?['profilePhoto'],
             restaurantName: extra?['restaurantName'] ?? "Pizza Palace",
             restaurantAddress:
                 extra?['restaurantAddress'] ?? "456 Food Street, Accra, Ghana",
+            restaurantLogo: extra?['restaurantLogo'],
             orderTotal: extra?['orderTotal'] ?? "GHS 45.00",
             orderItems: extra?['orderItems'] != null
                 ? List<String>.from(extra!['orderItems'])
@@ -748,6 +753,87 @@ final GoRouter appRouter = GoRouter(
             pickupLongitude: extra?['pickupLongitude'] as double?,
             destinationLatitude: extra?['destinationLatitude'] as double?,
             destinationLongitude: extra?['destinationLongitude'] as double?,
+            testTrigger: extra?['testTrigger'] == true,
+          ),
+          transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.scaled,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/delivery-success",
+      pageBuilder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: RiderDeliverySuccessPage(
+            orderId: extra?['orderId'] ?? '',
+            vendorName:
+                extra?['vendorName'] ?? extra?['restaurantName'] ?? "Vendor",
+            vendorLogo: extra?['vendorLogo'] ?? extra?['restaurantLogo'],
+            customerName:
+                extra?['customerName'] ?? extra?['customer'] ?? "Customer",
+            customerPhoto: extra?['customerPhoto'] ?? extra?['profilePhoto'],
+          ),
+          transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.scaled,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/rate-vendor",
+      pageBuilder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: RiderVendorRatingPage(
+            orderId: extra?['orderId'] ?? '',
+            vendorName:
+                extra?['vendorName'] ?? extra?['restaurantName'] ?? "Vendor",
+          ),
+          transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.scaled,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/rate-onboarding",
+      pageBuilder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: RiderRatingOnboardingPage(
+            orderId: extra?['orderId'] ?? '',
+            vendorName:
+                extra?['vendorName'] ?? extra?['restaurantName'] ?? "Vendor",
+            vendorLogo: extra?['vendorLogo'] ?? extra?['restaurantLogo'],
+            customerName:
+                extra?['customerName'] ?? extra?['customer'] ?? "Customer",
+            customerPhoto: extra?['customerPhoto'] ?? extra?['profilePhoto'],
           ),
           transitionDuration: const Duration(milliseconds: 800),
           reverseTransitionDuration: const Duration(milliseconds: 800),

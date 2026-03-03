@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -8,6 +9,66 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_svg/flutter_svg.dart';
 
 class CustomMapMarkers {
+  static const String _riderVehicleSvgAsset = 'packages/grab_go_shared/lib/assets/icons/rider_marker_icon.svg';
+
+  static const double _minRiderVehicleMarkerSize = 36.0;
+  static const double _maxRiderVehicleMarkerSize = 120.0;
+
+  /// Create a compact rider vehicle marker from SVG.
+  /// The icon points "up" in source SVG so rotation=0 aligns with map north.
+  static Future<BitmapDescriptor> createRiderVehicleMarker({double size = 60}) async {
+    final double markerSize = size.clamp(_minRiderVehicleMarkerSize, _maxRiderVehicleMarkerSize);
+
+    final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
+    final Canvas canvas = Canvas(pictureRecorder);
+    final Paint paint = Paint();
+
+    try {
+      final String svgString = await rootBundle.loadString(_riderVehicleSvgAsset);
+      final SvgStringLoader loader = SvgStringLoader(svgString);
+      final PictureInfo pictureInfo = await vg.loadPicture(loader, null);
+
+      final double shortestSide = math.min(pictureInfo.size.width, pictureInfo.size.height);
+      final double scale = markerSize / shortestSide;
+      final double renderedWidth = pictureInfo.size.width * scale;
+      final double renderedHeight = pictureInfo.size.height * scale;
+      final double dx = (markerSize - renderedWidth) / 2;
+      final double dy = (markerSize - renderedHeight) / 2;
+
+      canvas.save();
+      canvas.translate(dx, dy);
+      canvas.scale(scale, scale);
+      canvas.drawPicture(pictureInfo.picture);
+      canvas.restore();
+    } catch (e) {
+      debugPrint('Error drawing rider vehicle SVG: $e');
+
+      // Fallback marker if SVG fails to load.
+      final Offset center = Offset(markerSize / 2, markerSize / 2);
+      paint.color = const Color(0xFF2A9D8F);
+      canvas.drawCircle(center, markerSize * 0.4, paint);
+      final icon = Icons.motorcycle_rounded;
+      final iconPainter = TextPainter(
+        text: TextSpan(
+          text: String.fromCharCode(icon.codePoint),
+          style: TextStyle(
+            fontSize: markerSize * 0.48,
+            fontFamily: icon.fontFamily,
+            package: icon.fontPackage,
+            color: Colors.white,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+      iconPainter.layout();
+      iconPainter.paint(canvas, Offset(center.dx - iconPainter.width / 2, center.dy - iconPainter.height / 2));
+    }
+
+    final ui.Image finalImage = await pictureRecorder.endRecording().toImage(markerSize.toInt(), markerSize.toInt());
+    final ByteData? byteData = await finalImage.toByteData(format: ui.ImageByteFormat.png);
+    return BitmapDescriptor.bytes(byteData!.buffer.asUint8List());
+  }
+
   static Future<BitmapDescriptor> createOrderPinMarker({
     required Color primaryColor,
     required Color highlightColor,
@@ -361,14 +422,12 @@ class CustomMapMarkers {
       }
     }
 
-    // 5. Draw small pointer at the bottom
     final Path pointer = Path();
     pointer.moveTo(size / 2 - (6 * scaleFactor), centerY + radius - (2 * scaleFactor));
     pointer.lineTo(size / 2 + (6 * scaleFactor), centerY + radius - (2 * scaleFactor));
     pointer.lineTo(size / 2, centerY + radius + (8 * scaleFactor));
     pointer.close();
 
-    // Draw pointer background with same opacity as marker
     paint.color = markerColor;
     paint.style = PaintingStyle.fill;
     canvas.drawPath(pointer, paint);
@@ -381,101 +440,255 @@ class CustomMapMarkers {
     return BitmapDescriptor.bytes(byteData!.buffer.asUint8List());
   }
 
-  /// Create custom store/restaurant marker
-  static Future<BitmapDescriptor> createStoreMarker({required String name, required Color primaryColor}) async {
-    const double width = 200;
-    const double height = 230;
-    const double radius = 60;
+  static Future<BitmapDescriptor> _createLabeledPinMarker({
+    required String name,
+    required Color primaryColor,
+    required String iconAsset,
+    required IconData fallbackIcon,
+  }) async {
+    const double width = 132;
+    const double height = 136;
+    const double circleRadius = 26;
+    const double labelTop = 6;
+    const double labelHorizontalPadding = 14;
+    const double labelVerticalPadding = 8;
 
     final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(pictureRecorder);
     final Paint paint = Paint();
+    final double centerX = width / 2;
 
-    // 1. Label Bubble
     final textPainter = TextPainter(
       text: TextSpan(
         text: name,
-        style: const TextStyle(color: Colors.black, fontSize: 28, fontWeight: FontWeight.w600),
+        style: const TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: -0.2),
       ),
       textDirection: TextDirection.ltr,
+      maxLines: 1,
+      ellipsis: '…',
     );
-    textPainter.layout();
+    textPainter.layout(maxWidth: width - 20);
 
-    final double labelWidth = textPainter.width + 40;
-    final double labelHeight = textPainter.height + 20;
-    final Rect labelRect = Rect.fromLTWH((width - labelWidth) / 2, 0, labelWidth, labelHeight);
+    final double labelWidth = textPainter.width + (labelHorizontalPadding * 2);
+    final double labelHeight = textPainter.height + (labelVerticalPadding * 2);
+    final Rect labelRect = Rect.fromLTWH((width - labelWidth) / 2, labelTop, labelWidth, labelHeight);
+    final double labelBottom = labelRect.bottom;
+
+    paint.color = Colors.black.withValues(alpha: 0.18);
+    canvas.drawRRect(RRect.fromRectAndRadius(labelRect.shift(const Offset(0, 1.5)), const Radius.circular(18)), paint);
 
     paint.color = Colors.white;
-    canvas.drawRRect(RRect.fromRectAndRadius(labelRect, const Radius.circular(30)), paint);
+    canvas.drawRRect(RRect.fromRectAndRadius(labelRect, const Radius.circular(18)), paint);
 
-    final Path bubbleTail = Path();
-    bubbleTail.moveTo(width / 2 - 10, labelHeight);
-    bubbleTail.lineTo(width / 2 + 10, labelHeight);
-    bubbleTail.lineTo(width / 2, labelHeight + 12);
-    bubbleTail.close();
+    final Path bubbleTail = Path()
+      ..moveTo(centerX - 8, labelBottom - 1)
+      ..lineTo(centerX + 8, labelBottom - 1)
+      ..lineTo(centerX, labelBottom + 8)
+      ..close();
     canvas.drawPath(bubbleTail, paint);
 
-    textPainter.paint(canvas, Offset((width - textPainter.width) / 2, (labelHeight - textPainter.height) / 2));
+    textPainter.paint(
+      canvas,
+      Offset(
+        labelRect.left + (labelRect.width - textPainter.width) / 2,
+        labelRect.top + (labelRect.height - textPainter.height) / 2,
+      ),
+    );
 
-    // 2. Icon Circle
-    final double centerY = labelHeight + 15 + radius;
-    final Offset center = Offset(width / 2, centerY);
+    final double circleCenterY = labelBottom + 14 + circleRadius;
+    final Offset circleCenter = Offset(centerX, circleCenterY);
+    final double stemTopY = circleCenterY + circleRadius - 2;
+    const double stemWidth = 10;
+    const double stemHeight = 14;
+    const double tipRadius = 4.5;
 
-    paint.color = Colors.white;
-    canvas.drawCircle(center, radius + 3, paint);
+    final RRect outerStem = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: Offset(centerX, stemTopY + (stemHeight / 2)),
+        width: stemWidth + 4,
+        height: stemHeight + 4,
+      ),
+      const Radius.circular(8),
+    );
+    final RRect innerStem = RRect.fromRectAndRadius(
+      Rect.fromCenter(center: Offset(centerX, stemTopY + (stemHeight / 2)), width: stemWidth, height: stemHeight),
+      const Radius.circular(6),
+    );
+
+    final Offset tipCenter = Offset(centerX, stemTopY + stemHeight + tipRadius - 1);
+
+    paint
+      ..style = PaintingStyle.fill
+      ..color = Colors.white;
+    canvas.drawRRect(outerStem, paint);
+    canvas.drawCircle(tipCenter, tipRadius + 2, paint);
 
     paint.color = primaryColor;
-    canvas.drawCircle(center, radius, paint);
+    canvas.drawRRect(innerStem, paint);
+    canvas.drawCircle(tipCenter, tipRadius, paint);
 
-    // Draw Store SVG
+    paint.color = Colors.white;
+    canvas.drawCircle(circleCenter, circleRadius + 3, paint);
+    paint.color = primaryColor;
+    canvas.drawCircle(circleCenter, circleRadius, paint);
+
     try {
-      final String svgString = await rootBundle.loadString('packages/grab_go_shared/lib/assets/icons/store.svg');
+      final String svgString = await rootBundle.loadString(iconAsset);
       final SvgStringLoader loader = SvgStringLoader(svgString);
       final PictureInfo pictureInfo = await vg.loadPicture(loader, null);
-
-      // Calculate SVG size (60% of the circle)
-      const double svgSize = radius * 1.2;
+      const double iconSize = 28;
+      final double iconScale = iconSize / math.max(pictureInfo.size.width, pictureInfo.size.height);
+      final double renderedWidth = pictureInfo.size.width * iconScale;
+      final double renderedHeight = pictureInfo.size.height * iconScale;
 
       canvas.save();
-      // Move to center and scale
-      canvas.translate(center.dx - svgSize / 2, center.dy - svgSize / 2);
-      final double scale = svgSize / pictureInfo.size.width;
-      canvas.scale(scale, scale);
+      canvas.translate(circleCenter.dx - renderedWidth / 2, circleCenter.dy - renderedHeight / 2);
+      canvas.scale(iconScale, iconScale);
 
-      // Apply white color filter to the SVG
       final Paint tintPaint = Paint()..colorFilter = const ColorFilter.mode(Colors.white, BlendMode.srcIn);
       canvas.saveLayer(Rect.fromLTWH(0, 0, pictureInfo.size.width, pictureInfo.size.height), tintPaint);
       canvas.drawPicture(pictureInfo.picture);
-      canvas.restore(); // Pop the saveLayer
-
-      canvas.restore(); // Pop the translation/scale
+      canvas.restore();
+      canvas.restore();
     } catch (e) {
-      debugPrint('Error drawing Store SVG: $e');
-      // Fallback to Icon if SVG fails
-      final icon = Icons.storefront_rounded;
-      final iconPainter = TextPainter(
+      debugPrint('Error drawing pin marker SVG ($iconAsset): $e');
+      final fallbackPainter = TextPainter(
         text: TextSpan(
-          text: String.fromCharCode(icon.codePoint),
-          style: TextStyle(fontSize: 50, fontFamily: icon.fontFamily, package: icon.fontPackage, color: Colors.white),
+          text: String.fromCharCode(fallbackIcon.codePoint),
+          style: TextStyle(
+            fontSize: 26,
+            fontFamily: fallbackIcon.fontFamily,
+            package: fallbackIcon.fontPackage,
+            color: Colors.white,
+          ),
         ),
         textDirection: TextDirection.ltr,
       );
-      iconPainter.layout();
-      iconPainter.paint(canvas, Offset(center.dx - iconPainter.width / 2, center.dy - iconPainter.height / 2));
+      fallbackPainter.layout();
+      fallbackPainter.paint(
+        canvas,
+        Offset(circleCenter.dx - (fallbackPainter.width / 2), circleCenter.dy - (fallbackPainter.height / 2)),
+      );
     }
-
-    // 3. Pointer
-    final Path bottomPointer = Path();
-    bottomPointer.moveTo(width / 2 - 12, centerY + radius + 2);
-    bottomPointer.lineTo(width / 2 + 12, centerY + radius + 2);
-    bottomPointer.lineTo(width / 2, centerY + radius + 15);
-    bottomPointer.close();
-    paint.color = Colors.white;
-    canvas.drawPath(bottomPointer, paint);
 
     final ui.Image finalImage = await pictureRecorder.endRecording().toImage(width.toInt(), height.toInt());
     final ByteData? byteData = await finalImage.toByteData(format: ui.ImageByteFormat.png);
     return BitmapDescriptor.bytes(byteData!.buffer.asUint8List());
+  }
+
+  static Future<BitmapDescriptor> _createIconPinMarker({
+    required Color primaryColor,
+    required String iconAsset,
+    required IconData fallbackIcon,
+  }) async {
+    const double width = 66;
+    const double height = 84;
+    const double pinRadius = 20;
+    const double circleCenterY = 27;
+    const double tipY = 66;
+    const double iconBubbleRadius = 13.8;
+    const double shadowDotRadius = 3.4;
+
+    final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
+    final Canvas canvas = Canvas(pictureRecorder);
+    final Paint paint = Paint();
+    final double centerX = width / 2;
+    final Offset pinCenter = Offset(centerX, circleCenterY);
+    final Rect circleRect = Rect.fromCircle(center: pinCenter, radius: pinRadius);
+
+    final double leftAngle = 140 * math.pi / 180;
+    final double rightAngle = 40 * math.pi / 180;
+    final Offset leftJoin = Offset(
+      centerX + (pinRadius * math.cos(leftAngle)),
+      circleCenterY + (pinRadius * math.sin(leftAngle)),
+    );
+    final Offset rightJoin = Offset(
+      centerX + (pinRadius * math.cos(rightAngle)),
+      circleCenterY + (pinRadius * math.sin(rightAngle)),
+    );
+
+    final Path tailPath = Path()
+      ..moveTo(leftJoin.dx, leftJoin.dy)
+      ..quadraticBezierTo(centerX - 10, tipY - 9, centerX, tipY)
+      ..quadraticBezierTo(centerX + 10, tipY - 9, rightJoin.dx, rightJoin.dy)
+      ..close();
+
+    final Path pinShape = Path()
+      ..addOval(circleRect)
+      ..addPath(tailPath, Offset.zero);
+
+    // Soft shadow for map contrast.
+    canvas.drawShadow(pinShape, Colors.black.withValues(alpha: 0.24), 5, true);
+
+    paint.color = primaryColor;
+    paint.style = PaintingStyle.fill;
+    canvas.drawOval(circleRect, paint);
+    canvas.drawPath(tailPath, paint);
+
+    // Bottom subtle dot like the sample marker.
+    final Offset shadowDotCenter = Offset(centerX, tipY + shadowDotRadius + 4);
+    paint.color = primaryColor.withValues(alpha: 0.26);
+    canvas.drawCircle(shadowDotCenter, shadowDotRadius + 3, paint);
+    paint.color = primaryColor.withValues(alpha: 0.62);
+    canvas.drawCircle(shadowDotCenter, shadowDotRadius, paint);
+
+    // Icon bubble fully inside the marker's circular head.
+    paint.color = Colors.white;
+    canvas.drawCircle(pinCenter, iconBubbleRadius, paint);
+
+    try {
+      final String svgString = await rootBundle.loadString(iconAsset);
+      final SvgStringLoader loader = SvgStringLoader(svgString);
+      final PictureInfo pictureInfo = await vg.loadPicture(loader, null);
+      const double iconSize = 17;
+      final double iconScale = iconSize / math.max(pictureInfo.size.width, pictureInfo.size.height);
+      final double renderedWidth = pictureInfo.size.width * iconScale;
+      final double renderedHeight = pictureInfo.size.height * iconScale;
+
+      canvas.save();
+      canvas.translate(pinCenter.dx - renderedWidth / 2, pinCenter.dy - renderedHeight / 2);
+      canvas.scale(iconScale, iconScale);
+
+      final Paint tintPaint = Paint()
+        ..colorFilter = ColorFilter.mode(primaryColor.withValues(alpha: 0.92), BlendMode.srcIn);
+      canvas.saveLayer(Rect.fromLTWH(0, 0, pictureInfo.size.width, pictureInfo.size.height), tintPaint);
+      canvas.drawPicture(pictureInfo.picture);
+      canvas.restore();
+      canvas.restore();
+    } catch (e) {
+      debugPrint('Error drawing compact pin marker SVG ($iconAsset): $e');
+      final fallbackPainter = TextPainter(
+        text: TextSpan(
+          text: String.fromCharCode(fallbackIcon.codePoint),
+          style: TextStyle(
+            fontSize: 22,
+            fontFamily: fallbackIcon.fontFamily,
+            package: fallbackIcon.fontPackage,
+            color: primaryColor.withValues(alpha: 0.92),
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+      fallbackPainter.layout();
+      fallbackPainter.paint(
+        canvas,
+        Offset(pinCenter.dx - (fallbackPainter.width / 2), pinCenter.dy - (fallbackPainter.height / 2)),
+      );
+    }
+
+    final ui.Image finalImage = await pictureRecorder.endRecording().toImage(width.toInt(), height.toInt());
+    final ByteData? byteData = await finalImage.toByteData(format: ui.ImageByteFormat.png);
+    return BitmapDescriptor.bytes(byteData!.buffer.asUint8List());
+  }
+
+  /// Create custom store/restaurant marker
+  static Future<BitmapDescriptor> createStoreMarker({required String name, required Color primaryColor}) async {
+    return _createLabeledPinMarker(
+      name: name,
+      primaryColor: primaryColor,
+      iconAsset: 'packages/grab_go_shared/lib/assets/icons/store.svg',
+      fallbackIcon: Icons.storefront_rounded,
+    );
   }
 
   static Future<ui.Image?> _loadNetworkImage(String url) async {
@@ -495,98 +708,38 @@ class CustomMapMarkers {
 
   /// Create a destination marker (Home/Pin) with house icon
   static Future<BitmapDescriptor> createDestinationMarker({required String name, required Color primaryColor}) async {
-    const double width = 200;
-    const double height = 230;
-    const double radius = 60;
-
-    final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
-    final Canvas canvas = Canvas(pictureRecorder);
-    final Paint paint = Paint();
-
-    // 1. Label Bubble
-    final textPainter = TextPainter(
-      text: TextSpan(
-        text: name,
-        style: const TextStyle(color: Colors.black, fontSize: 28, fontWeight: FontWeight.w600),
-      ),
-      textDirection: TextDirection.ltr,
+    return _createLabeledPinMarker(
+      name: name,
+      primaryColor: primaryColor,
+      iconAsset: 'packages/grab_go_shared/lib/assets/icons/home.svg',
+      fallbackIcon: Icons.home_rounded,
     );
-    textPainter.layout();
+  }
 
-    final double labelWidth = textPainter.width + 40;
-    final double labelHeight = textPainter.height + 20;
-    final Rect labelRect = Rect.fromLTWH((width - labelWidth) / 2, 0, labelWidth, labelHeight);
+  /// Compact no-label store pin (use marker infoWindow for tap labels).
+  static Future<BitmapDescriptor> createStoreTapPinMarker({required Color primaryColor}) async {
+    return _createIconPinMarker(
+      primaryColor: primaryColor,
+      iconAsset: 'packages/grab_go_shared/lib/assets/icons/store.svg',
+      fallbackIcon: Icons.storefront_rounded,
+    );
+  }
 
-    paint.color = Colors.white;
-    canvas.drawRRect(RRect.fromRectAndRadius(labelRect, const Radius.circular(30)), paint);
+  /// Compact no-label home pin (use marker infoWindow for tap labels).
+  static Future<BitmapDescriptor> createHomeTapPinMarker({required Color primaryColor}) async {
+    return _createIconPinMarker(
+      primaryColor: primaryColor,
+      iconAsset: 'packages/grab_go_shared/lib/assets/icons/home.svg',
+      fallbackIcon: Icons.home_rounded,
+    );
+  }
 
-    final Path bubbleTail = Path();
-    bubbleTail.moveTo(width / 2 - 10, labelHeight);
-    bubbleTail.lineTo(width / 2 + 10, labelHeight);
-    bubbleTail.lineTo(width / 2, labelHeight + 12);
-    bubbleTail.close();
-    canvas.drawPath(bubbleTail, paint);
-
-    textPainter.paint(canvas, Offset((width - textPainter.width) / 2, (labelHeight - textPainter.height) / 2));
-
-    // 2. Icon Circle
-    final double centerY = labelHeight + 15 + radius;
-    final Offset center = Offset(width / 2, centerY);
-
-    paint.color = Colors.white;
-    canvas.drawCircle(center, radius + 3, paint);
-
-    paint.color = primaryColor;
-    canvas.drawCircle(center, radius, paint);
-
-    // Draw Home SVG
-    try {
-      final String svgString = await rootBundle.loadString('packages/grab_go_shared/lib/assets/icons/home.svg');
-      final SvgStringLoader loader = SvgStringLoader(svgString);
-      final PictureInfo pictureInfo = await vg.loadPicture(loader, null);
-
-      // Calculate SVG size (60% of the circle)
-      const double svgSize = radius * 1.2;
-
-      canvas.save();
-      // Move to center and scale
-      canvas.translate(center.dx - svgSize / 2, center.dy - svgSize / 2);
-      final double scale = svgSize / pictureInfo.size.width;
-      canvas.scale(scale, scale);
-
-      // Apply white color filter to the SVG
-      final Paint tintPaint = Paint()..colorFilter = const ColorFilter.mode(Colors.white, BlendMode.srcIn);
-      canvas.saveLayer(Rect.fromLTWH(0, 0, pictureInfo.size.width, pictureInfo.size.height), tintPaint);
-      canvas.drawPicture(pictureInfo.picture);
-      canvas.restore(); // Pop the saveLayer
-
-      canvas.restore(); // Pop the translation/scale
-    } catch (e) {
-      debugPrint('Error drawing Home SVG: $e');
-      // Fallback to Icon if SVG fails
-      final icon = Icons.home_rounded;
-      final iconPainter = TextPainter(
-        text: TextSpan(
-          text: String.fromCharCode(icon.codePoint),
-          style: TextStyle(fontSize: 60, fontFamily: icon.fontFamily, package: icon.fontPackage, color: Colors.white),
-        ),
-        textDirection: TextDirection.ltr,
-      );
-      iconPainter.layout();
-      iconPainter.paint(canvas, Offset(center.dx - iconPainter.width / 2, center.dy - iconPainter.height / 2));
-    }
-
-    // 3. Pointer
-    final Path bottomPointer = Path();
-    bottomPointer.moveTo(width / 2 - 12, centerY + radius + 2);
-    bottomPointer.lineTo(width / 2 + 12, centerY + radius + 2);
-    bottomPointer.lineTo(width / 2, centerY + radius + 15);
-    bottomPointer.close();
-    paint.color = Colors.white;
-    canvas.drawPath(bottomPointer, paint);
-
-    final ui.Image finalImage = await pictureRecorder.endRecording().toImage(width.toInt(), height.toInt());
-    final ByteData? byteData = await finalImage.toByteData(format: ui.ImageByteFormat.png);
-    return BitmapDescriptor.fromBytes(byteData!.buffer.asUint8List());
+  /// Compact no-label pin with custom icon.
+  static Future<BitmapDescriptor> createTapPinMarker({
+    required Color primaryColor,
+    required String iconAsset,
+    required IconData fallbackIcon,
+  }) async {
+    return _createIconPinMarker(primaryColor: primaryColor, iconAsset: iconAsset, fallbackIcon: fallbackIcon);
   }
 }

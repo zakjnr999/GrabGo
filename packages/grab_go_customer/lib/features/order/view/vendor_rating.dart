@@ -2,7 +2,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:grab_go_shared/shared/utils/image_optimizer.dart';
 import 'package:grab_go_customer/shared/widgets/custom_input_bottom_sheet.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -16,7 +15,7 @@ class VendorRating extends StatefulWidget {
 
 class _VendorRatingState extends State<VendorRating> {
   int _vendorRating = 0;
-  bool _showCustomTip = false;
+  final bool _showCustomTip = false;
 
   final List<String> _selectedComment = [];
 
