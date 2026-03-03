@@ -318,7 +318,8 @@ const notifyOrderStatusChange = async (order, status, customMessage = null, io =
           status,
           route: `/orders/${orderId}`
         },
-        ioInstance
+        ioInstance,
+        { sendPush: false }
       );
     }
   } catch (error) {

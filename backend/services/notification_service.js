@@ -41,8 +41,18 @@ const prepareFCMData = (data) => {
 /**
  * Create in-app notification record and emit via Socket.IO
  */
-const createNotification = async (userId, type, title, message, data = {}, io = null) => {
+const createNotification = async (
+    userId,
+    type,
+    title,
+    message,
+    data = {},
+    io = null,
+    options = {}
+) => {
     try {
+        const shouldSendPush = options?.sendPush !== false;
+
         // SECURITY: Validate and sanitize all inputs
         const validated = validateNotificationInput(userId, type, title, message, data);
         userId = validated.userId;
@@ -93,20 +103,22 @@ const createNotification = async (userId, type, title, message, data = {}, io = 
             console.log(`📡 Real-time notification emitted to user ${userId}`);
         }
 
-        // Send FCM push notification
-        try {
-            await sendToUser(
-                userId,
-                { title: title, body: message },
-                prepareFCMData({
-                    type: type,
-                    notificationId: notification._id.toString(),
-                    actorCount: notification.actorCount,
-                    ...data
-                })
-            );
-        } catch (fcmError) {
-            console.error(`❌ Push notification error for user ${userId}:`, fcmError.message);
+        // Send FCM push notification (optional for callers that already sent one)
+        if (shouldSendPush) {
+            try {
+                await sendToUser(
+                    userId,
+                    { title: title, body: message },
+                    prepareFCMData({
+                        type: type,
+                        notificationId: notification._id.toString(),
+                        actorCount: notification.actorCount,
+                        ...data
+                    })
+                );
+            } catch (fcmError) {
+                console.error(`❌ Push notification error for user ${userId}:`, fcmError.message);
+            }
         }
 
         return notification;

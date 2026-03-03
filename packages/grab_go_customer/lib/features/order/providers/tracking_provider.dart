@@ -182,6 +182,7 @@ class TrackingProvider extends BaseTrackingProvider {
         await _apiService.getTrackingInfo(orderId),
         resetFilter: true,
       );
+      _trackingData = _withInitialRenderableLocation(_trackingData!);
       if (_trackingData?.currentLocation != null) {
         _telemetry.recordLocationSample();
       }
@@ -434,6 +435,7 @@ class TrackingProvider extends BaseTrackingProvider {
       try {
         final data = await _apiService.getTrackingInfo(orderId);
         _trackingData = _withSmoothedCurrentLocation(data, resetFilter: true);
+        _trackingData = _withInitialRenderableLocation(_trackingData!);
         if (_trackingData?.currentLocation != null) {
           _telemetry.recordLocationSample();
         }
@@ -506,6 +508,7 @@ class TrackingProvider extends BaseTrackingProvider {
     try {
       final snapshot = await _apiService.getTrackingInfo(_activeOrderId!);
       _trackingData = _withSmoothedCurrentLocation(snapshot);
+      _trackingData = _withInitialRenderableLocation(_trackingData!);
       if (_trackingData?.currentLocation != null) {
         _telemetry.recordLocationSample();
       }
@@ -654,6 +657,7 @@ class TrackingProvider extends BaseTrackingProvider {
     if (_trackingData == null) return;
 
     final markers = <Marker>{};
+    _polylines.removeWhere((polyline) => polyline.polylineId.value != 'trail');
 
     // Add rider marker if location available
     if (_trackingData!.currentLocation != null) {
@@ -729,10 +733,19 @@ class TrackingProvider extends BaseTrackingProvider {
     // Setup geofence circles
     _setupGeofenceCircles();
 
-    // Create polyline from route if available
-    if (_trackingData!.route != null &&
+    final status = _trackingData!.status.toLowerCase();
+    final shouldForcePickupPreview =
+        status == 'preparing' || status == 'confirmed' || status == 'ready';
+
+    bool routeRendered = false;
+    if (!shouldForcePickupPreview &&
+        _trackingData!.route != null &&
         _trackingData!.route!.polyline.isNotEmpty) {
-      await _createPolyline(_trackingData!.route!.polyline);
+      routeRendered = await _createPolyline(_trackingData!.route!.polyline);
+    }
+
+    if (!routeRendered) {
+      _createFallbackRoutePolylines();
     }
 
     // Animate camera to show all markers
@@ -781,7 +794,7 @@ class TrackingProvider extends BaseTrackingProvider {
   }
 
   /// Create polyline from encoded string
-  Future<void> _createPolyline(String encodedPolyline) async {
+  Future<bool> _createPolyline(String encodedPolyline) async {
     try {
       final polylinePoints = PolylinePoints();
       final decoded = polylinePoints.decodePolyline(encodedPolyline);
@@ -789,19 +802,74 @@ class TrackingProvider extends BaseTrackingProvider {
       final polylineCoordinates = decoded
           .map((point) => LatLng(point.latitude, point.longitude))
           .toList();
+      if (polylineCoordinates.length < 2) return false;
 
       final routePolyline = Polyline(
         polylineId: const PolylineId('route'),
         points: polylineCoordinates,
-        color: AppColors.serviceFood.withValues(alpha: 0.3),
-        width: 4,
-        patterns: [PatternItem.dash(15), PatternItem.gap(10)],
+        color: AppColors.accentOrange.withValues(alpha: 0.92),
+        width: 6,
       );
 
       _polylines.removeWhere((p) => p.polylineId.value == 'route');
       _polylines.add(routePolyline);
+      return true;
     } catch (e) {
       print('❌ Error creating polyline: $e');
+      return false;
+    }
+  }
+
+  void _createFallbackRoutePolylines() {
+    if (_trackingData == null) return;
+
+    _polylines.removeWhere(
+      (polyline) => polyline.polylineId.value.startsWith('route_'),
+    );
+
+    final status = _trackingData!.status.toLowerCase();
+    final isHeadingToPickup =
+        status == 'preparing' || status == 'confirmed' || status == 'ready';
+
+    final current = _trackingData!.currentLocation?.toLatLng();
+    final pickup = _trackingData!.pickupLocation?.toLatLng();
+    final destination = _trackingData!.destination.toLatLng();
+
+    if (isHeadingToPickup && pickup != null) {
+      if (current != null && _calculateDistance(current, pickup) > 5) {
+        _polylines.add(
+          Polyline(
+            polylineId: const PolylineId('route_to_pickup'),
+            points: [current, pickup],
+            color: AppColors.accentOrange.withValues(alpha: 0.94),
+            width: 6,
+          ),
+        );
+      }
+
+      if (_calculateDistance(pickup, destination) > 5) {
+        _polylines.add(
+          Polyline(
+            polylineId: const PolylineId('route_pickup_to_destination'),
+            points: [pickup, destination],
+            color: AppColors.accentOrange.withValues(alpha: 0.35),
+            width: 5,
+          ),
+        );
+      }
+      return;
+    }
+
+    final routeStart = current ?? pickup;
+    if (routeStart != null && _calculateDistance(routeStart, destination) > 5) {
+      _polylines.add(
+        Polyline(
+          polylineId: const PolylineId('route_fallback'),
+          points: [routeStart, destination],
+          color: AppColors.accentOrange.withValues(alpha: 0.94),
+          width: 6,
+        ),
+      );
     }
   }
 
@@ -830,6 +898,12 @@ class TrackingProvider extends BaseTrackingProvider {
       rider: data.rider,
       locationHistory: data.locationHistory,
     );
+  }
+
+  TrackingData _withInitialRenderableLocation(TrackingData data) {
+    if (data.currentLocation != null) return data;
+    final fallback = data.pickupLocation ?? data.destination;
+    return _copyTrackingDataWithCurrentLocation(data, fallback);
   }
 
   TrackingData _withSmoothedCurrentLocation(
@@ -1012,6 +1086,16 @@ class TrackingProvider extends BaseTrackingProvider {
 
     // Update trail
     _updateLocationHistoryPolyline();
+
+    final normalizedStatus = _trackingData!.status.toLowerCase();
+    final shouldForcePickupPreview =
+        normalizedStatus == 'preparing' ||
+        normalizedStatus == 'confirmed' ||
+        normalizedStatus == 'ready';
+    final hasEncodedRoute = _trackingData!.route?.polyline.isNotEmpty ?? false;
+    if (shouldForcePickupPreview || !hasEncodedRoute) {
+      _createFallbackRoutePolylines();
+    }
 
     // Only animate camera if not already following (to avoid jerky movement)
     // Camera will follow naturally during marker animation
@@ -1223,6 +1307,11 @@ class TrackingProvider extends BaseTrackingProvider {
   @override
   void setMapController(GoogleMapController controller) {
     _mapController = controller;
+    if (_markers.isNotEmpty) {
+      Future<void>.delayed(const Duration(milliseconds: 180), () {
+        _animateCameraToFitMarkers();
+      });
+    }
   }
 
   /// Refresh tracking data

@@ -2,6 +2,7 @@ const { Client } = require('@googlemaps/google-maps-services-js');
 const geolib = require('geolib');
 const geofenceService = require('./geofence_service');
 const OrderTracking = require('../models/OrderTracking');
+const RiderStatus = require('../models/RiderStatus');
 const socketService = require('./socket_service');
 const prisma = require('../config/prisma');
 const cache = require('../utils/cache');
@@ -29,6 +30,63 @@ class TrackingService {
         this.pendingLocations = new Map();
         this.lastPersistTime = new Map();
     }
+
+    _isValidCoordinatePair(latitude, longitude) {
+        return Number.isFinite(latitude)
+            && Number.isFinite(longitude)
+            && latitude >= -90
+            && latitude <= 90
+            && longitude >= -180
+            && longitude <= 180;
+    }
+
+    async _resolveInitialRiderLocation(riderId, pickupLocation) {
+        try {
+            const riderStatus = await RiderStatus.findOne({ riderId }).lean();
+            const coordinates = riderStatus?.location?.coordinates;
+            const longitude = Number(coordinates?.[0]);
+            const latitude = Number(coordinates?.[1]);
+
+            if (
+                this._isValidCoordinatePair(latitude, longitude)
+                && !(latitude === 0 && longitude === 0)
+            ) {
+                return {
+                    latitude,
+                    longitude,
+                    source: 'rider_status',
+                };
+            }
+        } catch (error) {
+            console.warn(`⚠️ Failed to load rider status location for ${riderId}:`, error.message);
+        }
+
+        return {
+            latitude: pickupLocation.latitude,
+            longitude: pickupLocation.longitude,
+            source: 'pickup_fallback',
+        };
+    }
+
+    async _buildInitialRouteToPickup(startLocation, pickupLocation) {
+        if (!startLocation || !pickupLocation) return null;
+
+        const distanceToPickup = geolib.getDistance(startLocation, pickupLocation);
+        if (distanceToPickup < 20) return null;
+
+        try {
+            const eta = await this.calculateETA(
+                startLocation.latitude,
+                startLocation.longitude,
+                [pickupLocation.longitude, pickupLocation.latitude]
+            );
+            return eta?.route || null;
+        } catch (error) {
+            console.warn('⚠️ Failed to build initial pickup route:', error.message);
+            return null;
+        }
+    }
+
     /**
      * Initialize tracking for a new order in MongoDB
      */
@@ -37,6 +95,15 @@ class TrackingService {
             const orderIdStr = orderId.toString();
             const riderIdStr = riderId.toString();
             const customerIdStr = customerId.toString();
+            const initialLocation = await this._resolveInitialRiderLocation(riderIdStr, pickupLocation);
+            const initialDistanceToDestination = geolib.getDistance(
+                initialLocation,
+                destination
+            );
+            const initialRoute = await this._buildInitialRouteToPickup(
+                initialLocation,
+                pickupLocation
+            );
 
             const tracking = await OrderTracking.findOneAndUpdate(
                 buildOrderTrackingUpsertQuery(orderIdStr),
@@ -53,6 +120,12 @@ class TrackingService {
                             type: 'Point',
                             coordinates: [destination.longitude, destination.latitude]
                         },
+                        currentLocation: {
+                            type: 'Point',
+                            coordinates: [initialLocation.longitude, initialLocation.latitude]
+                        },
+                        distanceRemaining: initialDistanceToDestination,
+                        route: initialRoute,
                         lastUpdated: new Date()
                     },
                     $setOnInsert: {
@@ -61,6 +134,38 @@ class TrackingService {
                 },
                 { upsert: true, new: true, runValidators: true }
             );
+
+            const cacheKey = cache.makeKey(cache.CACHE_KEYS.ORDER_TRACKING, orderIdStr);
+            const locationKey = cache.makeKey(cache.CACHE_KEYS.RIDER_LOCATION, orderIdStr);
+            const now = Date.now();
+            await Promise.all([
+                cache.set(
+                    cacheKey,
+                    {
+                        orderId: orderIdStr,
+                        riderId: riderIdStr,
+                        customerId: customerIdStr,
+                        destination: tracking.destination,
+                        pickupLocation: tracking.pickupLocation,
+                        status: tracking.status,
+                        route: tracking.route || null,
+                        distanceRemaining: tracking.distanceRemaining || initialDistanceToDestination,
+                        estimatedArrival: tracking.estimatedArrival || null
+                    },
+                    300
+                ),
+                cache.set(
+                    locationKey,
+                    {
+                        latitude: initialLocation.latitude,
+                        longitude: initialLocation.longitude,
+                        speed: 0,
+                        accuracy: 0,
+                        timestamp: now
+                    },
+                    LOCATION_CACHE_TTL
+                )
+            ]);
 
             console.log(`📍 Tracking initialized in MongoDB for order ${orderId}`);
             return tracking;
@@ -688,6 +793,21 @@ class TrackingService {
                     coordinates: [cachedLocation.longitude, cachedLocation.latitude]
                 };
                 tracking.lastUpdated = cachedLocation.timestamp;
+            } else if (!tracking.currentLocation?.coordinates) {
+                const fallbackLocation = await this._resolveInitialRiderLocation(
+                    tracking.riderId,
+                    {
+                        latitude: tracking.pickupLocation?.coordinates?.[1],
+                        longitude: tracking.pickupLocation?.coordinates?.[0],
+                    }
+                );
+
+                if (this._isValidCoordinatePair(fallbackLocation.latitude, fallbackLocation.longitude)) {
+                    tracking.currentLocation = {
+                        type: 'Point',
+                        coordinates: [fallbackLocation.longitude, fallbackLocation.latitude]
+                    };
+                }
             }
 
             // Manual hydration from PostgreSQL (Prisma)
