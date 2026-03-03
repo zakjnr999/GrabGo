@@ -531,6 +531,42 @@ async function findEligibleRiders(order, excludedRiderIds = []) {
         console.log(`🧪 [Dispatch] Geo fallback found ${eligibleRiders.length} eligible riders`);
     }
 
+    if (eligibleRiders.length === 0) {
+        try {
+            const [
+                totalStatuses,
+                onlineCount,
+                onlineApprovedCount,
+                dispatchReadyCount,
+                onlineSample,
+            ] = await Promise.all([
+                RiderStatus.countDocuments({}),
+                RiderStatus.countDocuments({ isOnline: true }),
+                RiderStatus.countDocuments({ isOnline: true, isApproved: true }),
+                RiderStatus.countDocuments({ isOnline: true, isApproved: true, isOnDelivery: false }),
+                RiderStatus.find({ isOnline: true })
+                    .sort({ lastActiveAt: -1 })
+                    .limit(5)
+                    .select('riderId isApproved isOnDelivery currentOrderId lastActiveAt'),
+            ]);
+
+            const sampleText = onlineSample
+                .map((entry) =>
+                    `${entry.riderId}(approved=${entry.isApproved},onDelivery=${entry.isOnDelivery},order=${entry.currentOrderId || 'none'})`
+                )
+                .join(', ');
+
+            console.log(
+                `🩺 [Dispatch Debug] riderStatus totals=${totalStatuses}, online=${onlineCount}, onlineApproved=${onlineApprovedCount}, dispatchReady=${dispatchReadyCount}, excluded=${allExcludedIds.length}`
+            );
+            if (sampleText) {
+                console.log(`🩺 [Dispatch Debug] online sample: ${sampleText}`);
+            }
+        } catch (debugError) {
+            console.error('🩺 [Dispatch Debug] Failed to collect eligibility diagnostics:', debugError.message);
+        }
+    }
+
     return eligibleRiders;
 }
 

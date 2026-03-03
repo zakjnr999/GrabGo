@@ -99,6 +99,31 @@ const getVendorPrepTime = (order) =>
     order?.pharmacyStore?.averagePreparationTime
   ) || 15;
 
+const ACTIVE_DELIVERY_STATUSES = ["confirmed", "preparing", "ready", "picked_up", "on_the_way"];
+
+const findActiveDeliveryOrderForRider = async (riderId) =>
+  prisma.order.findFirst({
+    where: {
+      riderId,
+      fulfillmentMode: "delivery",
+      status: { in: ACTIVE_DELIVERY_STATUSES },
+    },
+    orderBy: { updatedAt: "desc" },
+    select: { id: true, status: true },
+  });
+
+const reconcileRiderDispatchState = async (riderId, riderProfile) => {
+  const isApproved = riderProfile?.verificationStatus === "approved";
+  const activeOrder = await findActiveDeliveryOrderForRider(riderId);
+
+  return {
+    isApproved,
+    isOnDelivery: Boolean(activeOrder),
+    currentOrderId: activeOrder?.id ?? null,
+    vehicleType: riderProfile?.vehicleType || null,
+  };
+};
+
 const SENSITIVE_ORDER_FIELDS = new Set(["pickupOtpHash", "deliveryCodeHash", "deliveryCodeEncrypted"]);
 const sanitizeOrderForRider = (payload) => {
   if (Array.isArray(payload)) return payload.map((entry) => sanitizeOrderForRider(entry));
@@ -862,12 +887,27 @@ router.post(
 
       // Get vehicle type from rider profile
       const vehicleType = rider.vehicleType || null;
+      const dispatchState = await reconcileRiderDispatchState(userId, rider);
 
       // Set rider online in MongoDB RiderStatus with battery and vehicle info
       const RiderStatus = require('../models/RiderStatus');
-      const status = await RiderStatus.goOnline(userId, lon, lat, true, battery, charging, vehicleType);
+      await RiderStatus.goOnline(userId, lon, lat, true, battery, charging, vehicleType);
+      const status = await RiderStatus.findOneAndUpdate(
+        { riderId: userId },
+        {
+          $set: {
+            isApproved: dispatchState.isApproved,
+            isOnDelivery: dispatchState.isOnDelivery,
+            currentOrderId: dispatchState.currentOrderId,
+            vehicleType: dispatchState.vehicleType,
+          },
+        },
+        { new: true }
+      );
 
-      console.log(`🟢 [Rider Online] ${rider.user.username} (${userId}) is now online at (${lat}, ${lon}) | Battery: ${battery}%${charging ? ' (charging)' : ''} | Vehicle: ${vehicleType || 'unknown'}`);
+      console.log(
+        `🟢 [Rider Online] ${rider.user.username} (${userId}) is now online at (${lat}, ${lon}) | Battery: ${battery}%${charging ? ' (charging)' : ''} | Vehicle: ${vehicleType || 'unknown'}${dispatchState.isOnDelivery ? ` | Active order: ${dispatchState.currentOrderId}` : ''}`
+      );
 
       res.json({
         success: true,
@@ -875,6 +915,8 @@ router.post(
         data: {
           riderId: userId,
           isOnline: true,
+          isOnDelivery: dispatchState.isOnDelivery,
+          currentOrderId: dispatchState.currentOrderId,
           location: { latitude: lat, longitude: lon },
           batteryLevel: battery,
           isCharging: charging,
@@ -1029,7 +1071,7 @@ router.get(
       const userId = req.user.id;
 
       const RiderStatus = require('../models/RiderStatus');
-      const status = await RiderStatus.findOne({ riderId: userId });
+      let status = await RiderStatus.findOne({ riderId: userId });
 
       // Default to offline for new riders or if no status exists
       if (!status) {
@@ -1041,6 +1083,40 @@ router.get(
             message: "Welcome! Go online when you're ready to receive orders."
           }
         });
+      }
+
+      // Self-heal stale dispatch flags in RiderStatus from source-of-truth tables.
+      try {
+        const riderProfile = await prisma.rider.findUnique({
+          where: { userId },
+          select: { verificationStatus: true, vehicleType: true },
+        });
+        const reconciled = await reconcileRiderDispatchState(userId, riderProfile);
+        const shouldPatchDispatchState =
+          status.isApproved !== reconciled.isApproved ||
+          status.isOnDelivery !== reconciled.isOnDelivery ||
+          String(status.currentOrderId || "") !== String(reconciled.currentOrderId || "") ||
+          String(status.vehicleType || "") !== String(reconciled.vehicleType || "");
+
+        if (shouldPatchDispatchState) {
+          status = await RiderStatus.findOneAndUpdate(
+            { riderId: userId },
+            {
+              $set: {
+                isApproved: reconciled.isApproved,
+                isOnDelivery: reconciled.isOnDelivery,
+                currentOrderId: reconciled.currentOrderId,
+                vehicleType: reconciled.vehicleType,
+              },
+            },
+            { new: true }
+          );
+          console.log(
+            `🛠️ [Rider Status Reconcile] rider=${userId} approved=${reconciled.isApproved} onDelivery=${reconciled.isOnDelivery} currentOrder=${reconciled.currentOrderId || "none"}`
+          );
+        }
+      } catch (reconcileError) {
+        console.error("Rider status reconciliation error:", reconcileError);
       }
 
       // Check if rider was auto-offlined
