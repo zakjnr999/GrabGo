@@ -16,6 +16,7 @@ const { calculateOrderPricing } = require("../services/pricing_service");
 const paystackService = require("../services/paystack_service");
 const { getIO } = require("../utils/socket");
 const dispatchService = require("../services/dispatch_service");
+const dispatchRetryService = require("../services/dispatch_retry_service");
 const featureFlags = require("../config/feature_flags");
 const { normalizeGhanaPhone } = require("../services/otp_service");
 const {
@@ -120,6 +121,47 @@ const shouldTriggerDispatchForOrder = (order, status = order?.status) => {
     return isCodDispatchAllowedStatus(status);
   }
   return shouldTriggerDispatchForStatus(status);
+};
+const queueDispatchRetryIfNeeded = async ({
+  orderId,
+  orderNumber,
+  result,
+  source,
+  delaySeconds = null,
+  metadata = {},
+}) => {
+  if (!orderId || !result || result.success) {
+    return;
+  }
+
+  if (!dispatchRetryService.isRecoverableDispatchFailure(result)) {
+    return;
+  }
+
+  if (result.error === "Max dispatch attempts reached") {
+    await dispatchRetryService.resetDispatchAttemptHistory(orderId);
+  }
+
+  const queueResult = await dispatchRetryService.enqueueDispatchRetry({
+    orderId,
+    orderNumber,
+    result,
+    source,
+    delaySeconds,
+    metadata,
+  });
+
+  console.log(
+    `🔄 [DispatchRetry] Queued ${orderNumber || orderId} from ${source} in ${queueResult?.delaySeconds ?? "n/a"}s`
+  );
+};
+const safeDispatchRetrySideEffect = async (label, operation) => {
+  try {
+    return await operation();
+  } catch (error) {
+    console.error(`[DispatchRetry] ${label} error:`, error.message);
+    return null;
+  }
 };
 const SENSITIVE_ORDER_FIELDS = new Set(["pickupOtpHash", "deliveryCodeHash", "deliveryCodeEncrypted"]);
 
@@ -1856,20 +1898,50 @@ router.post(
             dispatchCandidate.status,
           )
         ) {
-          dispatchService.dispatchOrder(dispatchCandidate.id).then((result) => {
+          dispatchService.dispatchOrder(dispatchCandidate.id).then(async (result) => {
             if (result.success) {
               console.log(
                 `✅ Dispatch initiated for already-paid order ${dispatchCandidate.orderNumber}`,
+              );
+              await safeDispatchRetrySideEffect(
+                `mark retry resolved for already-paid (${dispatchCandidate.id})`,
+                () =>
+                  dispatchRetryService.markRetryResolved(
+                    dispatchCandidate.id,
+                    "dispatch_succeeded"
+                  )
               );
             } else {
               console.log(
                 `⚠️ Dispatch deferred for already-paid order ${dispatchCandidate.orderNumber}: ${result.error}`,
               );
+              await safeDispatchRetrySideEffect(
+                `enqueue retry for already-paid dispatch failure (${dispatchCandidate.id})`,
+                () =>
+                  queueDispatchRetryIfNeeded({
+                    orderId: dispatchCandidate.id,
+                    orderNumber: dispatchCandidate.orderNumber,
+                    result,
+                    source: "orders:already_paid_confirm",
+                  })
+              );
             }
-          }).catch((err) => {
+          }).catch(async (err) => {
             console.error(
               `❌ Dispatch error for already-paid order ${dispatchCandidate.orderNumber}:`,
               err.message,
+            );
+            await safeDispatchRetrySideEffect(
+              `enqueue retry for already-paid dispatch exception (${dispatchCandidate.id})`,
+              () =>
+                dispatchRetryService.enqueueDispatchRetry({
+                  orderId: dispatchCandidate.id,
+                  orderNumber: dispatchCandidate.orderNumber,
+                  reason: "dispatch_exception",
+                  source: "orders:already_paid_confirm",
+                  delaySeconds: 30,
+                  metadata: { error: err.message },
+                })
             );
           });
         }
@@ -2150,14 +2222,40 @@ router.post(
         ["paid", "successful"].includes(orderAfterPayment.paymentStatus) &&
         shouldTriggerDispatchForOrder(orderAfterPayment, orderAfterPayment.status)
       ) {
-        dispatchService.dispatchOrder(order.id).then((result) => {
+        dispatchService.dispatchOrder(order.id).then(async (result) => {
           if (result.success) {
             console.log(`✅ Dispatch initiated after payment for order ${orderAfterPayment.orderNumber}`);
+            await safeDispatchRetrySideEffect(
+              `mark retry resolved after payment (${order.id})`,
+              () => dispatchRetryService.markRetryResolved(order.id, "dispatch_succeeded")
+            );
           } else {
             console.log(`⚠️ Dispatch deferred after payment for order ${orderAfterPayment.orderNumber}: ${result.error}`);
+            await safeDispatchRetrySideEffect(
+              `enqueue retry after payment dispatch failure (${order.id})`,
+              () =>
+                queueDispatchRetryIfNeeded({
+                  orderId: order.id,
+                  orderNumber: orderAfterPayment.orderNumber,
+                  result,
+                  source: "orders:payment_confirmed",
+                })
+            );
           }
-        }).catch((err) => {
+        }).catch(async (err) => {
           console.error(`❌ Dispatch error after payment for order ${orderAfterPayment.orderNumber}:`, err.message);
+          await safeDispatchRetrySideEffect(
+            `enqueue retry after payment dispatch exception (${order.id})`,
+            () =>
+              dispatchRetryService.enqueueDispatchRetry({
+                orderId: order.id,
+                orderNumber: orderAfterPayment.orderNumber,
+                reason: "dispatch_exception",
+                source: "orders:payment_confirmed",
+                delaySeconds: 30,
+                metadata: { error: err.message },
+              })
+          );
         });
       }
 
@@ -3943,19 +4041,46 @@ router.put(
         console.log(`🚀 Triggering dispatch for order ${updatedOrder.orderNumber} (status: ${status})`);
 
         // Run dispatch asynchronously to not block the response
-        dispatchService.dispatchOrder(orderId).then(result => {
+        dispatchService.dispatchOrder(orderId).then(async (result) => {
           if (result.success) {
             console.log(`✅ Dispatch initiated for order ${updatedOrder.orderNumber} -> rider ${result.riderName}`);
+            await safeDispatchRetrySideEffect(
+              `mark retry resolved after status dispatch (${orderId})`,
+              () => dispatchRetryService.markRetryResolved(orderId, "dispatch_succeeded")
+            );
           } else {
             console.log(`⚠️ Dispatch failed for order ${updatedOrder.orderNumber}: ${result.error}`);
+            await safeDispatchRetrySideEffect(
+              `enqueue retry after status dispatch failure (${orderId})`,
+              () =>
+                queueDispatchRetryIfNeeded({
+                  orderId,
+                  orderNumber: updatedOrder.orderNumber,
+                  result,
+                  source: "orders:status_update",
+                })
+            );
           }
-        }).catch(err => {
+        }).catch(async (err) => {
           console.error(`❌ Dispatch error for order ${updatedOrder.orderNumber}:`, err.message);
+          await safeDispatchRetrySideEffect(
+            `enqueue retry after status dispatch exception (${orderId})`,
+            () =>
+              dispatchRetryService.enqueueDispatchRetry({
+                orderId,
+                orderNumber: updatedOrder.orderNumber,
+                reason: "dispatch_exception",
+                source: "orders:status_update",
+                delaySeconds: 30,
+                metadata: { error: err.message },
+              })
+          );
         });
       }
 
       // Cancel reservations if order is cancelled
       if (status === 'cancelled') {
+        dispatchRetryService.markRetryCancelled(orderId, "order_cancelled").catch(() => null);
         dispatchService.cancelOrderReservations(orderId).catch(err => {
           console.error(`Error cancelling reservations for order ${orderId}:`, err.message);
         });

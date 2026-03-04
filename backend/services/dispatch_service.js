@@ -979,6 +979,8 @@ async function declineReservation(reservationId, riderId, reason = null) {
     return { 
         success: true, 
         message: 'Reservation declined',
+        orderId: reservation.orderId,
+        orderNumber: reservation.orderNumber,
         nextDispatch
     };
 }

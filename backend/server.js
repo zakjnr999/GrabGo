@@ -659,6 +659,7 @@ const { initializeDeliveryMonitor } = require("./jobs/delivery_monitor");
 const { initializePickupAcceptTimeoutJob } = require("./jobs/pickup_accept_timeout");
 const { initializePickupReadyExpiryJob } = require("./jobs/pickup_ready_expiry");
 const { initializeScheduledOrderReleaseJob } = require("./jobs/scheduled_order_release");
+const dispatchRetryQueueJob = require("./jobs/dispatch_retry_queue");
 const { startFraudOutboxWorker, stopFraudOutboxWorker } = require("./jobs/fraud_outbox_worker");
 const {
   startFraudFeatureRecomputeJob,
@@ -693,6 +694,9 @@ initializeEngagementNudges(io);
 
 // Initialize order reservation expiry job (runs every 2 seconds)
 reservationExpiryJob.start();
+
+// Initialize dispatch retry queue worker (handles durable re-dispatch for unassigned orders)
+dispatchRetryQueueJob.start();
 
 // Initialize delivery monitor (runs every minute - warns riders, notifies customers)
 initializeDeliveryMonitor();

@@ -5,6 +5,7 @@ const featureFlags = require("../config/feature_flags");
 const { protect, authorize } = require("../middleware/auth");
 const { uploadSingle, uploadToCloudinary } = require("../middleware/upload");
 const dispatchService = require("../services/dispatch_service");
+const dispatchRetryService = require("../services/dispatch_retry_service");
 const { sendOrderNotification } = require("../services/fcm_service");
 const { createNotification } = require("../services/notification_service");
 const { getIO } = require("../utils/socket");
@@ -82,6 +83,15 @@ const isValidLatitude = (value) => Number.isFinite(value) && value >= -90 && val
 const isValidLongitude = (value) => Number.isFinite(value) && value >= -180 && value <= 180;
 const hasValidCoordinatePair = (latitude, longitude) =>
   isValidLatitude(latitude) && isValidLongitude(longitude);
+
+const safeDispatchRetrySideEffect = async (label, operation) => {
+  try {
+    return await operation();
+  } catch (error) {
+    console.error(`[DispatchRetry] ${label} error:`, error.message);
+    return null;
+  }
+};
 
 const getPickupLocation = (order) => ({
   latitude: firstDefined(
@@ -797,6 +807,10 @@ router.post(
       });
 
       await notifyCustomerRiderAssignment(updatedOrder, updatedOrder.rider, getIO());
+      await safeDispatchRetrySideEffect(
+        `mark retry resolved after reservation accept (${updatedOrder.id})`,
+        () => dispatchRetryService.markRetryResolved(updatedOrder.id, "rider_accepted_order")
+      );
 
       // Broadcast that order is taken
       socketService.broadcastOrderTaken(orderId, riderId);
@@ -840,6 +854,30 @@ router.post(
           success: false,
           message: result.error
         });
+      }
+
+      if (result.nextDispatch?.success) {
+        await safeDispatchRetrySideEffect(
+          `mark retry resolved after decline redispatch (${result.orderId})`,
+          () => dispatchRetryService.markRetryResolved(result.orderId, "dispatch_succeeded")
+        );
+      } else if (dispatchRetryService.isRecoverableDispatchFailure(result.nextDispatch)) {
+        if (result.nextDispatch.error === "Max dispatch attempts reached") {
+          await safeDispatchRetrySideEffect(
+            `reset reservation history after decline (${result.orderId})`,
+            () => dispatchRetryService.resetDispatchAttemptHistory(result.orderId)
+          );
+        }
+        await safeDispatchRetrySideEffect(
+          `enqueue retry after decline (${result.orderId})`,
+          () =>
+            dispatchRetryService.enqueueDispatchRetry({
+              orderId: result.orderId,
+              orderNumber: result.orderNumber,
+              result: result.nextDispatch,
+              source: "riders:reservation_decline",
+            })
+        );
       }
 
       res.json({
@@ -1442,6 +1480,32 @@ router.post(
 
       // Trigger dispatch
       const result = await dispatchService.dispatchOrder(orderId);
+      if (result.success) {
+        await safeDispatchRetrySideEffect(
+          `mark retry resolved from test dispatch (${orderId})`,
+          () => dispatchRetryService.markRetryResolved(orderId, "dispatch_succeeded")
+        );
+      } else if (dispatchRetryService.isRecoverableDispatchFailure(result)) {
+        if (result.error === "Max dispatch attempts reached") {
+          await safeDispatchRetrySideEffect(
+            `reset reservation history from test dispatch (${orderId})`,
+            () => dispatchRetryService.resetDispatchAttemptHistory(orderId)
+          );
+        }
+        const queueResult = await safeDispatchRetrySideEffect(
+          `enqueue retry from test dispatch (${orderId})`,
+          () =>
+            dispatchRetryService.enqueueDispatchRetry({
+              orderId,
+              orderNumber: order.orderNumber,
+              result,
+              source: "riders:test_dispatch",
+            })
+        );
+        console.log(
+          `🔄 [DispatchRetry] Queued ${order.orderNumber} from test dispatch in ${queueResult?.delaySeconds ?? "n/a"}s`
+        );
+      }
 
       res.json({
         success: result.success,
@@ -1796,6 +1860,10 @@ router.post(
       }
 
       await notifyCustomerRiderAssignment(updatedOrder, updatedOrder.rider, getIO());
+      await safeDispatchRetrySideEffect(
+        `mark retry resolved after direct accept (${updatedOrder.id})`,
+        () => dispatchRetryService.markRetryResolved(updatedOrder.id, "rider_accepted_order")
+      );
 
       res.json({
         success: true,
@@ -1918,14 +1986,51 @@ router.post(
       // Re-dispatch the order to another rider since it's available again
       try {
         const dispatchService = require('../services/dispatch_service');
-        dispatchService.dispatchOrder(orderId).then(result => {
+        dispatchService.dispatchOrder(orderId).then(async (result) => {
           if (result.success) {
             console.log(`🚀 Re-dispatched order ${order.orderNumber} to rider ${result.riderName}`);
+            await safeDispatchRetrySideEffect(
+              `mark retry resolved after rider cancel redispatch (${orderId})`,
+              () => dispatchRetryService.markRetryResolved(orderId, "dispatch_succeeded")
+            );
           } else {
             console.log(`⚠️ Re-dispatch failed: ${result.error}`);
+            if (dispatchRetryService.isRecoverableDispatchFailure(result)) {
+              if (result.error === "Max dispatch attempts reached") {
+                await safeDispatchRetrySideEffect(
+                  `reset reservation history after rider cancel redispatch (${orderId})`,
+                  () => dispatchRetryService.resetDispatchAttemptHistory(orderId)
+                );
+              }
+              const queueResult = await safeDispatchRetrySideEffect(
+                `enqueue retry after rider cancel redispatch (${orderId})`,
+                () =>
+                  dispatchRetryService.enqueueDispatchRetry({
+                    orderId,
+                    orderNumber: order.orderNumber,
+                    result,
+                    source: "riders:cancel_order_redispatch",
+                  })
+              );
+              console.log(
+                `🔄 [DispatchRetry] Queued ${order.orderNumber} after rider cancellation in ${queueResult?.delaySeconds ?? "n/a"}s`
+              );
+            }
           }
-        }).catch(err => {
+        }).catch(async (err) => {
           console.error(`❌ Re-dispatch error:`, err.message);
+          await safeDispatchRetrySideEffect(
+            `enqueue retry after rider cancel dispatch exception (${orderId})`,
+            () =>
+              dispatchRetryService.enqueueDispatchRetry({
+                orderId,
+                orderNumber: order.orderNumber,
+                reason: "dispatch_exception",
+                source: "riders:cancel_order_redispatch",
+                delaySeconds: 30,
+                metadata: { error: err.message },
+              })
+          );
         });
       } catch (dispatchError) {
         console.error("Re-dispatch error:", dispatchError);

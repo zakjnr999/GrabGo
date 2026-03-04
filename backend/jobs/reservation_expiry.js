@@ -1,4 +1,5 @@
 const dispatchService = require('../services/dispatch_service');
+const dispatchRetryService = require('../services/dispatch_retry_service');
 const socketService = require('../services/socket_service');
 const OrderReservation = require('../models/OrderReservation');
 const cache = require('../utils/cache');
@@ -13,6 +14,15 @@ let intervalId = null;
 const CHECK_INTERVAL_MS = 2000;
 const MAX_CONSECUTIVE_ERRORS = 5;
 let consecutiveErrors = 0;
+
+const safeDispatchRetrySideEffect = async (label, operation) => {
+    try {
+        return await operation();
+    } catch (error) {
+        console.error(`[DispatchRetry] ${label} error:`, error.message);
+        return null;
+    }
+};
 
 async function processExpiredReservations() {
     const lock = await cache.acquireLock('job:reservation_expiry', 3);
@@ -60,12 +70,29 @@ async function processExpiredReservations() {
                 const nextDispatch = await dispatchService.dispatchOrder(reservation.orderId);
 
                 if (nextDispatch.success) {
+                    await safeDispatchRetrySideEffect(
+                        `mark retry resolved from reservation expiry (${reservation.orderId})`,
+                        () => dispatchRetryService.markRetryResolved(reservation.orderId, 'dispatch_succeeded')
+                    );
                     console.log(`   ✅ Reassigned to rider ${nextDispatch.riderName} (attempt ${nextDispatch.attemptNumber})`);
                 } else if (nextDispatch.error === 'Max dispatch attempts reached') {
                     console.log(`   ⚠️ Max attempts reached for order ${reservation.orderNumber} - marking as unassignable`);
                     await handleUnassignableOrder(reservation.orderId, reservation.orderNumber);
-                } else if (nextDispatch.error === 'No eligible riders available') {
-                    console.log(`   ⚠️ No riders available for order ${reservation.orderNumber} - will retry`);
+                } else if (dispatchRetryService.isRecoverableDispatchFailure(nextDispatch)) {
+                    const queueResult = await safeDispatchRetrySideEffect(
+                        `enqueue retry from reservation expiry (${reservation.orderId})`,
+                        () =>
+                            dispatchRetryService.enqueueDispatchRetry({
+                                orderId: reservation.orderId,
+                                orderNumber: reservation.orderNumber,
+                                result: nextDispatch,
+                                source: 'reservation_expiry_job',
+                            })
+                    );
+                    console.log(
+                        `   ⚠️ Recoverable re-dispatch failure for ${reservation.orderNumber}: ${nextDispatch.error}. ` +
+                        `Queued retry in ${queueResult?.delaySeconds ?? 'n/a'}s`
+                    );
                 } else {
                     console.log(`   ❌ Failed to reassign: ${nextDispatch.error}`);
                 }
@@ -161,28 +188,29 @@ async function handleUnassignableOrder(orderId, orderNumber) {
             );
         }
 
-        // Schedule a retry dispatch in 2 minutes
-        setTimeout(async () => {
-            console.log(`🔄 [ReservationExpiry] Retrying dispatch for unassignable order ${orderNumber}`);
-            
-            // Check if order still needs a rider
-            const currentOrder = await prisma.order.findUnique({
-                where: { id: orderId }
-            });
+        const resetCount = await safeDispatchRetrySideEffect(
+            `reset reservation history from reservation expiry (${orderId})`,
+            () => dispatchRetryService.resetDispatchAttemptHistory(orderId)
+        );
+        const queueResult = await safeDispatchRetrySideEffect(
+            `enqueue max-attempts retry from reservation expiry (${orderId})`,
+            () =>
+                dispatchRetryService.enqueueDispatchRetry({
+                    orderId,
+                    orderNumber,
+                    reason: 'Max dispatch attempts reached',
+                    source: 'reservation_expiry_job',
+                    delaySeconds: 120,
+                    metadata: {
+                        resetReservationCount: resetCount ?? 0,
+                    },
+                })
+        );
 
-            if (currentOrder && !currentOrder.riderId && 
-                ['confirmed', 'preparing', 'ready'].includes(currentOrder.status)) {
-                
-                // Reset attempt count by clearing old reservations
-                await OrderReservation.updateMany(
-                    buildOrderReservationQuery({ orderId }),
-                    { $set: { status: 'cancelled' } }
-                );
-
-                // Try dispatch again
-                await dispatchService.dispatchOrder(orderId);
-            }
-        }, 120000); // 2 minutes
+        console.log(
+            `🔄 [ReservationExpiry] Queued durable retry for ${orderNumber} in ${queueResult?.delaySeconds ?? 'n/a'}s ` +
+            `(reset ${resetCount ?? 0} old reservations)`
+        );
 
     } catch (error) {
         console.error(`⚠️ [ReservationExpiry] Error handling unassignable order:`, error.message);
