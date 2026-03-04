@@ -10,17 +10,8 @@ import 'package:grab_go_shared/grub_go_shared.dart';
 
 class OrderReservationModal extends StatefulWidget {
   final OrderReservation reservation;
-  final VoidCallback? onAccepted;
-  final VoidCallback? onDeclined;
-  final VoidCallback? onExpired;
 
-  const OrderReservationModal({
-    super.key,
-    required this.reservation,
-    this.onAccepted,
-    this.onDeclined,
-    this.onExpired,
-  });
+  const OrderReservationModal({super.key, required this.reservation});
 
   static Future<void> show(
     BuildContext context,
@@ -28,22 +19,25 @@ class OrderReservationModal extends StatefulWidget {
     VoidCallback? onAccepted,
     VoidCallback? onDeclined,
     VoidCallback? onExpired,
-  }) {
+  }) async {
     HapticFeedback.heavyImpact();
 
-    return showModalBottomSheet(
+    final result = await showModalBottomSheet<_OrderReservationModalResult>(
       context: context,
       isDismissible: false,
       enableDrag: false,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => OrderReservationModal(
-        reservation: reservation,
-        onAccepted: onAccepted,
-        onDeclined: onDeclined,
-        onExpired: onExpired,
-      ),
+      builder: (context) => OrderReservationModal(reservation: reservation),
     );
+
+    if (result == _OrderReservationModalResult.accepted) {
+      onAccepted?.call();
+    } else if (result == _OrderReservationModalResult.declined) {
+      onDeclined?.call();
+    } else if (result == _OrderReservationModalResult.expired) {
+      onExpired?.call();
+    }
   }
 
   @override
@@ -97,8 +91,7 @@ class _OrderReservationModalState extends State<OrderReservationModal>
   }
 
   void _handleExpired() {
-    Navigator.of(context).pop();
-    widget.onExpired?.call();
+    Navigator.of(context).pop(_OrderReservationModalResult.expired);
   }
 
   Future<void> _handleAccept() async {
@@ -112,14 +105,20 @@ class _OrderReservationModalState extends State<OrderReservationModal>
 
     if (!mounted) return;
 
-    Navigator.of(context).pop();
-
     if (success) {
-      // Let the bottom sheet dismissal finish before triggering navigation callbacks.
-      Future.delayed(const Duration(milliseconds: 150), () {
-        widget.onAccepted?.call();
-      });
+      Navigator.of(context).pop(_OrderReservationModalResult.accepted);
+      return;
     }
+
+    setState(() => _isAccepting = false);
+    AppToastMessage.show(
+      context: context,
+      showIcon: false,
+      radius: KBorderSize.borderRadius4,
+      backgroundColor: context.appColors.error,
+      message:
+          service.error ?? 'Could not accept this order. Please try again.',
+    );
   }
 
   Future<void> _handleDecline() async {
@@ -133,13 +132,20 @@ class _OrderReservationModalState extends State<OrderReservationModal>
 
     if (!mounted) return;
 
-    Navigator.of(context).pop();
-
     if (success) {
-      Future.delayed(const Duration(milliseconds: 100), () {
-        widget.onDeclined?.call();
-      });
+      Navigator.of(context).pop(_OrderReservationModalResult.declined);
+      return;
     }
+
+    setState(() => _isDeclining = false);
+    AppToastMessage.show(
+      context: context,
+      showIcon: false,
+      radius: KBorderSize.borderRadius4,
+      backgroundColor: context.appColors.error,
+      message:
+          service.error ?? 'Could not decline this order. Please try again.',
+    );
   }
 
   Color _getTimerColor() {
@@ -152,6 +158,8 @@ class _OrderReservationModalState extends State<OrderReservationModal>
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final order = widget.reservation.order;
+    final storeLogo = order.storeLogo?.trim();
+    final hasStoreLogo = storeLogo != null && storeLogo.isNotEmpty;
     final padding = MediaQuery.paddingOf(context);
     final size = MediaQuery.sizeOf(context);
     final screenHeight = MediaQuery.sizeOf(context).height;
@@ -245,59 +253,87 @@ class _OrderReservationModalState extends State<OrderReservationModal>
                         borderRadius: BorderRadius.circular(
                           KBorderSize.borderRadius4,
                         ),
-                        child: CachedNetworkImage(
-                          height: size.width * 0.12,
-                          width: size.width * 0.12,
-                          fit: BoxFit.cover,
-                          imageUrl: ImageOptimizer.getPreviewUrl(
-                            order.storeLogo!,
-                            width: 200,
-                          ),
-                          memCacheWidth: 200,
-                          maxHeightDiskCache: 200,
-                          placeholder: (context, url) => Container(
-                            height: size.width * 0.12,
-                            width: size.width * 0.12,
-                            padding: EdgeInsets.all(12.r),
-                            decoration: BoxDecoration(
-                              color: colors.accentGreen.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(
-                                KBorderSize.borderRadius4,
+                        child: hasStoreLogo
+                            ? CachedNetworkImage(
+                                height: size.width * 0.12,
+                                width: size.width * 0.12,
+                                fit: BoxFit.cover,
+                                imageUrl: ImageOptimizer.getPreviewUrl(
+                                  storeLogo,
+                                  width: 200,
+                                ),
+                                memCacheWidth: 200,
+                                maxHeightDiskCache: 200,
+                                placeholder: (context, url) => Container(
+                                  height: size.width * 0.12,
+                                  width: size.width * 0.12,
+                                  padding: EdgeInsets.all(12.r),
+                                  decoration: BoxDecoration(
+                                    color: colors.accentGreen.withValues(
+                                      alpha: 0.1,
+                                    ),
+                                    borderRadius: BorderRadius.circular(
+                                      KBorderSize.borderRadius4,
+                                    ),
+                                  ),
+                                  child: SvgPicture.asset(
+                                    Assets.icons.store,
+                                    package: 'grab_go_shared',
+                                    width: 24.w,
+                                    height: 24.w,
+                                    colorFilter: ColorFilter.mode(
+                                      colors.accentGreen,
+                                      BlendMode.srcIn,
+                                    ),
+                                  ),
+                                ),
+                                errorWidget: (context, url, error) => Container(
+                                  height: size.width * 0.12,
+                                  width: size.width * 0.12,
+                                  padding: EdgeInsets.all(12.r),
+                                  decoration: BoxDecoration(
+                                    color: colors.accentGreen.withValues(
+                                      alpha: 0.1,
+                                    ),
+                                    borderRadius: BorderRadius.circular(
+                                      KBorderSize.borderRadius4,
+                                    ),
+                                  ),
+                                  child: SvgPicture.asset(
+                                    Assets.icons.store,
+                                    package: 'grab_go_shared',
+                                    width: 24.w,
+                                    height: 24.w,
+                                    colorFilter: ColorFilter.mode(
+                                      colors.accentGreen,
+                                      BlendMode.srcIn,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : Container(
+                                height: size.width * 0.12,
+                                width: size.width * 0.12,
+                                padding: EdgeInsets.all(12.r),
+                                decoration: BoxDecoration(
+                                  color: colors.accentGreen.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                  borderRadius: BorderRadius.circular(
+                                    KBorderSize.borderRadius4,
+                                  ),
+                                ),
+                                child: SvgPicture.asset(
+                                  Assets.icons.store,
+                                  package: 'grab_go_shared',
+                                  width: 24.w,
+                                  height: 24.w,
+                                  colorFilter: ColorFilter.mode(
+                                    colors.accentGreen,
+                                    BlendMode.srcIn,
+                                  ),
+                                ),
                               ),
-                            ),
-                            child: SvgPicture.asset(
-                              Assets.icons.store,
-                              package: 'grab_go_shared',
-                              width: 24.w,
-                              height: 24.w,
-                              colorFilter: ColorFilter.mode(
-                                colors.accentGreen,
-                                BlendMode.srcIn,
-                              ),
-                            ),
-                          ),
-                          errorWidget: (context, url, error) => Container(
-                            height: size.width * 0.12,
-                            width: size.width * 0.12,
-                            padding: EdgeInsets.all(12.r),
-                            decoration: BoxDecoration(
-                              color: colors.accentGreen.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(
-                                KBorderSize.borderRadius4,
-                              ),
-                            ),
-                            child: SvgPicture.asset(
-                              Assets.icons.store,
-                              package: 'grab_go_shared',
-                              width: 24.w,
-                              height: 24.w,
-                              colorFilter: ColorFilter.mode(
-                                colors.accentGreen,
-                                BlendMode.srcIn,
-                              ),
-                            ),
-                          ),
-                        ),
                       ),
                       SizedBox(width: 12.w),
                       Expanded(
@@ -551,3 +587,5 @@ class _OrderReservationModalState extends State<OrderReservationModal>
     );
   }
 }
+
+enum _OrderReservationModalResult { accepted, declined, expired }

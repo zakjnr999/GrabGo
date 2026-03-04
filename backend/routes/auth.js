@@ -22,6 +22,13 @@ const {
 } = require("../services/otp_service");
 const { registerToken, removeToken } = require("../services/fcm_service");
 const creditService = require("../services/credit_service");
+const { signupRateLimit } = require("../middleware/fraud_rate_limit");
+const {
+  ACTION_TYPES,
+  buildFraudContextFromRequest,
+  fraudDecisionService,
+  applyFraudDecision,
+} = require("../services/fraud");
 
 const router = express.Router();
 
@@ -83,7 +90,7 @@ const applySignupPromoCredits = async (userId, promoCode) => {
 // @route   POST /api/users
 // @desc    Register a new user (regular or Google)
 // @access  Public
-router.post("/", async (req, res) => {
+router.post("/", signupRateLimit, async (req, res) => {
   try {
     const {
       googleId,
@@ -100,6 +107,35 @@ router.post("/", async (req, res) => {
       promoCode,
       referralCode,
     } = req.body;
+
+    const signupFraudContext = buildFraudContextFromRequest({
+      req,
+      actionType: ACTION_TYPES.AUTH_SIGNUP,
+      actorType: (role || "customer").toLowerCase(),
+      actorId: email || phone || googleId || "anonymous_signup",
+      extras: {
+        principal: email || phone || googleId || null,
+        metadata: {
+          googleSignup: Boolean(googleId),
+          requestedRole: (role || "customer").toLowerCase(),
+        },
+      },
+    });
+
+    const signupFraudDecision = await fraudDecisionService.evaluate({
+      actionType: ACTION_TYPES.AUTH_SIGNUP,
+      actorType: (role || "customer").toLowerCase(),
+      actorId: email || phone || googleId || "anonymous_signup",
+      context: signupFraudContext,
+    });
+
+    const signupFraudGate = applyFraudDecision({
+      req,
+      res,
+      decision: signupFraudDecision,
+      actionType: ACTION_TYPES.AUTH_SIGNUP,
+    });
+    if (signupFraudGate.blocked || signupFraudGate.challenged) return;
 
     // Check if it's a Google sign-up
     if (googleId) {
@@ -270,6 +306,35 @@ router.post("/", async (req, res) => {
 router.post("/login", async (req, res) => {
   try {
     const { googleId, email, displayName, photoUrl, password } = req.body;
+
+    const loginFraudContext = buildFraudContextFromRequest({
+      req,
+      actionType: ACTION_TYPES.AUTH_LOGIN,
+      actorType: (req.body.role || "customer").toLowerCase(),
+      actorId: email || googleId || "anonymous_login",
+      extras: {
+        principal: email || googleId || null,
+        metadata: {
+          googleLogin: Boolean(googleId),
+          hasPassword: Boolean(password),
+        },
+      },
+    });
+
+    const loginFraudDecision = await fraudDecisionService.evaluate({
+      actionType: ACTION_TYPES.AUTH_LOGIN,
+      actorType: (req.body.role || "customer").toLowerCase(),
+      actorId: email || googleId || "anonymous_login",
+      context: loginFraudContext,
+    });
+
+    const loginFraudGate = applyFraudDecision({
+      req,
+      res,
+      decision: loginFraudDecision,
+      actionType: ACTION_TYPES.AUTH_LOGIN,
+    });
+    if (loginFraudGate.blocked || loginFraudGate.challenged) return;
 
     // Check if it's a Google sign-in
     if (googleId) {

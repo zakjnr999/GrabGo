@@ -1926,3 +1926,267 @@ model GrabMartItem {
   @@index([categoryId])
   @@map("grabmart_items")
 }
+
+// ==================== FRAUD ====================
+
+enum FraudDecisionAction {
+  allow
+  step_up
+  block
+  allow_degraded
+}
+
+enum FraudCaseSeverity {
+  p1
+  p2
+  p3
+}
+
+enum FraudCaseStatus {
+  open
+  investigating
+  resolved_true_positive
+  resolved_false_positive
+  resolved_benign
+}
+
+enum FraudChallengeType {
+  otp
+  payment_reauth
+  support_assist
+}
+
+enum FraudChallengeStatus {
+  pending
+  verified
+  failed
+  expired
+  cancelled
+}
+
+model FraudDecision {
+  id             String              @id @default(cuid())
+  actorType      String
+  actorId        String
+  actionType     String
+  score          Int                 @default(0)
+  decision       FraudDecisionAction @default(allow)
+  reasonCodes    String[]            @default([])
+  reasonDetails  Json?
+  challengeType  FraudChallengeType?
+  policyVersion  Int                 @default(1)
+  policyChecksum String
+  contextVersion Int                 @default(1)
+  contextHash    String
+  requestId      String?
+  shadowMode     Boolean             @default(true)
+  metadata       Json?
+  createdAt      DateTime            @default(now())
+
+  @@index([actorType, actorId, createdAt])
+  @@index([actionType, createdAt])
+  @@index([decision, createdAt])
+  @@index([contextHash])
+  @@map("fraud_decisions")
+}
+
+model FraudSignal {
+  id          String   @id @default(cuid())
+  actorType   String
+  actorId     String
+  signalType  String
+  signalValue Json?
+  weight      Float    @default(0)
+  observedAt  DateTime @default(now())
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([actorType, actorId, createdAt])
+  @@index([signalType, createdAt])
+  @@index([expiresAt])
+  @@map("fraud_signals")
+}
+
+model FraudSubjectProfile {
+  id              String   @id @default(cuid())
+  actorType       String
+  actorId         String
+  riskLevel       String   @default("low")
+  riskScore       Int      @default(0)
+  featureSnapshot Json?
+  graphSnapshot   Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([actorType, actorId])
+  @@index([riskLevel])
+  @@index([riskScore])
+  @@map("fraud_subject_profiles")
+}
+
+model FraudFeatureDefinition {
+  id             String   @id @default(cuid())
+  featureName    String
+  featureVersion Int      @default(1)
+  description    String?
+  windowSeconds  Int?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([featureName, featureVersion])
+  @@index([isActive])
+  @@map("fraud_feature_definitions")
+}
+
+model FraudFeatureSnapshot {
+  id             String   @id @default(cuid())
+  actorType      String
+  actorId        String
+  featureName    String
+  featureVersion Int
+  value          Json
+  computedAt     DateTime @default(now())
+  expiresAt      DateTime?
+  createdAt      DateTime @default(now())
+
+  @@index([actorType, actorId, computedAt])
+  @@index([featureName, featureVersion, computedAt])
+  @@index([expiresAt])
+  @@map("fraud_feature_snapshots")
+}
+
+model FraudGraphEdge {
+  id           String   @id @default(cuid())
+  fromActorType String
+  fromActorId  String
+  edgeType     String
+  toEntityType String
+  toEntityId   String
+  weight       Float    @default(1)
+  metadata     Json?
+  firstSeenAt  DateTime @default(now())
+  lastSeenAt   DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([fromActorType, fromActorId, edgeType, toEntityType, toEntityId])
+  @@index([fromActorType, fromActorId, lastSeenAt])
+  @@index([edgeType, toEntityType, toEntityId, lastSeenAt])
+  @@map("fraud_graph_edges")
+}
+
+model FraudGraphMetric {
+  id           String   @id @default(cuid())
+  actorType    String
+  actorId      String
+  metricName   String
+  metricWindow String
+  metricValue  Float
+  computedAt   DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  @@index([actorType, actorId, metricName, computedAt])
+  @@index([metricName, metricWindow, computedAt])
+  @@map("fraud_graph_metrics")
+}
+
+model FraudCase {
+  id             String            @id @default(cuid())
+  actorType      String
+  actorId        String
+  severity       FraudCaseSeverity @default(p3)
+  status         FraudCaseStatus   @default(open)
+  queue          String            @default("default")
+  openedReason   String
+  reasonCodes    String[]          @default([])
+  evidence       Json?
+  assignedTo     String?
+  openedAt       DateTime          @default(now())
+  acknowledgedAt DateTime?
+  closedAt       DateTime?
+  resolutionNote String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([status, severity, openedAt])
+  @@index([queue, status, openedAt])
+  @@index([actorType, actorId, openedAt])
+  @@map("fraud_cases")
+}
+
+model FraudEventOutbox {
+  id             String   @id @default(cuid())
+  eventId        String   @unique
+  eventType      String
+  aggregateType  String
+  aggregateId    String
+  payload        Json
+  idempotencyKey String   @unique
+  retryCount     Int      @default(0)
+  nextAttemptAt  DateTime?
+  lastError      String?
+  publishedAt    DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([publishedAt, createdAt])
+  @@index([nextAttemptAt, retryCount])
+  @@map("fraud_event_outbox")
+}
+
+model FraudChallenge {
+  id                String              @id @default(cuid())
+  actorType         String
+  actorId           String
+  challengeType     FraudChallengeType
+  actionType        String?
+  status            FraudChallengeStatus @default(pending)
+  challengeCodeHash String?
+  metadata          Json?
+  expiresAt         DateTime
+  verifiedAt        DateTime?
+  failedAttempts    Int                 @default(0)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([actorType, actorId, status, expiresAt])
+  @@index([challengeType, status, createdAt])
+  @@map("fraud_challenges")
+}
+
+model FraudPolicy {
+  id            String   @id @default(cuid())
+  version       Int      @unique
+  checksum      String   @unique
+  thresholds    Json
+  ruleWeights   Json
+  challengeCaps Json
+  ruleToggles   Json
+  effectiveAt   DateTime
+  isActive      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([isActive, effectiveAt])
+  @@map("fraud_policies")
+}
+
+model PaymentWebhookEvent {
+  id              String   @id @default(cuid())
+  provider        String
+  providerEventId String
+  reference       String?
+  signature       String?
+  payload         Json
+  status          String   @default("received")
+  processedAt     DateTime?
+  errorMessage    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([provider, providerEventId])
+  @@index([reference])
+  @@index([status, createdAt])
+  @@map("payment_webhook_events")
+}

@@ -3,6 +3,12 @@ const router = express.Router();
 const trackingService = require('../services/tracking_service');
 const prisma = require('../config/prisma');
 const { protect } = require('../middleware/auth');
+const {
+    ACTION_TYPES,
+    buildFraudContextFromRequest,
+    fraudDecisionService,
+    applyFraudDecision,
+} = require('../services/fraud');
 const TRACKING_STATUSES = new Set(['preparing', 'picked_up', 'in_transit', 'nearby', 'delivered', 'cancelled']);
 const TERMINAL_TRACKING_STATUSES = new Set(['delivered', 'cancelled']);
 const NON_AUTHORITATIVE_LIFECYCLE_STATUSES = new Set(['confirmed', 'ready', 'on_the_way']);
@@ -288,6 +294,42 @@ router.post('/location', protect, async (req, res) => {
             });
         }
 
+        const locationAnomaly = (parsedSpeed !== null && parsedSpeed > 50) || (parsedAccuracy !== null && parsedAccuracy > 1000);
+        const fraudContext = buildFraudContextFromRequest({
+            req,
+            actionType: ACTION_TYPES.RIDER_STATUS_UPDATE,
+            actorType: req.user.role || 'rider',
+            actorId: req.user.id,
+            extras: {
+                orderId,
+                status: order.status,
+                metadata: {
+                    latitude: parsedLat,
+                    longitude: parsedLng,
+                    speed: parsedSpeed,
+                    accuracy: parsedAccuracy,
+                    locationAnomaly,
+                    highValueOrder: false,
+                    riderAgeDays: null,
+                },
+            },
+        });
+
+        const fraudDecision = await fraudDecisionService.evaluate({
+            actionType: ACTION_TYPES.RIDER_STATUS_UPDATE,
+            actorType: req.user.role || 'rider',
+            actorId: req.user.id,
+            context: fraudContext,
+        });
+
+        const fraudGate = applyFraudDecision({
+            req,
+            res,
+            decision: fraudDecision,
+            actionType: ACTION_TYPES.RIDER_STATUS_UPDATE,
+        });
+        if (fraudGate.blocked || fraudGate.challenged) return;
+
         const tracking = await trackingService.updateRiderLocation(
             orderId,
             parsedLat,
@@ -373,6 +415,38 @@ router.patch('/status', protect, async (req, res) => {
         if (NON_AUTHORITATIVE_LIFECYCLE_STATUSES.has(status)) {
             console.warn(`[tracking/status] Lifecycle status "${status}" received for order ${orderId}. Use /orders/:orderId/status as source of truth.`);
         }
+
+        const fraudContext = buildFraudContextFromRequest({
+            req,
+            actionType: ACTION_TYPES.RIDER_STATUS_UPDATE,
+            actorType: req.user.role || 'rider',
+            actorId: req.user.id,
+            extras: {
+                orderId,
+                status,
+                metadata: {
+                    orderLifecycleStatus: order.status,
+                    locationAnomaly: false,
+                    highValueOrder: false,
+                    riderAgeDays: null,
+                },
+            },
+        });
+
+        const fraudDecision = await fraudDecisionService.evaluate({
+            actionType: ACTION_TYPES.RIDER_STATUS_UPDATE,
+            actorType: req.user.role || 'rider',
+            actorId: req.user.id,
+            context: fraudContext,
+        });
+
+        const fraudGate = applyFraudDecision({
+            req,
+            res,
+            decision: fraudDecision,
+            actionType: ACTION_TYPES.RIDER_STATUS_UPDATE,
+        });
+        if (fraudGate.blocked || fraudGate.challenged) return;
 
         const tracking = await trackingService.updateOrderStatus(orderId, status);
 

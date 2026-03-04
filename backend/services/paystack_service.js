@@ -1,4 +1,5 @@
 const axios = require("axios");
+const crypto = require("crypto");
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 const PAYSTACK_BASE_URL = process.env.PAYSTACK_BASE_URL || "https://api.paystack.co";
@@ -54,8 +55,44 @@ const verifyTransaction = async (reference) => {
   return data.data;
 };
 
+const verifyWebhookSignature = (rawBody, signatureHeader) => {
+  if (!PAYSTACK_SECRET_KEY) return false;
+  if (!signatureHeader) return false;
+
+  const payloadBuffer = Buffer.isBuffer(rawBody)
+    ? rawBody
+    : Buffer.from(typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody || {}));
+
+  const expected = crypto
+    .createHmac('sha512', PAYSTACK_SECRET_KEY)
+    .update(payloadBuffer)
+    .digest('hex');
+
+  const provided = String(signatureHeader || '').trim();
+  if (!provided) return false;
+
+  const expectedBuffer = Buffer.from(expected, 'utf8');
+  const providedBuffer = Buffer.from(provided, 'utf8');
+  if (expectedBuffer.length !== providedBuffer.length) return false;
+  return crypto.timingSafeEqual(expectedBuffer, providedBuffer);
+};
+
+const extractWebhookReference = (payload) =>
+  payload?.data?.reference ||
+  payload?.data?.tx_ref ||
+  payload?.reference ||
+  null;
+
+const extractWebhookEventId = (payload) =>
+  payload?.event_id ||
+  payload?.data?.id?.toString?.() ||
+  `${payload?.event || 'paystack_event'}:${extractWebhookReference(payload) || 'unknown'}`;
+
 module.exports = {
   initializeTransaction,
   verifyTransaction,
+  verifyWebhookSignature,
+  extractWebhookReference,
+  extractWebhookEventId,
   PAYSTACK_CALLBACK_URL,
 };

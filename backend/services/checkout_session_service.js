@@ -814,6 +814,138 @@ const confirmCheckoutSessionPayment = async ({ sessionId, customer, reference, p
   const persistedReference =
     paymentReference && paymentReference !== 'credits-only' ? paymentReference : undefined;
 
+  if (featureFlags.isPaymentWebhookSourceOfTruthEnabled && requiresExternalPayment) {
+    const paymentProvider = provider || 'paystack';
+    const now = new Date();
+
+    const { updatedOrders, updatedSession } = await prisma.$transaction(async (tx) => {
+      const nextOrders = [];
+      for (const order of session.orders) {
+        const updatedOrder = await tx.order.update({
+          where: { id: order.id },
+          data: {
+            paymentStatus: 'processing',
+            paymentProvider,
+            paymentReferenceId: persistedReference,
+          },
+          select: {
+            id: true,
+            orderNumber: true,
+            status: true,
+            paymentStatus: true,
+            paymentMethod: true,
+            fulfillmentMode: true,
+            riderId: true,
+            totalAmount: true,
+            checkoutSessionId: true,
+            groupId: true,
+            groupOrderNumber: true,
+          },
+        });
+
+        const internalReference = `${persistedReference || 'credits-only'}-${order.id}`;
+        const existingPayment = await tx.payment.findUnique({
+          where: { referenceId: internalReference },
+          select: { id: true, metadata: true },
+        });
+
+        if (!existingPayment) {
+          await tx.payment.create({
+            data: {
+              orderId: order.id,
+              customerId: customer.id,
+              paymentMethod: 'card',
+              provider: paymentProvider,
+              amount: roundCurrency(order.totalAmount || 0),
+              status: 'processing',
+              referenceId: internalReference,
+              externalReferenceId: persistedReference || null,
+              metadata: {
+                checkoutSessionId: session.id,
+                groupId: session.id,
+                groupOrderNumber: session.groupOrderNumber,
+                paymentScope: 'full_group_payment',
+                clientConfirmAdvisory: true,
+                webhookConfirmationPending: true,
+              },
+            },
+          });
+        } else {
+          await tx.payment.update({
+            where: { id: existingPayment.id },
+            data: {
+              provider: paymentProvider,
+              amount: roundCurrency(order.totalAmount || 0),
+              status: 'processing',
+              externalReferenceId: persistedReference || null,
+              metadata: {
+                ...(existingPayment.metadata || {}),
+                checkoutSessionId: session.id,
+                groupId: session.id,
+                groupOrderNumber: session.groupOrderNumber,
+                paymentScope: 'full_group_payment',
+                clientConfirmAdvisory: true,
+                webhookConfirmationPending: true,
+              },
+            },
+          });
+        }
+
+        await createOrderAudit({
+          tx,
+          orderId: order.id,
+          actorId: customer.id,
+          actorRole: customer.role,
+          action: 'grouped_payment_confirm_advisory',
+          metadata: {
+            checkoutSessionId: session.id,
+            groupOrderNumber: session.groupOrderNumber,
+            reference: persistedReference || null,
+            provider: paymentProvider,
+            paymentScope: 'full_group_payment',
+            sourceOfTruth: 'webhook',
+          },
+        });
+
+        nextOrders.push(updatedOrder);
+      }
+
+      const updatedSessionRow = await tx.checkoutSession.update({
+        where: { id: session.id },
+        data: {
+          paymentStatus: 'processing',
+          paymentProvider,
+          paymentReferenceId: persistedReference,
+          status: 'processing',
+          updatedAt: now,
+        },
+        select: {
+          id: true,
+          groupOrderNumber: true,
+          paymentStatus: true,
+          status: true,
+          totalAmount: true,
+          paymentReferenceId: true,
+          paymentProvider: true,
+        },
+      });
+
+      return {
+        updatedOrders: nextOrders,
+        updatedSession: updatedSessionRow,
+      };
+    });
+
+    return {
+      alreadyPaid: false,
+      awaitingWebhook: true,
+      session: updatedSession,
+      childOrders: updatedOrders,
+      paymentScope: 'full_group_payment',
+      externalPaymentAmount,
+    };
+  }
+
   for (const order of session.orders) {
     await ensureCreditsAppliedForOrder({ order, customerId: customer.id });
   }

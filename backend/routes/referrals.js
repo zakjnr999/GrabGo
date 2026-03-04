@@ -2,6 +2,13 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../config/prisma');
 const { protect } = require('../middleware/auth');
+const { referralApplyRateLimit } = require('../middleware/fraud_rate_limit');
+const {
+    ACTION_TYPES,
+    buildFraudContextFromRequest,
+    fraudDecisionService,
+    applyFraudDecision,
+} = require('../services/fraud');
 
 // Helper function to generate referral code
 const generateReferralCode = async () => {
@@ -167,13 +174,38 @@ router.post('/validate', async (req, res) => {
 // @route   POST /api/referral/apply
 // @desc    Apply referral code to new user
 // @access  Private
-router.post('/apply', protect, async (req, res) => {
+router.post('/apply', protect, referralApplyRateLimit, async (req, res) => {
     try {
         const { code } = req.body;
 
         if (!code) {
             return res.status(400).json({ message: 'Referral code is required' });
         }
+
+        const fraudContext = buildFraudContextFromRequest({
+            req,
+            actionType: ACTION_TYPES.REFERRAL_APPLY,
+            actorType: req.user.role || 'customer',
+            actorId: req.user.id,
+            extras: {
+                referralCode: code ? String(code).toUpperCase() : null,
+            },
+        });
+
+        const fraudDecision = await fraudDecisionService.evaluate({
+            actionType: ACTION_TYPES.REFERRAL_APPLY,
+            actorType: req.user.role || 'customer',
+            actorId: req.user.id,
+            context: fraudContext,
+        });
+
+        const fraudGate = applyFraudDecision({
+            req,
+            res,
+            decision: fraudDecision,
+            actionType: ACTION_TYPES.REFERRAL_APPLY,
+        });
+        if (fraudGate.blocked || fraudGate.challenged) return;
 
         // Check if user already has a referral
         const existingReferral = await prisma.referral.findFirst({

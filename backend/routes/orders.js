@@ -5,6 +5,7 @@ const prisma = require("../config/prisma");
 const { protect, authorize } = require("../middleware/auth");
 const { uploadSingle, uploadToCloudinary } = require("../middleware/upload");
 const { cacheMiddleware, invalidateCache } = require("../middleware/cache");
+const { paymentAttemptRateLimit } = require("../middleware/fraud_rate_limit");
 const cache = require("../utils/cache");
 const trackingService = require("../services/tracking_service");
 const { sendOrderNotification, sendToUser } = require("../services/fcm_service");
@@ -51,6 +52,12 @@ const {
   isCodDispatchAllowedStatus,
 } = require("../services/cod_service");
 const { resolveFoodCustomization } = require("../services/food_customization_service");
+const {
+  ACTION_TYPES,
+  buildFraudContextFromRequest,
+  fraudDecisionService,
+  applyFraudDecision,
+} = require("../services/fraud");
 
 const router = express.Router();
 
@@ -1032,6 +1039,40 @@ router.post(
       }
       const isCreditOnly = !isCashOnDelivery && creditApplied > 0 && totalAmount <= 0;
 
+      const orderCreateFraudContext = buildFraudContextFromRequest({
+        req,
+        actionType: ACTION_TYPES.ORDER_CREATE,
+        actorType: req.user.role || "customer",
+        actorId: req.user.id,
+        extras: {
+          orderId: orderNumber,
+          amount: Number(totalAmount || 0),
+          paymentMethod: normalizedPaymentMethod,
+          metadata: {
+            orderType: resolvedOrderType,
+            itemCount: Array.isArray(items) ? items.length : 0,
+            accountAgeMinutes: null,
+            newPaymentMethod: Boolean(req.body?.newPaymentMethod),
+            deliveryCity: isDeliveryMode ? (deliveryAddress?.city || null) : null,
+          },
+        },
+      });
+
+      const orderCreateFraudDecision = await fraudDecisionService.evaluate({
+        actionType: ACTION_TYPES.ORDER_CREATE,
+        actorType: req.user.role || "customer",
+        actorId: req.user.id,
+        context: orderCreateFraudContext,
+      });
+
+      const orderCreateFraudGate = applyFraudDecision({
+        req,
+        res,
+        decision: orderCreateFraudDecision,
+        actionType: ACTION_TYPES.ORDER_CREATE,
+      });
+      if (orderCreateFraudGate.blocked || orderCreateFraudGate.challenged) return;
+
       const orderData = {
         orderNumber,
         orderType: resolvedOrderType,
@@ -1732,6 +1773,7 @@ router.get("/:orderId", protect, async (req, res) => {
 router.post(
   "/:orderId/confirm-payment",
   protect,
+  paymentAttemptRateLimit,
   [
     body("reference").optional().isString().withMessage("reference must be a string"),
     body("provider").optional().isString().withMessage("provider must be a string"),
@@ -1851,6 +1893,42 @@ router.post(
       const requiresExternalPayment = externalPaymentAmount > 0;
       const persistedReference =
         paymentReference && paymentReference !== "credits-only" ? paymentReference : undefined;
+      const sourceOfTruthEnabled =
+        featureFlags.isPaymentWebhookSourceOfTruthEnabled &&
+        requiresExternalPayment;
+
+      const confirmPaymentFraudContext = buildFraudContextFromRequest({
+        req,
+        actionType: ACTION_TYPES.PAYMENT_CLIENT_CONFIRM,
+        actorType: req.user.role || "customer",
+        actorId: req.user.id,
+        extras: {
+          orderId: order.id,
+          paymentRef: persistedReference || null,
+          amount: Number(externalPaymentAmount || 0),
+          currency: "GHS",
+          metadata: {
+            orderNumber: order.orderNumber,
+            paymentMethod: order.paymentMethod,
+            sourceOfTruthEnabled,
+          },
+        },
+      });
+
+      const confirmPaymentFraudDecision = await fraudDecisionService.evaluate({
+        actionType: ACTION_TYPES.PAYMENT_CLIENT_CONFIRM,
+        actorType: req.user.role || "customer",
+        actorId: req.user.id,
+        context: confirmPaymentFraudContext,
+      });
+
+      const confirmPaymentFraudGate = applyFraudDecision({
+        req,
+        res,
+        decision: confirmPaymentFraudDecision,
+        actionType: ACTION_TYPES.PAYMENT_CLIENT_CONFIRM,
+      });
+      if (confirmPaymentFraudGate.blocked || confirmPaymentFraudGate.challenged) return;
 
       if (
         reference &&
@@ -1909,6 +1987,68 @@ router.post(
             message: "Verified payment metadata does not match order",
           });
         }
+      }
+
+      if (sourceOfTruthEnabled) {
+        await prisma.order.update({
+          where: { id: order.id },
+          data: {
+            paymentProvider: provider || "paystack",
+            paymentReferenceId: persistedReference,
+            paymentStatus: "processing",
+          },
+        });
+
+        await prisma.payment.upsert({
+          where: { referenceId: persistedReference },
+          update: {
+            provider: provider || "paystack",
+            status: "processing",
+            metadata: {
+              clientConfirmAdvisory: true,
+              webhookConfirmationPending: true,
+            },
+          },
+          create: {
+            orderId: order.id,
+            customerId: order.customerId,
+            paymentMethod: order.paymentMethod,
+            provider: provider || "paystack",
+            amount: Number(externalPaymentAmount || order.totalAmount || 0),
+            status: "processing",
+            referenceId: persistedReference,
+            metadata: {
+              clientConfirmAdvisory: true,
+              webhookConfirmationPending: true,
+            },
+          },
+        }).catch(() => null);
+
+        await createOrderAudit({
+          orderId: order.id,
+          actorId: req.user.id,
+          actorRole: req.user.role,
+          action: "payment_confirm_advisory",
+          metadata: {
+            reference: persistedReference || null,
+            provider: provider || "paystack",
+            paymentScope: order.paymentMethod === "cash" ? "cod_delivery_fee" : "full_order_payment",
+            externalPaymentAmount,
+            sourceOfTruth: "webhook",
+          },
+        }).catch(() => null);
+
+        return res.json({
+          success: true,
+          message: "Payment verification received. Awaiting webhook confirmation.",
+          data: {
+            orderId: order.id,
+            paymentStatus: "processing",
+            paymentScope: order.paymentMethod === "cash" ? "cod_delivery_fee" : "full_order_payment",
+            externalPaymentAmount,
+            webhookRequired: true,
+          },
+        });
       }
 
       if (order.creditsApplied > 0) {
@@ -3026,7 +3166,7 @@ router.post(
   }
 );
 
-router.post("/:orderId/paystack/initialize", protect, async (req, res) => {
+router.post("/:orderId/paystack/initialize", protect, paymentAttemptRateLimit, async (req, res) => {
   try {
     const { orderId } = req.params;
 
@@ -3076,6 +3216,39 @@ router.post("/:orderId/paystack/initialize", protect, async (req, res) => {
       });
     }
 
+    const reference = `ORD-${order.orderNumber}-${Date.now()}`;
+    const initPaymentFraudContext = buildFraudContextFromRequest({
+      req,
+      actionType: ACTION_TYPES.PAYMENT_CLIENT_CONFIRM,
+      actorType: req.user.role || "customer",
+      actorId: req.user.id,
+      extras: {
+        orderId: order.id,
+        paymentRef: reference,
+        amount: Number(externalPaymentAmount || 0),
+        currency: "GHS",
+        metadata: {
+          stage: "paystack_initialize",
+          paymentMethod: order.paymentMethod,
+        },
+      },
+    });
+
+    const initPaymentFraudDecision = await fraudDecisionService.evaluate({
+      actionType: ACTION_TYPES.PAYMENT_CLIENT_CONFIRM,
+      actorType: req.user.role || "customer",
+      actorId: req.user.id,
+      context: initPaymentFraudContext,
+    });
+
+    const initPaymentFraudGate = applyFraudDecision({
+      req,
+      res,
+      decision: initPaymentFraudDecision,
+      actionType: ACTION_TYPES.PAYMENT_CLIENT_CONFIRM,
+    });
+    if (initPaymentFraudGate.blocked || initPaymentFraudGate.challenged) return;
+
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
       select: { email: true },
@@ -3089,7 +3262,6 @@ router.post("/:orderId/paystack/initialize", protect, async (req, res) => {
       });
     }
 
-    const reference = `ORD-${order.orderNumber}-${Date.now()}`;
     const amount = Math.round(externalPaymentAmount * 100);
 
     const init = await paystackService.initializeTransaction({
@@ -3297,6 +3469,58 @@ router.put(
           data: sanitizeOrderPayload(order),
         });
       }
+
+      const fulfillmentStatuses = new Set(["confirmed", "preparing", "ready", "picked_up", "on_the_way", "delivered"]);
+      const isPrepaid = order.paymentMethod !== "cash";
+      if (
+        featureFlags.isPrepaidFulfillmentGuardEnabled &&
+        isPrepaid &&
+        fulfillmentStatuses.has(status) &&
+        !["paid", "successful"].includes(order.paymentStatus)
+      ) {
+        return res.status(409).json({
+          success: false,
+          message: "Prepaid order cannot move to fulfillment before webhook-confirmed payment",
+          code: "PREPAID_PAYMENT_NOT_CONFIRMED",
+          data: {
+            paymentStatus: order.paymentStatus,
+            requiredStatus: "paid",
+          },
+        });
+      }
+
+      const fulfillmentFraudContext = buildFraudContextFromRequest({
+        req,
+        actionType: ACTION_TYPES.ORDER_FULFILLMENT_TRANSITION,
+        actorType: req.user.role,
+        actorId: req.user.id,
+        extras: {
+          orderId,
+          paymentState: order.paymentStatus,
+          status,
+          metadata: {
+            currentStatus: order.status,
+            nextStatus: status,
+            paymentMethod: order.paymentMethod,
+            isScheduledOrder: Boolean(order.isScheduledOrder),
+          },
+        },
+      });
+
+      const fulfillmentFraudDecision = await fraudDecisionService.evaluate({
+        actionType: ACTION_TYPES.ORDER_FULFILLMENT_TRANSITION,
+        actorType: req.user.role,
+        actorId: req.user.id,
+        context: fulfillmentFraudContext,
+      });
+
+      const fulfillmentFraudGate = applyFraudDecision({
+        req,
+        res,
+        decision: fulfillmentFraudDecision,
+        actionType: ACTION_TYPES.ORDER_FULFILLMENT_TRANSITION,
+      });
+      if (fulfillmentFraudGate.blocked || fulfillmentFraudGate.challenged) return;
 
       if (!canTransitionOrderStatus(order.status, status, req.user.role)) {
         return res.status(409).json({

@@ -5,7 +5,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
-import 'package:go_router/go_router.dart';
 import '../../../shared/widgets/custom_input_bottom_sheet.dart';
 
 class RiderRating extends StatefulWidget {
@@ -13,7 +12,12 @@ class RiderRating extends StatefulWidget {
   final String? riderName;
   final String? riderImage;
 
-  const RiderRating({super.key, required this.orderId, this.riderName, this.riderImage});
+  const RiderRating({
+    super.key,
+    required this.orderId,
+    this.riderName,
+    this.riderImage,
+  });
 
   @override
   State<RiderRating> createState() => RiderRatingState();
@@ -21,7 +25,6 @@ class RiderRating extends StatefulWidget {
 
 class RiderRatingState extends State<RiderRating> {
   int _riderRating = 0;
-  final int _foodRating = 0;
   final TextEditingController _commentController = TextEditingController();
   bool isSubmitting = false;
   bool _showCustomTip = false;
@@ -57,7 +60,13 @@ class RiderRatingState extends State<RiderRating> {
         'Followed instructions',
       ];
     } else if (rating == 3) {
-      return ['Slightly late', 'Could be friendlier', 'Missed instructions', 'Average service', 'Needs improvement'];
+      return [
+        'Slightly late',
+        'Could be friendlier',
+        'Missed instructions',
+        'Average service',
+        'Needs improvement',
+      ];
     } else if (rating >= 1) {
       return [
         'Very late',
@@ -75,32 +84,6 @@ class RiderRatingState extends State<RiderRating> {
   void dispose() {
     _commentController.dispose();
     super.dispose();
-  }
-
-  Future<void> _submitRating() async {
-    if (_riderRating == 0 || _foodRating == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text('Please rate both the rider and food'), backgroundColor: context.appColors.error),
-      );
-      return;
-    }
-
-    setState(() => isSubmitting = true);
-
-    try {
-      // TODO: Submit rating to backend
-      await Future.delayed(const Duration(seconds: 1));
-
-      if (mounted) {
-        context.go('/homepage');
-      }
-    } catch (e) {
-      if (mounted) {}
-    } finally {
-      if (mounted) {
-        setState(() => isSubmitting = false);
-      }
-    }
   }
 
   @override
@@ -151,26 +134,36 @@ class RiderRatingState extends State<RiderRating> {
                             final index = entry.key;
                             final chip = entry.value;
                             return TweenAnimationBuilder<double>(
-                              duration: Duration(milliseconds: 200 + (index * 50)),
+                              duration: Duration(
+                                milliseconds: 200 + (index * 50),
+                              ),
                               tween: Tween(begin: 0.0, end: 1.0),
                               curve: Curves.easeOut,
                               builder: (context, value, child) {
                                 return Opacity(
                                   opacity: value,
-                                  child: Transform.translate(offset: Offset(0, 10 * (1 - value)), child: child),
+                                  child: Transform.translate(
+                                    offset: Offset(0, 10 * (1 - value)),
+                                    child: child,
+                                  ),
                                 );
                               },
                               child: _buildCommentChip(chip, colors),
                             );
                           }),
                           TweenAnimationBuilder<double>(
-                            duration: Duration(milliseconds: 200 + (feedbackChips.length * 50)),
+                            duration: Duration(
+                              milliseconds: 200 + (feedbackChips.length * 50),
+                            ),
                             tween: Tween(begin: 0.0, end: 1.0),
                             curve: Curves.easeOut,
                             builder: (context, value, child) {
                               return Opacity(
                                 opacity: value,
-                                child: Transform.translate(offset: Offset(0, 10 * (1 - value)), child: child),
+                                child: Transform.translate(
+                                  offset: Offset(0, 10 * (1 - value)),
+                                  child: child,
+                                ),
                               );
                             },
                             child: _buildCustomCommentChip(colors),
@@ -193,14 +186,22 @@ class RiderRatingState extends State<RiderRating> {
 
                 Text(
                   "Tip Your Rider",
-                  style: TextStyle(fontSize: 22.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+                  style: TextStyle(
+                    fontSize: 22.sp,
+                    fontWeight: FontWeight.w800,
+                    color: colors.textPrimary,
+                  ),
                 ),
 
                 SizedBox(height: 5.h),
 
                 Text(
                   "We share the full tip amount to the rider.",
-                  style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w400, color: colors.textPrimary),
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w400,
+                    color: colors.textPrimary,
+                  ),
                 ),
 
                 SizedBox(height: KSpacing.lg.h),
@@ -211,9 +212,12 @@ class RiderRatingState extends State<RiderRating> {
                     spacing: 8.w,
                     runSpacing: 8.h,
                     children: [
-                      ...[(0.0, "No tip"), (2.0, "GHS 2"), (5.0, "GHS 5"), (10.0, "GHS 10")].asMap().entries.map((
-                        entry,
-                      ) {
+                      ...[
+                        (0.0, "No tip"),
+                        (2.0, "GHS 2"),
+                        (5.0, "GHS 5"),
+                        (10.0, "GHS 10"),
+                      ].asMap().entries.map((entry) {
                         final index = entry.key;
                         final tipData = entry.value;
                         return TweenAnimationBuilder<double>(
@@ -223,7 +227,10 @@ class RiderRatingState extends State<RiderRating> {
                           builder: (context, value, child) {
                             return Opacity(
                               opacity: value,
-                              child: Transform.translate(offset: Offset(0, 10 * (1 - value)), child: child),
+                              child: Transform.translate(
+                                offset: Offset(0, 10 * (1 - value)),
+                                child: child,
+                              ),
                             );
                           },
                           child: _buildTipChip(tipData.$1, tipData.$2, colors),
@@ -236,7 +243,10 @@ class RiderRatingState extends State<RiderRating> {
                         builder: (context, value, child) {
                           return Opacity(
                             opacity: value,
-                            child: Transform.translate(offset: Offset(0, 10 * (1 - value)), child: child),
+                            child: Transform.translate(
+                              offset: Offset(0, 10 * (1 - value)),
+                              child: child,
+                            ),
                           );
                         },
                         child: _buildCustomTipChip(colors),
@@ -261,48 +271,86 @@ class RiderRatingState extends State<RiderRating> {
     required Function(int) onRatingChanged,
     required AppColorsExtension colors,
   }) {
+    final hasImage = (image?.trim().isNotEmpty ?? false);
+
     return Container(
       color: colors.backgroundPrimary,
       child: Column(
         children: [
           ClipOval(
-            child: CachedNetworkImage(
-              height: size.width * 0.15,
-              width: size.width * 0.15,
-              fit: BoxFit.cover,
-              imageUrl: ImageOptimizer.getPreviewUrl(image!, width: 200),
-              memCacheWidth: 200,
-              maxHeightDiskCache: 200,
-              placeholder: (context, url) => Container(
-                height: size.width * 0.15,
-                width: size.width * 0.15,
-                decoration: BoxDecoration(color: colors.backgroundPrimary, shape: BoxShape.circle),
-              ),
-              errorWidget: (context, url, error) => Container(
-                height: size.width * 0.15,
-                width: size.width * 0.15,
-                padding: EdgeInsets.all(12.r),
-                child: SvgPicture.asset(
-                  Assets.icons.user,
-                  package: "grab_go_shared",
-                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                ),
-              ),
-            ),
+            child: hasImage
+                ? CachedNetworkImage(
+                    height: size.width * 0.15,
+                    width: size.width * 0.15,
+                    fit: BoxFit.cover,
+                    imageUrl: ImageOptimizer.getPreviewUrl(image!, width: 200),
+                    memCacheWidth: 200,
+                    maxHeightDiskCache: 200,
+                    placeholder: (context, url) => Container(
+                      height: size.width * 0.15,
+                      width: size.width * 0.15,
+                      decoration: BoxDecoration(
+                        color: colors.backgroundPrimary,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      height: size.width * 0.15,
+                      width: size.width * 0.15,
+                      padding: EdgeInsets.all(12.r),
+                      decoration: BoxDecoration(
+                        color: colors.backgroundSecondary,
+                        shape: BoxShape.circle,
+                      ),
+                      child: SvgPicture.asset(
+                        Assets.icons.user,
+                        package: "grab_go_shared",
+                        colorFilter: ColorFilter.mode(
+                          colors.textPrimary,
+                          BlendMode.srcIn,
+                        ),
+                      ),
+                    ),
+                  )
+                : Container(
+                    height: size.width * 0.15,
+                    width: size.width * 0.15,
+                    padding: EdgeInsets.all(12.r),
+                    decoration: BoxDecoration(
+                      color: colors.backgroundSecondary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: SvgPicture.asset(
+                      Assets.icons.user,
+                      package: "grab_go_shared",
+                      colorFilter: ColorFilter.mode(
+                        colors.textPrimary,
+                        BlendMode.srcIn,
+                      ),
+                    ),
+                  ),
           ),
 
           SizedBox(height: 20.h),
 
           Text(
             title,
-            style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w400, color: colors.textPrimary),
+            style: TextStyle(
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w400,
+              color: colors.textPrimary,
+            ),
           ),
 
           SizedBox(height: 5.h),
 
           Text(
             starDescription,
-            style: TextStyle(fontSize: 22.sp, fontWeight: FontWeight.w800, color: colors.accentOrange),
+            style: TextStyle(
+              fontSize: 22.sp,
+              fontWeight: FontWeight.w800,
+              color: colors.accentOrange,
+            ),
           ),
 
           SizedBox(height: KSpacing.lg.h),
@@ -317,10 +365,14 @@ class RiderRatingState extends State<RiderRating> {
                 child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: 8.w),
                   child: SvgPicture.asset(
-                    starIndex <= rating ? Assets.icons.starSolid : Assets.icons.star,
+                    starIndex <= rating
+                        ? Assets.icons.starSolid
+                        : Assets.icons.star,
                     package: "grab_go_shared",
                     colorFilter: ColorFilter.mode(
-                      starIndex <= rating ? colors.accentOrange : colors.divider,
+                      starIndex <= rating
+                          ? colors.accentOrange
+                          : colors.divider,
                       BlendMode.srcIn,
                     ),
                     height: 42.h,
@@ -400,18 +452,28 @@ class RiderRatingState extends State<RiderRating> {
             Text(
               "Custom",
               style: TextStyle(
-                color: _selectedComment.any((c) => c.startsWith('Custom: ')) ? Colors.white : colors.textPrimary,
+                color: _selectedComment.any((c) => c.startsWith('Custom: '))
+                    ? Colors.white
+                    : colors.textPrimary,
                 fontSize: 13.sp,
-                fontWeight: _selectedComment.any((c) => c.startsWith('Custom: ')) ? FontWeight.w700 : FontWeight.w500,
+                fontWeight:
+                    _selectedComment.any((c) => c.startsWith('Custom: '))
+                    ? FontWeight.w700
+                    : FontWeight.w500,
               ),
             ),
             SizedBox(width: 4.w),
             SvgPicture.asset(
-              _showCustomTip ? Assets.icons.navArrowUp : Assets.icons.navArrowDown,
+              _showCustomTip
+                  ? Assets.icons.navArrowUp
+                  : Assets.icons.navArrowDown,
               package: 'grab_go_shared',
               height: 16.h,
               width: 16.w,
-              colorFilter: ColorFilter.mode(_showCustomTip ? Colors.white : colors.textPrimary, BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(
+                _showCustomTip ? Colors.white : colors.textPrimary,
+                BlendMode.srcIn,
+              ),
             ),
           ],
         ),
@@ -472,14 +534,18 @@ class RiderRatingState extends State<RiderRating> {
         duration: const Duration(milliseconds: 200),
         padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
         decoration: BoxDecoration(
-          color: _showCustomTip ? colors.accentOrange : colors.backgroundSecondary,
+          color: _showCustomTip
+              ? colors.accentOrange
+              : colors.backgroundSecondary,
           borderRadius: BorderRadius.circular(20.r),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              _showCustomTip && _tipAmount > 0 ? "GHS ${_tipAmount.toStringAsFixed(2)}" : "Custom",
+              _showCustomTip && _tipAmount > 0
+                  ? "GHS ${_tipAmount.toStringAsFixed(2)}"
+                  : "Custom",
               style: TextStyle(
                 color: _showCustomTip ? Colors.white : colors.textPrimary,
                 fontSize: 13.sp,
@@ -488,11 +554,16 @@ class RiderRatingState extends State<RiderRating> {
             ),
             SizedBox(width: 4.w),
             SvgPicture.asset(
-              _showCustomTip ? Assets.icons.navArrowUp : Assets.icons.navArrowDown,
+              _showCustomTip
+                  ? Assets.icons.navArrowUp
+                  : Assets.icons.navArrowDown,
               package: 'grab_go_shared',
               height: 16.h,
               width: 16.w,
-              colorFilter: ColorFilter.mode(_showCustomTip ? Colors.white : colors.textPrimary, BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(
+                _showCustomTip ? Colors.white : colors.textPrimary,
+                BlendMode.srcIn,
+              ),
             ),
           ],
         ),

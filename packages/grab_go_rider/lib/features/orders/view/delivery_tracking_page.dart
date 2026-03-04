@@ -96,7 +96,8 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
   void initState() {
     super.initState();
     _currentPhase = _deriveInitialPhaseFromRoute();
-    _hasArrivedAtPickup = widget.hasPickedUp == true || _currentPhase == "delivery";
+    _hasArrivedAtPickup =
+        widget.hasPickedUp == true || _currentPhase == "delivery";
     // Initialize tracking when page loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -148,12 +149,16 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
     _syncUiStateFromProvider(provider);
   }
 
-  void _syncUiStateFromProvider(RiderTrackingProvider provider, {bool force = false}) {
+  void _syncUiStateFromProvider(
+    RiderTrackingProvider provider, {
+    bool force = false,
+  }) {
     if (!provider.hasActiveSession && !force) return;
 
     final statusName = provider.currentStatus.name;
     final nextPhase = _phaseFromTrackingStatus(statusName);
-    final nextHasArrivedAtPickup = _arrivedAtPickupFromStatus(statusName) || _hasArrivedAtPickup;
+    final nextHasArrivedAtPickup =
+        _arrivedAtPickupFromStatus(statusName) || _hasArrivedAtPickup;
     final nextHasArrivedAtCustomer = _arrivedAtCustomerFromStatus(statusName);
 
     if (!force &&
@@ -183,11 +188,15 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
     debugPrint('   pickupLongitude: ${widget.pickupLongitude}');
     debugPrint('   destinationLatitude: ${widget.destinationLatitude}');
     debugPrint('   destinationLongitude: ${widget.destinationLongitude}');
-    debugPrint('   deliveryVerificationRequired: ${widget.deliveryVerificationRequired}');
+    debugPrint(
+      '   deliveryVerificationRequired: ${widget.deliveryVerificationRequired}',
+    );
     debugPrint('   testTrigger: ${widget.testTrigger}');
 
     if (widget.testTrigger) {
-      debugPrint('🧪 Test trigger active: starting local demo tracking session');
+      debugPrint(
+        '🧪 Test trigger active: starting local demo tracking session',
+      );
       final initialized = await trackingProvider.initializeTracking(
         orderId: widget.orderId,
         riderId: widget.riderId ?? "demo-rider",
@@ -204,7 +213,9 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         _hasArrivedAtPickup = false;
         _isInitializing = false;
         if (!initialized) {
-          _initError = trackingProvider.lastError ?? 'Failed to initialize demo tracking';
+          _initError =
+              trackingProvider.lastError ??
+              'Failed to initialize demo tracking';
         }
       });
       _syncUiStateFromProvider(trackingProvider, force: true);
@@ -218,8 +229,12 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         widget.pickupLongitude == null ||
         widget.destinationLatitude == null ||
         widget.destinationLongitude == null) {
-      debugPrint('⚠️ Missing tracking data, attempting to resume existing tracking');
-      debugPrint('   → This usually means you used the test button instead of accepting a real order');
+      debugPrint(
+        '⚠️ Missing tracking data, attempting to resume existing tracking',
+      );
+      debugPrint(
+        '   → This usually means you used the test button instead of accepting a real order',
+      );
 
       // Try to resume existing tracking for this order
       final success = await trackingProvider.resumeTracking(widget.orderId);
@@ -264,7 +279,8 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
     setState(() {
       _isInitializing = false;
       if (!success) {
-        _initError = trackingProvider.lastError ?? 'Failed to initialize tracking';
+        _initError =
+            trackingProvider.lastError ?? 'Failed to initialize tracking';
       }
     });
     if (success) {
@@ -291,19 +307,28 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
     final refreshed = await _runWithLoadingDialog(
       colors: colors,
       message: "Refreshing tracking...",
-      task: () => trackingProvider.resumeTracking(widget.orderId, useDemoSimulation: widget.testTrigger),
+      task: () => trackingProvider.resumeTracking(
+        widget.orderId,
+        useDemoSimulation: widget.testTrigger,
+      ),
     );
 
     if (!mounted) return;
     if (refreshed) {
       _syncUiStateFromProvider(trackingProvider, force: true);
-      _showToast(colors: colors, message: "Tracking refreshed", backgroundColor: colors.accentGreen);
+      _showToast(
+        colors: colors,
+        message: "Tracking refreshed",
+        backgroundColor: colors.accentGreen,
+      );
       return;
     }
 
     _showToast(
       colors: colors,
-      message: trackingProvider.lastError ?? "Could not refresh tracking. Please try again.",
+      message:
+          trackingProvider.lastError ??
+          "Could not refresh tracking. Please try again.",
       backgroundColor: colors.error,
     );
   }
@@ -323,7 +348,9 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
         systemNavigationBarColor: colors.backgroundPrimary,
         systemNavigationBarDividerColor: Colors.transparent,
-        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        systemNavigationBarIconBrightness: isDark
+            ? Brightness.light
+            : Brightness.dark,
       ),
       child: Scaffold(
         backgroundColor: colors.backgroundSecondary,
@@ -335,10 +362,15 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                 builder: (context, trackingProvider, child) {
                   // Default camera position (Accra, Ghana)
                   final initialPosition =
-                      trackingProvider.currentLatLng ?? trackingProvider.pickupLatLng ?? const LatLng(5.6037, -0.1870);
+                      trackingProvider.currentLatLng ??
+                      trackingProvider.pickupLatLng ??
+                      const LatLng(5.6037, -0.1870);
 
                   return GoogleMap(
-                    initialCameraPosition: CameraPosition(target: initialPosition, zoom: 15),
+                    initialCameraPosition: CameraPosition(
+                      target: initialPosition,
+                      zoom: 15,
+                    ),
                     markers: trackingProvider.markers,
                     polylines: trackingProvider.polylines,
                     circles: trackingProvider.circles,
@@ -357,11 +389,20 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                     buildingsEnabled: false,
                     liteModeEnabled: false,
                     // Apply custom GrabGo branded style from shared package
-                    style: GrabGoMapStyles.forBrightness(Theme.of(context).brightness),
-                    padding: EdgeInsets.only(bottom: _showBottomSheet ? size.height * 0.45 : collapsedPreviewHeight),
+                    style: GrabGoMapStyles.forBrightness(
+                      Theme.of(context).brightness,
+                    ),
+                    padding: EdgeInsets.only(
+                      bottom: _showBottomSheet
+                          ? size.height * 0.45
+                          : collapsedPreviewHeight,
+                    ),
                     onMapCreated: (GoogleMapController controller) {
                       trackingProvider.setMapController(controller);
                     },
+                    onCameraMoveStarted:
+                        trackingProvider.onMapCameraMoveStarted,
+                    onCameraIdle: trackingProvider.onMapCameraIdle,
                     onTap: (_) {
                       if (_showBottomSheet) {
                         _collapseBottomSheet();
@@ -389,7 +430,9 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(30),
+                          color: isDark
+                              ? Colors.black.withAlpha(30)
+                              : Colors.black.withAlpha(30),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -405,7 +448,10 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                           child: SvgPicture.asset(
                             Assets.icons.navArrowLeft,
                             package: 'grab_go_shared',
-                            colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                            colorFilter: ColorFilter.mode(
+                              colors.textPrimary,
+                              BlendMode.srcIn,
+                            ),
                           ),
                         ),
                       ),
@@ -419,7 +465,9 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(30),
+                          color: isDark
+                              ? Colors.black.withAlpha(30)
+                              : Colors.black.withAlpha(30),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -435,7 +483,10 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                           child: SvgPicture.asset(
                             Assets.icons.headsetHelp,
                             package: 'grab_go_shared',
-                            colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                            colorFilter: ColorFilter.mode(
+                              colors.textPrimary,
+                              BlendMode.srcIn,
+                            ),
                           ),
                         ),
                       ),
@@ -504,7 +555,9 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
               duration: _sheetAnimationDuration,
               curve: _sheetAnimationCurve,
               right: 16.w,
-              bottom: _showBottomSheet ? (size.height * 0.45) + 14.h : collapsedPreviewHeight + 10.h,
+              bottom: _showBottomSheet
+                  ? (size.height * 0.45) + 14.h
+                  : collapsedPreviewHeight + 10.h,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 mainAxisSize: MainAxisSize.min,
@@ -520,8 +573,14 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                   ),
                   SizedBox(height: 10.h),
                   Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-                    decoration: BoxDecoration(color: colors.accentGreen, borderRadius: BorderRadius.circular(999.r)),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 12.w,
+                      vertical: 10.h,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colors.accentGreen,
+                      borderRadius: BorderRadius.circular(999.r),
+                    ),
                     child: Row(
                       children: [
                         SvgPicture.asset(
@@ -529,7 +588,10 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                           package: 'grab_go_shared',
                           width: 16.w,
                           height: 16.h,
-                          colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                          colorFilter: ColorFilter.mode(
+                            Colors.white,
+                            BlendMode.srcIn,
+                          ),
                         ),
                         SizedBox(width: 6.w),
 
@@ -562,22 +624,35 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                   child: Consumer<RiderTrackingProvider>(
                     builder: (context, trackingProvider, child) {
                       // Get ETA and distance from provider, with fallbacks
-                      final etaMinutes = trackingProvider.etaMinutes ?? (_currentPhase == "pickup" ? 12.0 : 15.0);
-                      final distanceKm = trackingProvider.distanceKm ?? (_currentPhase == "pickup" ? 4.5 : 5.2);
-                      final connectionHealth = trackingProvider.connectionHealth;
-                      final bottomSafeArea = MediaQuery.of(context).padding.bottom;
+                      final etaMinutes =
+                          trackingProvider.etaMinutes ??
+                          (_currentPhase == "pickup" ? 12.0 : 15.0);
+                      final distanceKm =
+                          trackingProvider.distanceKm ??
+                          (_currentPhase == "pickup" ? 4.5 : 5.2);
+                      final connectionHealth =
+                          trackingProvider.connectionHealth;
+                      final bottomSafeArea = MediaQuery.of(
+                        context,
+                      ).padding.bottom;
 
                       return Container(
                         height: size.height * 0.45,
                         decoration: BoxDecoration(
                           color: colors.backgroundPrimary,
                           borderRadius: BorderRadius.only(
-                            topLeft: Radius.circular(KBorderSize.borderRadius20),
-                            topRight: Radius.circular(KBorderSize.borderRadius20),
+                            topLeft: Radius.circular(
+                              KBorderSize.borderRadius20,
+                            ),
+                            topRight: Radius.circular(
+                              KBorderSize.borderRadius20,
+                            ),
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(8),
+                              color: isDark
+                                  ? Colors.black.withAlpha(30)
+                                  : Colors.black.withAlpha(8),
                               spreadRadius: 0,
                               blurRadius: 12,
                               offset: const Offset(0, -2),
@@ -597,19 +672,25 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                               },
                               onVerticalDragEnd: (details) {
                                 final velocity = details.primaryVelocity ?? 0;
-                                if (_bottomSheetDragDistance > 28 || velocity > 500) {
+                                if (_bottomSheetDragDistance > 28 ||
+                                    velocity > 500) {
                                   _collapseBottomSheet();
                                 }
                                 _bottomSheetDragDistance = 0;
                               },
                               child: Padding(
-                                padding: EdgeInsets.only(top: 10.h, bottom: 8.h),
+                                padding: EdgeInsets.only(
+                                  top: 10.h,
+                                  bottom: 8.h,
+                                ),
                                 child: Center(
                                   child: Container(
                                     width: 40.w,
                                     height: 4.h,
                                     decoration: BoxDecoration(
-                                      color: colors.textSecondary.withValues(alpha: 0.3),
+                                      color: colors.textSecondary.withValues(
+                                        alpha: 0.3,
+                                      ),
                                       borderRadius: BorderRadius.circular(2.r),
                                     ),
                                   ),
@@ -619,7 +700,12 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                             Expanded(
                               child: SingleChildScrollView(
                                 physics: const ClampingScrollPhysics(),
-                                padding: EdgeInsets.fromLTRB(20.w, 4.h, 20.w, 12.h),
+                                padding: EdgeInsets.fromLTRB(
+                                  20.w,
+                                  4.h,
+                                  20.w,
+                                  12.h,
+                                ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -640,19 +726,29 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                                         SizedBox(width: 10.w),
                                         _buildMetricCard(
                                           label: "DISTANCE",
-                                          value: "${distanceKm.toStringAsFixed(1)} km",
+                                          value:
+                                              "${distanceKm.toStringAsFixed(1)} km",
                                           accent: colors.accentBlue,
                                           colors: colors,
                                         ),
                                         SizedBox(width: 10.w),
                                         _buildMetricCard(
                                           label: "SIGNAL",
-                                          value: connectionHealth == RiderTrackingConnectionHealth.live
+                                          value:
+                                              connectionHealth ==
+                                                  RiderTrackingConnectionHealth
+                                                      .live
                                               ? "Live"
-                                              : connectionHealth == RiderTrackingConnectionHealth.degraded
+                                              : connectionHealth ==
+                                                    RiderTrackingConnectionHealth
+                                                        .degraded
                                               ? "Retrying"
                                               : "Offline",
-                                          accent: _bannerColorForConnectionHealth(colors, connectionHealth),
+                                          accent:
+                                              _bannerColorForConnectionHealth(
+                                                colors,
+                                                connectionHealth,
+                                              ),
                                           colors: colors,
                                         ),
                                       ],
@@ -663,12 +759,19 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                               ),
                             ),
                             Container(
-                              padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, bottomSafeArea + 12.h),
+                              padding: EdgeInsets.fromLTRB(
+                                20.w,
+                                12.h,
+                                20.w,
+                                bottomSafeArea + 12.h,
+                              ),
                               decoration: BoxDecoration(
                                 color: colors.backgroundPrimary,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: colors.shadow.withValues(alpha: 0.08),
+                                    color: colors.shadow.withValues(
+                                      alpha: 0.08,
+                                    ),
                                     blurRadius: 8,
                                     offset: const Offset(0, -2),
                                   ),
@@ -697,7 +800,11 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                   offset: _showBottomSheet ? const Offset(0, 1) : Offset.zero,
                   child: Consumer<RiderTrackingProvider>(
                     builder: (context, trackingProvider, child) {
-                      return _buildBottomSheetPreview(colors: colors, isDark: isDark, provider: trackingProvider);
+                      return _buildBottomSheetPreview(
+                        colors: colors,
+                        isDark: isDark,
+                        provider: trackingProvider,
+                      );
                     },
                   ),
                 ),
@@ -709,7 +816,10 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
     );
   }
 
-  Color _bannerColorForConnectionHealth(AppColorsExtension colors, RiderTrackingConnectionHealth health) {
+  Color _bannerColorForConnectionHealth(
+    AppColorsExtension colors,
+    RiderTrackingConnectionHealth health,
+  ) {
     switch (health) {
       case RiderTrackingConnectionHealth.live:
         return colors.accentGreen;
@@ -750,7 +860,9 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         borderRadius: BorderRadius.circular(999.r),
         boxShadow: [
           BoxShadow(
-            color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(30),
+            color: isDark
+                ? Colors.black.withAlpha(30)
+                : Colors.black.withAlpha(30),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -760,12 +872,21 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         children: [
           Text(
             'STATUS',
-            style: TextStyle(color: colors.textSecondary, fontSize: 8.sp, fontWeight: FontWeight.w800),
+            style: TextStyle(
+              color: colors.textSecondary,
+              fontSize: 8.sp,
+              fontWeight: FontWeight.w800,
+            ),
           ),
           SizedBox(height: 2.h),
           Text(
             chipLabel,
-            style: TextStyle(color: statusAccent, fontSize: 10.sp, fontWeight: FontWeight.w700, letterSpacing: 0.4),
+            style: TextStyle(
+              color: statusAccent,
+              fontSize: 10.sp,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.4,
+            ),
           ),
         ],
       ),
@@ -775,7 +896,12 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
   Widget _buildSectionLabel(String text, AppColorsExtension colors) {
     return Text(
       text,
-      style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+      style: TextStyle(
+        color: colors.textSecondary,
+        fontSize: 11.sp,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.5,
+      ),
     );
   }
 
@@ -786,7 +912,9 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
   }) {
     final bottomSafeArea = MediaQuery.of(context).padding.bottom;
     final isPickup = _currentPhase == "pickup";
-    final destinationName = isPickup ? widget.restaurantName : widget.customerName;
+    final destinationName = isPickup
+        ? widget.restaurantName
+        : widget.customerName;
     final etaMinutes = provider.etaMinutes ?? (isPickup ? 12.0 : 15.0);
     final distanceKm = provider.distanceKm ?? (isPickup ? 4.5 : 5.2);
 
@@ -809,7 +937,9 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
             ),
             boxShadow: [
               BoxShadow(
-                color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(12),
+                color: isDark
+                    ? Colors.black.withAlpha(30)
+                    : Colors.black.withAlpha(12),
                 blurRadius: 12,
                 offset: const Offset(0, -2),
               ),
@@ -826,12 +956,20 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                       "Next stop: $destinationName",
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: colors.textPrimary, fontSize: 13.5.sp, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 13.5.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     SizedBox(height: 2.h),
                     Text(
                       "${etaMinutes.toInt()} min • ${distanceKm.toStringAsFixed(1)} km",
-                      style: TextStyle(color: colors.textSecondary, fontSize: 11.5.sp, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        color: colors.textSecondary,
+                        fontSize: 11.5.sp,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ],
                 ),
@@ -844,7 +982,10 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                   package: 'grab_go_shared',
                   width: 20.w,
                   height: 20.w,
-                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                  colorFilter: ColorFilter.mode(
+                    colors.textSecondary,
+                    BlendMode.srcIn,
+                  ),
                 ),
               ),
             ],
@@ -856,8 +997,12 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
 
   Widget _buildDestinationInfo(AppColorsExtension colors) {
     final isPickup = _currentPhase == "pickup";
-    final destinationName = isPickup ? widget.restaurantName : widget.customerName;
-    final destinationAddress = isPickup ? widget.restaurantAddress : widget.customerAddress;
+    final destinationName = isPickup
+        ? widget.restaurantName
+        : widget.customerName;
+    final destinationAddress = isPickup
+        ? widget.restaurantAddress
+        : widget.customerAddress;
 
     return Container(
       padding: EdgeInsets.all(16.w),
@@ -873,17 +1018,29 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
               children: [
                 Text(
                   isPickup ? "Pickup location" : "Delivery location",
-                  style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 SizedBox(height: 4.h),
                 Text(
                   destinationName,
-                  style: TextStyle(color: colors.textPrimary, fontSize: 15.sp, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    color: colors.textPrimary,
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 SizedBox(height: 4.h),
                 Text(
                   destinationAddress,
-                  style: TextStyle(color: colors.textSecondary, fontSize: 11.5.sp, fontWeight: FontWeight.w400),
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 11.5.sp,
+                    fontWeight: FontWeight.w400,
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -900,7 +1057,9 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                   height: 40.w,
                   decoration: BoxDecoration(
                     color: colors.accentGreen.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                    borderRadius: BorderRadius.circular(
+                      KBorderSize.borderRadius4,
+                    ),
                   ),
                   child: Center(
                     child: SvgPicture.asset(
@@ -908,7 +1067,10 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                       package: 'grab_go_shared',
                       width: 18.w,
                       height: 18.w,
-                      colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                      colorFilter: ColorFilter.mode(
+                        colors.accentGreen,
+                        BlendMode.srcIn,
+                      ),
                     ),
                   ),
                 ),
@@ -921,7 +1083,9 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                   height: 40.w,
                   decoration: BoxDecoration(
                     color: colors.accentGreen.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                    borderRadius: BorderRadius.circular(
+                      KBorderSize.borderRadius4,
+                    ),
                   ),
                   child: Center(
                     child: SvgPicture.asset(
@@ -929,7 +1093,10 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                       package: 'grab_go_shared',
                       width: 18.w,
                       height: 18.w,
-                      colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                      colorFilter: ColorFilter.mode(
+                        colors.accentGreen,
+                        BlendMode.srcIn,
+                      ),
                     ),
                   ),
                 ),
@@ -963,7 +1130,11 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
               children: [
                 Text(
                   label,
-                  style: TextStyle(color: colors.textSecondary, fontSize: 10.sp, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -972,7 +1143,11 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
             SizedBox(height: 2.h),
             Text(
               value,
-              style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                color: colors.textPrimary,
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w700,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -992,14 +1167,22 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         ? "Processing..."
         : isPickup
         ? (!_hasArrivedAtPickup ? "I've Arrived" : "Confirm Pickup")
-        : (!_hasArrivedAtCustomer ? "I've Arrived" : (_isCompletingDelivery ? "Completing..." : "Complete Delivery"));
+        : (!_hasArrivedAtCustomer
+              ? "I've Arrived"
+              : (_isCompletingDelivery
+                    ? "Completing..."
+                    : "Complete Delivery"));
     final stageAction = isStageBusy
         ? () {}
         : isPickup
-        ? (!_hasArrivedAtPickup ? () => _confirmArrivalAtPickup(colors) : () => _showPickupConfirmDialog(colors))
+        ? (!_hasArrivedAtPickup
+              ? () => _confirmArrivalAtPickup(colors)
+              : () => _showPickupConfirmDialog(colors))
         : (!_hasArrivedAtCustomer
               ? () => _confirmArrivalAtCustomer(colors)
-              : (_isCompletingDelivery ? () {} : () => _startDeliveryCompletion(colors)));
+              : (_isCompletingDelivery
+                    ? () {}
+                    : () => _startDeliveryCompletion(colors)));
 
     if (!canShowCancel) {
       return AppButton(
@@ -1010,7 +1193,11 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         width: double.infinity,
         borderRadius: KBorderSize.borderRadius4,
         height: 60.h,
-        textStyle: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w700),
+        textStyle: TextStyle(
+          color: Colors.white,
+          fontSize: 15.sp,
+          fontWeight: FontWeight.w700,
+        ),
       );
     }
 
@@ -1018,12 +1205,18 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
       children: [
         Expanded(
           child: AppButton(
-            onPressed: isStageLoading ? () {} : () => _showCancelOrderDialog(colors),
+            onPressed: isStageLoading
+                ? () {}
+                : () => _showCancelOrderDialog(colors),
             buttonText: "Cancel",
             backgroundColor: colors.backgroundSecondary,
             borderRadius: KBorderSize.borderRadius4,
             height: 56.h,
-            textStyle: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w700),
+            textStyle: TextStyle(
+              color: colors.textSecondary,
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
         SizedBox(width: 10.w),
@@ -1036,7 +1229,11 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
             backgroundColor: colors.accentGreen,
             borderRadius: KBorderSize.borderRadius4,
             height: 56.h,
-            textStyle: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w700),
+            textStyle: TextStyle(
+              color: Colors.white,
+              fontSize: 15.sp,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ],
@@ -1071,7 +1268,9 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
     if (!pickedUpSuccess) {
       _showToast(
         colors: colors,
-        message: trackingProvider.lastError ?? "Failed to update order status. Please try again.",
+        message:
+            trackingProvider.lastError ??
+            "Failed to update order status. Please try again.",
         backgroundColor: colors.error,
       );
       return;
@@ -1086,7 +1285,9 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
     if (!inTransitSuccess) {
       _showToast(
         colors: colors,
-        message: trackingProvider.lastError ?? "Failed to update order status. Please try again.",
+        message:
+            trackingProvider.lastError ??
+            "Failed to update order status. Please try again.",
         backgroundColor: colors.error,
       );
       return;
@@ -1140,19 +1341,26 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
           if (proofPhoto == null || reason.isEmpty) {
             _showToast(
               colors: colors,
-              message: "Photo and fallback reason are required to complete this delivery.",
+              message:
+                  "Photo and fallback reason are required to complete this delivery.",
               backgroundColor: colors.error,
             );
             return;
           }
 
-          final uploadResult = await trackingProvider.uploadDeliveryProofPhoto(proofPhoto);
+          final uploadResult = await trackingProvider.uploadDeliveryProofPhoto(
+            proofPhoto,
+          );
           if (!mounted) return;
 
-          if (!uploadResult.success || uploadResult.photoUrl == null || uploadResult.photoUrl!.isEmpty) {
+          if (!uploadResult.success ||
+              uploadResult.photoUrl == null ||
+              uploadResult.photoUrl!.isEmpty) {
             _showToast(
               colors: colors,
-              message: uploadResult.message ?? "Failed to upload delivery proof photo.",
+              message:
+                  uploadResult.message ??
+                  "Failed to upload delivery proof photo.",
               backgroundColor: colors.error,
             );
             return;
@@ -1174,7 +1382,9 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         debugPrint('📸 Delivery proof photo captured: ${proofPhoto.path}');
       }
 
-      final success = await trackingProvider.markAsDelivered(deliveryVerification: deliveryVerification);
+      final success = await trackingProvider.markAsDelivered(
+        deliveryVerification: deliveryVerification,
+      );
 
       if (success) {
         debugPrint('✅ Order marked as delivered');
@@ -1185,13 +1395,19 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
       if (!success) {
         _showToast(
           colors: colors,
-          message: trackingProvider.lastError ?? "Failed to complete delivery. Please try again.",
+          message:
+              trackingProvider.lastError ??
+              "Failed to complete delivery. Please try again.",
           backgroundColor: colors.error,
         );
         return;
       }
 
-      _showToast(colors: colors, message: "Order delivered successfully!", backgroundColor: colors.accentGreen);
+      _showToast(
+        colors: colors,
+        message: "Order delivered successfully!",
+        backgroundColor: colors.accentGreen,
+      );
 
       Future.delayed(const Duration(milliseconds: 500), () {
         if (!mounted) return;
@@ -1223,7 +1439,9 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
     _showPhotoProofDialog(colors);
   }
 
-  Future<void> _showDeliveryVerificationDialog(AppColorsExtension colors) async {
+  Future<void> _showDeliveryVerificationDialog(
+    AppColorsExtension colors,
+  ) async {
     final recipientLabel = widget.giftRecipientName?.trim().isNotEmpty == true
         ? widget.giftRecipientName!.trim()
         : "recipient";
@@ -1262,7 +1480,11 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
             backgroundColor: colors.backgroundPrimary,
             title: Text(
               "Enter Delivery Code",
-              style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                color: colors.textPrimary,
+                fontSize: 18.sp,
+                fontWeight: FontWeight.w700,
+              ),
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1270,7 +1492,11 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
               children: [
                 Text(
                   "Ask the recipient for the 4-digit delivery code.",
-                  style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w400),
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
                 SizedBox(height: 12.h),
                 TextField(
@@ -1279,7 +1505,11 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                   maxLength: 4,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   enabled: !isSubmitting && !isResending,
-                  style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color: colors.textPrimary,
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
                   decoration: InputDecoration(
                     counterText: '',
                     hintText: '0000',
@@ -1287,16 +1517,25 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                     filled: true,
                     fillColor: colors.backgroundSecondary,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                      borderRadius: BorderRadius.circular(
+                        KBorderSize.borderRadius4,
+                      ),
                       borderSide: BorderSide(color: colors.border),
                     ),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                      borderRadius: BorderRadius.circular(
+                        KBorderSize.borderRadius4,
+                      ),
                       borderSide: BorderSide(color: colors.border),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                      borderSide: BorderSide(color: colors.accentGreen, width: 1.5),
+                      borderRadius: BorderRadius.circular(
+                        KBorderSize.borderRadius4,
+                      ),
+                      borderSide: BorderSide(
+                        color: colors.accentGreen,
+                        width: 1.5,
+                      ),
                     ),
                   ),
                 ),
@@ -1306,7 +1545,9 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                       ? null
                       : () async {
                           setDialogState(() => isResending = true);
-                          final result = await context.read<RiderTrackingProvider>().resendDeliveryCodeToRecipient();
+                          final result = await context
+                              .read<RiderTrackingProvider>()
+                              .resendDeliveryCodeToRecipient();
                           if (!mounted) return;
 
                           setDialogState(() => isResending = false);
@@ -1314,14 +1555,22 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                           _showToast(
                             colors: colors,
                             message: result.success
-                                ? (result.message ?? "Delivery code resent to recipient.")
-                                : (result.message ?? "Failed to resend delivery code."),
-                            backgroundColor: result.success ? colors.accentGreen : colors.error,
+                                ? (result.message ??
+                                      "Delivery code resent to recipient.")
+                                : (result.message ??
+                                      "Failed to resend delivery code."),
+                            backgroundColor: result.success
+                                ? colors.accentGreen
+                                : colors.error,
                           );
                         },
                   child: Text(
                     isResending ? "Resending..." : "Resend code to recipient",
-                    style: TextStyle(color: colors.accentBlue, fontSize: 13.sp, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      color: colors.accentBlue,
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
@@ -1334,11 +1583,19 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                         Navigator.pop(dialogContext);
                         _showFallbackPhotoCaptureDialog(colors);
                       },
-                child: Text("Use Fallback", style: TextStyle(color: colors.accentOrange)),
+                child: Text(
+                  "Use Fallback",
+                  style: TextStyle(color: colors.accentOrange),
+                ),
               ),
               TextButton(
-                onPressed: (isSubmitting || isResending) ? null : () => Navigator.pop(dialogContext),
-                child: Text("Cancel", style: TextStyle(color: colors.textSecondary)),
+                onPressed: (isSubmitting || isResending)
+                    ? null
+                    : () => Navigator.pop(dialogContext),
+                child: Text(
+                  "Cancel",
+                  style: TextStyle(color: colors.textSecondary),
+                ),
               ),
               ElevatedButton(
                 onPressed: (isSubmitting || isResending)
@@ -1358,7 +1615,10 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                         Navigator.pop(dialogContext);
                         await _confirmDelivery(colors, deliveryCode: code);
                       },
-                style: ElevatedButton.styleFrom(backgroundColor: colors.accentGreen, foregroundColor: Colors.white),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.accentGreen,
+                  foregroundColor: Colors.white,
+                ),
                 child: const Text("Confirm"),
               ),
             ],
@@ -1374,7 +1634,8 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
       orderId: widget.orderId,
       orderNumber: 'Order ${widget.orderId}',
       title: 'Authorized Photo Fallback',
-      description: 'Take a clear photo proving delivery to an authorized recipient at the address.',
+      description:
+          'Take a clear photo proving delivery to an authorized recipient at the address.',
       onPhotoCapture: (photo) {
         _showFallbackReasonDialog(colors, proofPhoto: photo);
       },
@@ -1390,7 +1651,10 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
     );
   }
 
-  void _showFallbackReasonDialog(AppColorsExtension colors, {required File proofPhoto}) {
+  void _showFallbackReasonDialog(
+    AppColorsExtension colors, {
+    required File proofPhoto,
+  }) {
     final reasonController = TextEditingController();
     final authorizedNameController = TextEditingController();
 
@@ -1400,7 +1664,11 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         backgroundColor: colors.backgroundPrimary,
         title: Text(
           "Fallback Details",
-          style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontSize: 18.sp,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         content: SingleChildScrollView(
           child: Column(
@@ -1409,7 +1677,11 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
             children: [
               Text(
                 "Provide a short reason and who received the order (if known).",
-                style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w400),
+                style: TextStyle(
+                  color: colors.textSecondary,
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w400,
+                ),
               ),
               SizedBox(height: 12.h),
               TextField(
@@ -1417,11 +1689,14 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                 maxLines: 3,
                 decoration: InputDecoration(
                   labelText: 'Reason',
-                  hintText: 'Recipient unavailable, handed to authorized person',
+                  hintText:
+                      'Recipient unavailable, handed to authorized person',
                   filled: true,
                   fillColor: colors.backgroundSecondary,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                    borderRadius: BorderRadius.circular(
+                      KBorderSize.borderRadius4,
+                    ),
                     borderSide: BorderSide(color: colors.border),
                   ),
                 ),
@@ -1434,7 +1709,9 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                   filled: true,
                   fillColor: colors.backgroundSecondary,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                    borderRadius: BorderRadius.circular(
+                      KBorderSize.borderRadius4,
+                    ),
                     borderSide: BorderSide(color: colors.border),
                   ),
                 ),
@@ -1445,13 +1722,20 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: Text("Cancel", style: TextStyle(color: colors.textSecondary)),
+            child: Text(
+              "Cancel",
+              style: TextStyle(color: colors.textSecondary),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
               final reason = reasonController.text.trim();
               if (reason.isEmpty) {
-                _showToast(colors: colors, message: "Please provide a fallback reason.", backgroundColor: colors.error);
+                _showToast(
+                  colors: colors,
+                  message: "Please provide a fallback reason.",
+                  backgroundColor: colors.error,
+                );
                 return;
               }
 
@@ -1463,7 +1747,10 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                 authorizedRecipientName: authorizedNameController.text.trim(),
               );
             },
-            style: ElevatedButton.styleFrom(backgroundColor: colors.accentGreen, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.accentGreen,
+              foregroundColor: Colors.white,
+            ),
             child: const Text("Complete Delivery"),
           ),
         ],
@@ -1515,7 +1802,8 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
       colors: colors,
       message: syncSuccess
           ? "Great! Collect the order and confirm pickup."
-          : (trackingProvider.lastError ?? "Failed to update arrival. Please try again."),
+          : (trackingProvider.lastError ??
+                "Failed to update arrival. Please try again."),
       backgroundColor: syncSuccess ? colors.accentGreen : colors.error,
     );
   }
@@ -1565,7 +1853,8 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
       radius: KBorderSize.borderRadius4,
       message: syncSuccess
           ? "Customer notified of your arrival!"
-          : (trackingProvider.lastError ?? "Failed to notify customer. Please try again."),
+          : (trackingProvider.lastError ??
+                "Failed to notify customer. Please try again."),
     );
   }
 
@@ -1575,7 +1864,8 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
       orderId: widget.orderId,
       orderNumber: 'Order ${widget.orderId}',
       title: 'Photo Proof of Delivery',
-      description: 'Take a photo showing the order has been delivered to the customer',
+      description:
+          'Take a photo showing the order has been delivered to the customer',
       onPhotoCapture: (photo) {
         _confirmDelivery(colors, proofPhoto: photo);
       },
@@ -1583,7 +1873,8 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         final shouldSkip = await AppDialog.show(
           context: context,
           title: "Skip Photo Proof?",
-          message: "Without a photo, you may not be protected in case of a delivery dispute. Are you sure?",
+          message:
+              "Without a photo, you may not be protected in case of a delivery dispute. Are you sure?",
           type: AppDialogType.warning,
           primaryButtonText: "Skip Anyway",
           secondaryButtonText: "Take Photo",
@@ -1611,9 +1902,15 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
       orderId: widget.orderId,
       orderNumber: 'Order ${widget.orderId}',
       onConfirm: (reason, notes) async {
-        debugPrint('Cancelling order: ${reason.apiValue}${notes != null ? " - $notes" : ""}');
+        debugPrint(
+          'Cancelling order: ${reason.apiValue}${notes != null ? " - $notes" : ""}',
+        );
 
-        final success = await orderService.cancelOrder(widget.orderId, reason: reason.apiValue, notes: notes);
+        final success = await orderService.cancelOrder(
+          widget.orderId,
+          reason: reason.apiValue,
+          notes: notes,
+        );
 
         if (!mounted) return;
 
@@ -1646,9 +1943,12 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
 
       ChatConversationDto? matchedChat;
       for (final chat in chats) {
-        final matchesOrderId = chat.orderId != null && chat.orderId == widget.orderId;
-        final matchesOrderNumber = chat.orderNumber != null && chat.orderNumber == widget.orderId;
-        final matchesCustomerId = widget.customerId != null && chat.otherUserId == widget.customerId;
+        final matchesOrderId =
+            chat.orderId != null && chat.orderId == widget.orderId;
+        final matchesOrderNumber =
+            chat.orderNumber != null && chat.orderNumber == widget.orderId;
+        final matchesCustomerId =
+            widget.customerId != null && chat.otherUserId == widget.customerId;
 
         if (matchesOrderId || matchesOrderNumber || matchesCustomerId) {
           matchedChat = chat;
@@ -1672,14 +1972,21 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
             chatId: matchedChat!.id,
             senderName: matchedChat.otherUserName ?? "Customer",
             profilePicture: matchedChat.otherUserProfilePicture,
-            orderId: matchedChat.orderNumber ?? matchedChat.orderId ?? widget.orderId,
+            orderId:
+                matchedChat.orderNumber ??
+                matchedChat.orderId ??
+                widget.orderId,
             isSupport: false,
           ),
         ),
       );
     } catch (_) {
       if (!mounted) return;
-      _showToast(colors: colors, message: "Could not open customer chat right now.", backgroundColor: colors.error);
+      _showToast(
+        colors: colors,
+        message: "Could not open customer chat right now.",
+        backgroundColor: colors.error,
+      );
     }
   }
 
@@ -1711,7 +2018,11 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
     if (mounted) {
       // Reset any stale singleton state before showing a new loading overlay.
       LoadingDialog.instance().hide();
-      LoadingDialog.instance().show(context: context, text: message, spinColor: colors.accentGreen);
+      LoadingDialog.instance().show(
+        context: context,
+        text: message,
+        spinColor: colors.accentGreen,
+      );
       // Give the overlay one frame to render before running work.
       await Future<void>.delayed(const Duration(milliseconds: 16));
     }
@@ -1744,7 +2055,9 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(30),
+            color: isDark
+                ? Colors.black.withAlpha(30)
+                : Colors.black.withAlpha(30),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),

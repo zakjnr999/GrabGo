@@ -2,6 +2,13 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { protect, authorize } = require('../middleware/auth');
 const prisma = require('../config/prisma');
+const { promoApplyRateLimit } = require('../middleware/fraud_rate_limit');
+const {
+    ACTION_TYPES,
+    buildFraudContextFromRequest,
+    fraudDecisionService,
+    applyFraudDecision,
+} = require('../services/fraud');
 const {
     validatePromoCode,
     applyPromoCode,
@@ -159,7 +166,7 @@ router.post('/validate', protect, [
  * @desc    Apply a promo code to an order
  * @access  Protected
  */
-router.post('/apply', protect, [
+router.post('/apply', protect, promoApplyRateLimit, [
     body('code').notEmpty().withMessage('Promo code is required'),
     body('orderId').notEmpty().withMessage('Order ID is required'),
     body('discountAmount').isNumeric().withMessage('Discount amount must be a number')
@@ -174,6 +181,35 @@ router.post('/apply', protect, [
         }
 
         const { code, orderId, discountAmount } = req.body;
+        const fraudContext = buildFraudContextFromRequest({
+            req,
+            actionType: ACTION_TYPES.PROMO_APPLY,
+            actorType: req.user.role || 'customer',
+            actorId: req.user.id,
+            extras: {
+                orderId,
+                promoCode: code ? String(code).toUpperCase() : null,
+                metadata: {
+                    discountAmount: Number(discountAmount || 0),
+                },
+            },
+        });
+
+        const fraudDecision = await fraudDecisionService.evaluate({
+            actionType: ACTION_TYPES.PROMO_APPLY,
+            actorType: req.user.role || 'customer',
+            actorId: req.user.id,
+            context: fraudContext,
+        });
+
+        const fraudGate = applyFraudDecision({
+            req,
+            res,
+            decision: fraudDecision,
+            actionType: ACTION_TYPES.PROMO_APPLY,
+        });
+        if (fraudGate.blocked || fraudGate.challenged) return;
+
         const result = await applyPromoCode(
             code,
             req.user.id,

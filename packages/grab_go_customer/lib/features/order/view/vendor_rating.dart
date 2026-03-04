@@ -7,7 +7,10 @@ import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
 class VendorRating extends StatefulWidget {
-  const VendorRating({super.key});
+  final String? vendorName;
+  final String? vendorImage;
+
+  const VendorRating({super.key, this.vendorName, this.vendorImage});
 
   @override
   State<VendorRating> createState() => _VendorRatingState();
@@ -80,6 +83,9 @@ class _VendorRatingState extends State<VendorRating> {
     final colors = context.appColors;
     Size size = MediaQuery.sizeOf(context);
     final feedbackChips = _getVendorFeedbackChips(_vendorRating);
+    final vendorDisplayName = (widget.vendorName?.trim().isNotEmpty ?? false)
+        ? widget.vendorName!.trim()
+        : 'Vendor';
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
@@ -92,9 +98,9 @@ class _VendorRatingState extends State<VendorRating> {
             child: Column(
               children: [
                 _buildRatingSection(
-                  title: 'How was your dish from Noodle House?',
+                  title: 'How was your dish from $vendorDisplayName?',
                   starDescription: _getVendorRatingDescription(_vendorRating),
-                  image: "",
+                  image: widget.vendorImage,
                   size: size,
                   rating: _vendorRating,
                   onRatingChanged: (rating) {
@@ -123,26 +129,36 @@ class _VendorRatingState extends State<VendorRating> {
                             final index = entry.key;
                             final chip = entry.value;
                             return TweenAnimationBuilder<double>(
-                              duration: Duration(milliseconds: 200 + (index * 50)),
+                              duration: Duration(
+                                milliseconds: 200 + (index * 50),
+                              ),
                               tween: Tween(begin: 0.0, end: 1.0),
                               curve: Curves.easeOut,
                               builder: (context, value, child) {
                                 return Opacity(
                                   opacity: value,
-                                  child: Transform.translate(offset: Offset(0, 10 * (1 - value)), child: child),
+                                  child: Transform.translate(
+                                    offset: Offset(0, 10 * (1 - value)),
+                                    child: child,
+                                  ),
                                 );
                               },
                               child: _buildCommentChip(chip, colors),
                             );
                           }),
                           TweenAnimationBuilder<double>(
-                            duration: Duration(milliseconds: 200 + (feedbackChips.length * 50)),
+                            duration: Duration(
+                              milliseconds: 200 + (feedbackChips.length * 50),
+                            ),
                             tween: Tween(begin: 0.0, end: 1.0),
                             curve: Curves.easeOut,
                             builder: (context, value, child) {
                               return Opacity(
                                 opacity: value,
-                                child: Transform.translate(offset: Offset(0, 10 * (1 - value)), child: child),
+                                child: Transform.translate(
+                                  offset: Offset(0, 10 * (1 - value)),
+                                  child: child,
+                                ),
                               );
                             },
                             child: _buildCustomCommentChip(colors),
@@ -192,18 +208,28 @@ class _VendorRatingState extends State<VendorRating> {
             Text(
               "Custom",
               style: TextStyle(
-                color: _selectedComment.any((c) => c.startsWith('Custom: ')) ? Colors.white : colors.textPrimary,
+                color: _selectedComment.any((c) => c.startsWith('Custom: '))
+                    ? Colors.white
+                    : colors.textPrimary,
                 fontSize: 13.sp,
-                fontWeight: _selectedComment.any((c) => c.startsWith('Custom: ')) ? FontWeight.w700 : FontWeight.w500,
+                fontWeight:
+                    _selectedComment.any((c) => c.startsWith('Custom: '))
+                    ? FontWeight.w700
+                    : FontWeight.w500,
               ),
             ),
             SizedBox(width: 4.w),
             SvgPicture.asset(
-              _showCustomTip ? Assets.icons.navArrowUp : Assets.icons.navArrowDown,
+              _showCustomTip
+                  ? Assets.icons.navArrowUp
+                  : Assets.icons.navArrowDown,
               package: 'grab_go_shared',
               height: 16.h,
               width: 16.w,
-              colorFilter: ColorFilter.mode(_showCustomTip ? Colors.white : colors.textPrimary, BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(
+                _showCustomTip ? Colors.white : colors.textPrimary,
+                BlendMode.srcIn,
+              ),
             ),
           ],
         ),
@@ -247,54 +273,88 @@ class _VendorRatingState extends State<VendorRating> {
 Widget _buildRatingSection({
   required String title,
   required String starDescription,
-  required String image,
+  required String? image,
   required int rating,
   required Size size,
   required Function(int) onRatingChanged,
   required AppColorsExtension colors,
 }) {
+  final hasImage = (image?.trim().isNotEmpty ?? false);
+
   return Container(
     color: colors.backgroundPrimary,
     child: Column(
       children: [
         ClipOval(
-          child: CachedNetworkImage(
-            height: size.width * 0.15,
-            width: size.width * 0.15,
-            fit: BoxFit.cover,
-            imageUrl: ImageOptimizer.getPreviewUrl(image, width: 200),
-            memCacheWidth: 200,
-            maxHeightDiskCache: 200,
-            placeholder: (context, url) => Container(
-              height: size.width * 0.15,
-              width: size.width * 0.15,
-              decoration: BoxDecoration(color: colors.backgroundPrimary, shape: BoxShape.circle),
-            ),
-            errorWidget: (context, url, error) => Container(
-              height: size.width * 0.15,
-              width: size.width * 0.15,
-              padding: EdgeInsets.all(12.r),
-              child: SvgPicture.asset(
-                Assets.icons.user,
-                package: "grab_go_shared",
-                colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-              ),
-            ),
-          ),
+          child: hasImage
+              ? CachedNetworkImage(
+                  height: size.width * 0.15,
+                  width: size.width * 0.15,
+                  fit: BoxFit.cover,
+                  imageUrl: ImageOptimizer.getPreviewUrl(image!, width: 200),
+                  memCacheWidth: 200,
+                  maxHeightDiskCache: 200,
+                  placeholder: (context, url) => Container(
+                    height: size.width * 0.15,
+                    width: size.width * 0.15,
+                    decoration: BoxDecoration(
+                      color: colors.backgroundPrimary,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    height: size.width * 0.15,
+                    width: size.width * 0.15,
+                    padding: EdgeInsets.all(12.r),
+                    child: SvgPicture.asset(
+                      Assets.icons.store,
+                      package: "grab_go_shared",
+                      colorFilter: ColorFilter.mode(
+                        colors.textPrimary,
+                        BlendMode.srcIn,
+                      ),
+                    ),
+                  ),
+                )
+              : Container(
+                  height: size.width * 0.15,
+                  width: size.width * 0.15,
+                  padding: EdgeInsets.all(12.r),
+                  decoration: BoxDecoration(
+                    color: colors.backgroundSecondary,
+                    shape: BoxShape.circle,
+                  ),
+                  child: SvgPicture.asset(
+                    Assets.icons.store,
+                    package: "grab_go_shared",
+                    colorFilter: ColorFilter.mode(
+                      colors.textPrimary,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                ),
         ),
 
         SizedBox(height: 20.h),
 
         Text(
           title,
-          style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w400, color: colors.textPrimary),
+          style: TextStyle(
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w400,
+            color: colors.textPrimary,
+          ),
         ),
 
         SizedBox(height: 5.h),
 
         Text(
           starDescription,
-          style: TextStyle(fontSize: 22.sp, fontWeight: FontWeight.w800, color: colors.accentOrange),
+          style: TextStyle(
+            fontSize: 22.sp,
+            fontWeight: FontWeight.w800,
+            color: colors.accentOrange,
+          ),
         ),
 
         SizedBox(height: KSpacing.lg.h),
@@ -309,7 +369,9 @@ Widget _buildRatingSection({
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: 8.w),
                 child: SvgPicture.asset(
-                  starIndex <= rating ? Assets.icons.starSolid : Assets.icons.star,
+                  starIndex <= rating
+                      ? Assets.icons.starSolid
+                      : Assets.icons.star,
                   package: "grab_go_shared",
                   colorFilter: ColorFilter.mode(
                     starIndex <= rating ? colors.accentOrange : colors.divider,

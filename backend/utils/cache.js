@@ -91,6 +91,111 @@ const get = async (key) => {
 };
 
 /**
+ * Increment a numeric key
+ * @param {string} key
+ * @param {number|null} ttlSeconds
+ * @returns {Promise<number>}
+ */
+const incr = async (key, ttlSeconds = null) => {
+    try {
+        if (useRedis && redisClient) {
+            const next = await redisClient.incr(key);
+            if (ttlSeconds && Number.isFinite(ttlSeconds) && ttlSeconds > 0 && next === 1) {
+                await redisClient.expire(key, Math.floor(ttlSeconds));
+            }
+            return Number(next || 0);
+        }
+
+        const current = Number(memoryCache.get(key) || 0);
+        const next = current + 1;
+        if (ttlSeconds && Number.isFinite(ttlSeconds) && ttlSeconds > 0) {
+            memoryCache.set(key, next, Math.floor(ttlSeconds));
+        } else {
+            memoryCache.set(key, next);
+        }
+        return next;
+    } catch (error) {
+        console.error('[Cache] Incr error:', error.message);
+        const current = Number(memoryCache.get(key) || 0);
+        const next = current + 1;
+        if (ttlSeconds && Number.isFinite(ttlSeconds) && ttlSeconds > 0) {
+            memoryCache.set(key, next, Math.floor(ttlSeconds));
+        } else {
+            memoryCache.set(key, next);
+        }
+        return next;
+    }
+};
+
+/**
+ * Get remaining TTL in seconds
+ * @param {string} key
+ * @returns {Promise<number>} -1 no ttl, -2 missing
+ */
+const ttl = async (key) => {
+    try {
+        if (useRedis && redisClient) {
+            return Number(await redisClient.ttl(key));
+        }
+
+        const expiryMs = memoryCache.getTtl(key);
+        if (!expiryMs) {
+            return memoryCache.has(key) ? -1 : -2;
+        }
+        const remainingMs = expiryMs - Date.now();
+        return remainingMs > 0 ? Math.ceil(remainingMs / 1000) : -2;
+    } catch (error) {
+        console.error('[Cache] TTL error:', error.message);
+        return -2;
+    }
+};
+
+/**
+ * Add event to Redis stream. Falls back to in-memory rolling buffer when Redis is unavailable.
+ * @param {string} stream
+ * @param {Record<string, string>} fields
+ * @param {{maxLen?: number, approximate?: boolean, id?: string}} options
+ * @returns {Promise<string>} stream id
+ */
+const xadd = async (stream, fields = {}, options = {}) => {
+    const maxLen = Number(options.maxLen || 100000);
+    const approximate = options.approximate !== false;
+    const id = options.id || '*';
+    const entries = Object.entries(fields).flatMap(([k, v]) => [String(k), String(v ?? '')]);
+
+    if (entries.length === 0) {
+        throw new Error('xadd requires at least one field');
+    }
+
+    try {
+        if (useRedis && redisClient) {
+            const args = [stream];
+            if (Number.isFinite(maxLen) && maxLen > 0) {
+                args.push('MAXLEN');
+                if (approximate) args.push('~');
+                args.push(String(Math.floor(maxLen)));
+            }
+            args.push(id, ...entries);
+            return await redisClient.xadd(...args);
+        }
+
+        // Memory fallback to support tests/dev mode without Redis.
+        const fallbackKey = `grabgo:stream:fallback:${stream}`;
+        const current = memoryCache.get(fallbackKey) || [];
+        const streamId = `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        current.push({ id: streamId, fields });
+        if (current.length > maxLen) {
+            current.splice(0, current.length - maxLen);
+        }
+        memoryCache.set(fallbackKey, current, 3600);
+        return streamId;
+    } catch (error) {
+        console.error('[Cache] xadd error:', error.message);
+        throw error;
+    }
+};
+
+/**
  * Set value in cache
  * @param {string} key - Cache key
  * @param {any} value - Value to cache
@@ -281,6 +386,13 @@ const close = async () => {
     }
 };
 
+const getRedisClient = () => {
+    if (useRedis && redisClient && redisClient.status === 'ready') {
+        return redisClient;
+    }
+    return null;
+};
+
 // Cache key prefixes for different features
 const CACHE_KEYS = {
     STORIES: 'grabgo:stories',
@@ -314,6 +426,8 @@ const makeKey = (prefix, suffix) => `${prefix}:${suffix}`;
 module.exports = {
     initRedis,
     get,
+    incr,
+    ttl,
     set,
     del,
     delByPattern,
@@ -322,6 +436,8 @@ module.exports = {
     acquireLock,
     releaseLock,
     getStats,
+    xadd,
+    getRedisClient,
     close,
     CACHE_KEYS,
     makeKey,

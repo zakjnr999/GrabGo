@@ -6,6 +6,12 @@ const { protect, authorize } = require("../middleware/auth");
 const { uploadSingle, uploadToCloudinary } = require("../middleware/upload");
 const dispatchService = require("../services/dispatch_service");
 const OrderReservation = require("../models/OrderReservation");
+const {
+  ACTION_TYPES,
+  buildFraudContextFromRequest,
+  fraudDecisionService,
+  applyFraudDecision,
+} = require("../services/fraud");
 
 const ORDER_RESERVATION_ENTITY = "order";
 const buildOrderReservationQuery = (query = {}) =>
@@ -534,6 +540,36 @@ router.post(
           code: "ORDER_PAYMENT_NOT_CONFIRMED",
         });
       }
+
+      const riderAcceptFraudContext = buildFraudContextFromRequest({
+        req,
+        actionType: ACTION_TYPES.RIDER_ACCEPT_ORDER,
+        actorType: req.user.role || "rider",
+        actorId: riderId,
+        extras: {
+          orderId,
+          metadata: {
+            highValueOrder: Number(order.totalAmount || 0) >= Number(process.env.FRAUD_HIGH_VALUE_ORDER_AMOUNT || 150),
+            locationAnomaly: false,
+            riderAgeDays: null,
+          },
+        },
+      });
+
+      const riderAcceptFraudDecision = await fraudDecisionService.evaluate({
+        actionType: ACTION_TYPES.RIDER_ACCEPT_ORDER,
+        actorType: req.user.role || "rider",
+        actorId: riderId,
+        context: riderAcceptFraudContext,
+      });
+
+      const riderAcceptFraudGate = applyFraudDecision({
+        req,
+        res,
+        decision: riderAcceptFraudDecision,
+        actionType: ACTION_TYPES.RIDER_ACCEPT_ORDER,
+      });
+      if (riderAcceptFraudGate.blocked || riderAcceptFraudGate.challenged) return;
 
       const acceptResult = await dispatchService.acceptReservation(reservationId, riderId);
       if (!acceptResult.success) {

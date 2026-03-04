@@ -51,6 +51,11 @@ class TrackingProvider extends BaseTrackingProvider {
   static const double _incomingSmoothingResetDistanceMeters = 260.0;
   static const double _incomingSmoothingMinAlpha = 0.22;
   static const double _incomingSmoothingMaxAlpha = 0.84;
+  static const Duration _autoFollowThrottle = Duration(milliseconds: 900);
+  static const double _autoFollowMinDistanceMeters = 10.0;
+  static const Duration _programmaticCameraGuardDuration = Duration(
+    milliseconds: 900,
+  );
 
   // Subscriptions
   StreamSubscription? _locationSubscription;
@@ -61,9 +66,14 @@ class TrackingProvider extends BaseTrackingProvider {
   Timer? _fallbackPollingTimer;
   Timer? _connectionHealthTimer;
   Timer? _demoSimulationTimer;
+  Timer? _programmaticCameraGuardTimer;
   LatLng? _lastKnownPosition;
   LatLng? _smoothedRealtimePosition;
   double _currentBearing = 0;
+  DateTime? _lastAutoFollowAt;
+  LatLng? _lastAutoFollowPosition;
+  bool _isAutoFollowEnabled = true;
+  bool _isProgrammaticCameraMove = false;
   List<LocationData> _demoRoute = const [];
   int _demoRouteIndex = 0;
   final Map<String, BitmapDescriptor> _markerIconCache = {};
@@ -75,6 +85,7 @@ class TrackingProvider extends BaseTrackingProvider {
   bool _isFallbackRequestInFlight = false;
   int _fallbackPollingAttempt = 0;
   bool _hasEstablishedSocketConnectionForSession = false;
+  bool _forceDemoSession = false;
   final Random _fallbackJitterRandom = Random();
   final TrackingTelemetryCollector _telemetry = TrackingTelemetryCollector(
     scope: 'customer_tracking',
@@ -98,6 +109,7 @@ class TrackingProvider extends BaseTrackingProvider {
   bool get isSocketConnected => _socketService.isConnected;
   TrackingConnectionHealth get connectionHealth => _connectionHealth;
   bool get isFallbackPollingActive => _fallbackPollingTimer != null;
+  bool get isAutoFollowEnabled => _isAutoFollowEnabled;
   TrackingTelemetrySnapshot get telemetrySnapshot =>
       _telemetry.snapshot(staleThreshold: _degradedFreshnessWindow);
   Map<String, dynamic> get telemetryDebugData => telemetrySnapshot.toJson();
@@ -108,6 +120,10 @@ class TrackingProvider extends BaseTrackingProvider {
   }) : _apiService = apiService,
        _socketService = socketService {
     _initializeSocketListeners();
+  }
+
+  void setLocalDemoSession(bool enabled) {
+    _forceDemoSession = enabled;
   }
 
   /// Initialize socket event listeners
@@ -158,6 +174,12 @@ class TrackingProvider extends BaseTrackingProvider {
     _lastKnownPosition = null;
     _smoothedRealtimePosition = null;
     _currentBearing = 0;
+    _lastAutoFollowAt = null;
+    _lastAutoFollowPosition = null;
+    _isAutoFollowEnabled = true;
+    _isProgrammaticCameraMove = false;
+    _programmaticCameraGuardTimer?.cancel();
+    _programmaticCameraGuardTimer = null;
     _hasEstablishedSocketConnectionForSession = false;
     _stopFallbackPolling();
     _stopWaitingForRiderPolling();
@@ -170,7 +192,7 @@ class TrackingProvider extends BaseTrackingProvider {
     _circles = {};
     notifyListeners();
 
-    if (_trackingDemoMode) {
+    if (_trackingDemoMode || _forceDemoSession) {
       await _initializeDemoTracking(orderId);
       return;
     }
@@ -664,7 +686,7 @@ class TrackingProvider extends BaseTrackingProvider {
       const cacheKey = 'rider_vehicle';
       if (!_markerIconCache.containsKey(cacheKey)) {
         _markerIconCache[cacheKey] =
-            await CustomMapMarkers.createRiderVehicleMarker(size: 58);
+            await CustomMapMarkers.createRiderVehicleMarker(size: 64);
       }
 
       final riderMarker = Marker(
@@ -676,7 +698,8 @@ class TrackingProvider extends BaseTrackingProvider {
           snippet: _trackingData!.statusText,
         ),
         anchor: const Offset(0.5, 0.5),
-        flat: true,
+        // Keep rider icon upright on customer map to avoid a flattened look.
+        flat: false,
         rotation: _currentBearing,
         zIndexInt: 10, // Bring rider to the very top
       );
@@ -734,8 +757,7 @@ class TrackingProvider extends BaseTrackingProvider {
     _setupGeofenceCircles();
 
     final status = _trackingData!.status.toLowerCase();
-    final shouldForcePickupPreview =
-        status == 'preparing' || status == 'confirmed' || status == 'ready';
+    final shouldForcePickupPreview = _isPrePickupStatus(status);
 
     bool routeRendered = false;
     if (!shouldForcePickupPreview &&
@@ -746,6 +768,12 @@ class TrackingProvider extends BaseTrackingProvider {
 
     if (!routeRendered) {
       _createFallbackRoutePolylines();
+    }
+
+    if (_shouldShowPickupToDestinationPreview(status)) {
+      _upsertPickupToDestinationPreviewPolyline();
+    } else {
+      _removePickupToDestinationPreviewPolyline();
     }
 
     // Animate camera to show all markers
@@ -761,8 +789,8 @@ class TrackingProvider extends BaseTrackingProvider {
     if (_trackingData == null) return;
 
     final circles = <Circle>{};
-    const pickupColor = AppColors.serviceFood;
-    const deliveryColor = AppColors.serviceGrocery;
+    const pickupColor = AppColors.accentOrange;
+    const deliveryColor = AppColors.accentOrange;
 
     // Pickup geofence circle
     if (_trackingData!.pickupLocation != null) {
@@ -828,8 +856,7 @@ class TrackingProvider extends BaseTrackingProvider {
     );
 
     final status = _trackingData!.status.toLowerCase();
-    final isHeadingToPickup =
-        status == 'preparing' || status == 'confirmed' || status == 'ready';
+    final isHeadingToPickup = _isPrePickupStatus(status);
 
     final current = _trackingData!.currentLocation?.toLatLng();
     final pickup = _trackingData!.pickupLocation?.toLatLng();
@@ -847,18 +874,11 @@ class TrackingProvider extends BaseTrackingProvider {
         );
       }
 
-      if (_calculateDistance(pickup, destination) > 5) {
-        _polylines.add(
-          Polyline(
-            polylineId: const PolylineId('route_pickup_to_destination'),
-            points: [pickup, destination],
-            color: AppColors.accentOrange.withValues(alpha: 0.35),
-            width: 5,
-          ),
-        );
-      }
+      _upsertPickupToDestinationPreviewPolyline();
       return;
     }
+
+    _removePickupToDestinationPreviewPolyline();
 
     final routeStart = current ?? pickup;
     if (routeStart != null && _calculateDistance(routeStart, destination) > 5) {
@@ -871,6 +891,56 @@ class TrackingProvider extends BaseTrackingProvider {
         ),
       );
     }
+  }
+
+  bool _isPrePickupStatus(String status) {
+    switch (status.toLowerCase()) {
+      case 'picked_up':
+      case 'in_transit':
+      case 'nearby':
+      case 'delivered':
+      case 'completed':
+      case 'cancelled':
+        return false;
+      default:
+        return true;
+    }
+  }
+
+  bool _shouldShowPickupToDestinationPreview(String status) {
+    return _isPrePickupStatus(status) && _trackingData?.pickupLocation != null;
+  }
+
+  void _removePickupToDestinationPreviewPolyline() {
+    _polylines.removeWhere(
+      (polyline) =>
+          polyline.polylineId.value == 'route_pickup_to_destination_preview',
+    );
+  }
+
+  void _upsertPickupToDestinationPreviewPolyline() {
+    if (_trackingData?.pickupLocation == null) {
+      _removePickupToDestinationPreviewPolyline();
+      return;
+    }
+
+    final pickup = _trackingData!.pickupLocation!.toLatLng();
+    final destination = _trackingData!.destination.toLatLng();
+
+    if (_calculateDistance(pickup, destination) <= 5) {
+      _removePickupToDestinationPreviewPolyline();
+      return;
+    }
+
+    _removePickupToDestinationPreviewPolyline();
+    _polylines.add(
+      Polyline(
+        polylineId: const PolylineId('route_pickup_to_destination_preview'),
+        points: [pickup, destination],
+        color: AppColors.accentOrange.withValues(alpha: 0.58),
+        width: 5,
+      ),
+    );
   }
 
   bool _isValidCoordinate(double latitude, double longitude) {
@@ -1088,13 +1158,15 @@ class TrackingProvider extends BaseTrackingProvider {
     _updateLocationHistoryPolyline();
 
     final normalizedStatus = _trackingData!.status.toLowerCase();
-    final shouldForcePickupPreview =
-        normalizedStatus == 'preparing' ||
-        normalizedStatus == 'confirmed' ||
-        normalizedStatus == 'ready';
+    final shouldForcePickupPreview = _isPrePickupStatus(normalizedStatus);
     final hasEncodedRoute = _trackingData!.route?.polyline.isNotEmpty ?? false;
     if (shouldForcePickupPreview || !hasEncodedRoute) {
       _createFallbackRoutePolylines();
+    }
+    if (_shouldShowPickupToDestinationPreview(normalizedStatus)) {
+      _upsertPickupToDestinationPreviewPolyline();
+    } else {
+      _removePickupToDestinationPreviewPolyline();
     }
 
     // Only animate camera if not already following (to avoid jerky movement)
@@ -1122,8 +1194,7 @@ class TrackingProvider extends BaseTrackingProvider {
           // Ensure we end exactly at the target position
           _updateRiderMarker(end, targetBearing);
           _currentBearing = targetBearing;
-          // Smoothly move camera to final position
-          _animateCameraToRider(end);
+          _maybeAutoFollowRider(end);
           notifyListeners();
           return;
         }
@@ -1249,7 +1320,7 @@ class TrackingProvider extends BaseTrackingProvider {
         return marker.copyWith(
           positionParam: newPosition,
           rotationParam: rotation,
-          flatParam: true,
+          flatParam: false,
         );
       }
       return marker;
@@ -1258,7 +1329,14 @@ class TrackingProvider extends BaseTrackingProvider {
 
   @override
   void reCenterCamera() {
-    _animateCameraToFitMarkers();
+    _isAutoFollowEnabled = true;
+    final riderPosition = _trackingData?.currentLocation?.toLatLng();
+    if (riderPosition != null) {
+      _maybeAutoFollowRider(riderPosition, force: true);
+    } else {
+      _animateCameraToFitMarkers();
+    }
+    notifyListeners();
   }
 
   /// Animate camera to show all markers
@@ -1285,22 +1363,69 @@ class TrackingProvider extends BaseTrackingProvider {
       northeast: LatLng(maxLat, maxLng),
     );
 
-    _mapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 100));
+    _animateCameraProgrammatically(CameraUpdate.newLatLngBounds(bounds, 100));
   }
 
   /// Animate camera to rider location smoothly
   void _animateCameraToRider(LatLng position) {
-    // Use a gentler zoom level and smooth animation
-    _mapController?.animateCamera(
+    // Keep camera top-down and north-up (same feel as rider app).
+    // A tilted/rotated map makes flat vehicle markers look unnaturally flattened.
+    _animateCameraProgrammatically(
       CameraUpdate.newCameraPosition(
-        CameraPosition(
-          target: position,
-          zoom: 16.0, // Closer zoom for better detail
-          tilt: 45.0, // Slight tilt for 3D effect
-          bearing: _currentBearing, // Rotate map to rider's direction
-        ),
+        CameraPosition(target: position, zoom: 16.0, tilt: 0.0, bearing: 0.0),
       ),
     );
+  }
+
+  void _maybeAutoFollowRider(LatLng riderPosition, {bool force = false}) {
+    if (!_isAutoFollowEnabled || _mapController == null) {
+      return;
+    }
+
+    final now = DateTime.now();
+    if (!force) {
+      if (_lastAutoFollowAt != null &&
+          now.difference(_lastAutoFollowAt!) < _autoFollowThrottle) {
+        return;
+      }
+
+      if (_lastAutoFollowPosition != null) {
+        final movement = _calculateDistance(
+          _lastAutoFollowPosition!,
+          riderPosition,
+        );
+        if (movement < _autoFollowMinDistanceMeters) {
+          return;
+        }
+      }
+    }
+
+    _lastAutoFollowAt = now;
+    _lastAutoFollowPosition = riderPosition;
+    _animateCameraToRider(riderPosition);
+  }
+
+  void _animateCameraProgrammatically(CameraUpdate update) {
+    if (_mapController == null) return;
+    _isProgrammaticCameraMove = true;
+    _programmaticCameraGuardTimer?.cancel();
+    _programmaticCameraGuardTimer = Timer(_programmaticCameraGuardDuration, () {
+      _isProgrammaticCameraMove = false;
+    });
+    _mapController?.animateCamera(update);
+  }
+
+  void onMapCameraMoveStarted() {
+    if (_isProgrammaticCameraMove) return;
+    if (_isAutoFollowEnabled) {
+      _isAutoFollowEnabled = false;
+      notifyListeners();
+    }
+  }
+
+  void onMapCameraIdle() {
+    _programmaticCameraGuardTimer?.cancel();
+    _isProgrammaticCameraMove = false;
   }
 
   /// Set map controller
@@ -1325,20 +1450,28 @@ class TrackingProvider extends BaseTrackingProvider {
   @override
   void stopTracking() {
     _stopDemoSimulation();
+    final useDemoMode = _trackingDemoMode || _forceDemoSession;
     final orderId = _trackingData?.orderId ?? _activeOrderId;
-    if (!_trackingDemoMode && orderId != null) {
+    if (!useDemoMode && orderId != null) {
       _socketService.leaveOrderRoom(orderId);
     }
-    if (!_trackingDemoMode) {
+    if (!useDemoMode) {
       _socketService.disconnect();
     }
     _stopFallbackPolling();
+    _programmaticCameraGuardTimer?.cancel();
+    _programmaticCameraGuardTimer = null;
     _activeOrderId = null;
     _trackingData = null;
     _lastKnownPosition = null;
     _smoothedRealtimePosition = null;
     _currentBearing = 0;
+    _lastAutoFollowAt = null;
+    _lastAutoFollowPosition = null;
+    _isAutoFollowEnabled = true;
+    _isProgrammaticCameraMove = false;
     _hasEstablishedSocketConnectionForSession = false;
+    _forceDemoSession = false;
     _isWaitingForRider = false;
     _stopWaitingForRiderPolling();
     _lastRealtimeUpdateAt = null;
@@ -1356,16 +1489,23 @@ class TrackingProvider extends BaseTrackingProvider {
   @override
   void dispose() {
     _stopDemoSimulation();
+    final useDemoMode = _trackingDemoMode || _forceDemoSession;
     _animationTimer?.cancel();
     _stopWaitingForRiderPolling();
     _stopFallbackPolling();
+    _programmaticCameraGuardTimer?.cancel();
+    _programmaticCameraGuardTimer = null;
     _stopConnectionHealthMonitor();
     _locationSubscription?.cancel();
     _statusSubscription?.cancel();
     _connectionSubscription?.cancel();
     _smoothedRealtimePosition = null;
+    _lastAutoFollowAt = null;
+    _lastAutoFollowPosition = null;
+    _isAutoFollowEnabled = true;
+    _isProgrammaticCameraMove = false;
     _markerIconCache.clear();
-    if (!_trackingDemoMode) {
+    if (!useDemoMode) {
       _socketService.disconnect();
     }
     _mapController?.dispose();

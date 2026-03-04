@@ -87,6 +87,11 @@ class RiderTrackingProvider with ChangeNotifier {
   int _routeProgressIndex = 0;
   LatLng? _lastAnimatedPosition;
   Timer? _markerAnimationTimer;
+  DateTime? _lastAutoFollowAt;
+  LatLng? _lastAutoFollowPosition;
+  Timer? _programmaticCameraGuardTimer;
+  bool _isAutoFollowEnabled = true;
+  bool _isProgrammaticCameraMove = false;
 
   // Geofence radius in meters
   static const double _geofenceRadius = 50.0;
@@ -98,6 +103,11 @@ class RiderTrackingProvider with ChangeNotifier {
   static const double _gpsSmoothingResetDistanceMeters = 120.0;
   static const double _gpsSmoothingMinAlpha = 0.22;
   static const double _gpsSmoothingMaxAlpha = 0.86;
+  static const Duration _autoFollowThrottle = Duration(milliseconds: 900);
+  static const double _autoFollowMinDistanceMeters = 10.0;
+  static const Duration _programmaticCameraGuardDuration = Duration(
+    milliseconds: 900,
+  );
 
   // Background service listener
   StreamSubscription<Map<String, dynamic>?>? _backgroundServiceSubscription;
@@ -165,6 +175,7 @@ class RiderTrackingProvider with ChangeNotifier {
   /// Whether there's an active tracking session
   bool get hasActiveSession => _activeOrderId != null;
   RiderTrackingConnectionHealth get connectionHealth => _connectionHealth;
+  bool get isAutoFollowEnabled => _isAutoFollowEnabled;
   int get pendingLocationUpdates => _trackingService.pendingLocationCount;
   bool get hasPendingLocationUpdates =>
       _trackingService.hasPendingLocationUpdates;
@@ -236,6 +247,8 @@ class RiderTrackingProvider with ChangeNotifier {
         speed: speed,
         accuracy: accuracy,
       );
+      _updateRiderMarker();
+      _autoFollowRiderCamera();
     }
 
     _distanceRemaining = (data['distanceRemaining'] as num?)?.toDouble();
@@ -362,6 +375,7 @@ class RiderTrackingProvider with ChangeNotifier {
 
     _setState(RiderTrackingState.initializing);
     _stopDemoSimulation();
+    _resetCameraFollowState();
     _activeOrderId = orderId;
     _activeCustomerId = customerId;
     _activeRiderId = riderId;
@@ -815,6 +829,7 @@ class RiderTrackingProvider with ChangeNotifier {
   }) async {
     _setState(RiderTrackingState.initializing);
     _stopDemoSimulation();
+    _resetCameraFollowState();
     _telemetry.startSession(sessionId: orderId);
 
     _isLocalDemoSession =
@@ -1384,6 +1399,7 @@ class RiderTrackingProvider with ChangeNotifier {
 
     // Update rider marker on map
     _updateRiderMarker();
+    _autoFollowRiderCamera();
 
     notifyListeners();
 
@@ -1499,6 +1515,8 @@ class RiderTrackingProvider with ChangeNotifier {
         resetSmoothing: true,
       );
       debugPrint('📍 Got current position: $_latitude, $_longitude');
+      _updateRiderMarker();
+      _autoFollowRiderCamera(force: true);
       notifyListeners();
     } catch (e) {
       debugPrint('⚠️ Error getting current position: $e');
@@ -1521,6 +1539,8 @@ class RiderTrackingProvider with ChangeNotifier {
             resetSmoothing: true,
           );
           debugPrint('📍 Using last known position: $_latitude, $_longitude');
+          _updateRiderMarker();
+          _autoFollowRiderCamera(force: true);
           notifyListeners();
         }
       } catch (e2) {
@@ -1654,6 +1674,12 @@ class RiderTrackingProvider with ChangeNotifier {
     _routeCoordinates = const [];
     _routeProgressIndex = 0;
     _lastAnimatedPosition = null;
+    _lastAutoFollowAt = null;
+    _lastAutoFollowPosition = null;
+    _programmaticCameraGuardTimer?.cancel();
+    _programmaticCameraGuardTimer = null;
+    _isAutoFollowEnabled = true;
+    _isProgrammaticCameraMove = false;
     _setState(RiderTrackingState.idle);
   }
 
@@ -1682,6 +1708,9 @@ class RiderTrackingProvider with ChangeNotifier {
     // Animate camera to show all markers after map is ready
     Future.delayed(const Duration(milliseconds: 500), () {
       animateCameraToFitMarkers();
+      Future.delayed(const Duration(milliseconds: 300), () {
+        _autoFollowRiderCamera(force: true);
+      });
     });
   }
 
@@ -2129,7 +2158,7 @@ class RiderTrackingProvider with ChangeNotifier {
       northeast: LatLng(maxLat, maxLng),
     );
 
-    _mapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 80));
+    _animateCameraProgrammatically(CameraUpdate.newLatLngBounds(bounds, 80));
   }
 
   /// Center camera on rider's current location
@@ -2137,9 +2166,82 @@ class RiderTrackingProvider with ChangeNotifier {
     if (_mapController == null || _latitude == null || _longitude == null) {
       return;
     }
-    _mapController?.animateCamera(
-      CameraUpdate.newLatLngZoom(LatLng(_latitude!, _longitude!), 16),
-    );
+    _isAutoFollowEnabled = true;
+    _autoFollowRiderCamera(force: true, zoom: 16);
+    notifyListeners();
+  }
+
+  void _autoFollowRiderCamera({bool force = false, double? zoom}) {
+    if (_mapController == null || _latitude == null || _longitude == null) {
+      return;
+    }
+    if (!force && !_isAutoFollowEnabled) {
+      return;
+    }
+
+    final now = DateTime.now();
+    final riderPosition = LatLng(_latitude!, _longitude!);
+
+    if (!force) {
+      if (_lastAutoFollowAt != null &&
+          now.difference(_lastAutoFollowAt!) < _autoFollowThrottle) {
+        return;
+      }
+
+      if (_lastAutoFollowPosition != null) {
+        final movement = _calculateDistanceMeters(
+          _lastAutoFollowPosition!,
+          riderPosition,
+        );
+        if (movement < _autoFollowMinDistanceMeters) {
+          return;
+        }
+      }
+    }
+
+    _lastAutoFollowAt = now;
+    _lastAutoFollowPosition = riderPosition;
+
+    if (zoom != null) {
+      _animateCameraProgrammatically(
+        CameraUpdate.newLatLngZoom(riderPosition, zoom),
+      );
+      return;
+    }
+
+    _animateCameraProgrammatically(CameraUpdate.newLatLng(riderPosition));
+  }
+
+  void _animateCameraProgrammatically(CameraUpdate update) {
+    if (_mapController == null) return;
+    _isProgrammaticCameraMove = true;
+    _programmaticCameraGuardTimer?.cancel();
+    _programmaticCameraGuardTimer = Timer(_programmaticCameraGuardDuration, () {
+      _isProgrammaticCameraMove = false;
+    });
+    _mapController?.animateCamera(update);
+  }
+
+  void onMapCameraMoveStarted() {
+    if (_isProgrammaticCameraMove) return;
+    if (_isAutoFollowEnabled) {
+      _isAutoFollowEnabled = false;
+      notifyListeners();
+    }
+  }
+
+  void onMapCameraIdle() {
+    _programmaticCameraGuardTimer?.cancel();
+    _isProgrammaticCameraMove = false;
+  }
+
+  void _resetCameraFollowState() {
+    _lastAutoFollowAt = null;
+    _lastAutoFollowPosition = null;
+    _isAutoFollowEnabled = true;
+    _isProgrammaticCameraMove = false;
+    _programmaticCameraGuardTimer?.cancel();
+    _programmaticCameraGuardTimer = null;
   }
 
   // ============================================
@@ -2156,6 +2258,8 @@ class RiderTrackingProvider with ChangeNotifier {
     _backgroundServiceSubscription = null;
     _markerAnimationTimer?.cancel();
     _markerAnimationTimer = null;
+    _programmaticCameraGuardTimer?.cancel();
+    _programmaticCameraGuardTimer = null;
     _markerIconCache.clear();
     _mapController?.dispose();
     _trackingService.dispose();

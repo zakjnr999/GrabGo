@@ -567,6 +567,8 @@ app.use(
     credentials: true,
   })
 );
+// Raw parser for payment webhook signature verification.
+app.use("/api/payments/webhooks/paystack", express.raw({ type: "application/json" }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
@@ -580,6 +582,8 @@ app.use("/api/restaurants", require("./routes/restaurants"));
 app.use("/api/orders", require("./routes/orders"));
 app.use("/api/checkout-sessions", require("./routes/checkout_sessions"));
 app.use("/api/payments", require("./routes/payments"));
+app.use("/api/fraud", require("./routes/fraud"));
+app.use("/api/admin/fraud", require("./routes/admin_fraud"));
 app.use("/api/categories", require("./routes/categories"));
 app.use("/api/foods", require("./routes/foods"));
 app.use("/api/groceries", require("./routes/groceries"));
@@ -655,12 +659,22 @@ const { initializeDeliveryMonitor } = require("./jobs/delivery_monitor");
 const { initializePickupAcceptTimeoutJob } = require("./jobs/pickup_accept_timeout");
 const { initializePickupReadyExpiryJob } = require("./jobs/pickup_ready_expiry");
 const { initializeScheduledOrderReleaseJob } = require("./jobs/scheduled_order_release");
+const { startFraudOutboxWorker, stopFraudOutboxWorker } = require("./jobs/fraud_outbox_worker");
+const {
+  startFraudFeatureRecomputeJob,
+  stopFraudFeatureRecomputeJob,
+} = require("./jobs/fraud_feature_recompute");
+const { fraudPolicyService } = require("./services/fraud");
+const featureFlags = require("./config/feature_flags");
 
 // Import cache utility
 const cache = require("./utils/cache");
 
 // Initialize Redis cache (optional - falls back to memory cache)
 cache.initRedis();
+fraudPolicyService.ensureDefaultPolicy().catch((error) => {
+  console.error("[Fraud] Default policy bootstrap failed:", error.message);
+});
 
 // Schedule referral cleanup cron job (runs daily at 2:00 AM)
 scheduleReferralCleanup();
@@ -687,6 +701,10 @@ initializeDeliveryMonitor();
 initializePickupAcceptTimeoutJob(io);
 initializePickupReadyExpiryJob(io);
 initializeScheduledOrderReleaseJob(io);
+if (featureFlags.isFraudEnabled && featureFlags.isFraudOutboxWorkerEnabled) {
+  startFraudOutboxWorker();
+  startFraudFeatureRecomputeJob();
+}
 
 // Schedule rider auto-offline job (runs every 5 minutes)
 setInterval(() => {
@@ -713,6 +731,10 @@ server.listen(PORT, () => {
 const shutdown = async () => {
   console.log("🛑 Shutting down server...");
   try {
+    if (featureFlags.isFraudEnabled && featureFlags.isFraudOutboxWorkerEnabled) {
+      stopFraudOutboxWorker();
+      stopFraudFeatureRecomputeJob();
+    }
     if (cache && typeof cache.close === 'function') {
       await cache.close();
     }

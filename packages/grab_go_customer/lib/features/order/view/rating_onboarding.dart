@@ -12,7 +12,16 @@ class RatingOnboarding extends StatefulWidget {
   final String orderId;
   final String? riderName;
   final String? riderImage;
-  const RatingOnboarding({super.key, required this.orderId, this.riderName, required this.riderImage});
+  final String? vendorName;
+  final String? vendorLogo;
+  const RatingOnboarding({
+    super.key,
+    required this.orderId,
+    this.riderName,
+    this.riderImage,
+    this.vendorName,
+    this.vendorLogo,
+  });
 
   @override
   State<RatingOnboarding> createState() => RatingOnboardingState();
@@ -75,7 +84,7 @@ class RatingOnboardingState extends State<RatingOnboarding> with SingleTickerPro
                   },
                   children: [
                     RiderRating(orderId: widget.orderId, riderName: widget.riderName, riderImage: widget.riderImage),
-                    VendorRating(),
+                    VendorRating(vendorName: widget.vendorName, vendorImage: widget.vendorLogo),
                   ],
                 ),
 

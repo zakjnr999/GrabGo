@@ -1,8 +1,16 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { protect } = require('../middleware/auth');
+const prisma = require('../config/prisma');
 const { invalidateCache } = require('../middleware/cache');
+const { paymentAttemptRateLimit } = require('../middleware/fraud_rate_limit');
 const cache = require('../utils/cache');
+const {
+  ACTION_TYPES,
+  buildFraudContextFromRequest,
+  fraudDecisionService,
+  applyFraudDecision,
+} = require('../services/fraud');
 const {
   CheckoutSessionError,
   createCheckoutSession,
@@ -95,7 +103,7 @@ router.post(
   }
 );
 
-router.post('/:sessionId/paystack/initialize', protect, async (req, res) => {
+router.post('/:sessionId/paystack/initialize', protect, paymentAttemptRateLimit, async (req, res) => {
   try {
     if (req.user.role !== 'customer') {
       return res.status(403).json({
@@ -129,6 +137,7 @@ router.post('/:sessionId/paystack/initialize', protect, async (req, res) => {
 router.post(
   '/:sessionId/confirm-payment',
   protect,
+  paymentAttemptRateLimit,
   [
     body('reference').optional({ nullable: true }).isString().withMessage('reference must be a string'),
     body('provider').optional({ nullable: true }).isString().withMessage('provider must be a string'),
@@ -151,6 +160,64 @@ router.post(
         });
       }
 
+      const sessionPreview = await prisma.checkoutSession.findUnique({
+        where: { id: req.params.sessionId },
+        select: {
+          id: true,
+          customerId: true,
+          paymentReferenceId: true,
+          totalAmount: true,
+        },
+      });
+
+      if (!sessionPreview) {
+        return res.status(404).json({
+          success: false,
+          message: 'Checkout session not found',
+        });
+      }
+
+      if (sessionPreview.customerId !== req.user.id) {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized for this checkout session',
+        });
+      }
+
+      const resolvedReference = req.body.reference || sessionPreview.paymentReferenceId || null;
+      const resolvedAmount = Number(sessionPreview.totalAmount || req.body.amount || 0);
+
+      const fraudContext = buildFraudContextFromRequest({
+        req,
+        actionType: ACTION_TYPES.PAYMENT_CLIENT_CONFIRM,
+        actorType: req.user.role || 'customer',
+        actorId: req.user.id,
+        extras: {
+          orderId: sessionPreview.id,
+          paymentRef: resolvedReference,
+          amount: resolvedAmount,
+          currency: 'GHS',
+          metadata: {
+            checkoutSession: true,
+          },
+        },
+      });
+
+      const fraudDecision = await fraudDecisionService.evaluate({
+        actionType: ACTION_TYPES.PAYMENT_CLIENT_CONFIRM,
+        actorType: req.user.role || 'customer',
+        actorId: req.user.id,
+        context: fraudContext,
+      });
+
+      const fraudGate = applyFraudDecision({
+        req,
+        res,
+        decision: fraudDecision,
+        actionType: ACTION_TYPES.PAYMENT_CLIENT_CONFIRM,
+      });
+      if (fraudGate.blocked || fraudGate.challenged) return;
+
       const result = await confirmCheckoutSessionPayment({
         sessionId: req.params.sessionId,
         customer: req.user,
@@ -164,12 +231,17 @@ router.post(
 
       return res.json({
         success: true,
-        message: result.alreadyPaid ? 'Payment already confirmed' : 'Payment confirmed',
+        message: result.alreadyPaid
+          ? 'Payment already confirmed'
+          : result.awaitingWebhook
+          ? 'Payment verification received. Awaiting webhook confirmation.'
+          : 'Payment confirmed',
         data: {
           session: result.session,
           childOrders: result.childOrders,
           paymentScope: result.paymentScope,
           externalPaymentAmount: result.externalPaymentAmount,
+          webhookRequired: Boolean(result.awaitingWebhook),
         },
       });
     } catch (error) {

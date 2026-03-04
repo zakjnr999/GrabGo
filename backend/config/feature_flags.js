@@ -63,4 +63,10 @@ module.exports = {
   isParcelEnabled: parseFlag('PARCEL_ENABLED', false),
   isParcelScheduledEnabled: parseFlag('PARCEL_SCHEDULED_ENABLED', true),
   isParcelReturnToSenderEnabled: parseFlag('PARCEL_RETURN_TO_SENDER_ENABLED', true),
+  isFraudEnabled: parseFlag('FRAUD_ENABLED', true),
+  isFraudShadowMode: parseFlag('FRAUD_SHADOW_MODE', true),
+  isFraudOutboxWorkerEnabled: parseFlag('FRAUD_OUTBOX_WORKER_ENABLED', true),
+  isFraudEventStreamsEnabled: parseFlag('FRAUD_EVENT_STREAMS_ENABLED', true),
+  isPaymentWebhookSourceOfTruthEnabled: parseFlag('PAYMENT_WEBHOOK_SOURCE_OF_TRUTH', true),
+  isPrepaidFulfillmentGuardEnabled: parseFlag('PREPAID_FULFILLMENT_GUARD', true),
 };

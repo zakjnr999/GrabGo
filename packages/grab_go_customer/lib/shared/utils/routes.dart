@@ -527,10 +527,22 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: "/mapTracking",
       pageBuilder: (context, state) {
-        final orderId = state.uri.queryParameters['orderId'] ?? '';
+        final extra = state.extra is Map<String, dynamic>
+            ? state.extra as Map<String, dynamic>
+            : null;
+        final queryOrderId = state.uri.queryParameters['orderId'];
+        final rawOrderId = extra?['orderId']?.toString() ?? queryOrderId ?? '';
+        final inferredDemoOrder = rawOrderId.toUpperCase().startsWith('DEMO-');
+        final testTrigger =
+            extra?['testTrigger'] == true ||
+            state.uri.queryParameters['testTrigger'] == 'true' ||
+            inferredDemoOrder;
+        final orderId = rawOrderId.isNotEmpty
+            ? rawOrderId
+            : queryOrderId ?? (testTrigger ? 'DEMO-CUSTOMER-TRACK-001' : '');
         return CustomTransitionPage(
           key: state.pageKey,
-          child: MapTracking(orderId: orderId),
+          child: MapTracking(orderId: orderId, testTrigger: testTrigger),
           transitionDuration: const Duration(milliseconds: 800),
           reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
