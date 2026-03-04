@@ -11,7 +11,10 @@ const prisma = require("./config/prisma");
 const connectMongoDB = require("./config/mongodb");
 const { initIO } = require("./utils/socket");
 const callRoutes = require("./routes/calls");
+const { apiGlobalRateLimit } = require("./middleware/fraud_rate_limit");
 const { verifyEmailService } = require("./utils/emailService");
+const cache = require("./utils/cache");
+const { hashIdentifier } = require("./services/fraud/fraud_context");
 require("dotenv").config();
 
 // Connect to MongoDB for NoSQL data (Hybrid Architecture)
@@ -53,6 +56,101 @@ const parseCoordinate = (value) => {
 };
 const isValidLatitude = (value) => Number.isFinite(value) && value >= -90 && value <= 90;
 const isValidLongitude = (value) => Number.isFinite(value) && value >= -180 && value <= 180;
+const parsePositiveInt = (value, fallback) => {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return parsed;
+};
+const normalizeLimiterValue = (value, fallback = 'unknown') => {
+  if (value === null || value === undefined) return fallback;
+  const normalized = String(value).trim();
+  return normalized || fallback;
+};
+
+const SOCKET_RATE_LIMITS = {
+  chatJoin: {
+    limit: parsePositiveInt(process.env.WS_RATE_CHAT_JOIN_LIMIT, 60),
+    windowSeconds: parsePositiveInt(process.env.WS_RATE_CHAT_JOIN_WINDOW_SECONDS, 60),
+  },
+  chatTyping: {
+    limit: parsePositiveInt(process.env.WS_RATE_CHAT_TYPING_LIMIT, 180),
+    windowSeconds: parsePositiveInt(process.env.WS_RATE_CHAT_TYPING_WINDOW_SECONDS, 60),
+  },
+  chatMarkRead: {
+    limit: parsePositiveInt(process.env.WS_RATE_CHAT_MARK_READ_LIMIT, 120),
+    windowSeconds: parsePositiveInt(process.env.WS_RATE_CHAT_MARK_READ_WINDOW_SECONDS, 60),
+  },
+  joinOrder: {
+    limit: parsePositiveInt(process.env.WS_RATE_JOIN_ORDER_LIMIT, 120),
+    windowSeconds: parsePositiveInt(process.env.WS_RATE_JOIN_ORDER_WINDOW_SECONDS, 60),
+  },
+  riderGoOnline: {
+    limit: parsePositiveInt(process.env.WS_RATE_RIDER_GO_ONLINE_LIMIT, 30),
+    windowSeconds: parsePositiveInt(process.env.WS_RATE_RIDER_GO_ONLINE_WINDOW_SECONDS, 60),
+  },
+  riderGoOffline: {
+    limit: parsePositiveInt(process.env.WS_RATE_RIDER_GO_OFFLINE_LIMIT, 30),
+    windowSeconds: parsePositiveInt(process.env.WS_RATE_RIDER_GO_OFFLINE_WINDOW_SECONDS, 60),
+  },
+  riderLocationUpdate: {
+    limit: parsePositiveInt(process.env.WS_RATE_RIDER_LOCATION_UPDATE_LIMIT, 1800),
+    windowSeconds: parsePositiveInt(process.env.WS_RATE_RIDER_LOCATION_UPDATE_WINDOW_SECONDS, 60),
+  },
+  reservationRespond: {
+    limit: parsePositiveInt(process.env.WS_RATE_RESERVATION_RESPOND_LIMIT, 40),
+    windowSeconds: parsePositiveInt(process.env.WS_RATE_RESERVATION_RESPOND_WINDOW_SECONDS, 60),
+  },
+  reservationGetActive: {
+    limit: parsePositiveInt(process.env.WS_RATE_RESERVATION_GET_ACTIVE_LIMIT, 120),
+    windowSeconds: parsePositiveInt(process.env.WS_RATE_RESERVATION_GET_ACTIVE_WINDOW_SECONDS, 60),
+  },
+};
+
+const buildSocketRateLimitKey = ({ eventName, userId, resourceId }) => {
+  const hashedUser = hashIdentifier(normalizeLimiterValue(userId, 'unknown_user'), 'ws_user');
+  const hashedResource = hashIdentifier(
+    normalizeLimiterValue(resourceId, 'global'),
+    'ws_resource'
+  );
+  return `grabgo:fraud:throttle:ws:${eventName}:${hashedUser}:${hashedResource}`;
+};
+
+const emitSocketRateLimit = (socket, eventName, retryAfter) => {
+  socket.emit('socket:rate_limit', {
+    success: false,
+    message: 'Too many realtime requests',
+    event: eventName,
+    riskCode: 'SOCKET_EVENT_VELOCITY_LIMIT',
+    retryAfter: retryAfter >= 0 ? retryAfter : 1,
+  });
+};
+
+const enforceSocketRateLimit = async (
+  socket,
+  { eventName, limit, windowSeconds, resourceId = null }
+) => {
+  try {
+    if (!limit || !windowSeconds) return true;
+
+    const key = buildSocketRateLimitKey({
+      eventName,
+      userId: socket?.data?.userId || 'unknown_user',
+      resourceId,
+    });
+    const count = await cache.incr(key, windowSeconds);
+    if (count <= limit) {
+      return true;
+    }
+
+    const retryAfter = await cache.ttl(key);
+    emitSocketRateLimit(socket, eventName, retryAfter);
+    return false;
+  } catch (error) {
+    // Fail-open for availability: socket traffic should continue on limiter errors.
+    console.error(`[SocketRateLimit] ${eventName} error:`, error.message);
+    return true;
+  }
+};
 
 io.use(async (socket, next) => {
   try {
@@ -105,10 +203,17 @@ io.on("connection", (socket) => {
     console.log(`✅ User ${userId} joined notification room`);
   }
 
-  socket.on("chat:join", async ({ chatId }) => {
+  socket.on("chat:join", async (payload = {}) => {
     try {
+      const { chatId } = payload;
       const userId = socket.data.userId;
       if (!chatId || !userId) return;
+      const allowed = await enforceSocketRateLimit(socket, {
+        eventName: 'chat:join',
+        resourceId: chatId,
+        ...SOCKET_RATE_LIMITS.chatJoin,
+      });
+      if (!allowed) return;
 
       const chat = await prisma.chat.findUnique({
         where: { id: chatId },
@@ -190,9 +295,16 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("chat:typing", ({ chatId, isTyping }) => {
+  socket.on("chat:typing", async (payload = {}) => {
+    const { chatId, isTyping } = payload;
     const userId = socket.data.userId;
     if (!chatId || !userId) return;
+    const allowed = await enforceSocketRateLimit(socket, {
+      eventName: 'chat:typing',
+      resourceId: chatId,
+      ...SOCKET_RATE_LIMITS.chatTyping,
+    });
+    if (!allowed) return;
     const userIdStr = userId.toString();
     const room = `chat:${chatId}`;
     socket.to(room).emit("chat:typing", {
@@ -202,10 +314,17 @@ io.on("connection", (socket) => {
     });
   });
 
-  socket.on("chat:mark_read", async ({ chatId }) => {
+  socket.on("chat:mark_read", async (payload = {}) => {
     try {
+      const { chatId } = payload;
       const userId = socket.data.userId;
       if (!chatId || !userId) return;
+      const allowed = await enforceSocketRateLimit(socket, {
+        eventName: 'chat:mark_read',
+        resourceId: chatId,
+        ...SOCKET_RATE_LIMITS.chatMarkRead,
+      });
+      if (!allowed) return;
 
       const chat = await prisma.chat.findUnique({
         where: { id: chatId },
@@ -307,11 +426,18 @@ io.on("connection", (socket) => {
   // ==================== ORDER TRACKING SOCKET HANDLERS ====================
 
   // Join order tracking room (only customer/rider/admin for that order)
-  socket.on("join_order", async ({ orderId }) => {
+  socket.on("join_order", async (payload = {}) => {
+    const { orderId } = payload;
     if (!orderId) {
       console.warn("⚠️ join_order: No orderId provided");
       return;
     }
+    const allowed = await enforceSocketRateLimit(socket, {
+      eventName: 'join_order',
+      resourceId: orderId,
+      ...SOCKET_RATE_LIMITS.joinOrder,
+    });
+    if (!allowed) return;
 
     try {
       const order = await prisma.order.findUnique({
@@ -354,7 +480,8 @@ io.on("connection", (socket) => {
   });
 
   // Leave order tracking room
-  socket.on("leave_order", ({ orderId }) => {
+  socket.on("leave_order", (payload = {}) => {
+    const { orderId } = payload;
     if (!orderId) return;
 
     const roomName = `order:${orderId}`;
@@ -377,6 +504,11 @@ io.on("connection", (socket) => {
       console.warn(`⚠️ Non-rider user ${userId} tried to go online`);
       return;
     }
+    const allowed = await enforceSocketRateLimit(socket, {
+      eventName: 'rider:go_online',
+      ...SOCKET_RATE_LIMITS.riderGoOnline,
+    });
+    if (!allowed) return;
 
     try {
       // Update rider's online status in MongoDB RiderStatus
@@ -422,6 +554,11 @@ io.on("connection", (socket) => {
     const userRole = socket.data.userRole;
 
     if (userRole !== 'rider') return;
+    const allowed = await enforceSocketRateLimit(socket, {
+      eventName: 'rider:go_offline',
+      ...SOCKET_RATE_LIMITS.riderGoOffline,
+    });
+    if (!allowed) return;
 
     try {
       // Update rider's online status in MongoDB RiderStatus
@@ -444,6 +581,11 @@ io.on("connection", (socket) => {
     const userRole = socket.data.userRole;
 
     if (userRole !== 'rider') return;
+    const allowed = await enforceSocketRateLimit(socket, {
+      eventName: 'rider:location_update',
+      ...SOCKET_RATE_LIMITS.riderLocationUpdate,
+    });
+    if (!allowed) return;
 
     const { latitude, longitude, batteryLevel, isCharging } = data || {};
     const parsedLat = parseCoordinate(latitude);
@@ -479,7 +621,8 @@ io.on("connection", (socket) => {
   });
 
   // Rider responds to order reservation (accept/decline)
-  socket.on("reservation:respond", async ({ reservationId, action, declineReason }) => {
+  socket.on("reservation:respond", async (payload = {}) => {
+    const { reservationId, action, declineReason } = payload;
     const userId = socket.data.userId;
     const userRole = socket.data.userRole;
 
@@ -487,6 +630,18 @@ io.on("connection", (socket) => {
       socket.emit('reservation:response', {
         success: false,
         error: 'Only riders can respond to reservations'
+      });
+      return;
+    }
+    const allowed = await enforceSocketRateLimit(socket, {
+      eventName: 'reservation:respond',
+      resourceId: reservationId,
+      ...SOCKET_RATE_LIMITS.reservationRespond,
+    });
+    if (!allowed) {
+      socket.emit('reservation:response', {
+        success: false,
+        error: 'Too many reservation responses. Please retry shortly.',
       });
       return;
     }
@@ -525,6 +680,17 @@ io.on("connection", (socket) => {
 
     if (userRole !== 'rider') {
       socket.emit('reservation:active', { reservation: null });
+      return;
+    }
+    const allowed = await enforceSocketRateLimit(socket, {
+      eventName: 'reservation:get_active',
+      ...SOCKET_RATE_LIMITS.reservationGetActive,
+    });
+    if (!allowed) {
+      socket.emit('reservation:active', {
+        reservation: null,
+        error: 'Too many requests. Please retry shortly.',
+      });
       return;
     }
 
@@ -571,6 +737,7 @@ app.use(
 app.use("/api/payments/webhooks/paystack", express.raw({ type: "application/json" }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use("/api", apiGlobalRateLimit);
 
 // Serve uploaded files
 app.use("/uploads", express.static("uploads"));
@@ -667,9 +834,6 @@ const {
 } = require("./jobs/fraud_feature_recompute");
 const { fraudPolicyService } = require("./services/fraud");
 const featureFlags = require("./config/feature_flags");
-
-// Import cache utility
-const cache = require("./utils/cache");
 
 // Initialize Redis cache (optional - falls back to memory cache)
 cache.initRedis();

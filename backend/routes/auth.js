@@ -22,7 +22,13 @@ const {
 } = require("../services/otp_service");
 const { registerToken, removeToken } = require("../services/fcm_service");
 const creditService = require("../services/credit_service");
-const { signupRateLimit } = require("../middleware/fraud_rate_limit");
+const {
+  signupRateLimit,
+  loginRateLimit,
+  phoneOtpSendRateLimit,
+  phoneOtpVerifyRateLimit,
+  emailVerificationRateLimit,
+} = require("../middleware/fraud_rate_limit");
 const {
   ACTION_TYPES,
   buildFraudContextFromRequest,
@@ -303,7 +309,7 @@ router.post("/", signupRateLimit, async (req, res) => {
 // @route   POST /api/users/login
 // @desc    Login user (regular or Google)
 // @access  Public
-router.post("/login", async (req, res) => {
+router.post("/login", loginRateLimit, async (req, res) => {
   try {
     const { googleId, email, displayName, photoUrl, password } = req.body;
 
@@ -669,6 +675,7 @@ router.get("/:userId", protect, async (req, res) => {
 // @access  Public
 router.post(
   "/verify-email",
+  emailVerificationRateLimit,
   [
     body("email").isEmail().withMessage("Valid email is required"),
     body("otp")
@@ -746,6 +753,7 @@ router.post(
 // @access  Public
 router.post(
   "/resend-verification",
+  emailVerificationRateLimit,
   [body("email").isEmail().withMessage("Valid email is required")],
   async (req, res) => {
     try {
@@ -820,7 +828,7 @@ router.post(
 // @route   POST /api/users/send-verification
 // @desc    Send verification email (for authenticated users)
 // @access  Private
-router.post("/send-verification", protect, async (req, res) => {
+router.post("/send-verification", protect, emailVerificationRateLimit, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user.id }
@@ -889,7 +897,7 @@ router.post("/send-verification", protect, async (req, res) => {
 // @route   POST /api/users/send-phone-otp
 // @desc    Send OTP to phone number
 // @access  Public
-router.post("/send-phone-otp", async (req, res) => {
+router.post("/send-phone-otp", phoneOtpSendRateLimit, async (req, res) => {
   try {
     const { phoneNumber, userId, channel } = req.body;
 
@@ -970,7 +978,7 @@ router.post("/send-phone-otp", async (req, res) => {
 // @route   POST /api/users/verify-phone-otp
 // @desc    Verify phone OTP
 // @access  Public
-router.post("/verify-phone-otp", async (req, res) => {
+router.post("/verify-phone-otp", phoneOtpVerifyRateLimit, async (req, res) => {
   try {
     const { phoneNumber, otp, userId } = req.body;
 
@@ -1043,7 +1051,7 @@ router.post("/verify-phone-otp", async (req, res) => {
 // @route   POST /api/users/resend-phone-otp
 // @desc    Resend phone OTP
 // @access  Public
-router.post("/resend-phone-otp", async (req, res) => {
+router.post("/resend-phone-otp", phoneOtpSendRateLimit, async (req, res) => {
   try {
     const { phoneNumber, userId, channel } = req.body;
 

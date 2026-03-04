@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
+const { callTurnCredentialsRateLimit } = require('../middleware/fraud_rate_limit');
 const { getTurnCredentials } = require('../services/turn_credentials_service');
 
 const VOICE_CALL_TYPE = 'audio';
 
 // Get short-lived TURN credentials for WebRTC voice calls.
-router.get('/turn-credentials', protect, async (req, res) => {
+router.get('/turn-credentials', protect, callTurnCredentialsRateLimit, async (req, res) => {
   try {
     const turnCredentials = await getTurnCredentials();
 

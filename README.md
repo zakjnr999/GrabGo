@@ -113,6 +113,9 @@
   - Quote and pricing engine with return-to-sender policy + rider earnings split
   - Insurance disabled for MVP with liability cap + max declared value guardrails
   - Paystack payment initialization/confirmation and order lifecycle actions
+- Layered rate limiting rollout across backend APIs and realtime channels
+  - Global `/api` IP guardrail + route-level throttles for auth, OTP, parcel, tracking, chat, calls, and fraud challenge flows
+  - Socket event throttles for `chat:*`, `join_order`, `rider:*`, and `reservation:*` events (Redis-backed, fail-open on cache errors)
 
 ## Project Structure
 
@@ -184,7 +187,7 @@ GrabGo/
 │   │   ├── cart_abandonment.js  # Cart abandonment nudges
 │   │   ├── meal_nudges.js       # Meal-time notifications
 │   │   └── statusCleanup.js     # Expired stories cleanup
-│   ├── middleware/               # Express middleware
+│   ├── middleware/               # Express middleware (auth, fraud_rate_limit, upload, etc.)
 │   ├── tests/                    # Jest unit & integration tests
 │   ├── scripts/                  # Database seeding & utilities
 │   └── docs/                     # OpenAPI documentation
@@ -397,6 +400,37 @@ DISPATCH_RETRY_JOB_BATCH_LIMIT=20
 DISPATCH_RETRY_STALE_PROCESSING_SECONDS=90
 ```
 
+### Rate Limiting Configuration (Backend `.env`)
+
+HTTP endpoint throttles are enabled by default in code (global `/api` + route-level composite limits).
+WebSocket throttles can be tuned with these optional environment variables:
+
+```bash
+# Chat events
+WS_RATE_CHAT_JOIN_LIMIT=60
+WS_RATE_CHAT_JOIN_WINDOW_SECONDS=60
+WS_RATE_CHAT_TYPING_LIMIT=180
+WS_RATE_CHAT_TYPING_WINDOW_SECONDS=60
+WS_RATE_CHAT_MARK_READ_LIMIT=120
+WS_RATE_CHAT_MARK_READ_WINDOW_SECONDS=60
+
+# Tracking + rider presence events
+WS_RATE_JOIN_ORDER_LIMIT=120
+WS_RATE_JOIN_ORDER_WINDOW_SECONDS=60
+WS_RATE_RIDER_GO_ONLINE_LIMIT=30
+WS_RATE_RIDER_GO_ONLINE_WINDOW_SECONDS=60
+WS_RATE_RIDER_GO_OFFLINE_LIMIT=30
+WS_RATE_RIDER_GO_OFFLINE_WINDOW_SECONDS=60
+WS_RATE_RIDER_LOCATION_UPDATE_LIMIT=1800
+WS_RATE_RIDER_LOCATION_UPDATE_WINDOW_SECONDS=60
+
+# Reservation events
+WS_RATE_RESERVATION_RESPOND_LIMIT=40
+WS_RATE_RESERVATION_RESPOND_WINDOW_SECONDS=60
+WS_RATE_RESERVATION_GET_ACTIVE_LIMIT=120
+WS_RATE_RESERVATION_GET_ACTIVE_WINDOW_SECONDS=60
+```
+
 ### Flutter Setup
 
 ```bash
@@ -495,6 +529,7 @@ dart run build_runner build --delete-conflicting-outputs
 - **RESTful API**: Stateless API design with JWT authentication
 - **Microservices-Ready**: Modular service layer for easy scaling
 - **Real-time Layer**: Socket.IO for live updates, chat, and order tracking
+- **Realtime Throttling**: Redis-backed socket event velocity controls for abuse/spam resistance
 - **Tracking Resilience**: Rider-side queued location writes + customer-side fallback polling
 - **WebRTC Signaling**: Voice/video call coordination via Socket.IO
 - **Caching Strategy**: Redis/node-cache for session management and frequent queries
@@ -626,7 +661,8 @@ dart run build_runner build --delete-conflicting-outputs
 
 ### Security Best Practices
 
-- Rate limiting on authentication endpoints
+- Layered rate limiting on API and Socket.IO events
+- Route-specific throttles on authentication, OTP, parcel, tracking, chat, calls, and fraud challenge flows
 - Fraud-specific global throttles on signup/promo/referral/payment attempts
 - CORS configuration for allowed origins
 - Helmet.js for HTTP header security
@@ -727,7 +763,8 @@ dart run build_runner build --delete-conflicting-outputs
 ### Other Core Endpoints
 
 - `GET /api/statuses` - Active promotional stories
-- `GET /api/chats/:orderId` - Order chat thread
+- `GET /api/chats/:chatId` - Chat thread with message history
+- `GET /api/calls/turn-credentials` - Short-lived TURN credentials for WebRTC voice calls
 - `GET /api/calls/:callId` - Retrieve WebRTC call details for reconnect flows
 
 ## Known Issues & Roadmap
@@ -756,13 +793,6 @@ dart run build_runner build --delete-conflicting-outputs
 This software is proprietary and confidential. Unauthorized copying, distribution, or use of this software, via any medium, is strictly prohibited.
 
 ## Team & Support
-
-### Development Team
-
-- **Project Lead**: Muktar Zakari Junior
-- **Backend Developer**: Muktar Zakari Junior & Emmanuel Doe
-- **Mobile Developer**: Muktar Zakari Junior
-- **UI/UX Designer**: Muktar Zakari Junior
 
 ### Contact & Support
 

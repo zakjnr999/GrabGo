@@ -1,6 +1,13 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { protect, authorize } = require('../middleware/auth');
+const {
+  paymentAttemptRateLimit,
+  parcelQuoteRateLimit,
+  parcelOrderCreateRateLimit,
+  parcelLifecycleRateLimit,
+  parcelDeliveryCodeRateLimit,
+} = require('../middleware/fraud_rate_limit');
 const parcelService = require('../services/parcel_service');
 
 const router = express.Router();
@@ -37,7 +44,7 @@ router.get('/config', async (_req, res) => {
   }
 });
 
-router.post('/quote', protect, async (req, res) => {
+router.post('/quote', protect, parcelQuoteRateLimit, async (req, res) => {
   try {
     const quote = await parcelService.createQuote(req.body || {});
     return res.json({
@@ -53,6 +60,7 @@ router.post('/quote', protect, async (req, res) => {
 router.post(
   '/orders',
   protect,
+  parcelOrderCreateRateLimit,
   [
     body('acceptParcelTerms').exists().withMessage('acceptParcelTerms is required'),
     body().custom((value) => {
@@ -139,7 +147,7 @@ router.get('/orders/:parcelId', protect, async (req, res) => {
   }
 });
 
-router.post('/orders/:parcelId/paystack/initialize', protect, async (req, res) => {
+router.post('/orders/:parcelId/paystack/initialize', protect, paymentAttemptRateLimit, async (req, res) => {
   try {
     const data = await parcelService.initializePaystackForParcel({
       user: req.user,
@@ -159,6 +167,7 @@ router.post('/orders/:parcelId/paystack/initialize', protect, async (req, res) =
 router.post(
   '/orders/:parcelId/confirm-payment',
   protect,
+  paymentAttemptRateLimit,
   [
     body('reference').optional().isString().withMessage('reference must be a string'),
     body('provider').optional().isString().withMessage('provider must be a string'),
@@ -192,7 +201,7 @@ router.post(
   }
 );
 
-router.post('/orders/:parcelId/cancel', protect, async (req, res) => {
+router.post('/orders/:parcelId/cancel', protect, parcelLifecycleRateLimit, async (req, res) => {
   try {
     const data = await parcelService.cancelParcelOrder({
       user: req.user,
@@ -210,7 +219,7 @@ router.post('/orders/:parcelId/cancel', protect, async (req, res) => {
   }
 });
 
-router.post('/orders/:parcelId/delivery-code/resend', protect, async (req, res) => {
+router.post('/orders/:parcelId/delivery-code/resend', protect, parcelDeliveryCodeRateLimit, async (req, res) => {
   try {
     const data = await parcelService.resendParcelDeliveryCode({
       user: req.user,
@@ -231,6 +240,7 @@ router.post(
   '/orders/:parcelId/return-to-sender',
   protect,
   authorize('rider'),
+  parcelLifecycleRateLimit,
   async (req, res) => {
     try {
       const data = await parcelService.initiateReturnToSender({
@@ -254,6 +264,7 @@ router.post(
   '/orders/:parcelId/confirm-returned',
   protect,
   authorize('rider'),
+  parcelLifecycleRateLimit,
   async (req, res) => {
     try {
       const data = await parcelService.confirmReturnToSender({

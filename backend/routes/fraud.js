@@ -1,6 +1,11 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { protect } = require('../middleware/auth');
+const {
+  fraudChallengeSendRateLimit,
+  fraudChallengeVerifyRateLimit,
+  paymentAttemptRateLimit,
+} = require('../middleware/fraud_rate_limit');
 const prisma = require('../config/prisma');
 const { requestPhoneOtp, verifyPhoneOtp, normalizeGhanaPhone } = require('../services/otp_service');
 const paystackService = require('../services/paystack_service');
@@ -28,6 +33,7 @@ const parseValidation = (req, res) => {
 router.post(
   '/challenge/otp/send',
   protect,
+  fraudChallengeSendRateLimit,
   [
     body('actionType').optional().isString().withMessage('actionType must be a string'),
     body('phoneNumber').optional().isString().withMessage('phoneNumber must be a string'),
@@ -120,6 +126,7 @@ router.post(
 router.post(
   '/challenge/otp/verify',
   protect,
+  fraudChallengeVerifyRateLimit,
   [
     body('otp').notEmpty().withMessage('otp is required'),
     body('phoneNumber').optional().isString().withMessage('phoneNumber must be a string'),
@@ -191,6 +198,7 @@ router.post(
 router.post(
   '/challenge/payment-reauth/init',
   protect,
+  paymentAttemptRateLimit,
   [
     body('reference').notEmpty().withMessage('reference is required'),
     body('actionType').optional().isString().withMessage('actionType must be a string'),
@@ -257,6 +265,7 @@ router.post(
 router.post(
   '/challenge/payment-reauth/confirm',
   protect,
+  paymentAttemptRateLimit,
   [
     body('reference').notEmpty().withMessage('reference is required'),
     body('challengeId').optional().isString().withMessage('challengeId must be a string'),

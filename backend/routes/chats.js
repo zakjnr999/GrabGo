@@ -1,5 +1,6 @@
 const express = require("express");
 const { protect } = require("../middleware/auth");
+const { chatMessageRateLimit, chatMediaRateLimit } = require("../middleware/fraud_rate_limit");
 const { getIO } = require("../utils/socket");
 const { uploadAudioSingle, uploadAudioToCloudinary, uploadChatImages, uploadChatImagesToCloudinary } = require("../middleware/upload");
 const ChatService = require("../services/chat_service");
@@ -54,7 +55,7 @@ router.get("/:chatId", protect, async (req, res) => {
  * @route   POST /api/chats/:chatId/messages
  * @desc    Send text message
  */
-router.post("/:chatId/messages", protect, async (req, res) => {
+router.post("/:chatId/messages", protect, chatMessageRateLimit, async (req, res) => {
   try {
     const { chatId } = req.params;
     const { text, replyToId } = req.body;
@@ -95,7 +96,7 @@ router.post("/:chatId/messages", protect, async (req, res) => {
  * @route   POST /api/chats/:chatId/voice-message
  * @desc    Send voice message
  */
-router.post("/:chatId/voice-message", protect, uploadAudioSingle("audio"), uploadAudioToCloudinary, async (req, res) => {
+router.post("/:chatId/voice-message", protect, chatMediaRateLimit, uploadAudioSingle("audio"), uploadAudioToCloudinary, async (req, res) => {
   try {
     const { chatId } = req.params;
     const { duration } = req.body;
@@ -123,7 +124,7 @@ router.post("/:chatId/voice-message", protect, uploadAudioSingle("audio"), uploa
  * @route   POST /api/chats/:chatId/image-message
  * @desc    Send image message
  */
-router.post("/:chatId/image-message", protect, uploadChatImages("images", 10), uploadChatImagesToCloudinary, async (req, res) => {
+router.post("/:chatId/image-message", protect, chatMediaRateLimit, uploadChatImages("images", 10), uploadChatImagesToCloudinary, async (req, res) => {
   try {
     const { chatId } = req.params;
     const { replyToId } = req.body;

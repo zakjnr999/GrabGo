@@ -69,11 +69,7 @@ const checkRateLimitRedis = async (userId, type) => {
  * Uses Redis INCR which is atomic
  */
 const incrementWithTTL = async (key, ttlSeconds) => {
-    // Get the raw Redis client from cache module
-    const currentCount = await cache.get(key);
-    const newCount = (currentCount || 0) + 1;
-    await cache.set(key, newCount, ttlSeconds);
-    return newCount;
+    return cache.incr(key, ttlSeconds);
 };
 
 /**
@@ -138,7 +134,13 @@ const cleanupRateLimitCache = () => {
 };
 
 // Cleanup every 5 minutes (only affects memory fallback, Redis handles TTL automatically)
-setInterval(cleanupRateLimitCache, 300000);
+let rateLimitCleanupInterval = null;
+if (process.env.NODE_ENV !== 'test') {
+    rateLimitCleanupInterval = setInterval(cleanupRateLimitCache, 300000);
+    if (typeof rateLimitCleanupInterval.unref === 'function') {
+        rateLimitCleanupInterval.unref();
+    }
+}
 
 /**
  * Valid notification types

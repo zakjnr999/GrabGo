@@ -4,6 +4,11 @@ const trackingService = require('../services/tracking_service');
 const prisma = require('../config/prisma');
 const { protect } = require('../middleware/auth');
 const {
+    trackingInitializeRateLimit,
+    trackingLocationRateLimit,
+    trackingStatusRateLimit,
+} = require('../middleware/fraud_rate_limit');
+const {
     ACTION_TYPES,
     buildFraudContextFromRequest,
     fraudDecisionService,
@@ -129,7 +134,7 @@ const mapErrorStatus = (error) => {
 };
 
 // Initialize tracking (called when rider accepts order)
-router.post('/initialize', protect, async (req, res) => {
+router.post('/initialize', protect, trackingInitializeRateLimit, async (req, res) => {
     try {
         if (!TRACKING_WRITE_ROLES.has(req.user.role)) {
             return res.status(403).json({
@@ -226,7 +231,7 @@ router.post('/initialize', protect, async (req, res) => {
 });
 
 // Update rider location (called by rider app every 5-10 seconds)
-router.post('/location', protect, async (req, res) => {
+router.post('/location', protect, trackingLocationRateLimit, async (req, res) => {
     try {
         if (!TRACKING_WRITE_ROLES.has(req.user.role)) {
             return res.status(403).json({
@@ -356,7 +361,7 @@ router.post('/location', protect, async (req, res) => {
 });
 
 // Update order status
-router.patch('/status', protect, async (req, res) => {
+router.patch('/status', protect, trackingStatusRateLimit, async (req, res) => {
     try {
         if (!TRACKING_WRITE_ROLES.has(req.user.role)) {
             return res.status(403).json({
