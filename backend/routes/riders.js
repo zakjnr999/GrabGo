@@ -5,6 +5,9 @@ const featureFlags = require("../config/feature_flags");
 const { protect, authorize } = require("../middleware/auth");
 const { uploadSingle, uploadToCloudinary } = require("../middleware/upload");
 const dispatchService = require("../services/dispatch_service");
+const { sendOrderNotification } = require("../services/fcm_service");
+const { createNotification } = require("../services/notification_service");
+const { getIO } = require("../utils/socket");
 const OrderReservation = require("../models/OrderReservation");
 const {
   ACTION_TYPES,
@@ -117,6 +120,56 @@ const findActiveDeliveryOrderForRider = async (riderId) =>
     orderBy: { updatedAt: "desc" },
     select: { id: true, status: true },
   });
+
+/**
+ * Send customer-facing notification when rider is assigned.
+ * Sends push + in-app (with sendPush=false on in-app to avoid double push).
+ */
+const notifyCustomerRiderAssignment = async (order, rider = null, io = null) => {
+  try {
+    if (!order?.customerId || !order?.id || !order?.orderNumber) return;
+
+    const riderName =
+      rider?.username ||
+      order?.rider?.username ||
+      "A rider";
+    const statusToNotify = order.status === "picked_up" ? "picked_up" : (order.status || "confirmed");
+    const message =
+      statusToNotify === "picked_up"
+        ? `${riderName} is picking up your order!`
+        : `${riderName} has been assigned to your order.`;
+    const titleEmoji = statusToNotify === "picked_up" ? "🚴" : "✅";
+
+    await sendOrderNotification(
+      order.customerId,
+      order.id,
+      order.orderNumber,
+      statusToNotify,
+      message
+    );
+
+    const ioInstance = io || getIO();
+    if (ioInstance) {
+      await createNotification(
+        order.customerId,
+        "order",
+        `${titleEmoji} Order #${order.orderNumber}`,
+        message,
+        {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          status: statusToNotify,
+          riderId: order.riderId,
+          route: `/orders/${order.id}`,
+        },
+        ioInstance,
+        { sendPush: false }
+      );
+    }
+  } catch (error) {
+    console.error("Customer rider-assignment notification error:", error.message);
+  }
+};
 
 const reconcileRiderDispatchState = async (riderId, riderProfile) => {
   const isApproved = riderProfile?.verificationStatus === "approved";
@@ -742,6 +795,8 @@ router.post(
           displayText: deliveryWindow.deliveryWindowText
         } : null
       });
+
+      await notifyCustomerRiderAssignment(updatedOrder, updatedOrder.rider, getIO());
 
       // Broadcast that order is taken
       socketService.broadcastOrderTaken(orderId, riderId);
@@ -1739,6 +1794,8 @@ router.post(
       } catch (statusError) {
         console.error("Update rider delivery status error:", statusError);
       }
+
+      await notifyCustomerRiderAssignment(updatedOrder, updatedOrder.rider, getIO());
 
       res.json({
         success: true,
