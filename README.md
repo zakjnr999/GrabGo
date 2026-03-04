@@ -99,6 +99,7 @@
 - Gift-order delivery verification (4-digit code, resend guardrails, authorized photo fallback)
 - Pickup lifecycle controls (vendor accept/reject, pickup OTP verification, timeout/expiry jobs)
 - Scheduled-order release job for paid delivery orders
+- Durable dispatch retry queue for unassigned delivery orders (backoff retries + stale-lock recovery)
 - Tracking resilience hardening (customer fallback polling + rider offline queue + health state UI)
 - OTP system via Arkesel (SMS + WhatsApp) with Redis rate limiting/lockouts
 - Fraud Prevention Service v3 (hybrid sync decisions + async enrichment)
@@ -124,6 +125,7 @@ GrabGo/
 │   │   ├── Chat.js              # Chat conversations
 │   │   ├── ChatMessage.js       # Chat messages
 │   │   ├── DeliveryAnalytics.js # Rider performance metrics
+│   │   ├── DispatchRetryTask.js # Durable dispatch retry tasks
 │   │   ├── OrderReservation.js  # Order dispatch reservations
 │   │   ├── RiderStatus.js       # Real-time rider status
 │   │   ├── Status.js            # Instagram-style stories
@@ -148,6 +150,7 @@ GrabGo/
 │   │   └── tracking_routes.js   # Order tracking
 │   ├── services/                 # Business logic layer
 │   │   ├── dispatch_service.js  # Smart rider dispatch algorithm
+│   │   ├── dispatch_retry_service.js # Retry enqueue/finalization and backoff policy
 │   │   ├── checkout_session_service.js # Grouped checkout + payment orchestration
 │   │   ├── cart_service.js      # Vendor-scoped cart grouping logic
 │   │   ├── tracking_service.js  # Real-time order tracking & ETA
@@ -170,6 +173,7 @@ GrabGo/
 │   │   └── webrtcSignalingService.js # Voice/Video call signaling
 │   ├── jobs/                     # Background cron jobs
 │   │   ├── delivery_monitor.js  # Delivery window monitoring
+│   │   ├── dispatch_retry_queue.js # Durable dispatch retry worker
 │   │   ├── reservation_expiry.js # Order reservation timeout
 │   │   ├── rider_auto_offline.js # Auto-offline inactive riders
 │   │   ├── pickup_accept_timeout.js # Auto-cancel unaccepted pickup orders
@@ -376,6 +380,23 @@ PAYMENT_WEBHOOK_SOURCE_OF_TRUTH=true
 PREPAID_FULFILLMENT_GUARD=true
 ```
 
+### Dispatch Retry Configuration (Backend `.env`)
+
+Use these values to control durable rider re-dispatch for recoverable assignment failures:
+
+```bash
+# Retry backoff policy (dispatch_retry_service)
+DISPATCH_RETRY_BASE_DELAY_SECONDS=30
+DISPATCH_RETRY_MAX_DELAY_SECONDS=300
+DISPATCH_RETRY_MAX_ATTEMPTS=120
+
+# Queue worker cadence/locking (dispatch_retry_queue job)
+DISPATCH_RETRY_JOB_INTERVAL_MS=10000
+DISPATCH_RETRY_JOB_LOCK_TTL_SECONDS=8
+DISPATCH_RETRY_JOB_BATCH_LIMIT=20
+DISPATCH_RETRY_STALE_PROCESSING_SECONDS=90
+```
+
 ### Flutter Setup
 
 ```bash
@@ -443,6 +464,7 @@ dart run build_runner build --delete-conflicting-outputs
 
 - **Smart Dispatch**: Proximity-based order assignment with scoring algorithm
 - **Order Reservation**: Accept/decline orders with countdown timer
+- **Durable Re-dispatch**: Recoverable assignment failures are queued and retried with exponential backoff
 - **Delivery Window**: ETA tracking with soft warnings (5 mins before deadline)
 - **Delay Reasons**: Submit delay reasons for late deliveries (traffic, vendor delay, etc.)
 - **Tracking Resilience**: Offline queueing of location updates with retry flush
@@ -553,8 +575,37 @@ dart run build_runner build --delete-conflicting-outputs
 │ 4. Rider has 30 seconds to accept/decline                    │
 │ 5. If declined/expired → Move to next rider                  │
 │ 6. If accepted → Assign order, calculate ETA                 │
+│ 7. If recoverable failure persists → queue durable retries    │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+### Dispatch Retry Queue (Durable Re-dispatch)
+
+`DispatchRetryTask` ensures paid, dispatchable delivery orders do not get abandoned when immediate dispatch fails.
+
+**Lifecycle**
+
+1. Immediate dispatch attempts run from order/payment/status flows.
+2. On recoverable failures (`No eligible riders available`, `Max dispatch attempts reached`, or `PREDISPATCH_DEFERRED`), the system enqueues/updates a single active retry task per order.
+3. `dispatch_retry_queue` worker polls due tasks (`pending + nextRetryAt <= now`), claims each task with a lock (`processing`), and increments `attemptCount`.
+4. Worker re-checks terminal conditions before dispatch (order cancelled/delivered, pickup order, unpaid, or rider already assigned) and finalizes task.
+5. On dispatch success, task finalizes as `completed`.
+6. On recoverable failure, task is re-scheduled with exponential backoff (capped by `DISPATCH_RETRY_MAX_DELAY_SECONDS`).
+7. On non-recoverable failure or max-attempt exhaustion, task finalizes as `abandoned`.
+
+**Task states**
+
+- `pending`: waiting for `nextRetryAt`
+- `processing`: claimed by worker (`lockedAt`, `lockedBy`)
+- `completed`: rider assigned / dispatch succeeded
+- `cancelled`: order terminally cancelled or otherwise no longer eligible
+- `abandoned`: unrecoverable or exceeded max attempts
+
+**Concurrency guarantees**
+
+- Partial unique index on `{ entityType, orderId, active }` ensures one active task per order.
+- Queue lock (`job:dispatch_retry_queue`) prevents multi-worker overlap on the same run.
+- Stale processing lock recovery returns stuck tasks to `pending`.
 
 ## Security
 
