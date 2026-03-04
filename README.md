@@ -31,6 +31,7 @@
 - In-app chat with riders (text, voice messages, images)
 - Voice/Video calling with riders via WebRTC
 - Payments via Paystack (card/online) plus policy-based Cash on Delivery (COD)
+- Risk-aware auth, checkout, and payment flows with fraud step-up challenges (OTP/payment re-auth)
 - Gift orders with recipient details, optional note, and delivery verification code
 - Parcel delivery flow with quote -> create order -> paystack payment -> lifecycle actions
 - Parcel policy UX with declared value cap, liability disclaimer, and mandatory terms acceptance
@@ -82,6 +83,7 @@
 - System configuration and settings
 - Promotional campaign management
 - Referral program management
+- Fraud operations workflow (case queue, assignee lifecycle, allowlist/denylist controls)
 
 ## Recent Updates
 
@@ -99,6 +101,13 @@
 - Scheduled-order release job for paid delivery orders
 - Tracking resilience hardening (customer fallback polling + rider offline queue + health state UI)
 - OTP system via Arkesel (SMS + WhatsApp) with Redis rate limiting/lockouts
+- Fraud Prevention Service v3 (hybrid sync decisions + async enrichment)
+  - `FraudContextV1` with deterministic `context_hash` and action-scoped required-field rules
+  - Policy-versioned decisions (`allow`, `step_up`, `block`) with reason codes and checksum traceability
+  - Feature store + graph-link signals + pre-scoring burst throttles
+  - Paystack webhook source-of-truth with signature validation, idempotency, and state-machine transition checks
+  - Postgres outbox -> Redis Streams at-least-once delivery with retry and DLQ handling
+  - Fraud challenge endpoints (`/api/fraud/*`) and admin case-management endpoints (`/api/admin/fraud/*`)
 - Parcel delivery MVP (feature-flagged backend + customer flow + API contract freeze)
   - Quote and pricing engine with return-to-sender policy + rider earnings split
   - Insurance disabled for MVP with liability cap + max declared value guardrails
@@ -134,6 +143,8 @@ GrabGo/
 │   │   ├── credits.js           # Wallet credits & transactions
 │   │   ├── statuses.js          # Stories/status updates
 │   │   ├── referrals.js         # Referral program
+│   │   ├── fraud.js             # Fraud step-up challenge APIs
+│   │   ├── admin_fraud.js       # Admin fraud ops APIs
 │   │   └── tracking_routes.js   # Order tracking
 │   ├── services/                 # Business logic layer
 │   │   ├── dispatch_service.js  # Smart rider dispatch algorithm
@@ -155,6 +166,7 @@ GrabGo/
 │   │   ├── referral_service.js  # Referral program logic
 │   │   ├── promo_service.js     # Promotions & discounts
 │   │   ├── notification_service.js # Push notification management
+│   │   ├── fraud/               # Fraud engine (context/policy/decision/challenges/features/graph/events/cases)
 │   │   └── webrtcSignalingService.js # Voice/Video call signaling
 │   ├── jobs/                     # Background cron jobs
 │   │   ├── delivery_monitor.js  # Delivery window monitoring
@@ -163,6 +175,8 @@ GrabGo/
 │   │   ├── pickup_accept_timeout.js # Auto-cancel unaccepted pickup orders
 │   │   ├── pickup_ready_expiry.js # Pickup ready-window expiry handling
 │   │   ├── scheduled_order_release.js # Release scheduled delivery orders
+│   │   ├── fraud_outbox_worker.js # Fraud outbox publisher -> Redis Streams
+│   │   ├── fraud_feature_recompute.js # Fraud feature recomputation scheduler
 │   │   ├── cart_abandonment.js  # Cart abandonment nudges
 │   │   ├── meal_nudges.js       # Meal-time notifications
 │   │   └── statusCleanup.js     # Expired stories cleanup
@@ -234,6 +248,8 @@ GrabGo/
 - **SMS/WhatsApp**: Arkesel (OTP + gift delivery code)
 - **Payment Gateway**: Paystack
 - **Maps & Geocoding**: Google Maps API, node-geocoder, geolib
+- **Fraud & Risk**: In-house fraud decision service (policy engine, step-up challenges, feature store, graph analytics, case queue)
+- **Event Streaming**: Redis Streams with Postgres outbox publisher (at-least-once delivery)
 - **Background Jobs**: node-cron
 - **API Documentation**: Swagger / OpenAPI / Redocly
 - **Testing**: Jest, Supertest
@@ -317,6 +333,47 @@ npm run dev
 
 # Production
 npm start
+```
+
+### Fraud Configuration (Backend `.env`)
+
+Use these as baseline values for production/staging:
+
+```bash
+# Runtime switches
+FRAUD_ENABLED=true
+FRAUD_SHADOW_MODE=true                # set false to enforce step_up/block responses
+FRAUD_OUTBOX_WORKER_ENABLED=true
+FRAUD_EVENT_STREAMS_ENABLED=true
+
+# Secrets (generate strong random strings, at least 32 bytes)
+FRAUD_HASH_SECRET=<random-64-hex-or-base64>
+FRAUD_CHALLENGE_SECRET=<random-64-hex-or-base64>
+
+# Policy + thresholds
+FRAUD_POLICY_VERSION=1
+FRAUD_ALLOW_MAX=34
+FRAUD_STEP_UP_MAX=69
+FRAUD_BLOCK_MIN=70
+FRAUD_HIGH_VALUE_ORDER_AMOUNT=150
+FRAUD_CHALLENGE_CAP_PER_ACTION_24H=1
+FRAUD_CHALLENGE_CAP_TOTAL_24H=3
+
+# Outbox + streams
+FRAUD_OUTBOX_POLL_MS=2000
+FRAUD_OUTBOX_BATCH_SIZE=100
+FRAUD_EVENT_STREAM=fraud.events.v1
+FRAUD_EVENT_DLQ_STREAM=fraud.events.dlq.v1
+FRAUD_EVENT_STREAM_MAXLEN=100000
+
+# Feature store cache/recompute
+FRAUD_FEATURE_SHORT_TTL_SECONDS=120
+FRAUD_FEATURE_LONG_TTL_SECONDS=900
+FRAUD_FEATURE_RECOMPUTE_MS=900000
+
+# Payment integrity controls
+PAYMENT_WEBHOOK_SOURCE_OF_TRUTH=true
+PREPAID_FULFILLMENT_GUARD=true
 ```
 
 ### Flutter Setup
@@ -419,9 +476,25 @@ dart run build_runner build --delete-conflicting-outputs
 - **Tracking Resilience**: Rider-side queued location writes + customer-side fallback polling
 - **WebRTC Signaling**: Voice/video call coordination via Socket.IO
 - **Caching Strategy**: Redis/node-cache for session management and frequent queries
+- **Fraud Layer**: Synchronous request-time decisions + async enrichment via outbox and streams
 - **Background Jobs**: node-cron for delivery monitoring, pickup lifecycle timeouts, scheduled release, and nudges
 - **File Upload**: Cloudinary integration with image optimization and blurhash
 - **Security**: Multi-layer security with rate limiting, input validation, and sanitization
+
+### Fraud Prevention Architecture
+
+- **Decision Contract**: `decide(actionType, actorType, actorId, fraudContext)` returns `FraudDecisionV1` with decision, score, reason codes, challenge type, policy version, and policy checksum.
+- **Context Contract**: `FraudContextV1` is versioned (`contextVersion=1`) and hashed deterministically as `SHA256(actionType|contextVersion|canonicalJson)` for audit reproducibility.
+- **Action Coverage**: `auth_signup`, `auth_login`, `order_create`, `promo_apply`, `referral_apply`, `payment_client_confirm`, `payment_webhook_event`, `rider_status_update`, `rider_accept_order`, `order_fulfillment_transition`.
+- **Decision Modes**: `allow`, `step_up`, `block`, plus `allow_degraded` when context is incomplete under fail-open rules.
+- **Step-Up Challenges**: OTP and payment re-auth challenge flows with configurable challenge caps (`perActionPer24h`, `totalPer24h`).
+- **Feature Store**: Versioned snapshots (Redis + Postgres persistence) for `orders_last_1h`, `orders_last_24h`, `failed_payments_last_10m`, `unique_devices_last_7d`, `promo_attempts_last_1h`, `refund_rate_30d`, `driver_cancel_rate_7d`, and rider affinity/repeat-pair metrics.
+- **Graph Signals**: Relationship edges (`actor->device/payment/ip/address/referral`) and shared-entity degree scoring for ring/collusion detection.
+- **Global Burst Throttles**: Redis token-bucket style limits on signup, promo apply, referral apply, and payment attempts before full scoring.
+- **Payment Integrity**: `/api/payments/webhooks/paystack` is the authoritative payment confirmation path with signature validation, event idempotency, and payment-status transition validation.
+- **Fulfillment Safety**: Prepaid orders cannot enter fulfillment states before webhook-confirmed `paid/successful` status when `PREPAID_FULFILLMENT_GUARD=true`.
+- **Async Guarantees**: Postgres outbox emits to Redis Streams with at-least-once delivery, exponential retries, and DLQ after max attempts.
+- **Fraud Ops**: Admin case queue with assignment/resolution workflow and explicit allowlist/denylist signal creation.
 
 ### Frontend Architecture
 
@@ -503,10 +576,19 @@ dart run build_runner build --delete-conflicting-outputs
 ### Security Best Practices
 
 - Rate limiting on authentication endpoints
+- Fraud-specific global throttles on signup/promo/referral/payment attempts
 - CORS configuration for allowed origins
 - Helmet.js for HTTP header security
 - Sanitization of user-generated content
 - Secure file upload validation
+
+### Fraud Security Controls
+
+- Hashed identifiers (`ipHash`, device hash, payment token hash) use keyed HMAC via `FRAUD_HASH_SECRET`.
+- Challenge verification uses HMAC hashing for challenge codes via `FRAUD_CHALLENGE_SECRET`.
+- Fraud decisions persist stable `reasonCodes[]`, `policyVersion`, `policyChecksum`, and `contextHash` for explainability and audits.
+- Webhook signature failures and invalid payment transitions are treated as high-risk integrity events.
+- Evidence and operations data are stored in dedicated fraud tables with indexed actor/time access patterns.
 
 ## API Endpoints
 
@@ -533,6 +615,28 @@ dart run build_runner build --delete-conflicting-outputs
 - `POST /api/orders/:orderId/pickup/verify-code` - Verify pickup OTP
 - `POST /api/orders/:orderId/delivery-code/resend` - Resend gift delivery code
 - `POST /api/orders/:orderId/delivery-proof/photo` - Upload fallback proof photo
+
+### Payments (`/api/payments`)
+
+- `POST /api/payments/webhooks/paystack` - Paystack webhook receiver (signature-verified, idempotent, source-of-truth)
+- `GET /api/payments/my-payments` - Payment history
+- `PUT /api/payments/:paymentId/cancel` - Cancel pending/processing payment
+
+### Fraud Challenges (`/api/fraud`)
+
+- `POST /api/fraud/challenge/otp/send` - Send OTP step-up challenge
+- `POST /api/fraud/challenge/otp/verify` - Verify OTP step-up challenge
+- `POST /api/fraud/challenge/payment-reauth/init` - Initialize payment re-auth challenge
+- `POST /api/fraud/challenge/payment-reauth/confirm` - Confirm payment re-auth challenge
+
+### Admin Fraud (`/api/admin/fraud`)
+
+- `GET /api/admin/fraud/cases` - List fraud cases with filters
+- `GET /api/admin/fraud/cases/:id` - Get fraud case details
+- `POST /api/admin/fraud/cases/:id/assign` - Assign case to analyst
+- `POST /api/admin/fraud/cases/:id/resolve` - Resolve case with TP/FP/benign outcome
+- `POST /api/admin/fraud/allowlist` - Create allowlist signal for actor
+- `POST /api/admin/fraud/denylist` - Create denylist signal for actor
 
 ### Parcel (`/api/parcel`)
 
@@ -574,7 +678,6 @@ dart run build_runner build --delete-conflicting-outputs
 - `GET /api/statuses` - Active promotional stories
 - `GET /api/chats/:orderId` - Order chat thread
 - `GET /api/calls/:callId` - Retrieve WebRTC call details for reconnect flows
-- `GET /api/payments/my-payments` - Payment history
 
 ## Known Issues & Roadmap
 
