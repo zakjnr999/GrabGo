@@ -18,12 +18,15 @@ class BottomNavigator extends StatefulWidget {
 }
 
 class _BottomNavigatorState extends State<BottomNavigator> {
-  final List<Widget> _screens = [const HomePage(), const MyOrders(), const WalletPage(), const ProfilePage()];
+  final List<Widget> _screens = [
+    const HomePage(),
+    const MyOrders(),
+    const WalletPage(),
+    const ProfilePage(),
+  ];
 
   void _onItemSelected(int index) {
-    setState(() {
-      Provider.of<BottomNavProvider>(context, listen: false).setIndex(index);
-    });
+    Provider.of<BottomNavProvider>(context, listen: false).setIndex(index);
   }
 
   @override
@@ -42,24 +45,11 @@ class _BottomNavigatorState extends State<BottomNavigator> {
           statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
           systemNavigationBarColor: colors.backgroundPrimary,
           systemNavigationBarDividerColor: Colors.transparent,
-          systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+          systemNavigationBarIconBrightness: isDark
+              ? Brightness.light
+              : Brightness.dark,
         ),
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          switchInCurve: Curves.easeInOut,
-          switchOutCurve: Curves.easeInOut,
-          transitionBuilder: (child, animation) => FadeTransition(
-            opacity: animation,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0.05, 0),
-                end: Offset.zero,
-              ).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOut)),
-              child: child,
-            ),
-          ),
-          child: _screens[selectedIndex],
-        ),
+        child: IndexedStack(index: selectedIndex, children: _screens),
       ),
       bottomNavigationBar: Container(
         height: size.height * 0.16,
@@ -70,7 +60,12 @@ class _BottomNavigatorState extends State<BottomNavigator> {
             topRight: Radius.circular(KBorderSize.borderRadius20),
           ),
           boxShadow: [
-            BoxShadow(color: Colors.black.withAlpha(25), spreadRadius: 1, blurRadius: 20, offset: const Offset(0, -3)),
+            BoxShadow(
+              color: Colors.black.withAlpha(25),
+              spreadRadius: 1,
+              blurRadius: 20,
+              offset: const Offset(0, -3),
+            ),
           ],
         ),
         child: BottomAppBar(
@@ -78,10 +73,23 @@ class _BottomNavigatorState extends State<BottomNavigator> {
           elevation: 0,
           child: Row(
             children: [
-              Expanded(child: _buildNavItem(Assets.icons.home, "Home", 0, context)),
-              Expanded(child: _buildNavItem(Assets.icons.boxIso, "My Orders", 1, context)),
-              Expanded(child: _buildNavItem(Assets.icons.wallet, "Wallet", 2, context)),
-              Expanded(child: _buildNavItem(Assets.icons.user, "Profile", 3, context)),
+              Expanded(
+                child: _buildNavItem(Assets.icons.home, "Home", 0, context),
+              ),
+              Expanded(
+                child: _buildNavItem(
+                  Assets.icons.boxIso,
+                  "My Orders",
+                  1,
+                  context,
+                ),
+              ),
+              Expanded(
+                child: _buildNavItem(Assets.icons.wallet, "Wallet", 2, context),
+              ),
+              Expanded(
+                child: _buildNavItem(Assets.icons.user, "Profile", 3, context),
+              ),
             ],
           ),
         ),
@@ -89,7 +97,12 @@ class _BottomNavigatorState extends State<BottomNavigator> {
     );
   }
 
-  Widget _buildNavItem(String icon, String label, int index, BuildContext context) {
+  Widget _buildNavItem(
+    String icon,
+    String label,
+    int index,
+    BuildContext context,
+  ) {
     final bottomNavProvider = Provider.of<BottomNavProvider>(context);
     final bool selected = bottomNavProvider.selectedIndex == index;
     final colors = context.appColors;
@@ -98,7 +111,10 @@ class _BottomNavigatorState extends State<BottomNavigator> {
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOutCubic,
       padding: EdgeInsets.all(selected ? 6.0 : 0),
-      decoration: BoxDecoration(shape: BoxShape.circle, color: selected ? colors.accentGreen : Colors.transparent),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: selected ? colors.accentGreen : Colors.transparent,
+      ),
       child: AnimatedScale(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOutCubic,
@@ -116,7 +132,10 @@ class _BottomNavigatorState extends State<BottomNavigator> {
               package: 'grab_go_shared',
               height: KIconSize.lg,
               width: KIconSize.lg,
-              colorFilter: ColorFilter.mode(color ?? colors.textPrimary, BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(
+                color ?? colors.textPrimary,
+                BlendMode.srcIn,
+              ),
             );
           },
         ),

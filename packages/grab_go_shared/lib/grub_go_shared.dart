@@ -15,6 +15,7 @@ export 'shared/widgets/app_popup_menu.dart';
 export 'shared/widgets/custom_popup_menu.dart';
 export 'shared/widgets/app_text_input.dart';
 export 'shared/widgets/app_toast_message.dart';
+export 'shared/widgets/blur_option_selector.dart';
 export 'shared/widgets/blur_circle_widget.dart';
 export 'shared/widgets/curve_in_clip.dart';
 export 'shared/widgets/curve_out_clip.dart';

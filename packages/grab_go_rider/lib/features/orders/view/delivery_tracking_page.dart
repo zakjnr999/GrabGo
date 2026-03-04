@@ -1258,14 +1258,38 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
   }
 
   Future<void> _confirmPickup(AppColorsExtension colors) async {
+    if (_isProcessingStageAction) return;
+
+    setState(() {
+      _isProcessingStageAction = true;
+    });
+
     // Update tracking status via provider
     final trackingProvider = context.read<RiderTrackingProvider>();
 
-    // Mark as picked up
-    final pickedUpSuccess = await trackingProvider.markAsPickedUp();
+    final pickupFlowSuccess = await _runWithLoadingDialog(
+      colors: colors,
+      message: "Confirming pickup...",
+      task: () async {
+        final pickedUpSuccess = await trackingProvider.markAsPickedUp();
+        if (!pickedUpSuccess) return false;
+
+        debugPrint('✅ Order marked as picked up');
+
+        final inTransitSuccess = await trackingProvider.markAsInTransit();
+        if (!inTransitSuccess) return false;
+
+        debugPrint('✅ Order marked as in transit');
+        return true;
+      },
+    );
+
     if (!mounted) return;
 
-    if (!pickedUpSuccess) {
+    if (!pickupFlowSuccess) {
+      setState(() {
+        _isProcessingStageAction = false;
+      });
       _showToast(
         colors: colors,
         message:
@@ -1275,28 +1299,10 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
       );
       return;
     }
-
-    debugPrint('✅ Order marked as picked up');
-
-    // Mark as in transit (starts high-frequency location updates)
-    final inTransitSuccess = await trackingProvider.markAsInTransit();
-    if (!mounted) return;
-
-    if (!inTransitSuccess) {
-      _showToast(
-        colors: colors,
-        message:
-            trackingProvider.lastError ??
-            "Failed to update order status. Please try again.",
-        backgroundColor: colors.error,
-      );
-      return;
-    }
-
-    debugPrint('✅ Order marked as in transit');
 
     setState(() {
       _currentPhase = "delivery";
+      _isProcessingStageAction = false;
     });
 
     _showToast(

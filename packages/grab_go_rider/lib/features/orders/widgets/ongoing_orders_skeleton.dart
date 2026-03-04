@@ -12,7 +12,6 @@ class OngoingOrdersSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(16.w),
@@ -26,16 +25,17 @@ class OngoingOrdersSkeleton extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  width: 80.w,
-                  height: 15.h,
+                  width: 96.w,
+                  height: 22.h,
                   decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20.r)),
                 ),
                 Container(
-                  width: 80.w,
+                  width: 130.w,
                   height: 12.h,
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -45,41 +45,75 @@ class OngoingOrdersSkeleton extends StatelessWidget {
               ],
             ),
 
-            SizedBox(height: 16.h),
+            SizedBox(height: 14.h),
 
+            // Route row
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                Expanded(
+                  child: Container(
+                    height: 14.h,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 8.w),
                 Container(
-                  height: size.width * 0.12,
-                  width: size.width * 0.12,
+                  width: 16.w,
+                  height: 12.h,
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                   ),
                 ),
-                SizedBox(width: 12.w),
+                SizedBox(width: 8.w),
+                Container(
+                  width: 110.w,
+                  height: 14.h,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                  ),
+                ),
+              ],
+            ),
+
+            SizedBox(height: 10.h),
+
+            // Distance/status row
+            Row(
+              children: [
+                Container(
+                  width: 14.w,
+                  height: 14.w,
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(7.r)),
+                ),
+                SizedBox(width: 8.w),
+                Container(
+                  width: 72.w,
+                  height: 12.h,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                  ),
+                ),
+                SizedBox(width: 10.w),
+                Container(
+                  width: 4.w,
+                  height: 4.w,
+                  decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                ),
+                SizedBox(width: 10.w),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 140.w,
-                        height: 15.h,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                        ),
-                      ),
-                      SizedBox(height: 4.h),
-                      Container(
-                        width: 100.w,
-                        height: 12.h,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                        ),
-                      ),
-                    ],
+                  child: Container(
+                    height: 12.h,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                    ),
                   ),
                 ),
               ],
@@ -87,33 +121,34 @@ class OngoingOrdersSkeleton extends StatelessWidget {
 
             SizedBox(height: 12.h),
 
+            // Compact party row
             Row(
               children: [
                 Container(
-                  height: size.width * 0.12,
-                  width: size.width * 0.12,
+                  width: 44.w,
+                  height: 44.w,
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                   ),
                 ),
-                SizedBox(width: 8.w),
+                SizedBox(width: 10.w),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
-                        width: 120.w,
-                        height: 14.h,
+                        width: 130.w,
+                        height: 13.h,
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                         ),
                       ),
-                      SizedBox(height: 4.h),
+                      SizedBox(height: 6.h),
                       Container(
-                        width: 160.w,
-                        height: 12.h,
+                        width: 190.w,
+                        height: 11.h,
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
@@ -125,13 +160,27 @@ class OngoingOrdersSkeleton extends StatelessWidget {
               ],
             ),
 
-            SizedBox(height: 20.h),
+            SizedBox(height: 14.h),
 
+            // Summary metric tiles
+            Row(
+              children: [
+                Expanded(child: _metricTile()),
+                SizedBox(width: 10.w),
+                Expanded(child: _metricTile()),
+                SizedBox(width: 10.w),
+                Expanded(child: _metricTile()),
+              ],
+            ),
+
+            SizedBox(height: 14.h),
+
+            // Actions
             Row(
               children: [
                 Expanded(
                   child: Container(
-                    height: 40.h,
+                    height: 56.h,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
@@ -141,7 +190,7 @@ class OngoingOrdersSkeleton extends StatelessWidget {
                 SizedBox(width: 12.w),
                 Expanded(
                   child: Container(
-                    height: 40.h,
+                    height: 56.h,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
@@ -153,6 +202,13 @@ class OngoingOrdersSkeleton extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _metricTile() {
+    return Container(
+      height: 52.h,
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(KBorderSize.borderRadius4)),
     );
   }
 }

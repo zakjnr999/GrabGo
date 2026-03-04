@@ -1948,38 +1948,69 @@ class RiderTrackingProvider with ChangeNotifier {
       return;
     }
 
-    if (_lastAnimatedPosition != null) {
-      // Calculate bearing for rotation
-      final bearing = _calculateBearing(_lastAnimatedPosition!, newPosition);
-      _animateMarkerMovement(_lastAnimatedPosition!, newPosition, bearing);
-    } else {
+    Marker? currentMarker;
+    for (final marker in _markers) {
+      if (marker.markerId.value == 'rider') {
+        currentMarker = marker;
+        break;
+      }
+    }
+    final startPosition = currentMarker?.position ?? _lastAnimatedPosition;
+    if (startPosition == null) {
       _updateRiderMarkerPosition(newPosition, 0);
+      notifyListeners();
+      return;
     }
 
-    _lastAnimatedPosition = newPosition;
+    final movementMeters = _calculateDistanceMeters(startPosition, newPosition);
+    if (movementMeters < 1.2) {
+      _updateRiderMarkerPosition(newPosition, 0);
+      notifyListeners();
+      return;
+    }
+
+    // Calculate bearing for rotation and animate movement using distance-aware
+    // interpolation to avoid visible "skip jumps" during GPX playback.
+    final bearing = _calculateBearing(startPosition, newPosition);
+    _animateMarkerMovement(startPosition, newPosition, bearing, movementMeters);
   }
 
   /// Smoothly animate marker from one position to another
-  void _animateMarkerMovement(LatLng start, LatLng end, double bearing) {
+  void _animateMarkerMovement(
+    LatLng start,
+    LatLng end,
+    double bearing,
+    double movementMeters,
+  ) {
     _markerAnimationTimer?.cancel();
 
-    int steps = 15;
+    final clampedDistance = movementMeters.clamp(1.0, 320.0);
+    final steps = ((clampedDistance / 2.6).ceil()).clamp(14, 72);
+    final totalDurationMs = (420 + (clampedDistance * 16)).round().clamp(
+      620,
+      3000,
+    );
+    final tickMs = (totalDurationMs / steps).round().clamp(16, 70);
+
     int currentStep = 0;
 
-    _markerAnimationTimer = Timer.periodic(const Duration(milliseconds: 50), (
+    _markerAnimationTimer = Timer.periodic(Duration(milliseconds: tickMs), (
       timer,
     ) {
       if (currentStep >= steps || _isDisposed) {
+        _updateRiderMarkerPosition(end, bearing);
+        _lastAnimatedPosition = end;
+        notifyListeners();
         timer.cancel();
         return;
       }
 
       currentStep++;
-      double fraction = currentStep / steps;
+      final linearT = currentStep / steps;
+      final easedT = Curves.easeInOutCubic.transform(linearT);
 
-      double lat = start.latitude + (end.latitude - start.latitude) * fraction;
-      double lng =
-          start.longitude + (end.longitude - start.longitude) * fraction;
+      final lat = start.latitude + (end.latitude - start.latitude) * easedT;
+      final lng = start.longitude + (end.longitude - start.longitude) * easedT;
 
       _updateRiderMarkerPosition(LatLng(lat, lng), bearing);
       notifyListeners();
@@ -2027,6 +2058,7 @@ class RiderTrackingProvider with ChangeNotifier {
       }
       return marker;
     }).toSet();
+    _lastAnimatedPosition = newPosition;
   }
 
   void _updateRouteProgressForPosition(

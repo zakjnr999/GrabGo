@@ -4,6 +4,23 @@ import 'package:grab_go_rider/features/orders/service/available_order_dto.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:http/http.dart' as http;
 
+class RiderPerformanceSummary {
+  final int todayDeliveries;
+  final double thisWeekEarnings;
+
+  const RiderPerformanceSummary({
+    required this.todayDeliveries,
+    required this.thisWeekEarnings,
+  });
+
+  factory RiderPerformanceSummary.empty() {
+    return const RiderPerformanceSummary(
+      todayDeliveries: 0,
+      thisWeekEarnings: 0,
+    );
+  }
+}
+
 /// Service for fetching rider's own orders (ongoing, completed, cancelled)
 class MyOrdersService {
   MyOrdersService({http.Client? client}) : _client = client ?? http.Client();
@@ -43,6 +60,85 @@ class MyOrdersService {
   /// Fetch cancelled orders
   Future<List<AvailableOrderDto>> getCancelledOrders() async {
     return _fetchOrdersByStatus(['cancelled']);
+  }
+
+  /// Fetch rider performance metrics for dashboard cards.
+  /// - todayDeliveries: delivered orders completed today
+  /// - thisWeekEarnings: total rider earnings from delivered orders this week
+  Future<RiderPerformanceSummary> getRiderPerformanceSummary() async {
+    final uri = Uri.parse('$_baseUrl/orders');
+
+    try {
+      final response = await _client.get(uri, headers: await _buildHeaders());
+      if (response.statusCode != 200) {
+        debugPrint(
+          '❌ Failed to fetch rider performance summary: ${response.statusCode}',
+        );
+        return RiderPerformanceSummary.empty();
+      }
+
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      final rawOrders = decoded['data'] as List<dynamic>? ?? [];
+
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day);
+      final weekStart = _startOfWeek(todayStart);
+
+      int todayDeliveries = 0;
+      double thisWeekEarnings = 0;
+
+      for (final raw in rawOrders) {
+        if (raw is! Map<String, dynamic>) continue;
+
+        final status = raw['status']?.toString().toLowerCase();
+        if (status != 'delivered') continue;
+
+        final completedAt = _extractCompletionDate(raw)?.toLocal();
+        if (completedAt == null) continue;
+
+        if (!completedAt.isBefore(todayStart)) {
+          todayDeliveries += 1;
+        }
+
+        if (!completedAt.isBefore(weekStart)) {
+          thisWeekEarnings += _resolveRiderEarnings(raw);
+        }
+      }
+
+      return RiderPerformanceSummary(
+        todayDeliveries: todayDeliveries,
+        thisWeekEarnings: thisWeekEarnings,
+      );
+    } catch (e, stack) {
+      debugPrint('❌ Error fetching rider performance summary: $e');
+      debugPrint('Stack: $stack');
+      return RiderPerformanceSummary.empty();
+    }
+  }
+
+  DateTime _startOfWeek(DateTime date) {
+    // Monday = 1, Sunday = 7
+    final daysSinceMonday = date.weekday - DateTime.monday;
+    return date.subtract(Duration(days: daysSinceMonday));
+  }
+
+  DateTime? _extractCompletionDate(Map<String, dynamic> order) {
+    return _parseDate(order['deliveredDate']) ??
+        _parseDate(order['updatedAt']) ??
+        _parseDate(order['createdAt']);
+  }
+
+  DateTime? _parseDate(dynamic value) {
+    if (value == null) return null;
+    return DateTime.tryParse(value.toString());
+  }
+
+  double _resolveRiderEarnings(Map<String, dynamic> order) {
+    final backendEarnings = (order['riderEarnings'] as num?)?.toDouble();
+    if (backendEarnings != null) return backendEarnings;
+
+    final totalAmount = (order['totalAmount'] as num?)?.toDouble() ?? 0.0;
+    return (totalAmount * 0.12) + 2.0;
   }
 
   /// Fetch orders by status(es)

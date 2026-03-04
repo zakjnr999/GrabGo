@@ -2518,10 +2518,50 @@ router.get("/verification", protect, authorize("rider"), async (req, res) => {
       });
     }
 
+    const dailyStats = await prisma.riderDailyStats.findMany({
+      where: { riderId: req.user.id },
+      select: {
+        totalDeliveries: true,
+        rating: true,
+        ratingCount: true,
+      },
+    });
+
+    let weightedRatingSum = 0;
+    let totalRatingWeight = 0;
+    let totalDeliveries = 0;
+    let activeDays = 0;
+
+    for (const stat of dailyStats) {
+      const deliveries = Number(stat.totalDeliveries || 0);
+      const rating = Number(stat.rating || 0);
+      const rawCount = Number(stat.ratingCount || 0);
+      // Allow manual test data where rating exists but ratingCount was not set.
+      const ratingWeight = rawCount > 0 ? rawCount : (rating > 0 ? 1 : 0);
+
+      totalDeliveries += deliveries;
+      if (deliveries > 0) activeDays += 1;
+
+      if (ratingWeight > 0) {
+        weightedRatingSum += rating * ratingWeight;
+        totalRatingWeight += ratingWeight;
+      }
+    }
+
+    const computedRating = totalRatingWeight > 0
+      ? Number((weightedRatingSum / totalRatingWeight).toFixed(2))
+      : 0;
+
     res.json({
       success: true,
       message: "Verification data retrieved successfully",
-      data: rider,
+      data: {
+        ...rider,
+        rating: computedRating,
+        ratingCount: totalRatingWeight,
+        totalDeliveries,
+        activeDays,
+      },
     });
   } catch (error) {
     console.error("Get verification error:", error);

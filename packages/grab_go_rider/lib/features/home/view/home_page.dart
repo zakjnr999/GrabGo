@@ -8,7 +8,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_rider/features/home/models/transaction_model.dart';
-import 'package:grab_go_rider/features/orders/service/available_order_dto.dart';
+import 'package:grab_go_rider/features/myorders/service/my_orders_service.dart';
 import 'package:grab_go_rider/features/orders/service/available_orders_service.dart';
 import 'package:grab_go_rider/features/orders/view/order_confirmation_page.dart';
 import 'package:grab_go_rider/features/orders/service/order_reservation_service.dart';
@@ -43,15 +43,18 @@ class _HomePageState extends State<HomePage>
   double? _currentLon;
   bool isLoadingOrders = true;
   String? ordersError;
-  List<AvailableOrderDto> _availableOrders = [];
   final AvailableOrdersService _availableOrdersService =
       AvailableOrdersService();
+  final MyOrdersService _myOrdersService = MyOrdersService();
   final OrderReservationService _reservationService = OrderReservationService();
 
   Timer? _locationUpdateTimer;
   final Battery _battery = Battery();
 
   OrderStatistics? _statistics;
+  RiderPerformanceSummary _performanceSummary = RiderPerformanceSummary.empty();
+  bool _isLoadingPerformanceSummary = true;
+  int _performanceSummaryRequestId = 0;
 
   @override
   void initState() {
@@ -62,6 +65,7 @@ class _HomePageState extends State<HomePage>
     _initializeLocation();
     _initializeReservationService();
     _checkOnlineStatus();
+    _loadRiderPerformanceSummary();
   }
 
   @override
@@ -74,6 +78,7 @@ class _HomePageState extends State<HomePage>
         _startLocationBatteryUpdates();
         _updateLocationAndBattery();
       }
+      _loadRiderPerformanceSummary();
       debugPrint('App resumed - location updates active');
     } else if (state == AppLifecycleState.paused) {
       _isAppInForeground = false;
@@ -177,7 +182,6 @@ class _HomePageState extends State<HomePage>
         if (value) {
           _loadAvailableOrders();
         } else {
-          _availableOrders = [];
           _statistics = null;
           ordersError = null;
           isLoadingOrders = false;
@@ -262,6 +266,8 @@ class _HomePageState extends State<HomePage>
             _loadAvailableOrders();
             AppToastMessage.show(
               context: context,
+              showIcon: false,
+              maxLines: 2,
               gravity: ToastGravity.CENTER,
               radius: KBorderSize.borderRadius4,
               message: 'Order accepted! Navigate to pickup location.',
@@ -275,6 +281,8 @@ class _HomePageState extends State<HomePage>
           onDeclined: () {
             AppToastMessage.show(
               context: context,
+              showIcon: false,
+              maxLines: 2,
               gravity: ToastGravity.CENTER,
               radius: KBorderSize.borderRadius4,
               message: 'Order declined. Waiting for new orders...',
@@ -284,6 +292,7 @@ class _HomePageState extends State<HomePage>
           onExpired: () {
             AppToastMessage.show(
               context: context,
+              showIcon: false,
               message: 'Order reservation expired.',
               backgroundColor: AppColors.errorRed,
               gravity: ToastGravity.CENTER,
@@ -298,6 +307,8 @@ class _HomePageState extends State<HomePage>
       if (mounted) {
         AppToastMessage.show(
           context: context,
+          showIcon: false,
+          maxLines: 2,
           message: 'Order was cancelled: $reason',
           backgroundColor: AppColors.errorRed,
           gravity: ToastGravity.CENTER,
@@ -344,7 +355,6 @@ class _HomePageState extends State<HomePage>
   ) async {
     if (!mounted) return;
 
-    // Prevent push from being dropped while modal pop animation is still running.
     await Future.delayed(const Duration(milliseconds: 120));
     if (!mounted) return;
 
@@ -598,9 +608,9 @@ class _HomePageState extends State<HomePage>
 
       if (!mounted) return;
       setState(() {
-        _availableOrders = result['orders'] as List<AvailableOrderDto>;
         _statistics = result['statistics'] as OrderStatistics?;
       });
+      _loadRiderPerformanceSummary();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -613,6 +623,28 @@ class _HomePageState extends State<HomePage>
         });
       }
     }
+  }
+
+  Future<void> _loadRiderPerformanceSummary() async {
+    final requestId = ++_performanceSummaryRequestId;
+    if (mounted) {
+      setState(() {
+        _isLoadingPerformanceSummary = true;
+      });
+    }
+
+    final summary = await _myOrdersService.getRiderPerformanceSummary();
+    if (!mounted || requestId != _performanceSummaryRequestId) return;
+
+    setState(() {
+      _performanceSummary = summary;
+      _isLoadingPerformanceSummary = false;
+    });
+  }
+
+  String _formatGhc(double amount) {
+    final hasFraction = (amount - amount.truncateToDouble()).abs() >= 0.01;
+    return hasFraction ? amount.toStringAsFixed(2) : amount.toStringAsFixed(0);
   }
 
   void _loadSampleTransactions() {
@@ -667,21 +699,6 @@ class _HomePageState extends State<HomePage>
         status: TransactionStatus.completed,
       ),
     ];
-  }
-
-  String _getTransactionIcon(TransactionType type) {
-    switch (type) {
-      case TransactionType.delivery:
-        return Assets.icons.deliveryTruck;
-      case TransactionType.tip:
-        return Assets.icons.gift;
-      case TransactionType.bonus:
-        return Assets.icons.star;
-      case TransactionType.withdrawal:
-        return Assets.icons.creditCard;
-      case TransactionType.penalty:
-        return Assets.icons.warningCircle;
-    }
   }
 
   String _getTransactionTypeLabel(TransactionType type) {
@@ -1001,7 +1018,10 @@ class _HomePageState extends State<HomePage>
                             icon: Assets.icons.deliveryTruck,
                             iconColor: colors.accentGreen,
                             title: "Today",
-                            value: "12",
+                            value: _isLoadingPerformanceSummary
+                                ? "..."
+                                : _performanceSummary.todayDeliveries
+                                      .toString(),
                             subtitle: "Deliveries",
                           ),
                         ),
@@ -1012,7 +1032,9 @@ class _HomePageState extends State<HomePage>
                             icon: Assets.icons.creditCard,
                             iconColor: colors.accentGreen,
                             title: "Earnings",
-                            value: "GHC 285",
+                            value: _isLoadingPerformanceSummary
+                                ? "..."
+                                : "GHC ${_formatGhc(_performanceSummary.thisWeekEarnings)}",
                             subtitle: "This week",
                           ),
                         ),
@@ -1253,9 +1275,6 @@ class _HomePageState extends State<HomePage>
                               transaction.type,
                               colors,
                             );
-                            final iconPath = _getTransactionIcon(
-                              transaction.type,
-                            );
                             final typeLabel = _getTransactionTypeLabel(
                               transaction.type,
                             );
@@ -1275,29 +1294,6 @@ class _HomePageState extends State<HomePage>
                               ),
                               child: Row(
                                 children: [
-                                  Container(
-                                    width: 48.w,
-                                    height: 48.w,
-                                    decoration: BoxDecoration(
-                                      color: typeColor.withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(
-                                        KBorderSize.borderRadius4,
-                                      ),
-                                    ),
-                                    child: Center(
-                                      child: SvgPicture.asset(
-                                        iconPath,
-                                        package: 'grab_go_shared',
-                                        width: 24.w,
-                                        height: 24.w,
-                                        colorFilter: ColorFilter.mode(
-                                          typeColor,
-                                          BlendMode.srcIn,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(width: 16.w),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
@@ -1313,7 +1309,7 @@ class _HomePageState extends State<HomePage>
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
-                                        SizedBox(height: 4.h),
+                                        SizedBox(height: 8.h),
                                         Row(
                                           children: [
                                             Text(
@@ -1349,7 +1345,7 @@ class _HomePageState extends State<HomePage>
                                           fontWeight: FontWeight.w700,
                                         ),
                                       ),
-                                      SizedBox(height: 2.h),
+                                      SizedBox(height: 8.h),
                                       Container(
                                         padding: EdgeInsets.symmetric(
                                           horizontal: 6.w,

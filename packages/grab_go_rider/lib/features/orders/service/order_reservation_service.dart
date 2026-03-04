@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:battery_plus/battery_plus.dart';
 import 'package:flutter/foundation.dart';
@@ -45,7 +46,8 @@ class OrderReservation {
 
   factory OrderReservation.fromJson(Map<String, dynamic> json) {
     return OrderReservation(
-      reservationId: json['reservationId']?.toString() ?? json['_id']?.toString() ?? '',
+      reservationId:
+          json['reservationId']?.toString() ?? json['_id']?.toString() ?? '',
       orderId: json['orderId']?.toString() ?? '',
       orderNumber: json['orderNumber']?.toString() ?? '',
       expiresAt: DateTime.parse(json['expiresAt'] as String),
@@ -53,7 +55,9 @@ class OrderReservation {
       attemptNumber: (json['attemptNumber'] as num?)?.toInt() ?? 1,
       estimatedEarnings: (json['estimatedEarnings'] as num?)?.toDouble() ?? 0.0,
       distanceToPickup: (json['distanceToPickup'] as num?)?.toDouble() ?? 0.0,
-      order: ReservationOrderSnapshot.fromJson(json['order'] as Map<String, dynamic>? ?? {}),
+      order: ReservationOrderSnapshot.fromJson(
+        json['order'] as Map<String, dynamic>? ?? {},
+      ),
     );
   }
 }
@@ -143,7 +147,12 @@ class DeliveryLate {
   final int? newEtaMinutes;
   final String message;
 
-  DeliveryLate({required this.orderId, required this.orderNumber, this.newEtaMinutes, required this.message});
+  DeliveryLate({
+    required this.orderId,
+    required this.orderNumber,
+    this.newEtaMinutes,
+    required this.message,
+  });
 
   factory DeliveryLate.fromJson(Map<String, dynamic> json) {
     return DeliveryLate(
@@ -168,7 +177,8 @@ class OrderReservationService extends ChangeNotifier {
   // Current active reservation
   OrderReservation? _activeReservation;
   OrderReservation? get activeReservation => _activeReservation;
-  bool get hasActiveReservation => _activeReservation != null && !_activeReservation!.isExpired;
+  bool get hasActiveReservation =>
+      _activeReservation != null && !_activeReservation!.isExpired;
 
   // Countdown timer
   Timer? _countdownTimer;
@@ -221,7 +231,9 @@ class OrderReservationService extends ChangeNotifier {
 
     // Listen for reservation cancellations
     socket.addReservationCancelledListener((data) {
-      debugPrint('❌ OrderReservationService received reservation_cancelled: $data');
+      debugPrint(
+        '❌ OrderReservationService received reservation_cancelled: $data',
+      );
       if (data is Map<String, dynamic>) {
         _handleReservationCancelled(data);
       }
@@ -229,7 +241,9 @@ class OrderReservationService extends ChangeNotifier {
 
     // Listen for reservation expiry (from server)
     socket.addReservationExpiredListener((data) {
-      debugPrint('⏰ OrderReservationService received reservation_expired: $data');
+      debugPrint(
+        '⏰ OrderReservationService received reservation_expired: $data',
+      );
       _handleReservationExpired();
     });
 
@@ -293,7 +307,9 @@ class OrderReservationService extends ChangeNotifier {
 
     if (_activeReservation?.orderId == cancelledOrderId) {
       _clearReservation();
-      onReservationCancelled?.call(cancelledOrderId!, reason);
+      if (cancelledOrderId != null && cancelledOrderId.isNotEmpty) {
+        onReservationCancelled?.call(cancelledOrderId, reason);
+      }
     }
   }
 
@@ -307,7 +323,9 @@ class OrderReservationService extends ChangeNotifier {
   void _handleDeliveryWarning(Map<String, dynamic> data) {
     try {
       final warning = DeliveryWarning.fromJson(data);
-      debugPrint('⏰ Delivery warning for order #${warning.orderNumber}: ${warning.minutesRemaining} mins remaining');
+      debugPrint(
+        '⏰ Delivery warning for order #${warning.orderNumber}: ${warning.minutesRemaining} mins remaining',
+      );
       onDeliveryWarning?.call(warning);
     } catch (e) {
       debugPrint('Error parsing delivery warning: $e');
@@ -379,13 +397,14 @@ class OrderReservationService extends ChangeNotifier {
 
   /// Accept the current reservation
   Future<bool> acceptReservation() async {
-    if (_activeReservation == null) {
+    final reservation = _activeReservation;
+    if (reservation == null) {
       _error = 'No active reservation';
       notifyListeners();
       return false;
     }
 
-    if (_activeReservation!.isExpired) {
+    if (reservation.isExpired) {
       _error = 'Reservation has expired';
       _clearReservation();
       notifyListeners();
@@ -397,15 +416,19 @@ class OrderReservationService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final uri = Uri.parse('$_baseUrl/riders/reservation/${_activeReservation!.reservationId}/accept');
+      final uri = Uri.parse(
+        '$_baseUrl/riders/reservation/${reservation.reservationId}/accept',
+      );
       final response = await _client.post(uri, headers: await _buildHeaders());
 
-      debugPrint('Accept reservation response: ${response.statusCode} - ${response.body}');
+      debugPrint(
+        'Accept reservation response: ${response.statusCode} - ${response.body}',
+      );
 
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body) as Map<String, dynamic>;
         if (decoded['success'] == true) {
-          final orderId = _activeReservation!.orderId;
+          final orderId = reservation.orderId;
           _clearReservation();
           onReservationAccepted?.call(orderId);
           return true;
@@ -418,7 +441,13 @@ class OrderReservationService extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint('Error accepting reservation: $e');
-      _error = 'Network error: $e';
+      final isNetworkIssue =
+          e is SocketException ||
+          e is TimeoutException ||
+          e is http.ClientException;
+      _error = isNetworkIssue
+          ? 'Network error: $e'
+          : 'Could not accept this order. Please try again.';
     }
 
     _isAccepting = false;
@@ -428,7 +457,8 @@ class OrderReservationService extends ChangeNotifier {
 
   /// Decline the current reservation
   Future<bool> declineReservation({String? reason}) async {
-    if (_activeReservation == null) {
+    final reservation = _activeReservation;
+    if (reservation == null) {
       _error = 'No active reservation';
       notifyListeners();
       return false;
@@ -439,11 +469,19 @@ class OrderReservationService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final uri = Uri.parse('$_baseUrl/riders/reservation/${_activeReservation!.reservationId}/decline');
+      final uri = Uri.parse(
+        '$_baseUrl/riders/reservation/${reservation.reservationId}/decline',
+      );
       final body = reason != null ? jsonEncode({'reason': reason}) : '{}';
-      final response = await _client.post(uri, headers: await _buildHeaders(), body: body);
+      final response = await _client.post(
+        uri,
+        headers: await _buildHeaders(),
+        body: body,
+      );
 
-      debugPrint('Decline reservation response: ${response.statusCode} - ${response.body}');
+      debugPrint(
+        'Decline reservation response: ${response.statusCode} - ${response.body}',
+      );
 
       if (response.statusCode == 200) {
         _clearReservation();
@@ -455,7 +493,13 @@ class OrderReservationService extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint('Error declining reservation: $e');
-      _error = 'Network error: $e';
+      final isNetworkIssue =
+          e is SocketException ||
+          e is TimeoutException ||
+          e is http.ClientException;
+      _error = isNetworkIssue
+          ? 'Network error: $e'
+          : 'Could not decline this order. Please try again.';
     }
 
     _isDeclining = false;
@@ -472,7 +516,9 @@ class OrderReservationService extends ChangeNotifier {
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body) as Map<String, dynamic>;
         if (decoded['hasReservation'] == true && decoded['data'] != null) {
-          _activeReservation = OrderReservation.fromJson(decoded['data'] as Map<String, dynamic>);
+          _activeReservation = OrderReservation.fromJson(
+            decoded['data'] as Map<String, dynamic>,
+          );
           if (!_activeReservation!.isExpired) {
             _startCountdown();
             notifyListeners();
@@ -503,14 +549,17 @@ class OrderReservationService extends ChangeNotifier {
             permission = await Geolocator.requestPermission();
           }
 
-          if (permission != LocationPermission.denied && permission != LocationPermission.deniedForever) {
+          if (permission != LocationPermission.denied &&
+              permission != LocationPermission.deniedForever) {
             position = await Geolocator.getCurrentPosition(
               locationSettings: const LocationSettings(
                 accuracy: LocationAccuracy.high,
                 timeLimit: Duration(seconds: 10),
               ),
             );
-            debugPrint('📍 Location obtained: ${position.latitude}, ${position.longitude}');
+            debugPrint(
+              '📍 Location obtained: ${position.latitude}, ${position.longitude}',
+            );
           }
         }
       } catch (e) {
@@ -524,8 +573,12 @@ class OrderReservationService extends ChangeNotifier {
         final battery = Battery();
         batteryLevel = await battery.batteryLevel;
         final batteryState = await battery.batteryState;
-        isCharging = batteryState == BatteryState.charging || batteryState == BatteryState.full;
-        debugPrint('🔋 Battery: $batteryLevel%${isCharging ? ' (charging)' : ''}');
+        isCharging =
+            batteryState == BatteryState.charging ||
+            batteryState == BatteryState.full;
+        debugPrint(
+          '🔋 Battery: $batteryLevel%${isCharging ? ' (charging)' : ''}',
+        );
       } catch (e) {
         debugPrint('⚠️ Error getting battery level: $e');
       }
@@ -585,9 +638,17 @@ class OrderReservationService extends ChangeNotifier {
   }
 
   /// Update rider location on server (with optional battery level)
-  Future<bool> updateLocation(double latitude, double longitude, {int? batteryLevel, bool? isCharging}) async {
+  Future<bool> updateLocation(
+    double latitude,
+    double longitude, {
+    int? batteryLevel,
+    bool? isCharging,
+  }) async {
     try {
-      final body = <String, dynamic>{'latitude': latitude, 'longitude': longitude};
+      final body = <String, dynamic>{
+        'latitude': latitude,
+        'longitude': longitude,
+      };
 
       // Include battery info if provided
       if (batteryLevel != null) {
@@ -598,7 +659,11 @@ class OrderReservationService extends ChangeNotifier {
       }
 
       final uri = Uri.parse('$_baseUrl/riders/location');
-      final response = await _client.post(uri, headers: await _buildHeaders(), body: jsonEncode(body));
+      final response = await _client.post(
+        uri,
+        headers: await _buildHeaders(),
+        body: jsonEncode(body),
+      );
 
       // Also emit socket event for real-time updates
       final socket = SocketService();
@@ -634,12 +699,23 @@ class OrderReservationService extends ChangeNotifier {
   }
 
   /// Submit delay reason for a late delivery
-  Future<bool> submitDelayReason(String orderId, DelayReasonType reason, {String? note}) async {
+  Future<bool> submitDelayReason(
+    String orderId,
+    DelayReasonType reason, {
+    String? note,
+  }) async {
     try {
       final uri = Uri.parse('$_baseUrl/riders/orders/$orderId/delay-reason');
-      final body = <String, dynamic>{'reason': reason.value, if (note != null && note.isNotEmpty) 'note': note};
+      final body = <String, dynamic>{
+        'reason': reason.value,
+        if (note != null && note.isNotEmpty) 'note': note,
+      };
 
-      final response = await _client.post(uri, headers: await _buildHeaders(), body: jsonEncode(body));
+      final response = await _client.post(
+        uri,
+        headers: await _buildHeaders(),
+        body: jsonEncode(body),
+      );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -691,6 +767,9 @@ enum DelayReasonType {
 
   static DelayReasonType? fromValue(String? value) {
     if (value == null) return null;
-    return DelayReasonType.values.firstWhere((e) => e.value == value, orElse: () => DelayReasonType.other);
+    return DelayReasonType.values.firstWhere(
+      (e) => e.value == value,
+      orElse: () => DelayReasonType.other,
+    );
   }
 }

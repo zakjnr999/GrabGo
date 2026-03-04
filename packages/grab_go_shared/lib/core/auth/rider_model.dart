@@ -82,6 +82,10 @@ class Rider {
   final bool? agreedToAccuracy;
 
   // Additional
+  final double? rating;
+  final int? ratingCount;
+  final int? totalDeliveries;
+  final int? activeDays;
   final String? notes;
   final String? createdAt;
   final String? updatedAt;
@@ -111,6 +115,10 @@ class Rider {
     this.agreedToTerms,
     this.agreedToLocationAccess,
     this.agreedToAccuracy,
+    this.rating,
+    this.ratingCount,
+    this.totalDeliveries,
+    this.activeDays,
     this.notes,
     this.createdAt,
     this.updatedAt,
@@ -130,14 +138,19 @@ class RiderResponse {
   RiderResponse({required this.message, this.data, this.success});
 
   factory RiderResponse.fromJson(Map<String, dynamic> json) {
-    Rider? riderData;
-
-    // Handle different response formats
-    if (json['data'] != null) {
-      if (json['data'] is Map<String, dynamic>) {
-        riderData = Rider.fromJson(json['data'] as Map<String, dynamic>);
+    // Prefer generated parsing for standard `{message, data, success}` shape.
+    if (json['message'] is String && (json['data'] == null || json['data'] is Map<String, dynamic>)) {
+      final parsed = _$RiderResponseFromJson(json);
+      if (parsed.data != null || json['data'] == null) {
+        return parsed;
       }
+    }
+
+    Rider? riderData;
+    if (json['data'] is Map<String, dynamic>) {
+      riderData = Rider.fromJson(json['data'] as Map<String, dynamic>);
     } else if (json.containsKey('vehicleType') || json.containsKey('verificationStatus')) {
+      // Backward compatibility: some endpoints may return rider fields at root.
       riderData = Rider.fromJson(json);
     }
 

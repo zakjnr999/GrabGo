@@ -7,7 +7,16 @@ import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
 import 'package:grab_go_shared/shared/utils/constants.dart';
 
 class ProfileSliverAppbar extends StatelessWidget {
-  const ProfileSliverAppbar({super.key});
+  final String? riderName;
+  final String? riderEmail;
+  final bool isLoading;
+
+  const ProfileSliverAppbar({
+    super.key,
+    this.riderName,
+    this.riderEmail,
+    this.isLoading = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -28,18 +37,26 @@ class ProfileSliverAppbar extends StatelessWidget {
       flexibleSpace: LayoutBuilder(
         builder: (context, constraints) {
           final double expandRatio =
-              ((constraints.maxHeight - kToolbarHeight) / (MediaQuery.of(context).size.height * 0.35 - kToolbarHeight))
+              ((constraints.maxHeight - kToolbarHeight) /
+                      (MediaQuery.of(context).size.height * 0.35 -
+                          kToolbarHeight))
                   .clamp(0.0, 1.0);
           final double reverseRatio = 1.0 - expandRatio;
 
           return FlexibleSpaceBar(
-            stretchModes: const [StretchMode.zoomBackground, StretchMode.blurBackground],
+            stretchModes: const [
+              StretchMode.zoomBackground,
+              StretchMode.blurBackground,
+            ],
             background: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [colors.accentGreen, colors.accentGreen.withValues(alpha: 0.85)],
+                  colors: [
+                    colors.accentGreen,
+                    colors.accentGreen.withValues(alpha: 0.85),
+                  ],
                 ),
               ),
               child: SafeArea(
@@ -58,41 +75,31 @@ class ProfileSliverAppbar extends StatelessWidget {
                           child: Stack(
                             children: [
                               Container(
-                                width: 100.w * expandRatio + 60.w * reverseRatio,
-                                height: 100.w * expandRatio + 60.w * reverseRatio,
+                                width:
+                                    100.w * expandRatio + 60.w * reverseRatio,
+                                height:
+                                    100.w * expandRatio + 60.w * reverseRatio,
                                 decoration: BoxDecoration(
                                   color: Colors.white.withValues(alpha: 0.2),
                                   shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 4 * expandRatio + 2 * reverseRatio),
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 4 * expandRatio + 2 * reverseRatio,
+                                  ),
                                 ),
                                 child: Center(
                                   child: SvgPicture.asset(
                                     Assets.icons.user,
                                     package: 'grab_go_shared',
-                                    width: (50.w * expandRatio + 30.w * reverseRatio),
-                                    height: (50.w * expandRatio + 30.w * reverseRatio),
-                                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                bottom: 0,
-                                right: 0,
-                                child: Container(
-                                  width: 32.w * expandRatio + 24.w * reverseRatio,
-                                  height: 32.w * expandRatio + 24.w * reverseRatio,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: colors.accentGreen, width: 2),
-                                  ),
-                                  child: Center(
-                                    child: SvgPicture.asset(
-                                      Assets.icons.camera,
-                                      package: 'grab_go_shared',
-                                      width: 16.w,
-                                      height: 16.w,
-                                      colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                                    width:
+                                        (50.w * expandRatio +
+                                        30.w * reverseRatio),
+                                    height:
+                                        (50.w * expandRatio +
+                                        30.w * reverseRatio),
+                                    colorFilter: const ColorFilter.mode(
+                                      Colors.white,
+                                      BlendMode.srcIn,
                                     ),
                                   ),
                                 ),
@@ -106,10 +113,16 @@ class ProfileSliverAppbar extends StatelessWidget {
                         opacity: expandRatio,
                         duration: const Duration(milliseconds: 200),
                         child: Text(
-                          "Partner Zak",
+                          isLoading
+                              ? "..."
+                              : ((riderName != null &&
+                                        riderName!.trim().isNotEmpty)
+                                    ? riderName!.trim()
+                                    : "GrabGo Partner"),
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 22.sp * expandRatio + 18.sp * reverseRatio,
+                            fontSize:
+                                22.sp * expandRatio + 18.sp * reverseRatio,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -119,10 +132,16 @@ class ProfileSliverAppbar extends StatelessWidget {
                         opacity: expandRatio,
                         duration: const Duration(milliseconds: 200),
                         child: Text(
-                          "zak.partner@grabgo.com",
+                          isLoading
+                              ? "Loading profile..."
+                              : ((riderEmail != null &&
+                                        riderEmail!.trim().isNotEmpty)
+                                    ? riderEmail!.trim()
+                                    : "rider@grabgo.com"),
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.9),
-                            fontSize: 14.sp * expandRatio + 12.sp * reverseRatio,
+                            fontSize:
+                                14.sp * expandRatio + 12.sp * reverseRatio,
                             fontWeight: FontWeight.w400,
                           ),
                         ),
@@ -132,10 +151,15 @@ class ProfileSliverAppbar extends StatelessWidget {
                         opacity: expandRatio,
                         duration: const Duration(milliseconds: 200),
                         child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16.w,
+                            vertical: 8.h,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(KBorderSize.borderRadius50),
+                            borderRadius: BorderRadius.circular(
+                              KBorderSize.borderRadius50,
+                            ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -143,7 +167,10 @@ class ProfileSliverAppbar extends StatelessWidget {
                               Container(
                                 width: 8.w,
                                 height: 8.w,
-                                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                ),
                               ),
                               SizedBox(width: 8.w),
                               Text(
@@ -178,7 +205,11 @@ class ProfileSliverAppbar extends StatelessWidget {
               topRight: Radius.circular(KBorderSize.borderRadius20),
             ),
             boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, -2)),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 8,
+                offset: const Offset(0, -2),
+              ),
             ],
           ),
         ),
@@ -202,7 +233,10 @@ class ProfileSliverAppbar extends StatelessWidget {
               package: 'grab_go_shared',
               width: 24.w,
               height: 24.w,
-              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+              colorFilter: const ColorFilter.mode(
+                Colors.white,
+                BlendMode.srcIn,
+              ),
             ),
             onPressed: () {},
           ),

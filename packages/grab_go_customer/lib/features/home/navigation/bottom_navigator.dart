@@ -281,7 +281,7 @@ class _BottomNavigatorState extends State<BottomNavigator> {
               package: 'grab_go_shared',
               fontSize: 12,
               fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-              color: colors.textPrimary,
+              color: selected ? colors.accentOrange : colors.textPrimary,
             ),
             child: Text(label),
           ),

@@ -94,22 +94,13 @@ class _CancelOrderDialogState extends State<CancelOrderDialog> {
                 ),
                 Row(
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Cancel Order',
-                          style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w700),
-                        ),
-                        Text(
-                          widget.orderNumber,
-                          style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
-                        ),
-                      ],
+                    Text(
+                      'Cancel Order',
+                      style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w700),
                     ),
                   ],
                 ),
-                SizedBox(height: 16.h),
+                SizedBox(height: 12.h),
                 Container(
                   padding: EdgeInsets.all(12.w),
                   decoration: BoxDecoration(
@@ -253,7 +244,7 @@ class _CancelOrderDialogState extends State<CancelOrderDialog> {
         margin: EdgeInsets.only(bottom: 8.h),
         padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 16.h),
         decoration: BoxDecoration(
-          color: isSelected ? colors.error.withValues(alpha: 0.1) : colors.backgroundSecondary,
+          color: isSelected ? colors.accentGreen.withValues(alpha: 0.1) : colors.backgroundSecondary,
           borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
         ),
         child: Row(
@@ -263,8 +254,8 @@ class _CancelOrderDialogState extends State<CancelOrderDialog> {
               height: 20.w,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: isSelected ? colors.error : colors.textSecondary, width: 1.w),
-                color: isSelected ? colors.error : Colors.transparent,
+                border: Border.all(color: isSelected ? colors.accentGreen : colors.textSecondary, width: 1.w),
+                color: isSelected ? colors.accentGreen : Colors.transparent,
               ),
               child: isSelected
                   ? SvgPicture.asset(
@@ -281,7 +272,7 @@ class _CancelOrderDialogState extends State<CancelOrderDialog> {
               child: Text(
                 reason.displayText,
                 style: TextStyle(
-                  color: isSelected ? colors.error : colors.textPrimary,
+                  color: isSelected ? colors.accentGreen : colors.textPrimary,
                   fontSize: 14.sp,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                 ),

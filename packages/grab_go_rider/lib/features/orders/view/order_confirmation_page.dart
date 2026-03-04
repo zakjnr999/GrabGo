@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:battery_plus/battery_plus.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -72,6 +75,47 @@ class OrderConfirmationPage extends StatefulWidget {
 }
 
 class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
+  final Battery _battery = Battery();
+  bool _isBatteryLow = false;
+  bool _isCharging = false;
+  StreamSubscription<BatteryState>? _batterySubscription;
+
+  bool get _showBatteryWarning => _isBatteryLow && !_isCharging;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeBatteryState();
+  }
+
+  @override
+  void dispose() {
+    _batterySubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _initializeBatteryState() async {
+    try {
+      final level = await _battery.batteryLevel;
+      final state = await _battery.batteryState;
+
+      if (!mounted) return;
+      setState(() {
+        _isBatteryLow = level < 20;
+        _isCharging = state == BatteryState.charging || state == BatteryState.full;
+      });
+
+      _batterySubscription = _battery.onBatteryStateChanged.listen((state) {
+        if (!mounted) return;
+        setState(() {
+          _isCharging = state == BatteryState.charging || state == BatteryState.full;
+        });
+      });
+    } catch (error) {
+      debugPrint('Error initializing battery warning state: $error');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
@@ -82,9 +126,7 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
       value: SystemUiOverlayStyle(
         systemNavigationBarColor: colors.backgroundPrimary,
         systemNavigationBarDividerColor: Colors.transparent,
-        systemNavigationBarIconBrightness: isDark
-            ? Brightness.light
-            : Brightness.dark,
+        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       ),
       child: Scaffold(
         backgroundColor: colors.backgroundSecondary,
@@ -110,10 +152,7 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
                         package: 'grab_go_shared',
                         width: 24.w,
                         height: 24.w,
-                        colorFilter: ColorFilter.mode(
-                          Colors.white,
-                          BlendMode.srcIn,
-                        ),
+                        colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
                       ),
                       onPressed: () => context.pop(),
                     ),
@@ -124,10 +163,7 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
                           package: 'grab_go_shared',
                           width: 20.w,
                           height: 20.w,
-                          colorFilter: const ColorFilter.mode(
-                            Colors.white,
-                            BlendMode.srcIn,
-                          ),
+                          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                         ),
 
                         onPressed: () => _showCallOptions(context, colors),
@@ -139,26 +175,16 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
                         color: colors.accentGreen,
                         child: SafeArea(
                           child: Padding(
-                            padding: EdgeInsets.fromLTRB(
-                              20.w,
-                              20.h,
-                              20.w,
-                              16.h,
-                            ),
+                            padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 16.h),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
                                 Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 12.w,
-                                    vertical: 6.h,
-                                  ),
+                                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
                                   decoration: BoxDecoration(
                                     color: Colors.white.withValues(alpha: 0.2),
-                                    borderRadius: BorderRadius.circular(
-                                      KBorderSize.borderRadius20,
-                                    ),
+                                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius20),
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
@@ -166,15 +192,11 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
                                       Container(
                                         width: 6.w,
                                         height: 6.w,
-                                        decoration: const BoxDecoration(
-                                          color: Colors.white,
-                                          shape: BoxShape.circle,
-                                        ),
+                                        decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
                                       ),
                                       SizedBox(width: 6.w),
                                       Text(
-                                        widget.orderStatus?.toUpperCase() ??
-                                            "CONFIRMED",
+                                        widget.orderStatus?.toUpperCase() ?? "CONFIRMED",
                                         style: TextStyle(
                                           color: Colors.white,
                                           fontSize: 12.sp,
@@ -190,9 +212,7 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
                                     Text(
                                       "ORDER NO. : ",
                                       style: TextStyle(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.9,
-                                        ),
+                                        color: Colors.white.withValues(alpha: 0.9),
                                         fontSize: 12.sp,
                                         fontWeight: FontWeight.w500,
                                       ),
@@ -201,7 +221,7 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
                                       widget.displayOrderId,
                                       style: TextStyle(
                                         color: Colors.white,
-                                        fontSize: 20.sp,
+                                        fontSize: 16.sp,
                                         fontWeight: FontWeight.w700,
                                       ),
                                       maxLines: 1,
@@ -215,9 +235,7 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
                                     Text(
                                       "EARNINGS : ",
                                       style: TextStyle(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.9,
-                                        ),
+                                        color: Colors.white.withValues(alpha: 0.9),
                                         fontSize: 12.sp,
                                         fontWeight: FontWeight.w500,
                                       ),
@@ -226,7 +244,7 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
                                       "GHS ${widget.riderEarnings.toString()}",
                                       style: TextStyle(
                                         color: Colors.white,
-                                        fontSize: 18.sp,
+                                        fontSize: 16.sp,
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
@@ -245,7 +263,7 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Low Battery Warning
-                        _buildLowBatteryWarning(colors),
+                        if (_showBatteryWarning) _buildLowBatteryWarning(colors),
 
                         SizedBox(height: 20.h),
 
@@ -275,14 +293,21 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
               decoration: BoxDecoration(
                 color: colors.backgroundPrimary,
                 boxShadow: [
-                  BoxShadow(
-                    color: colors.shadow.withValues(alpha: 0.1),
-                    blurRadius: 5,
-                    offset: const Offset(0, -2),
-                  ),
+                  BoxShadow(color: colors.shadow.withValues(alpha: 0.1), blurRadius: 5, offset: const Offset(0, -2)),
                 ],
               ),
-              child: SafeArea(top: false, child: _buildActionButtons(colors)),
+              child: SafeArea(
+                top: false,
+                child: AppButton(
+                  onPressed: () => _navigateToTracking(phase: "pickup"),
+                  buttonText: 'Navigate to Vendor',
+                  backgroundColor: colors.accentGreen,
+                  width: double.infinity,
+                  borderRadius: KBorderSize.borderRadius4,
+                  height: 60.h,
+                  textStyle: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w700),
+                ),
+              ),
             ),
           ],
         ),
@@ -308,11 +333,7 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
           Expanded(
             child: Text(
               'Low battery. Consider charging before starting your journey.',
-              style: TextStyle(
-                fontSize: 11.sp,
-                color: Colors.white,
-                fontWeight: FontWeight.w500,
-              ),
+              style: TextStyle(fontSize: 11.sp, color: Colors.white, fontWeight: FontWeight.w500),
             ),
           ),
         ],
@@ -349,11 +370,7 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
             padding: EdgeInsets.only(left: 48.w),
             child: Row(
               children: [
-                Container(
-                  width: 2.w,
-                  height: 24.h,
-                  color: colors.accentGreen.withValues(alpha: 0.3),
-                ),
+                Container(width: 2.w, height: 24.h, color: colors.accentGreen.withValues(alpha: 0.3)),
                 Expanded(
                   child: Container(
                     height: 1.h,
@@ -410,10 +427,7 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
               height: size.width * 0.15,
               width: size.width * 0.15,
               fit: BoxFit.cover,
-              imageUrl: ImageOptimizer.getPreviewUrl(
-                imageUrl ?? '',
-                width: 200,
-              ),
+              imageUrl: ImageOptimizer.getPreviewUrl(imageUrl ?? '', width: 200),
               memCacheWidth: 200,
               maxHeightDiskCache: 200,
               placeholder: (context, url) => Container(
@@ -422,19 +436,14 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
                 padding: EdgeInsets.all(12.r),
                 decoration: BoxDecoration(
                   color: colors.accentGreen.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(
-                    KBorderSize.borderRadius4,
-                  ),
+                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                 ),
                 child: SvgPicture.asset(
                   icon,
                   package: 'grab_go_shared',
                   width: 24.w,
                   height: 24.w,
-                  colorFilter: ColorFilter.mode(
-                    colors.accentGreen,
-                    BlendMode.srcIn,
-                  ),
+                  colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
                 ),
               ),
               errorWidget: (context, url, error) => Container(
@@ -443,19 +452,14 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
                 padding: EdgeInsets.all(12.r),
                 decoration: BoxDecoration(
                   color: colors.accentGreen.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(
-                    KBorderSize.borderRadius4,
-                  ),
+                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                 ),
                 child: SvgPicture.asset(
                   icon,
                   package: 'grab_go_shared',
                   width: 24.w,
                   height: 24.w,
-                  colorFilter: ColorFilter.mode(
-                    colors.accentGreen,
-                    BlendMode.srcIn,
-                  ),
+                  colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
                 ),
               ),
             ),
@@ -468,29 +472,17 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
               children: [
                 Text(
                   title,
-                  style: TextStyle(
-                    color: colors.textSecondary,
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w500),
                 ),
                 SizedBox(height: 4.h),
                 Text(
                   name,
-                  style: TextStyle(
-                    color: colors.textPrimary,
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w600),
                 ),
                 SizedBox(height: 4.h),
                 Text(
                   address,
-                  style: TextStyle(
-                    color: colors.textSecondary,
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w400,
-                  ),
+                  style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
                 ),
               ],
             ),
@@ -515,20 +507,12 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
             children: [
               Text(
                 "Order Items",
-                style: TextStyle(
-                  color: colors.textPrimary,
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w700),
               ),
               const Spacer(),
               Text(
                 "${widget.orderItems.length} items",
-                style: TextStyle(
-                  color: colors.textSecondary,
-                  fontSize: 11.sp,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w600),
               ),
             ],
           ),
@@ -549,9 +533,7 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
           else
             ...widget.orderItems.asMap().entries.map(
               (entry) => Padding(
-                padding: EdgeInsets.only(
-                  bottom: entry.key == widget.orderItems.length - 1 ? 0 : 12.h,
-                ),
+                padding: EdgeInsets.only(bottom: entry.key == widget.orderItems.length - 1 ? 0 : 12.h),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -602,11 +584,7 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
               children: [
                 Text(
                   "Special Instructions",
-                  style: TextStyle(
-                    color: colors.textPrimary,
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w700),
                 ),
                 SizedBox(height: 16.h),
                 Row(
@@ -636,50 +614,6 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildActionButtons(AppColorsExtension colors) {
-    return _buildPrimaryButton(
-      colors: colors,
-      label: "Navigate to Restaurant",
-      color: colors.accentGreen,
-      onPressed: () {
-        _navigateToTracking(phase: "pickup");
-      },
-    );
-  }
-
-  Widget _buildPrimaryButton({
-    required AppColorsExtension colors,
-    required String label,
-    required Color color,
-    required VoidCallback onPressed,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-        child: Container(
-          width: double.infinity,
-          padding: EdgeInsets.symmetric(vertical: 16.h),
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-          ),
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 15.sp,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -746,28 +680,19 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
                 padding: EdgeInsets.all(10.r),
                 decoration: BoxDecoration(
                   color: colors.accentOrange.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(
-                    KBorderSize.borderRadius4,
-                  ),
+                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                 ),
                 child: SvgPicture.asset(
                   Assets.icons.chefHat,
                   package: 'grab_go_shared',
                   width: 20.w,
                   height: 20.w,
-                  colorFilter: ColorFilter.mode(
-                    colors.accentOrange,
-                    BlendMode.srcIn,
-                  ),
+                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                 ),
               ),
               title: Text(
                 "Call Restaurant",
-                style: TextStyle(
-                  color: colors.textPrimary,
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
               ),
               subtitle: Text(
                 "Contact restaurant for order details",
@@ -783,28 +708,19 @@ class _OrderConfirmationPageState extends State<OrderConfirmationPage> {
                 padding: EdgeInsets.all(10.r),
                 decoration: BoxDecoration(
                   color: colors.accentViolet.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(
-                    KBorderSize.borderRadius4,
-                  ),
+                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                 ),
                 child: SvgPicture.asset(
                   Assets.icons.user,
                   package: 'grab_go_shared',
                   width: 20.w,
                   height: 20.w,
-                  colorFilter: ColorFilter.mode(
-                    colors.accentViolet,
-                    BlendMode.srcIn,
-                  ),
+                  colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
                 ),
               ),
               title: Text(
                 "Call Customer",
-                style: TextStyle(
-                  color: colors.textPrimary,
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
               ),
               subtitle: Text(
                 widget.customerPhone,
