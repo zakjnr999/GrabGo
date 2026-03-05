@@ -62,13 +62,16 @@ const updateWalletBalance = async (userId) => {
   });
 
   const totals = transactions.reduce((acc, tx) => {
-    if (["delivery", "tip", "bonus"].includes(tx.type)) {
+    if (["delivery", "tip", "bonus", "incentive"].includes(tx.type)) {
       acc.earnings += tx.amount;
     } else if (tx.type === "withdrawal") {
       acc.withdrawals += tx.amount;
+    } else if (tx.type === "penalty") {
+      // Loan repayments store negative amounts; sum their absolute values as deductions
+      acc.deductions += Math.abs(tx.amount);
     }
     return acc;
-  }, { earnings: 0, withdrawals: 0 });
+  }, { earnings: 0, withdrawals: 0, deductions: 0 });
 
   const pendingWithdrawalsSum = await prisma.transaction.aggregate({
     where: {
@@ -85,7 +88,7 @@ const updateWalletBalance = async (userId) => {
       totalEarnings: totals.earnings,
       totalWithdrawals: totals.withdrawals,
       pendingWithdrawals: pendingWithdrawalsSum._sum.amount || 0,
-      balance: totals.earnings - totals.withdrawals,
+      balance: totals.earnings - totals.withdrawals - totals.deductions,
       updatedAt: new Date()
     }
   });
