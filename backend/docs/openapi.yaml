@@ -3,13 +3,13 @@ info:
   title: GrabGo API
   description: |
     Backend API for GrabGo food delivery platform.
-    
+
     ## Authentication
     Most endpoints require JWT authentication. Include the token in the Authorization header:
     ```
     Authorization: Bearer <your_jwt_token>
     ```
-    
+
     ## User Roles
     - **customer**: Regular users who order food
     - **restaurant**: Restaurant owners/managers
@@ -46,6 +46,14 @@ tags:
     description: Wallet credit balance, transactions, and checkout calculation
   - name: Riders
     description: Rider operations and wallet
+  - name: Rider Partner
+    description: Rider partner level system — score, level, dashboard, history
+  - name: Rider Incentives
+    description: Quests, streaks, milestones, peak-hour bonuses, and incentive ledger
+  - name: Rider Budget
+    description: Admin budget window management for incentive caps
+  - name: Rider Payout
+    description: Rider withdrawal policy, payout history, and incentive balances
   - name: Chats
     description: Real-time chat between customers and riders
   - name: Statuses
@@ -166,9 +174,9 @@ components:
         price:
           type: number
         category:
-          $ref: '#/components/schemas/Category'
+          $ref: "#/components/schemas/Category"
         restaurant:
-          $ref: '#/components/schemas/Restaurant'
+          $ref: "#/components/schemas/Restaurant"
         food_image:
           type: string
           format: uri
@@ -205,11 +213,11 @@ components:
         orderNumber:
           type: string
         customer:
-          $ref: '#/components/schemas/User'
+          $ref: "#/components/schemas/User"
         restaurant:
-          $ref: '#/components/schemas/Restaurant'
+          $ref: "#/components/schemas/Restaurant"
         rider:
-          $ref: '#/components/schemas/User'
+          $ref: "#/components/schemas/User"
         items:
           type: array
           items:
@@ -243,7 +251,17 @@ components:
           enum: [pending, paid, failed]
         status:
           type: string
-          enum: [pending, confirmed, preparing, ready, picked_up, on_the_way, delivered, cancelled]
+          enum:
+            [
+              pending,
+              confirmed,
+              preparing,
+              ready,
+              picked_up,
+              on_the_way,
+              delivered,
+              cancelled,
+            ]
         notes:
           type: string
         createdAt:
@@ -345,13 +363,318 @@ components:
         pendingWithdrawals:
           type: number
 
+    # ── Rider Partner & Incentive Schemas ──
+
+    PartnerLevel:
+      type: string
+      enum: [L1, L2, L3, L4, L5]
+      description: |
+        Rider partner level:
+        - **L1** (0-39): New Partner — 1.0× multiplier
+        - **L2** (40-59): Bronze — 1.1× multiplier
+        - **L3** (60-74): Silver — 1.2× multiplier
+        - **L4** (75-89): Gold — 1.4× multiplier
+        - **L5** (90-100): Platinum — 1.6× multiplier
+
+    NextLevelTarget:
+      type: object
+      nullable: true
+      description: Target info for the next partner level (null if already L5)
+      properties:
+        nextLevel:
+          $ref: "#/components/schemas/PartnerLevel"
+        scoreRequired:
+          type: number
+          description: Minimum score needed for next level
+        scoreGap:
+          type: number
+          description: Points still needed to reach next level
+        requirements:
+          type: object
+          nullable: true
+          properties:
+            minDeliveries:
+              type: integer
+            minRating:
+              type: number
+            minCompletionRate:
+              type: number
+        multiplier:
+          type: number
+        dispatchBonus:
+          type: integer
+
+    LevelChange:
+      type: object
+      properties:
+        id:
+          type: string
+        riderId:
+          type: string
+        fromLevel:
+          $ref: "#/components/schemas/PartnerLevel"
+        toLevel:
+          $ref: "#/components/schemas/PartnerLevel"
+        score:
+          type: number
+        reason:
+          type: string
+        changedAt:
+          type: string
+          format: date-time
+
+    QuestProgress:
+      type: object
+      properties:
+        questId:
+          type: string
+        name:
+          type: string
+          example: "Daily Grinder"
+        description:
+          type: string
+        period:
+          type: string
+          enum: [daily, weekly]
+        windowKey:
+          type: string
+          example: "2026-03-05"
+        currentCount:
+          type: integer
+        targetCount:
+          type: integer
+        percentComplete:
+          type: number
+        status:
+          type: string
+          enum: [active, completed, expired]
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        baseReward:
+          type: number
+          description: Base reward in GHS
+        multiplier:
+          type: number
+          description: Partner level multiplier applied
+        finalReward:
+          type: number
+          description: Reward after multiplier
+        minLevel:
+          $ref: "#/components/schemas/PartnerLevel"
+
+    StreakDashboard:
+      type: object
+      properties:
+        currentStreak:
+          type: integer
+          description: Current consecutive delivery days
+        longestStreak:
+          type: integer
+        streakStartDate:
+          type: string
+          format: date
+        lastDeliveryDate:
+          type: string
+          format: date
+        nextReward:
+          type: object
+          nullable: true
+          properties:
+            daysNeeded:
+              type: integer
+            threshold:
+              type: integer
+            label:
+              type: string
+            baseReward:
+              type: number
+            finalReward:
+              type: number
+        allThresholds:
+          type: array
+          items:
+            type: object
+            properties:
+              days:
+                type: integer
+              label:
+                type: string
+              baseReward:
+                type: number
+              finalReward:
+                type: number
+              achieved:
+                type: boolean
+        recentRewards:
+          type: array
+          items:
+            type: object
+            properties:
+              streakCount:
+                type: integer
+              rewardAmount:
+                type: number
+              awardedAt:
+                type: string
+                format: date-time
+
+    MilestoneDashboard:
+      type: object
+      properties:
+        totalCompleted:
+          type: integer
+        totalAvailable:
+          type: integer
+        nextMilestone:
+          type: object
+          nullable: true
+        milestones:
+          type: array
+          items:
+            type: object
+            properties:
+              milestoneId:
+                type: string
+              name:
+                type: string
+                example: "Century Rider"
+              description:
+                type: string
+              badgeIcon:
+                type: string
+              currentCount:
+                type: integer
+              targetCount:
+                type: integer
+              percentComplete:
+                type: number
+              isCompleted:
+                type: boolean
+              completedAt:
+                type: string
+                format: date-time
+                nullable: true
+              baseReward:
+                type: number
+              finalReward:
+                type: number
+        recentRewards:
+          type: array
+          items:
+            type: object
+            properties:
+              milestoneName:
+                type: string
+              badgeIcon:
+                type: string
+              rewardAmount:
+                type: number
+              awardedAt:
+                type: string
+                format: date-time
+
+    IncentiveSummary:
+      type: object
+      properties:
+        windowKey:
+          type: string
+        totalEntries:
+          type: integer
+        totalPending:
+          type: number
+          description: Total pending budget approval (GHS)
+        totalAvailable:
+          type: number
+          description: Total available for payout (GHS)
+        totalPaidOut:
+          type: number
+          description: Total already paid out (GHS)
+        bySource:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              count:
+                type: integer
+              total:
+                type: number
+          example:
+            quest: { count: 3, total: 15.0 }
+            streak: { count: 1, total: 5.0 }
+            peak_hour: { count: 5, total: 22.5 }
+        entries:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              sourceType:
+                type: string
+                enum: [quest, streak, milestone, peak_hour]
+              baseAmount:
+                type: number
+              multiplier:
+                type: number
+              finalAmount:
+                type: number
+              status:
+                type: string
+                enum: [pending_budget, available, paid_out, expired]
+              metadata:
+                type: object
+              createdAt:
+                type: string
+                format: date-time
+
+    PeakWindow:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "lunch_rush"
+        label:
+          type: string
+          example: "Lunch Rush"
+        start:
+          type: string
+          example: "11:30"
+        end:
+          type: string
+          example: "13:30"
+        bonusRate:
+          type: number
+          example: 0.20
+        bonusPercent:
+          type: integer
+          example: 20
+
+    BudgetWindow:
+      type: object
+      properties:
+        windowKey:
+          type: string
+        capAmount:
+          type: number
+        spentAmount:
+          type: number
+        remaining:
+          type: number
+        status:
+          type: string
+          enum: [active, exhausted, closed]
+        utilizationPercent:
+          type: number
+
     Status:
       type: object
       properties:
         _id:
           type: string
         restaurant:
-          $ref: '#/components/schemas/Restaurant'
+          $ref: "#/components/schemas/Restaurant"
         category:
           type: string
           enum: [daily_special, discount, new_item, video]
@@ -384,7 +707,7 @@ components:
         promoCode:
           type: string
         linkedFood:
-          $ref: '#/components/schemas/Food'
+          $ref: "#/components/schemas/Food"
         viewCount:
           type: integer
         likeCount:
@@ -483,7 +806,19 @@ components:
           description: Current status of the scheduled notification
         type:
           type: string
-          enum: [order, promo, update, system, comment_reply, comment_reaction, referral_completed, payment_confirmed, delivery_arriving, milestone_bonus]
+          enum:
+            [
+              order,
+              promo,
+              update,
+              system,
+              comment_reply,
+              comment_reaction,
+              referral_completed,
+              payment_confirmed,
+              delivery_arriving,
+              milestone_bonus,
+            ]
           description: Type of notification
         title:
           type: string
@@ -563,7 +898,19 @@ components:
           type: string
         type:
           type: string
-          enum: [order, promo, update, system, comment_reply, comment_reaction, referral_completed, payment_confirmed, delivery_arriving, milestone_bonus]
+          enum:
+            [
+              order,
+              promo,
+              update,
+              system,
+              comment_reply,
+              comment_reaction,
+              referral_completed,
+              payment_confirmed,
+              delivery_arriving,
+              milestone_bonus,
+            ]
         title:
           type: string
         message:
@@ -756,7 +1103,7 @@ paths:
                     role:
                       type: string
       responses:
-        '201':
+        "201":
           description: User registered successfully
           content:
             application/json:
@@ -766,15 +1113,15 @@ paths:
                   message:
                     type: string
                   user:
-                    $ref: '#/components/schemas/User'
+                    $ref: "#/components/schemas/User"
                   token:
                     type: string
-        '400':
+        "400":
           description: Validation error or user already exists
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
 
   /users/login:
     post:
@@ -809,7 +1156,7 @@ paths:
                     photoUrl:
                       type: string
       responses:
-        '200':
+        "200":
           description: Login successful
           content:
             application/json:
@@ -819,12 +1166,12 @@ paths:
                   message:
                     type: string
                   user:
-                    $ref: '#/components/schemas/User'
+                    $ref: "#/components/schemas/User"
                   token:
                     type: string
-        '401':
+        "401":
           description: Invalid credentials
-        '403':
+        "403":
           description: Account deactivated
 
   /users/me:
@@ -834,7 +1181,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Current user retrieved successfully
           content:
             application/json:
@@ -844,8 +1191,8 @@ paths:
                   success:
                     type: boolean
                   user:
-                    $ref: '#/components/schemas/User'
-        '401':
+                    $ref: "#/components/schemas/User"
+        "401":
           description: Unauthorized
 
   /users/{userId}:
@@ -861,7 +1208,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: User retrieved successfully
           content:
             application/json:
@@ -871,8 +1218,8 @@ paths:
                   message:
                     type: string
                   user:
-                    $ref: '#/components/schemas/User'
-        '404':
+                    $ref: "#/components/schemas/User"
+        "404":
           description: User not found
 
     put:
@@ -911,11 +1258,11 @@ paths:
                 profilePicture:
                   type: string
       responses:
-        '200':
+        "200":
           description: User updated successfully
-        '403':
+        "403":
           description: Not authorized
-        '404':
+        "404":
           description: User not found
 
   /users/verify-email:
@@ -938,9 +1285,9 @@ paths:
                   minLength: 6
                   maxLength: 6
       responses:
-        '200':
+        "200":
           description: Email verified successfully
-        '400':
+        "400":
           description: Invalid or expired OTP
 
   /users/resend-verification:
@@ -959,7 +1306,7 @@ paths:
                   type: string
                   format: email
       responses:
-        '200':
+        "200":
           description: Verification email sent
 
   /users/send-verification:
@@ -969,9 +1316,9 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Verification email sent
-        '400':
+        "400":
           description: Email already verified
 
   /users/send-phone-otp:
@@ -994,11 +1341,11 @@ paths:
                   type: string
                   enum: [sms, whatsapp]
       responses:
-        '200':
+        "200":
           description: OTP sent successfully
-        '400':
+        "400":
           description: Phone already verified
-        '404':
+        "404":
           description: User not found
 
   /users/verify-phone-otp:
@@ -1020,9 +1367,9 @@ paths:
                 userId:
                   type: string
       responses:
-        '200':
+        "200":
           description: Phone verified successfully
-        '400':
+        "400":
           description: Invalid or expired OTP
 
   /users/fcm-token:
@@ -1042,7 +1389,7 @@ paths:
                 token:
                   type: string
       responses:
-        '200':
+        "200":
           description: Token registered successfully
 
   # ============ RESTAURANTS ============
@@ -1052,7 +1399,7 @@ paths:
       summary: Get all restaurants
       description: Returns approved restaurants (or all for admins)
       responses:
-        '200':
+        "200":
           description: Restaurants retrieved successfully
           content:
             application/json:
@@ -1066,7 +1413,7 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Restaurant'
+                      $ref: "#/components/schemas/Restaurant"
 
   /restaurants/register:
     post:
@@ -1078,7 +1425,18 @@ paths:
           multipart/form-data:
             schema:
               type: object
-              required: [name, email, phone, address, city, owner_full_name, owner_contact_number, business_id_number, password]
+              required:
+                [
+                  name,
+                  email,
+                  phone,
+                  address,
+                  city,
+                  owner_full_name,
+                  owner_contact_number,
+                  business_id_number,
+                  password,
+                ]
               properties:
                 name:
                   type: string
@@ -1110,9 +1468,9 @@ paths:
                   type: string
                   format: binary
       responses:
-        '201':
+        "201":
           description: Restaurant registered, pending approval
-        '400':
+        "400":
           description: Validation error or restaurant exists
 
   /restaurants/{restaurantId}:
@@ -1126,9 +1484,9 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Restaurant retrieved successfully
-        '404':
+        "404":
           description: Restaurant not found
 
     put:
@@ -1154,11 +1512,11 @@ paths:
                   type: string
                   enum: [pending, approved, rejected, suspended]
       responses:
-        '200':
+        "200":
           description: Status updated successfully
-        '400':
+        "400":
           description: Invalid status
-        '404':
+        "404":
           description: Restaurant not found
 
   # ============ FOODS ============
@@ -1183,7 +1541,7 @@ paths:
             type: boolean
           description: Filter by availability
       responses:
-        '200':
+        "200":
           description: Foods retrieved successfully
           content:
             application/json:
@@ -1195,7 +1553,7 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Food'
+                      $ref: "#/components/schemas/Food"
 
     post:
       tags: [Foods]
@@ -1230,9 +1588,9 @@ paths:
                   items:
                     type: string
       responses:
-        '201':
+        "201":
           description: Food created successfully
-        '404':
+        "404":
           description: Category or restaurant not found
 
   /foods/{foodId}:
@@ -1246,9 +1604,9 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Food retrieved successfully
-        '404':
+        "404":
           description: Food not found
 
     put:
@@ -1286,9 +1644,9 @@ paths:
                   items:
                     type: string
       responses:
-        '200':
+        "200":
           description: Food updated successfully
-        '404':
+        "404":
           description: Food not found
 
   # ============ CATEGORIES ============
@@ -1297,7 +1655,7 @@ paths:
       tags: [Categories]
       summary: Get all active categories
       responses:
-        '200':
+        "200":
           description: Categories retrieved successfully
           content:
             application/json:
@@ -1309,7 +1667,7 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Category'
+                      $ref: "#/components/schemas/Category"
 
     post:
       tags: [Categories]
@@ -1331,7 +1689,7 @@ paths:
                 emoji:
                   type: string
       responses:
-        '201':
+        "201":
           description: Category created successfully
 
   /categories/{categoryId}:
@@ -1345,9 +1703,9 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Category retrieved successfully
-        '404':
+        "404":
           description: Category not found
 
   # ============ ORDERS ============
@@ -1359,7 +1717,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Orders retrieved successfully
           content:
             application/json:
@@ -1371,7 +1729,7 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Order'
+                      $ref: "#/components/schemas/Order"
 
     post:
       tags: [Orders]
@@ -1437,11 +1795,11 @@ paths:
                 orderNumber:
                   type: string
       responses:
-        '201':
+        "201":
           description: Order created successfully
-        '400':
+        "400":
           description: Validation error
-        '404':
+        "404":
           description: Restaurant or food not found
 
   /orders/cod/eligibility:
@@ -1451,11 +1809,11 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: COD is available for this customer
-        '403':
+        "403":
           description: COD unavailable or policy check failed
-        '500':
+        "500":
           description: Server error
 
   /orders/{orderId}:
@@ -1471,11 +1829,11 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Order retrieved successfully
-        '403':
+        "403":
           description: Not authorized
-        '404':
+        "404":
           description: Order not found
 
   /orders/{orderId}/status:
@@ -1500,7 +1858,17 @@ paths:
               properties:
                 status:
                   type: string
-                  enum: [pending, confirmed, preparing, ready, picked_up, on_the_way, delivered, cancelled]
+                  enum:
+                    [
+                      pending,
+                      confirmed,
+                      preparing,
+                      ready,
+                      picked_up,
+                      on_the_way,
+                      delivered,
+                      cancelled,
+                    ]
                 cancellationReason:
                   type: string
                 deliveryVerification:
@@ -1519,11 +1887,11 @@ paths:
                     contactAttempted:
                       type: boolean
       responses:
-        '200':
+        "200":
           description: Status updated successfully
-        '403':
+        "403":
           description: Customers can only cancel orders
-        '404':
+        "404":
           description: Order not found
 
   /orders/{orderId}/confirm-payment:
@@ -1549,15 +1917,15 @@ paths:
                 provider:
                   type: string
       responses:
-        '200':
+        "200":
           description: Payment confirmed or already confirmed
-        '400':
+        "400":
           description: Validation or payment verification failure
-        '403':
+        "403":
           description: Not authorized
-        '404':
+        "404":
           description: Order not found
-        '409':
+        "409":
           description: Reference or amount mismatch
 
   /orders/{orderId}/paystack/initialize:
@@ -1573,13 +1941,13 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Paystack transaction initialized
-        '400':
+        "400":
           description: Invalid state or no external payment required
-        '403':
+        "403":
           description: Not authorized
-        '404':
+        "404":
           description: Order not found
 
   /orders/{orderId}/release-credit-hold:
@@ -1595,11 +1963,11 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Credit hold released
-        '403':
+        "403":
           description: Not authorized
-        '404':
+        "404":
           description: Order not found
 
   /orders/{orderId}/pickup/accept:
@@ -1615,13 +1983,13 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Pickup order accepted
-        '400':
+        "400":
           description: Invalid order state
-        '403':
+        "403":
           description: Not authorized or feature disabled
-        '404':
+        "404":
           description: Order not found
 
   /orders/{orderId}/pickup/reject:
@@ -1647,13 +2015,13 @@ paths:
                 reason:
                   type: string
       responses:
-        '200':
+        "200":
           description: Pickup order rejected
-        '400':
+        "400":
           description: Validation or lifecycle error
-        '403':
+        "403":
           description: Not authorized or feature disabled
-        '404':
+        "404":
           description: Order not found
 
   /orders/{orderId}/pickup/verify-code:
@@ -1679,13 +2047,13 @@ paths:
                 code:
                   type: string
       responses:
-        '200':
+        "200":
           description: Pickup code verified
-        '400':
+        "400":
           description: Invalid code or lifecycle state
-        '403':
+        "403":
           description: Not authorized or feature disabled
-        '404':
+        "404":
           description: Order not found
 
   /orders/{orderId}/delivery-code/resend:
@@ -1712,15 +2080,15 @@ paths:
                   type: string
                   enum: [customer, recipient]
       responses:
-        '200':
+        "200":
           description: Delivery code resent
-        '400':
+        "400":
           description: Validation, lifecycle, or feature restriction error
-        '403':
+        "403":
           description: Not authorized
-        '404':
+        "404":
           description: Order not found
-        '429':
+        "429":
           description: Cooldown or resend limit reached
 
   /orders/{orderId}/delivery-proof/photo:
@@ -1747,13 +2115,13 @@ paths:
                   type: string
                   format: binary
       responses:
-        '201':
+        "201":
           description: Delivery proof uploaded
-        '400':
+        "400":
           description: Validation or lifecycle error
-        '403':
+        "403":
           description: Not authorized
-        '404':
+        "404":
           description: Order not found
 
   /orders/{orderId}/assign-rider:
@@ -1779,11 +2147,11 @@ paths:
                 riderId:
                   type: string
       responses:
-        '200':
+        "200":
           description: Rider assigned successfully
-        '400':
+        "400":
           description: Invalid rider
-        '404':
+        "404":
           description: Order not found
 
   # ============ PAYMENTS ============
@@ -1805,7 +2173,7 @@ paths:
             type: integer
             default: 10
       responses:
-        '200':
+        "200":
           description: Payments retrieved successfully
 
   /payments/{paymentId}/cancel:
@@ -1821,13 +2189,13 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Payment cancelled successfully
-        '400':
+        "400":
           description: Payment cannot be cancelled
-        '403':
+        "403":
           description: Not authorized
-        '404':
+        "404":
           description: Payment not found
 
   # ============ TRACKING ============
@@ -1862,15 +2230,15 @@ paths:
                     longitude:
                       type: number
       responses:
-        '201':
+        "201":
           description: Tracking initialized
-        '400':
+        "400":
           description: Invalid payload
-        '403':
+        "403":
           description: Not authorized
-        '404':
+        "404":
           description: Order not found
-        '409':
+        "409":
           description: Order not trackable in current lifecycle state
 
   /tracking/location:
@@ -1898,15 +2266,15 @@ paths:
                 accuracy:
                   type: number
       responses:
-        '200':
+        "200":
           description: Location update accepted
-        '400':
+        "400":
           description: Validation error
-        '403':
+        "403":
           description: Not authorized
-        '404':
+        "404":
           description: Order not found
-        '409':
+        "409":
           description: Order no longer accepts tracking updates
 
   /tracking/status:
@@ -1929,15 +2297,15 @@ paths:
                   type: string
                   enum: [preparing, picked_up, in_transit, nearby]
       responses:
-        '200':
+        "200":
           description: Tracking status updated
-        '400':
+        "400":
           description: Invalid status payload
-        '403':
+        "403":
           description: Not authorized
-        '404':
+        "404":
           description: Order not found
-        '409':
+        "409":
           description: Tracking status not aligned with lifecycle status
 
   /tracking/{orderId}:
@@ -1953,11 +2321,11 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Tracking data retrieved
-        '403':
+        "403":
           description: Not authorized
-        '404':
+        "404":
           description: Order not found
 
   # ============ RIDERS ============
@@ -1968,7 +2336,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Available orders retrieved
           content:
             application/json:
@@ -1980,7 +2348,7 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Order'
+                      $ref: "#/components/schemas/Order"
 
   /riders/accept-order/{orderId}:
     post:
@@ -1995,11 +2363,11 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Order accepted successfully
-        '400':
+        "400":
           description: Order already assigned or not available
-        '404':
+        "404":
           description: Order not found
 
   /riders/wallet:
@@ -2009,7 +2377,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Wallet retrieved successfully
           content:
             application/json:
@@ -2019,7 +2387,7 @@ paths:
                   success:
                     type: boolean
                   data:
-                    $ref: '#/components/schemas/RiderWallet'
+                    $ref: "#/components/schemas/RiderWallet"
 
   /riders/earnings:
     get:
@@ -2035,7 +2403,7 @@ paths:
             enum: [today, thisWeek, thisMonth, allTime]
             default: allTime
       responses:
-        '200':
+        "200":
           description: Earnings retrieved successfully
 
   /riders/verification:
@@ -2045,7 +2413,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Verification status retrieved
 
     put:
@@ -2087,7 +2455,7 @@ paths:
                   type: string
                   format: binary
       responses:
-        '200':
+        "200":
           description: Verification data updated
 
   /riders/verification/upload-id:
@@ -2111,9 +2479,9 @@ paths:
                   type: string
                   format: binary
       responses:
-        '200':
+        "200":
           description: Image uploaded successfully
-        '400':
+        "400":
           description: Invalid image type or no image
 
   /riders/verification/status/{riderId}:
@@ -2142,10 +2510,684 @@ paths:
                 rejectionReason:
                   type: string
       responses:
-        '200':
+        "200":
           description: Status updated successfully
-        '404':
+        "404":
           description: Rider not found
+
+  # ============ RIDER PARTNER SYSTEM ============
+
+  /riders/partner-profile/dashboard:
+    get:
+      tags: [Rider Partner]
+      summary: Get partner dashboard
+      description: |
+        Returns the rider's full partner dashboard including current level, score,
+        performance metrics, next level target, perks, and recent level history.
+        Requires `RIDER_PARTNER_SYSTEM_ENABLED` feature flag.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Partner dashboard retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      profile:
+                        type: object
+                        properties:
+                          riderId:
+                            type: string
+                          partnerLevel:
+                            $ref: "#/components/schemas/PartnerLevel"
+                          partnerScore:
+                            type: number
+                          lastEvaluatedAt:
+                            type: string
+                            format: date-time
+                      level:
+                        type: object
+                        properties:
+                          current:
+                            $ref: "#/components/schemas/PartnerLevel"
+                          multiplier:
+                            type: number
+                            example: 1.2
+                          dispatchBonus:
+                            type: integer
+                            example: 6
+                          isLocked:
+                            type: boolean
+                          lockDaysRemaining:
+                            type: integer
+                      metrics:
+                        type: object
+                        properties:
+                          onTimeRate:
+                            type: number
+                          completionRate:
+                            type: number
+                          customerRating:
+                            type: number
+                          deliveryVolume:
+                            type: integer
+                          acceptanceRate:
+                            type: number
+                      nextLevel:
+                        $ref: "#/components/schemas/NextLevelTarget"
+                      recentHistory:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/LevelChange"
+        "403":
+          description: Feature not enabled
+
+  /riders/partner-profile/score-breakdown:
+    get:
+      tags: [Rider Partner]
+      summary: Get score breakdown
+      description: |
+        Returns the detailed score computation for a rider — individual component
+        scores (on-time, completion, rating, volume, acceptance) and weights.
+        Admins can view any rider via `riderId` query param.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: riderId
+          in: query
+          description: Target rider ID (admin only)
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Score breakdown retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      riderId:
+                        type: string
+                      windowStart:
+                        type: string
+                        format: date-time
+                      windowEnd:
+                        type: string
+                        format: date-time
+                      windowDays:
+                        type: integer
+                        example: 28
+                      partnerScore:
+                        type: number
+                      components:
+                        type: object
+                        description: Individual weighted score components
+
+  /riders/partner-profile/level-history:
+    get:
+      tags: [Rider Partner]
+      summary: Get level history
+      description: |
+        Returns the rider's partner level change history (upgrades and downgrades).
+        Admins can view any rider via `riderId` query param.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: riderId
+          in: query
+          description: Target rider ID (admin only)
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Number of records to return (max 100)
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        "200":
+          description: Level history retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/LevelChange"
+
+  /riders/partner-profile/recalculate:
+    post:
+      tags: [Rider Partner]
+      summary: Force-recalculate rider level (Admin)
+      description: |
+        Triggers an immediate level recalculation for a specific rider.
+        Admin only endpoint.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [riderId]
+              properties:
+                riderId:
+                  type: string
+                  description: The rider's user ID
+      responses:
+        "200":
+          description: Recalculation complete
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      previousLevel:
+                        $ref: "#/components/schemas/PartnerLevel"
+                      effectiveLevel:
+                        $ref: "#/components/schemas/PartnerLevel"
+                      levelChanged:
+                        type: boolean
+                      partnerScore:
+                        type: number
+                      components:
+                        type: object
+        "403":
+          description: Admin only
+
+  /riders/partner-profile/level-distribution:
+    get:
+      tags: [Rider Partner]
+      summary: Get level distribution (Admin)
+      description: |
+        Returns the distribution of riders across all partner levels.
+        Useful for admin dashboards and monitoring.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Level distribution retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      levels:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            level:
+                              $ref: "#/components/schemas/PartnerLevel"
+                            count:
+                              type: integer
+                            avgScore:
+                              type: number
+                            percentage:
+                              type: number
+
+  # ============ RIDER INCENTIVES ============
+
+  /riders/quests:
+    get:
+      tags: [Rider Incentives]
+      summary: Get active quests
+      description: |
+        Returns the rider's active daily and weekly quests with progress tracking.
+        Quest rewards are multiplied by the rider's partner level multiplier.
+        Requires `RIDER_INCENTIVES_ENABLED` feature flag.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Quest dashboard retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/QuestProgress"
+
+  /riders/streaks:
+    get:
+      tags: [Rider Incentives]
+      summary: Get streak status
+      description: |
+        Returns the rider's consecutive-day delivery streak, including current
+        count, longest streak, next reward threshold, and recent streak rewards.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Streak data retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/StreakDashboard"
+
+  /riders/milestones:
+    get:
+      tags: [Rider Incentives]
+      summary: Get milestone progress
+      description: |
+        Returns the rider's lifetime delivery milestones with progress,
+        badge info, completion status, and recent milestone rewards.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Milestone dashboard retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/MilestoneDashboard"
+
+  /riders/incentives:
+    get:
+      tags: [Rider Incentives]
+      summary: Get incentive ledger
+      description: |
+        Returns the rider's incentive ledger entries for a given period,
+        grouped by source type (quest, streak, milestone, peak_hour).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: period
+          in: query
+          description: Window key (e.g. "2026-W10", "2026-03-05"). Defaults to current week.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Incentive summary retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/IncentiveSummary"
+
+  /riders/incentives/admin/{riderId}:
+    get:
+      tags: [Rider Incentives]
+      summary: Get rider incentive ledger (Admin)
+      description: |
+        Admin view of a specific rider's incentive ledger. Same response
+        shape as the rider-facing `/incentives` endpoint.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: riderId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: period
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Incentive summary retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/IncentiveSummary"
+
+  /riders/peak-hours/status:
+    get:
+      tags: [Rider Incentives]
+      summary: Get current peak-hour status
+      description: |
+        Returns whether the current time is within a peak-hour window,
+        active bonus rates, and the next upcoming window.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Peak-hour status retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      isPeakHour:
+                        type: boolean
+                      activeWindows:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/PeakWindow"
+                      nextWindow:
+                        allOf:
+                          - $ref: "#/components/schemas/PeakWindow"
+                          - type: object
+                            properties:
+                              startsInMinutes:
+                                type: integer
+                                description: Minutes until this window starts
+
+  /riders/peak-hours/schedule:
+    get:
+      tags: [Rider Incentives]
+      summary: Get peak-hour schedule
+      description: |
+        Returns the full weekly peak-hour schedule — all time windows,
+        bonus rates, and which days they apply.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Peak-hour schedule retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: "#/components/schemas/PeakWindow"
+                        - type: object
+                          properties:
+                            days:
+                              type: array
+                              items:
+                                type: string
+                              example: ["Mon", "Tue", "Wed", "Thu", "Fri"]
+                            daysOfWeek:
+                              type: array
+                              items:
+                                type: integer
+                              example: [1, 2, 3, 4, 5]
+
+  # ============ RIDER BUDGET (Admin) ============
+
+  /riders/budget/admin/dashboard:
+    get:
+      tags: [Rider Budget]
+      summary: Get budget utilization dashboard (Admin)
+      description: |
+        Returns the current incentive budget utilization across daily,
+        weekly, and monthly windows — spend vs cap, remaining, and status.
+        Requires `RIDER_INCENTIVES_ENABLED` feature flag (strict mode).
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Budget dashboard retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      daily:
+                        $ref: "#/components/schemas/BudgetWindow"
+                      weekly:
+                        $ref: "#/components/schemas/BudgetWindow"
+                      monthly:
+                        $ref: "#/components/schemas/BudgetWindow"
+                      pendingIncentives:
+                        type: number
+                      totalAvailableUnpaid:
+                        type: number
+
+  /riders/budget/admin/cap:
+    put:
+      tags: [Rider Budget]
+      summary: Update budget cap (Admin)
+      description: |
+        Updates the cap amount for a specific budget window type.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [windowType, windowKey, capAmount]
+              properties:
+                windowType:
+                  type: string
+                  enum: [daily, weekly, monthly]
+                windowKey:
+                  type: string
+                  description: "Window key (e.g. '2026-03-05', '2026-W10', '2026-03')"
+                capAmount:
+                  type: number
+                  description: New cap amount in GHS
+      responses:
+        "200":
+          description: Budget cap updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/BudgetWindow"
+
+  /riders/budget/admin/approve:
+    post:
+      tags: [Rider Budget]
+      summary: Trigger budget approval cycle (Admin)
+      description: |
+        Manually triggers an incentive budget approval cycle — moves
+        `pending_budget` ledger entries to `available` status within caps.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Approval cycle completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    description: Result of the approval cycle
+
+  # ============ RIDER PAYOUT ============
+
+  /riders/wallet/withdrawal-policy:
+    get:
+      tags: [Rider Payout]
+      summary: Get withdrawal policy
+      description: |
+        Returns the rider's withdrawal fee policy based on their partner level.
+        Higher partner levels get more free instant withdrawals and lower fees.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Withdrawal policy retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      partnerLevel:
+                        $ref: "#/components/schemas/PartnerLevel"
+                      minWithdrawalAmount:
+                        type: number
+                        example: 5
+                      instantWithdrawal:
+                        type: object
+                        properties:
+                          fee:
+                            type: number
+                            description: Current fee for this withdrawal
+                          isFree:
+                            type: boolean
+                          freeRemaining:
+                            type: integer
+                          freeUsed:
+                            type: integer
+                          totalQuota:
+                            type: integer
+                          standardFee:
+                            type: number
+                      weeklyAuto:
+                        type: object
+                        properties:
+                          enabled:
+                            type: boolean
+                      allLevelPolicies:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            level:
+                              $ref: "#/components/schemas/PartnerLevel"
+                            freeInstantQuota:
+                              type: integer
+                            instantFee:
+                              type: number
+                            weeklyAutoEnabled:
+                              type: boolean
+
+  /riders/wallet/payout-history:
+    get:
+      tags: [Rider Payout]
+      summary: Get payout history
+      description: Returns the rider's most recent payout requests (up to 50).
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Payout history retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        amount:
+                          type: number
+                        fee:
+                          type: number
+                        netAmount:
+                          type: number
+                        method:
+                          type: string
+                        status:
+                          type: string
+                        createdAt:
+                          type: string
+                          format: date-time
+
+  /riders/wallet/incentive-balance:
+    get:
+      tags: [Rider Payout]
+      summary: Get incentive balance
+      description: |
+        Returns the rider's pending (awaiting budget approval) and
+        available (ready for payout) incentive balances.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Incentive balance retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      pendingBudgetApproval:
+                        type: number
+                        description: Amount awaiting budget approval
+                      availableForPayout:
+                        type: number
+                        description: Amount ready for withdrawal/payout
 
   # ============ CHATS ============
   /chats:
@@ -2155,7 +3197,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Chats retrieved successfully
           content:
             application/json:
@@ -2167,7 +3209,7 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Chat'
+                      $ref: "#/components/schemas/Chat"
 
   /chats/{chatId}:
     get:
@@ -2193,11 +3235,11 @@ paths:
             type: string
           description: Message ID for pagination
       responses:
-        '200':
+        "200":
           description: Chat retrieved successfully
-        '403':
+        "403":
           description: Not authorized
-        '404':
+        "404":
           description: Chat not found
 
   /chats/{chatId}/messages:
@@ -2224,11 +3266,11 @@ paths:
                   type: string
                   maxLength: 2000
       responses:
-        '201':
+        "201":
           description: Message sent successfully
-        '403':
+        "403":
           description: Not authorized
-        '404':
+        "404":
           description: Chat not found
 
   /chats/{chatId}/messages/voice:
@@ -2257,9 +3299,9 @@ paths:
                 duration:
                   type: number
       responses:
-        '201':
+        "201":
           description: Voice message sent
-        '400':
+        "400":
           description: No audio file
 
   /chats/{chatId}/messages/images:
@@ -2289,9 +3331,9 @@ paths:
                     format: binary
                   maxItems: 10
       responses:
-        '201':
+        "201":
           description: Images sent successfully
-        '400':
+        "400":
           description: No images or too many images
 
   /chats/{chatId}/messages/{messageId}:
@@ -2322,13 +3364,13 @@ paths:
                 text:
                   type: string
       responses:
-        '200':
+        "200":
           description: Message edited successfully
-        '400':
+        "400":
           description: Only text messages can be edited
-        '403':
+        "403":
           description: Can only edit own messages
-        '404':
+        "404":
           description: Message not found
 
     delete:
@@ -2348,11 +3390,11 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Message deleted successfully
-        '403':
+        "403":
           description: Can only delete own messages
-        '404':
+        "404":
           description: Message not found
 
   /calls/{callId}:
@@ -2368,11 +3410,11 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Call details retrieved
-        '403':
+        "403":
           description: Not authorized
-        '404':
+        "404":
           description: Call not found or expired
 
   # ============ STATUSES ============
@@ -2409,7 +3451,7 @@ paths:
             type: integer
             default: 1
       responses:
-        '200':
+        "200":
           description: Statuses retrieved successfully
           content:
             application/json:
@@ -2421,7 +3463,7 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Status'
+                      $ref: "#/components/schemas/Status"
                   pagination:
                     type: object
                     properties:
@@ -2484,7 +3526,7 @@ paths:
                   default: 24
                   description: How long the status stays active (1-168 hours)
       responses:
-        '201':
+        "201":
           description: Status created successfully
           content:
             application/json:
@@ -2494,10 +3536,10 @@ paths:
                   success:
                     type: boolean
                   data:
-                    $ref: '#/components/schemas/Status'
-        '400':
+                    $ref: "#/components/schemas/Status"
+        "400":
           description: Validation error
-        '404':
+        "404":
           description: Restaurant or linked food not found
 
   /statuses/stories:
@@ -2520,7 +3562,7 @@ paths:
             default: recent
           description: Sort by most recent or highest engagement
       responses:
-        '200':
+        "200":
           description: Stories retrieved successfully
           content:
             application/json:
@@ -2532,7 +3574,7 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Story'
+                      $ref: "#/components/schemas/Story"
                   cached:
                     type: boolean
                     description: Whether the response was served from cache
@@ -2549,7 +3591,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Restaurant statuses retrieved successfully
           content:
             application/json:
@@ -2561,8 +3603,8 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Status'
-        '404':
+                      $ref: "#/components/schemas/Status"
+        "404":
           description: No active statuses found
 
   /statuses/{statusId}:
@@ -2576,7 +3618,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Status retrieved successfully
           content:
             application/json:
@@ -2586,8 +3628,8 @@ paths:
                   success:
                     type: boolean
                   data:
-                    $ref: '#/components/schemas/Status'
-        '404':
+                    $ref: "#/components/schemas/Status"
+        "404":
           description: Status not found
 
     put:
@@ -2626,9 +3668,9 @@ paths:
                 isActive:
                   type: boolean
       responses:
-        '200':
+        "200":
           description: Status updated successfully
-        '404':
+        "404":
           description: Status not found
 
     delete:
@@ -2644,9 +3686,9 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Status deleted successfully
-        '404':
+        "404":
           description: Status not found
 
   /statuses/views/batch:
@@ -2677,7 +3719,7 @@ paths:
                         type: integer
                         description: View duration in milliseconds
       responses:
-        '200':
+        "200":
           description: Batch views recorded
           content:
             application/json:
@@ -2728,7 +3770,7 @@ paths:
                   type: integer
                   description: View duration in milliseconds (max 300000 = 5 minutes)
       responses:
-        '200':
+        "200":
           description: View recorded
           content:
             application/json:
@@ -2745,9 +3787,9 @@ paths:
                       avgViewDuration:
                         type: integer
                         description: Average view duration in milliseconds
-        '400':
+        "400":
           description: Status has expired
-        '404':
+        "404":
           description: Status not found
 
   /statuses/{statusId}/like:
@@ -2764,7 +3806,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Like toggled successfully
           content:
             application/json:
@@ -2783,9 +3825,9 @@ paths:
                         type: boolean
                       likeCount:
                         type: integer
-        '400':
+        "400":
           description: Status has expired
-        '404':
+        "404":
           description: Status not found
 
   /statuses/restaurant/{restaurantId}/all:
@@ -2807,7 +3849,7 @@ paths:
             type: boolean
             default: false
       responses:
-        '200':
+        "200":
           description: Restaurant statuses retrieved
           content:
             application/json:
@@ -2819,7 +3861,7 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Status'
+                      $ref: "#/components/schemas/Status"
 
   /statuses/user/viewed:
     get:
@@ -2828,7 +3870,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Viewed statuses retrieved
           content:
             application/json:
@@ -2840,7 +3882,7 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Status'
+                      $ref: "#/components/schemas/Status"
 
   /statuses/cleanup:
     post:
@@ -2850,7 +3892,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Cleanup completed
           content:
             application/json:
@@ -2887,7 +3929,19 @@ paths:
                   default: UTC
                 type:
                   type: string
-                  enum: [order, promo, update, system, comment_reply, comment_reaction, referral_completed, payment_confirmed, delivery_arriving, milestone_bonus]
+                  enum:
+                    [
+                      order,
+                      promo,
+                      update,
+                      system,
+                      comment_reply,
+                      comment_reaction,
+                      referral_completed,
+                      payment_confirmed,
+                      delivery_arriving,
+                      milestone_bonus,
+                    ]
                 title:
                   type: string
                   maxLength: 200
@@ -2898,7 +3952,7 @@ paths:
                   example: "Get 50% off today!"
                 data:
                   type: object
-                  example: {"promoCode": "XMAS50", "route": "/promos"}
+                  example: { "promoCode": "XMAS50", "route": "/promos" }
                 targetType:
                   type: string
                   enum: [user, segment, all]
@@ -2924,7 +3978,7 @@ paths:
                       type: string
                       format: date-time
       responses:
-        '201':
+        "201":
           description: Scheduled notification created successfully
           content:
             application/json:
@@ -2936,16 +3990,16 @@ paths:
                   message:
                     type: string
                   scheduledNotification:
-                    $ref: '#/components/schemas/ScheduledNotification'
-        '400':
+                    $ref: "#/components/schemas/ScheduledNotification"
+        "400":
           description: Validation error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '401':
+                $ref: "#/components/schemas/Error"
+        "401":
           description: Unauthorized
-        '403':
+        "403":
           description: Forbidden - Admin only
 
     get:
@@ -2987,7 +4041,7 @@ paths:
             default: 50
             maximum: 100
       responses:
-        '200':
+        "200":
           description: Scheduled notifications retrieved successfully
           content:
             application/json:
@@ -2999,7 +4053,7 @@ paths:
                   notifications:
                     type: array
                     items:
-                      $ref: '#/components/schemas/ScheduledNotification'
+                      $ref: "#/components/schemas/ScheduledNotification"
                   pagination:
                     type: object
                     properties:
@@ -3007,9 +4061,9 @@ paths:
                         type: integer
                       limit:
                         type: integer
-        '401':
+        "401":
           description: Unauthorized
-        '403':
+        "403":
           description: Forbidden - Admin only
 
   /scheduled-notifications/stats:
@@ -3020,7 +4074,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Statistics retrieved successfully
           content:
             application/json:
@@ -3040,9 +4094,9 @@ paths:
                         type: integer
                       failed:
                         type: integer
-        '401':
+        "401":
           description: Unauthorized
-        '403':
+        "403":
           description: Forbidden - Admin only
 
   /scheduled-notifications/{id}:
@@ -3059,7 +4113,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Scheduled notification retrieved successfully
           content:
             application/json:
@@ -3069,12 +4123,12 @@ paths:
                   success:
                     type: boolean
                   notification:
-                    $ref: '#/components/schemas/ScheduledNotification'
-        '404':
+                    $ref: "#/components/schemas/ScheduledNotification"
+        "404":
           description: Scheduled notification not found
-        '401':
+        "401":
           description: Unauthorized
-        '403':
+        "403":
           description: Forbidden - Admin only
 
     patch:
@@ -3116,7 +4170,7 @@ paths:
                 targetSegment:
                   type: object
       responses:
-        '200':
+        "200":
           description: Scheduled notification updated successfully
           content:
             application/json:
@@ -3128,14 +4182,14 @@ paths:
                   message:
                     type: string
                   notification:
-                    $ref: '#/components/schemas/ScheduledNotification'
-        '400':
+                    $ref: "#/components/schemas/ScheduledNotification"
+        "400":
           description: Validation error
-        '404':
+        "404":
           description: Scheduled notification not found or cannot be updated
-        '401':
+        "401":
           description: Unauthorized
-        '403':
+        "403":
           description: Forbidden - Admin only
 
     delete:
@@ -3151,7 +4205,7 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Scheduled notification cancelled successfully
           content:
             application/json:
@@ -3162,11 +4216,11 @@ paths:
                     type: boolean
                   message:
                     type: string
-        '404':
+        "404":
           description: Scheduled notification not found or cannot be cancelled
-        '401':
+        "401":
           description: Unauthorized
-        '403':
+        "403":
           description: Forbidden - Admin only
 
   # ============ NOTIFICATIONS ============
@@ -3190,7 +4244,7 @@ paths:
             default: 20
             maximum: 100
       responses:
-        '200':
+        "200":
           description: Notifications retrieved successfully
           content:
             application/json:
@@ -3202,7 +4256,7 @@ paths:
                   notifications:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Notification'
+                      $ref: "#/components/schemas/Notification"
                   pagination:
                     type: object
                     properties:
@@ -3224,7 +4278,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Unread count retrieved
           content:
             application/json:
@@ -3249,9 +4303,9 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Notification marked as read
-        '404':
+        "404":
           description: Notification not found
 
   /notifications/mark-all-read:
@@ -3261,7 +4315,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: All notifications marked as read
 
   /notifications/clear-all:
@@ -3271,7 +4325,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: All notifications cleared
 
   # ============ CREDITS ============
@@ -3282,9 +4336,9 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Credit balance retrieved
-        '500':
+        "500":
           description: Server error
 
   /credits/transactions:
@@ -3305,9 +4359,9 @@ paths:
             type: integer
             default: 20
       responses:
-        '200':
+        "200":
           description: Credit transactions retrieved
-        '500':
+        "500":
           description: Server error
 
   /credits/calculate:
@@ -3331,11 +4385,11 @@ paths:
                   type: boolean
                   default: true
       responses:
-        '200':
+        "200":
           description: Credit calculation returned
-        '400':
+        "400":
           description: Validation error
-        '500':
+        "500":
           description: Server error
 
   # ============ REFERRALS ============
@@ -3346,12 +4400,12 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Referral code retrieved
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ReferralCode'
+                $ref: "#/components/schemas/ReferralCode"
 
   /referral/my-referrals:
     get:
@@ -3360,7 +4414,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Referrals retrieved
           content:
             application/json:
@@ -3370,7 +4424,7 @@ paths:
                   referrals:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Referral'
+                      $ref: "#/components/schemas/Referral"
 
   /referral/validate:
     post:
@@ -3389,7 +4443,7 @@ paths:
                   type: string
                   example: "ABC12345"
       responses:
-        '200':
+        "200":
           description: Validation result
           content:
             application/json:
@@ -3428,7 +4482,7 @@ paths:
                 deviceId:
                   type: string
       responses:
-        '200':
+        "200":
           description: Referral code applied successfully
           content:
             application/json:
@@ -3444,7 +4498,7 @@ paths:
                   expiresAt:
                     type: string
                     format: date-time
-        '400':
+        "400":
           description: Invalid code or already used
 
   /referral/available-credits:
@@ -3454,7 +4508,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Credits retrieved
           content:
             application/json:
@@ -3464,7 +4518,7 @@ paths:
                   credits:
                     type: array
                     items:
-                      $ref: '#/components/schemas/UserCredit'
+                      $ref: "#/components/schemas/UserCredit"
                   totalAmount:
                     type: string
 
@@ -3475,7 +4529,7 @@ paths:
       summary: Get active promotional banners
       description: Public endpoint to get currently active banners
       responses:
-        '200':
+        "200":
           description: Banners retrieved
           content:
             application/json:
@@ -3489,7 +4543,7 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/PromotionalBanner'
+                      $ref: "#/components/schemas/PromotionalBanner"
 
     post:
       tags: [Promotions]
@@ -3527,11 +4581,11 @@ paths:
                   type: string
                   format: date-time
       responses:
-        '201':
+        "201":
           description: Banner created
-        '400':
+        "400":
           description: Validation error
-        '403':
+        "403":
           description: Admin only
 
   /promotions/banners/all:
@@ -3542,7 +4596,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: All banners retrieved
           content:
             application/json:
@@ -3554,8 +4608,8 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/PromotionalBanner'
-        '403':
+                      $ref: "#/components/schemas/PromotionalBanner"
+        "403":
           description: Admin only
 
   /promotions/banners/{id}:
@@ -3596,11 +4650,11 @@ paths:
                   type: string
                   format: date-time
       responses:
-        '200':
+        "200":
           description: Banner updated
-        '404':
+        "404":
           description: Banner not found
-        '403':
+        "403":
           description: Admin only
 
     delete:
@@ -3616,11 +4670,11 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Banner deleted
-        '404':
+        "404":
           description: Banner not found
-        '403':
+        "403":
           description: Admin only
 
   # ============ NOTIFICATION SETTINGS ============
@@ -3631,7 +4685,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Settings retrieved
           content:
             application/json:
@@ -3641,7 +4695,7 @@ paths:
                   success:
                     type: boolean
                   notificationSettings:
-                    $ref: '#/components/schemas/NotificationSettings'
+                    $ref: "#/components/schemas/NotificationSettings"
 
     patch:
       tags: [Notification Settings]
@@ -3678,7 +4732,7 @@ paths:
                     systemUpdates:
                       type: boolean
       responses:
-        '200':
+        "200":
           description: Settings updated
           content:
             application/json:
@@ -3690,8 +4744,8 @@ paths:
                   message:
                     type: string
                   notificationSettings:
-                    $ref: '#/components/schemas/NotificationSettings'
-        '400':
+                    $ref: "#/components/schemas/NotificationSettings"
+        "400":
           description: Invalid settings format
 
   # ============ HEALTH ============
@@ -3700,7 +4754,7 @@ paths:
       tags: [Health]
       summary: Health check endpoint
       responses:
-        '200':
+        "200":
           description: API is running
           content:
             application/json:
@@ -3719,7 +4773,7 @@ paths:
       tags: [Health]
       summary: SMTP email health check
       responses:
-        '200':
+        "200":
           description: SMTP configured and reachable
           content:
             application/json:
@@ -3741,5 +4795,5 @@ paths:
                   message:
                     type: string
                     example: SMTP connection verified
-        '503':
+        "503":
           description: SMTP unavailable or not configured
