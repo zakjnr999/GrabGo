@@ -375,11 +375,11 @@ model UserCredit {
 }
 
 model UserCreditHold {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   userId     String
-  orderId    String   @unique
+  orderId    String    @unique
   amount     Float
-  isActive   Boolean  @default(true)
+  isActive   Boolean   @default(true)
   expiresAt  DateTime?
   capturedAt DateTime?
   releasedAt DateTime?
@@ -455,10 +455,10 @@ model User {
   favoriteGroceryItems   UserFavoriteGroceryItem[]
   favoritePharmacyItems  UserFavoritePharmacyItem[]
   favoriteGrabMartItems  UserFavoriteGrabMartItem[]
-  orders                 Order[]                    @relation("CustomerOrders")
-  riderOrders            Order[]                    @relation("RiderOrders")
-  parcelOrders           ParcelOrder[]              @relation("ParcelCustomerOrders")
-  riderParcelOrders      ParcelOrder[]              @relation("ParcelRiderOrders")
+  orders                 Order[]                     @relation("CustomerOrders")
+  riderOrders            Order[]                     @relation("RiderOrders")
+  parcelOrders           ParcelOrder[]               @relation("ParcelCustomerOrders")
+  riderParcelOrders      ParcelOrder[]               @relation("ParcelRiderOrders")
   checkoutSessions       CheckoutSession[]
   creditHolds            UserCreditHold[]
   carts                  Cart[]
@@ -466,23 +466,25 @@ model User {
   rider                  Rider?
   riderWallet            RiderWallet?
   transactions           Transaction[]
-  referralsSent          Referral[]                 @relation("ReferrerReferrals")
-  referralsReceived      Referral[]                 @relation("RefereeReferrals")
+  referralsSent          Referral[]                  @relation("ReferrerReferrals")
+  referralsReceived      Referral[]                  @relation("RefereeReferrals")
   referralCode           ReferralCode?
   userCredits            UserCredit[]
-  promoCodesCreated      PromoCode[]                @relation("PromoCodeCreator")
+  promoCodesCreated      PromoCode[]                 @relation("PromoCodeCreator")
   targetedPromoCodes     PromoCodeTargetedUser[]
   scheduledNotifications ScheduledNotification[]
   addresses              UserAddress[]
 
   // Rider Partner & Incentive System
-  partnerProfile         RiderPartnerProfile?
-  incentiveLedger        RiderIncentiveLedger[]
-  questProgress          RiderQuestProgress[]
-  streakState            RiderStreakState?
-  milestoneStates        RiderMilestoneState[]
-  payoutRequests         RiderPayoutRequest[]
-  withdrawalAllowances   RiderWithdrawalAllowance[]
+  partnerProfile       RiderPartnerProfile?
+  incentiveLedger      RiderIncentiveLedger[]
+  questProgress        RiderQuestProgress[]
+  streakState          RiderStreakState?
+  milestoneStates      RiderMilestoneState[]
+  payoutRequests       RiderPayoutRequest[]
+  withdrawalAllowances RiderWithdrawalAllowance[]
+  loans                RiderLoan[]
+  loanRepayments       RiderLoanRepayment[]
 
   @@index([email])
   @@index([role])
@@ -839,21 +841,21 @@ model Food {
 // ==================== GROCERY STORE ====================
 
 model GroceryStore {
-  id          String       @id @default(cuid())
-  storeName   String
-  logo        String
-  description String?
-  phone       String
-  email       String       @unique
-  password    String
-  status      EntityStatus @default(pending)
-  rating      Float        @default(0)
-  ratingCount Int          @default(0)
-  isOpen      Boolean      @default(true)
-  deliveryFee Float        @default(0)
+  id                     String       @id @default(cuid())
+  storeName              String
+  logo                   String
+  description            String?
+  phone                  String
+  email                  String       @unique
+  password               String
+  status                 EntityStatus @default(pending)
+  rating                 Float        @default(0)
+  ratingCount            Int          @default(0)
+  isOpen                 Boolean      @default(true)
+  deliveryFee            Float        @default(0)
   averageDeliveryTime    Int          @default(30)
   averagePreparationTime Int          @default(15)
-  minOrder    Float        @default(0)
+  minOrder               Float        @default(0)
 
   // Location
   longitude Float
@@ -1004,23 +1006,23 @@ model GroceryItem {
 // ==================== PHARMACY STORE ====================
 
 model PharmacyStore {
-  id             String       @id @default(cuid())
-  storeName      String
-  logo           String
-  description    String?
-  phone          String
-  email          String       @unique
-  password       String
-  status         EntityStatus @default(pending)
-  rating         Float        @default(0)
-  ratingCount    Int          @default(0)
-  isOpen         Boolean      @default(true)
-  deliveryFee    Float        @default(0)
+  id                     String       @id @default(cuid())
+  storeName              String
+  logo                   String
+  description            String?
+  phone                  String
+  email                  String       @unique
+  password               String
+  status                 EntityStatus @default(pending)
+  rating                 Float        @default(0)
+  ratingCount            Int          @default(0)
+  isOpen                 Boolean      @default(true)
+  deliveryFee            Float        @default(0)
   averageDeliveryTime    Int          @default(30)
   averagePreparationTime Int          @default(15)
-  minOrder       Float        @default(0)
-  licenseNumber  String?      @unique
-  pharmacistName String?
+  minOrder               Float        @default(0)
+  licenseNumber          String?      @unique
+  pharmacistName         String?
 
   // Pharmacy Specific
   emergencyService     Boolean  @default(false)
@@ -1154,10 +1156,10 @@ model PharmacyItem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  category   PharmacyCategory? @relation(fields: [categoryId], references: [id])
-  store      PharmacyStore     @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  orderItems OrderItem[]
-  cartItems  CartItem[]
+  category    PharmacyCategory?          @relation(fields: [categoryId], references: [id])
+  store       PharmacyStore              @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orderItems  OrderItem[]
+  cartItems   CartItem[]
   favoritedBy UserFavoritePharmacyItem[]
 
   @@index([storeId])
@@ -1168,34 +1170,34 @@ model PharmacyItem {
 // ==================== ORDER ====================
 
 model CheckoutSession {
-  id               String                @id @default(cuid())
-  groupOrderNumber String                @unique
-  customerId       String
-  fulfillmentMode  FulfillmentMode       @default(delivery)
-  paymentMethod    PaymentMethod
-  paymentProvider  PaymentProvider?
+  id                 String                @id @default(cuid())
+  groupOrderNumber   String                @unique
+  customerId         String
+  fulfillmentMode    FulfillmentMode       @default(delivery)
+  paymentMethod      PaymentMethod
+  paymentProvider    PaymentProvider?
   paymentReferenceId String?
-  paymentStatus    PaymentStatus         @default(pending)
-  status           CheckoutSessionStatus @default(pending)
-  subtotal         Float
-  deliveryFee      Float                 @default(0)
-  serviceFee       Float                 @default(0)
-  tax              Float                 @default(0)
-  rainFee          Float                 @default(0)
-  totalAmount      Float
-  creditsApplied   Float                 @default(0)
-  vendorCount      Int                   @default(1)
-  currency         Currency              @default(GHS)
-  notes            String?
-  restrictions     Json?
-  deliveryStreet   String?
-  deliveryCity     String?
-  deliveryState    String?
-  deliveryZipCode  String?
-  deliveryLatitude Float?
-  deliveryLongitude Float?
-  expiresAt        DateTime?
-  paidAt           DateTime?
+  paymentStatus      PaymentStatus         @default(pending)
+  status             CheckoutSessionStatus @default(pending)
+  subtotal           Float
+  deliveryFee        Float                 @default(0)
+  serviceFee         Float                 @default(0)
+  tax                Float                 @default(0)
+  rainFee            Float                 @default(0)
+  totalAmount        Float
+  creditsApplied     Float                 @default(0)
+  vendorCount        Int                   @default(1)
+  currency           Currency              @default(GHS)
+  notes              String?
+  restrictions       Json?
+  deliveryStreet     String?
+  deliveryCity       String?
+  deliveryState      String?
+  deliveryZipCode    String?
+  deliveryLatitude   Float?
+  deliveryLongitude  Float?
+  expiresAt          DateTime?
+  paidAt             DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1211,81 +1213,81 @@ model CheckoutSession {
 }
 
 model Order {
-  id                 String           @id @default(cuid())
-  orderNumber        String           @unique
-  orderType          OrderType        @default(food)
-  fulfillmentMode    FulfillmentMode  @default(delivery)
-  customerId         String
-  restaurantId       String?
-  groceryStoreId     String?
-  pharmacyStoreId    String?
-  grabMartStoreId    String?
-  checkoutSessionId  String?
-  groupId            String?
-  groupOrderNumber   String?
-  isGroupedOrder     Boolean          @default(false)
-  riderId            String?
-  subtotal           Float
-  deliveryFee        Float            @default(0)
-  rainFee            Float            @default(0)
-  tax                Float            @default(0)
-  totalAmount        Float
-  creditsApplied     Float            @default(0)
-  paymentMethod      PaymentMethod
-  paymentProvider    PaymentProvider?
-  paymentReferenceId String?
-  paymentStatus      PaymentStatus    @default(pending)
-  status             OrderStatus      @default(pending)
-  orderDate          DateTime         @default(now())
-  expectedDelivery   DateTime?
-  deliveredDate      DateTime?
-  cancelledDate      DateTime?
-  acceptedAt         DateTime?
-  rejectedAt         DateTime?
-  rejectReason       String?
-  acceptByAt         DateTime?
-  preparingAt        DateTime?
-  readyAt            DateTime?
-  pickupExpiresAt    DateTime?
-  pickedUpAt         DateTime?
-  cancellationReason String?
-  promoCode          String?
-  promoDiscount      Float            @default(0)
-  promoType          PromoType?
-  notes              String?
-  pickupContactName  String?
-  pickupContactPhone String?
-  pickupOtpHash      String?
-  pickupOtpFailedAttempts Int         @default(0)
-  pickupOtpLastAttemptAt DateTime?
-  isGiftOrder             Boolean      @default(false)
-  giftRecipientName       String?
-  giftRecipientPhone      String?
-  giftNote                String?
-  isScheduledOrder        Boolean      @default(false)
-  scheduledForAt          DateTime?
-  scheduledWindowStartAt  DateTime?
-  scheduledWindowEndAt    DateTime?
-  scheduledReleaseAt      DateTime?
-  scheduledReleasedAt     DateTime?
-  deliveryVerificationRequired Boolean @default(false)
-  deliveryCodeHash        String?
-  deliveryCodeEncrypted   String?
-  deliveryCodeFailedAttempts Int      @default(0)
-  deliveryCodeLockedUntil DateTime?
-  deliveryCodeVerifiedAt  DateTime?
+  id                            String                      @id @default(cuid())
+  orderNumber                   String                      @unique
+  orderType                     OrderType                   @default(food)
+  fulfillmentMode               FulfillmentMode             @default(delivery)
+  customerId                    String
+  restaurantId                  String?
+  groceryStoreId                String?
+  pharmacyStoreId               String?
+  grabMartStoreId               String?
+  checkoutSessionId             String?
+  groupId                       String?
+  groupOrderNumber              String?
+  isGroupedOrder                Boolean                     @default(false)
+  riderId                       String?
+  subtotal                      Float
+  deliveryFee                   Float                       @default(0)
+  rainFee                       Float                       @default(0)
+  tax                           Float                       @default(0)
+  totalAmount                   Float
+  creditsApplied                Float                       @default(0)
+  paymentMethod                 PaymentMethod
+  paymentProvider               PaymentProvider?
+  paymentReferenceId            String?
+  paymentStatus                 PaymentStatus               @default(pending)
+  status                        OrderStatus                 @default(pending)
+  orderDate                     DateTime                    @default(now())
+  expectedDelivery              DateTime?
+  deliveredDate                 DateTime?
+  cancelledDate                 DateTime?
+  acceptedAt                    DateTime?
+  rejectedAt                    DateTime?
+  rejectReason                  String?
+  acceptByAt                    DateTime?
+  preparingAt                   DateTime?
+  readyAt                       DateTime?
+  pickupExpiresAt               DateTime?
+  pickedUpAt                    DateTime?
+  cancellationReason            String?
+  promoCode                     String?
+  promoDiscount                 Float                       @default(0)
+  promoType                     PromoType?
+  notes                         String?
+  pickupContactName             String?
+  pickupContactPhone            String?
+  pickupOtpHash                 String?
+  pickupOtpFailedAttempts       Int                         @default(0)
+  pickupOtpLastAttemptAt        DateTime?
+  isGiftOrder                   Boolean                     @default(false)
+  giftRecipientName             String?
+  giftRecipientPhone            String?
+  giftNote                      String?
+  isScheduledOrder              Boolean                     @default(false)
+  scheduledForAt                DateTime?
+  scheduledWindowStartAt        DateTime?
+  scheduledWindowEndAt          DateTime?
+  scheduledReleaseAt            DateTime?
+  scheduledReleasedAt           DateTime?
+  deliveryVerificationRequired  Boolean                     @default(false)
+  deliveryCodeHash              String?
+  deliveryCodeEncrypted         String?
+  deliveryCodeFailedAttempts    Int                         @default(0)
+  deliveryCodeLockedUntil       DateTime?
+  deliveryCodeVerifiedAt        DateTime?
   deliveryCodeVerifiedByRiderId String?
-  deliveryVerificationMethod DeliveryVerificationMethod?
-  deliveryProofPhotoUrl   String?
-  deliveryProofReason     String?
-  deliveryProofCapturedAt DateTime?
-  deliveryVerificationLat Float?
-  deliveryVerificationLng Float?
-  deliveryCodeResendCount Int         @default(0)
-  deliveryCodeLastSentAt  DateTime?
+  deliveryVerificationMethod    DeliveryVerificationMethod?
+  deliveryProofPhotoUrl         String?
+  deliveryProofReason           String?
+  deliveryProofCapturedAt       DateTime?
+  deliveryVerificationLat       Float?
+  deliveryVerificationLng       Float?
+  deliveryCodeResendCount       Int                         @default(0)
+  deliveryCodeLastSentAt        DateTime?
   pickupReadyToCollectedSeconds Int?
-  noShowPolicyAcceptedAt DateTime?
-  noShowPolicyVersion String?
+  noShowPolicyAcceptedAt        DateTime?
+  noShowPolicyVersion           String?
 
   // Delivery Window (calculated when rider accepts)
   deliveryWindowMin      Int? // Minimum estimated delivery time in minutes
@@ -1319,18 +1321,18 @@ model Order {
   updatedAt DateTime @updatedAt
 
   // Relations
-  customer      User           @relation("CustomerOrders", fields: [customerId], references: [id])
-  rider         User?          @relation("RiderOrders", fields: [riderId], references: [id])
-  checkoutSession CheckoutSession? @relation("CheckoutSessionOrders", fields: [checkoutSessionId], references: [id], onDelete: SetNull)
-  restaurant    Restaurant?    @relation(fields: [restaurantId], references: [id])
-  groceryStore  GroceryStore?  @relation("GroceryStoreOrders", fields: [groceryStoreId], references: [id])
-  pharmacyStore PharmacyStore? @relation("PharmacyStoreOrders", fields: [pharmacyStoreId], references: [id])
-  grabMartStore GrabMartStore? @relation("GrabMartStoreOrders", fields: [grabMartStoreId], references: [id])
-  items         OrderItem[]
-  inventoryHolds OrderInventoryHold[]
-  actionAudits  OrderActionAudit[]
-  payments      Payment[]
-  creditHold    UserCreditHold?
+  customer        User                 @relation("CustomerOrders", fields: [customerId], references: [id])
+  rider           User?                @relation("RiderOrders", fields: [riderId], references: [id])
+  checkoutSession CheckoutSession?     @relation("CheckoutSessionOrders", fields: [checkoutSessionId], references: [id], onDelete: SetNull)
+  restaurant      Restaurant?          @relation(fields: [restaurantId], references: [id])
+  groceryStore    GroceryStore?        @relation("GroceryStoreOrders", fields: [groceryStoreId], references: [id])
+  pharmacyStore   PharmacyStore?       @relation("PharmacyStoreOrders", fields: [pharmacyStoreId], references: [id])
+  grabMartStore   GrabMartStore?       @relation("GrabMartStoreOrders", fields: [grabMartStoreId], references: [id])
+  items           OrderItem[]
+  inventoryHolds  OrderInventoryHold[]
+  actionAudits    OrderActionAudit[]
+  payments        Payment[]
+  creditHold      UserCreditHold?
 
   @@index([customerId])
   @@index([checkoutSessionId])
@@ -1349,28 +1351,28 @@ model Order {
 }
 
 model OrderItem {
-  id             String   @id @default(cuid())
-  orderId        String
-  itemType       ItemType
-  foodId         String?
-  groceryItemId  String?
-  pharmacyItemId String?
-  grabMartItemId String?
-  name           String
-  quantity       Int
-  price          Float
-  image          String?
-  unit           String?
-  selectedPortion Json?
+  id                  String   @id @default(cuid())
+  orderId             String
+  itemType            ItemType
+  foodId              String?
+  groceryItemId       String?
+  pharmacyItemId      String?
+  grabMartItemId      String?
+  name                String
+  quantity            Int
+  price               Float
+  image               String?
+  unit                String?
+  selectedPortion     Json?
   selectedPreferences Json?
-  itemNote       String?
-  customizationKey String?
+  itemNote            String?
+  customizationKey    String?
 
-  order        Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  food         Food?         @relation(fields: [foodId], references: [id])
-  groceryItem  GroceryItem?  @relation(fields: [groceryItemId], references: [id])
-  pharmacyItem PharmacyItem? @relation(fields: [pharmacyItemId], references: [id])
-  grabMartItem GrabMartItem? @relation(fields: [grabMartItemId], references: [id])
+  order          Order                @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  food           Food?                @relation(fields: [foodId], references: [id])
+  groceryItem    GroceryItem?         @relation(fields: [groceryItemId], references: [id])
+  pharmacyItem   PharmacyItem?        @relation(fields: [pharmacyItemId], references: [id])
+  grabMartItem   GrabMartItem?        @relation(fields: [grabMartItemId], references: [id])
   inventoryHolds OrderInventoryHold[]
 
   @@index([orderId])
@@ -1384,7 +1386,7 @@ model OrderItem {
 // ==================== CART ====================
 
 model Cart {
-  id                            String    @id @default(cuid())
+  id                            String          @id @default(cuid())
   userId                        String
   cartType                      CartType
   fulfillmentMode               FulfillmentMode @default(delivery)
@@ -1393,14 +1395,14 @@ model Cart {
   groceryStoreId                String?
   pharmacyStoreId               String?
   grabMartStoreId               String?
-  totalAmount                   Float     @default(0)
-  itemCount                     Int       @default(0)
-  lastUpdatedAt                 DateTime  @default(now())
-  abandonmentNotificationSent   Boolean   @default(false)
+  totalAmount                   Float           @default(0)
+  itemCount                     Int             @default(0)
+  lastUpdatedAt                 DateTime        @default(now())
+  abandonmentNotificationSent   Boolean         @default(false)
   abandonmentNotificationSentAt DateTime?
   lastAbandonmentCheckAt        DateTime?
-  isActive                      Boolean   @default(true)
-  convertedToOrder              Boolean   @default(false)
+  isActive                      Boolean         @default(true)
+  convertedToOrder              Boolean         @default(false)
   orderId                       String?
 
   createdAt DateTime @default(now())
@@ -1418,22 +1420,22 @@ model Cart {
 }
 
 model CartItem {
-  id             String   @id @default(cuid())
-  cartId         String
-  itemType       ItemType
-  foodId         String?
-  groceryItemId  String?
-  pharmacyItemId String?
-  grabMartItemId String?
-  name           String
-  price          Float
-  quantity       Int      @default(1)
-  imageUrl       String?
-  selectedPortion Json?
+  id                  String   @id @default(cuid())
+  cartId              String
+  itemType            ItemType
+  foodId              String?
+  groceryItemId       String?
+  pharmacyItemId      String?
+  grabMartItemId      String?
+  name                String
+  price               Float
+  quantity            Int      @default(1)
+  imageUrl            String?
+  selectedPortion     Json?
   selectedPreferences Json?
-  itemNote       String?
-  customizationKey String?
-  addedAt        DateTime @default(now())
+  itemNote            String?
+  customizationKey    String?
+  addedAt             DateTime @default(now())
 
   cart         Cart          @relation(fields: [cartId], references: [id], onDelete: Cascade)
   food         Food?         @relation(fields: [foodId], references: [id])
@@ -1450,17 +1452,17 @@ model CartItem {
 }
 
 model OrderInventoryHold {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   orderId     String
   orderItemId String
   itemType    ItemType
   itemId      String
   reservedQty Int
   releasedAt  DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order     Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
   orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
@@ -1489,17 +1491,17 @@ model OrderActionAudit {
 }
 
 model ParcelOrder {
-  id                 String            @id @default(cuid())
-  parcelNumber       String            @unique
-  customerId         String
-  riderId            String?
-  status             ParcelOrderStatus @default(pending_payment)
-  scheduleType       ParcelScheduleType @default(on_demand)
-  scheduledPickupAt  DateTime?
+  id                  String             @id @default(cuid())
+  parcelNumber        String             @unique
+  customerId          String
+  riderId             String?
+  status              ParcelOrderStatus  @default(pending_payment)
+  scheduleType        ParcelScheduleType @default(on_demand)
+  scheduledPickupAt   DateTime?
   pickupWindowStartAt DateTime?
-  pickupWindowEndAt  DateTime?
-  dispatchReleaseAt  DateTime?
-  dispatchReleasedAt DateTime?
+  pickupWindowEndAt   DateTime?
+  dispatchReleaseAt   DateTime?
+  dispatchReleasedAt  DateTime?
 
   pickupAddressLine1 String
   pickupAddressLine2 String?
@@ -1521,38 +1523,38 @@ model ParcelOrder {
   recipientName       String
   recipientPhone      String
 
-  packageCategory         String
-  packageDescription      String?
-  sizeTier                String
-  weightKg                Float
-  lengthCm                Float?
-  widthCm                 Float?
-  heightCm                Float?
-  declaredValueGhs        Float
-  isFragile               Boolean @default(false)
-  containsLiquid          Boolean @default(false)
-  isPerishable            Boolean @default(false)
-  containsHazardous       Boolean @default(false)
-  prohibitedItemsAccepted Boolean @default(false)
-  termsAcceptedAt         DateTime
-  termsVersionAccepted    String
-  liabilityCapGhs         Float
-  liabilityFormula        String
+  packageCategory           String
+  packageDescription        String?
+  sizeTier                  String
+  weightKg                  Float
+  lengthCm                  Float?
+  widthCm                   Float?
+  heightCm                  Float?
+  declaredValueGhs          Float
+  isFragile                 Boolean   @default(false)
+  containsLiquid            Boolean   @default(false)
+  isPerishable              Boolean   @default(false)
+  containsHazardous         Boolean   @default(false)
+  prohibitedItemsAccepted   Boolean   @default(false)
+  termsAcceptedAt           DateTime
+  termsVersionAccepted      String
+  liabilityCapGhs           Float
+  liabilityFormula          String
   noInsuranceAcknowledgedAt DateTime?
 
   paymentMethod      PaymentMethod
   paymentProvider    PaymentProvider?
   paymentReferenceId String?
-  paymentStatus      PaymentStatus @default(pending)
-  originalTripFee    Float         @default(0)
-  returnTripFee      Float         @default(0)
-  serviceFee         Float         @default(0)
-  tax                Float         @default(0)
-  rainFee            Float         @default(0)
-  totalAmount        Float         @default(0)
-  currency           Currency      @default(GHS)
+  paymentStatus      PaymentStatus      @default(pending)
+  originalTripFee    Float              @default(0)
+  returnTripFee      Float              @default(0)
+  serviceFee         Float              @default(0)
+  tax                Float              @default(0)
+  rainFee            Float              @default(0)
+  totalAmount        Float              @default(0)
+  currency           Currency           @default(GHS)
   returnChargeStatus ReturnChargeStatus @default(not_applicable)
-  returnChargeAmount Float         @default(0)
+  returnChargeAmount Float              @default(0)
   returnChargeReason String?
 
   cancelledAt             DateTime?
@@ -1563,21 +1565,21 @@ model ParcelOrder {
   deliveredAt             DateTime?
   cancelReason            String?
 
-  deliveryVerificationRequired Boolean @default(true)
-  deliveryCodeHash        String?
-  deliveryCodeEncrypted   String?
-  deliveryCodeFailedAttempts Int      @default(0)
-  deliveryCodeLockedUntil DateTime?
-  deliveryCodeVerifiedAt  DateTime?
+  deliveryVerificationRequired  Boolean                     @default(true)
+  deliveryCodeHash              String?
+  deliveryCodeEncrypted         String?
+  deliveryCodeFailedAttempts    Int                         @default(0)
+  deliveryCodeLockedUntil       DateTime?
+  deliveryCodeVerifiedAt        DateTime?
   deliveryCodeVerifiedByRiderId String?
-  deliveryVerificationMethod DeliveryVerificationMethod?
-  deliveryProofPhotoUrl   String?
-  deliveryProofReason     String?
-  deliveryProofCapturedAt DateTime?
-  deliveryVerificationLat Float?
-  deliveryVerificationLng Float?
-  deliveryCodeResendCount Int @default(0)
-  deliveryCodeLastSentAt  DateTime?
+  deliveryVerificationMethod    DeliveryVerificationMethod?
+  deliveryProofPhotoUrl         String?
+  deliveryProofReason           String?
+  deliveryProofCapturedAt       DateTime?
+  deliveryVerificationLat       Float?
+  deliveryVerificationLng       Float?
+  deliveryCodeResendCount       Int                         @default(0)
+  deliveryCodeLastSentAt        DateTime?
 
   originalTripEarning Float @default(0)
   returnTripEarning   Float @default(0)
@@ -1588,8 +1590,8 @@ model ParcelOrder {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  customer User  @relation("ParcelCustomerOrders", fields: [customerId], references: [id])
-  rider    User? @relation("ParcelRiderOrders", fields: [riderId], references: [id])
+  customer User          @relation("ParcelCustomerOrders", fields: [customerId], references: [id])
+  rider    User?         @relation("ParcelRiderOrders", fields: [riderId], references: [id])
   events   ParcelEvent[]
 
   @@index([customerId])
@@ -1603,7 +1605,7 @@ model ParcelOrder {
 }
 
 model ParcelEvent {
-  id            String @id @default(cuid())
+  id            String   @id @default(cuid())
   parcelOrderId String
   actorId       String?
   actorRole     String?
@@ -1689,10 +1691,10 @@ model Rider {
   notes                  String?
 
   // Performance metrics (synced by rider_metrics_sync_service)
-  rating                 Float                @default(5.0)
-  ratingCount            Int                  @default(0)
-  totalDeliveries        Int                  @default(0)
-  activeDays             Int                  @default(0)
+  rating          Float @default(5.0)
+  ratingCount     Int   @default(0)
+  totalDeliveries Int   @default(0)
+  activeDays      Int   @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1744,32 +1746,32 @@ model Transaction {
 // ==================== RIDER PARTNER & INCENTIVE SYSTEM ====================
 
 model RiderPartnerProfile {
-  id                  String       @id @default(cuid())
-  riderId             String       @unique
-  partnerScore        Float        @default(0)
-  partnerLevel        PartnerLevel @default(L1)
+  id           String       @id @default(cuid())
+  riderId      String       @unique
+  partnerScore Float        @default(0)
+  partnerLevel PartnerLevel @default(L1)
 
   // Rolling 28-day score window
-  scoreWindowStart    DateTime?
-  scoreWindowEnd      DateTime?
-  lastEvaluatedAt     DateTime?
+  scoreWindowStart DateTime?
+  scoreWindowEnd   DateTime?
+  lastEvaluatedAt  DateTime?
 
   // Hysteresis: level lock after upgrade, downgrade delay
-  levelLockedUntil    DateTime?    // 14 days after upgrade
-  downgradeEligibleAt DateTime?    // 7 consecutive days below threshold
-  consecutiveDaysBelowThreshold Int @default(0)
+  levelLockedUntil              DateTime? // 14 days after upgrade
+  downgradeEligibleAt           DateTime? // 7 consecutive days below threshold
+  consecutiveDaysBelowThreshold Int       @default(0)
 
   // Component metrics (snapshot from last evaluation)
-  onTimeRate          Float        @default(100)
-  completionRate      Float        @default(100)
-  customerRating      Float        @default(5.0)
-  deliveryVolume      Int          @default(0)
-  acceptanceRate      Float        @default(100)
+  onTimeRate     Float @default(100)
+  completionRate Float @default(100)
+  customerRating Float @default(5.0)
+  deliveryVolume Int   @default(0)
+  acceptanceRate Float @default(100)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user         User               @relation(fields: [riderId], references: [id], onDelete: Cascade)
+  user         User                @relation(fields: [riderId], references: [id], onDelete: Cascade)
   levelHistory RiderLevelHistory[]
 
   @@index([partnerLevel])
@@ -1785,7 +1787,7 @@ model RiderLevelHistory {
   score     Float
   reason    LevelChangeReason
   changedAt DateTime          @default(now())
-  lockUntil DateTime?         // Level lock expiry after this change
+  lockUntil DateTime? // Level lock expiry after this change
 
   profile RiderPartnerProfile @relation(fields: [riderId], references: [riderId], onDelete: Cascade)
 
@@ -1797,14 +1799,14 @@ model RiderIncentiveLedger {
   id          String                @id @default(cuid())
   riderId     String
   sourceType  IncentiveSourceType
-  sourceRef   String                // Deterministic key: entityType:entityId:ruleId:windowKey
+  sourceRef   String // Deterministic key: entityType:entityId:ruleId:windowKey
   baseAmount  Float
   multiplier  Float                 @default(1.0)
   finalAmount Float
   status      IncentiveLedgerStatus @default(pending_budget)
-  windowKey   String                // e.g. "2026-W10" or "2026-03-05"
-  metadata    Json?                 // Extra context (quest name, streak count, etc.)
-  settledAt   DateTime?             // When status moved to paid_out
+  windowKey   String // e.g. "2026-W10" or "2026-03-05"
+  metadata    Json? // Extra context (quest name, streak count, etc.)
+  settledAt   DateTime? // When status moved to paid_out
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1819,15 +1821,15 @@ model RiderIncentiveLedger {
 }
 
 model QuestDefinition {
-  id             String      @id @default(cuid())
-  name           String      // e.g. "Daily 10 Deliveries"
-  description    String?
-  period         QuestPeriod
-  targetCount    Int         // e.g. 10, 20, 30 deliveries
-  rewardAmount   Float       // Base reward in GHS
-  minLevel       PartnerLevel @default(L1)  // Minimum level to unlock
-  isActive       Boolean     @default(true)
-  sortOrder      Int         @default(0)
+  id           String       @id @default(cuid())
+  name         String // e.g. "Daily 10 Deliveries"
+  description  String?
+  period       QuestPeriod
+  targetCount  Int // e.g. 10, 20, 30 deliveries
+  rewardAmount Float // Base reward in GHS
+  minLevel     PartnerLevel @default(L1) // Minimum level to unlock
+  isActive     Boolean      @default(true)
+  sortOrder    Int          @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1842,7 +1844,7 @@ model RiderQuestProgress {
   id           String      @id @default(cuid())
   riderId      String
   questId      String
-  windowKey    String      // e.g. "2026-03-05" for daily, "2026-W10" for weekly
+  windowKey    String // e.g. "2026-03-05" for daily, "2026-W10" for weekly
   currentCount Int         @default(0)
   targetCount  Int
   status       QuestStatus @default(active)
@@ -1861,36 +1863,36 @@ model RiderQuestProgress {
 }
 
 model RiderStreakState {
-  id                  String   @id @default(cuid())
-  riderId             String   @unique
-  currentStreak       Int      @default(0)
-  longestStreak       Int      @default(0)
-  lastDeliveryDate    DateTime? // Date of last qualifying delivery
-  lastStreakResetAt   DateTime? // When streak was last broken
-  streakStartDate     DateTime? // When current streak started
+  id                String    @id @default(cuid())
+  riderId           String    @unique
+  currentStreak     Int       @default(0)
+  longestStreak     Int       @default(0)
+  lastDeliveryDate  DateTime? // Date of last qualifying delivery
+  lastStreakResetAt DateTime? // When streak was last broken
+  streakStartDate   DateTime? // When current streak started
 
   // Next reward thresholds: 5, 10, 15
-  nextRewardThreshold Int      @default(5)
+  nextRewardThreshold Int @default(5)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user           User                     @relation(fields: [riderId], references: [id], onDelete: Cascade)
-  rewardHistory  RiderStreakRewardHistory[]
+  user          User                       @relation(fields: [riderId], references: [id], onDelete: Cascade)
+  rewardHistory RiderStreakRewardHistory[]
 
   @@index([currentStreak])
   @@map("rider_streak_states")
 }
 
 model RiderStreakRewardHistory {
-  id             String   @id @default(cuid())
-  riderId        String
-  streakCount    Int      // The streak count that triggered this reward (5, 10, 15)
-  rewardAmount   Float
-  multiplier     Float    @default(1.0)
-  finalAmount    Float
-  windowKey      String   // e.g. "2026-W10"
-  awardedAt      DateTime @default(now())
+  id           String   @id @default(cuid())
+  riderId      String
+  streakCount  Int // The streak count that triggered this reward (5, 10, 15)
+  rewardAmount Float
+  multiplier   Float    @default(1.0)
+  finalAmount  Float
+  windowKey    String // e.g. "2026-W10"
+  awardedAt    DateTime @default(now())
 
   streakState RiderStreakState @relation(fields: [riderId], references: [riderId], onDelete: Cascade)
 
@@ -1899,14 +1901,14 @@ model RiderStreakRewardHistory {
 }
 
 model MilestoneDefinition {
-  id              String       @id @default(cuid())
-  name            String       // e.g. "Century Rider"
-  description     String?
-  targetCount     Int          // e.g. 100, 500, 1000 lifetime deliveries
-  rewardAmount    Float        // Base reward in GHS
-  badgeIcon       String?      // Icon identifier for rider app
-  isActive        Boolean      @default(true)
-  sortOrder       Int          @default(0)
+  id           String  @id @default(cuid())
+  name         String // e.g. "Century Rider"
+  description  String?
+  targetCount  Int // e.g. 100, 500, 1000 lifetime deliveries
+  rewardAmount Float // Base reward in GHS
+  badgeIcon    String? // Icon identifier for rider app
+  isActive     Boolean @default(true)
+  sortOrder    Int     @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1918,18 +1920,18 @@ model MilestoneDefinition {
 }
 
 model RiderMilestoneState {
-  id              String   @id @default(cuid())
-  riderId         String
-  milestoneId     String
-  currentCount    Int      @default(0)
-  isCompleted     Boolean  @default(false)
-  completedAt     DateTime?
+  id           String    @id @default(cuid())
+  riderId      String
+  milestoneId  String
+  currentCount Int       @default(0)
+  isCompleted  Boolean   @default(false)
+  completedAt  DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  milestone    MilestoneDefinition        @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
-  user         User                       @relation(fields: [riderId], references: [id], onDelete: Cascade)
+  milestone     MilestoneDefinition           @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  user          User                          @relation(fields: [riderId], references: [id], onDelete: Cascade)
   rewardHistory RiderMilestoneRewardHistory[]
 
   @@unique([riderId, milestoneId])
@@ -1938,14 +1940,14 @@ model RiderMilestoneState {
 }
 
 model RiderMilestoneRewardHistory {
-  id             String   @id @default(cuid())
-  riderId        String
-  milestoneId    String
-  stateId        String
-  rewardAmount   Float
-  multiplier     Float    @default(1.0)
-  finalAmount    Float
-  awardedAt      DateTime @default(now())
+  id           String   @id @default(cuid())
+  riderId      String
+  milestoneId  String
+  stateId      String
+  rewardAmount Float
+  multiplier   Float    @default(1.0)
+  finalAmount  Float
+  awardedAt    DateTime @default(now())
 
   state RiderMilestoneState @relation(fields: [stateId], references: [id], onDelete: Cascade)
 
@@ -1956,10 +1958,10 @@ model RiderMilestoneRewardHistory {
 model IncentiveBudgetWindow {
   id          String             @id @default(cuid())
   windowType  BudgetWindowType
-  windowKey   String             // e.g. "2026-03-05" for daily, "2026-W10" for weekly
+  windowKey   String // e.g. "2026-03-05" for daily, "2026-W10" for weekly
   startsAt    DateTime
   endsAt      DateTime
-  capAmount   Float              // Hard cap for this window in GHS
+  capAmount   Float // Hard cap for this window in GHS
   spentAmount Float              @default(0)
   status      BudgetWindowStatus @default(active)
 
@@ -1975,12 +1977,12 @@ model RiderPayoutRequest {
   id              String       @id @default(cuid())
   riderId         String
   amount          Float
-  fee             Float        @default(0)  // e.g. GHS 2 instant withdrawal fee
-  netAmount       Float                     // amount - fee
+  fee             Float        @default(0) // e.g. GHS 2 instant withdrawal fee
+  netAmount       Float // amount - fee
   payoutType      PayoutType
   status          PayoutStatus @default(pending)
-  method          String?                   // bank_account, mtn_mobile_money, etc.
-  accountSnapshot Json?                     // Snapshot of payout destination at request time
+  method          String? // bank_account, mtn_mobile_money, etc.
+  accountSnapshot Json? // Snapshot of payout destination at request time
   requestedAt     DateTime     @default(now())
   processedAt     DateTime?
   failureReason   String?
@@ -1997,11 +1999,11 @@ model RiderPayoutRequest {
 }
 
 model RiderWithdrawalAllowance {
-  id                      String   @id @default(cuid())
-  riderId                 String
-  weekStartAt             DateTime // Monday 00:00:00 Africa/Accra
-  freeInstantUsed         Int      @default(0)
-  freeInstantQuota        Int      @default(0)  // Set from partner level: L1=0, L2=1, L3=3, L4=5, L5=999
+  id               String   @id @default(cuid())
+  riderId          String
+  weekStartAt      DateTime // Monday 00:00:00 Africa/Accra
+  freeInstantUsed  Int      @default(0)
+  freeInstantQuota Int      @default(0) // Set from partner level: L1=0, L2=1, L3=3, L4=5, L5=999
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2221,9 +2223,9 @@ model GrabMartStore {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  categories GrabMartCategory[]
-  items      GrabMartItem[]
-  orders     Order[]          @relation("GrabMartStoreOrders")
+  categories  GrabMartCategory[]
+  items       GrabMartItem[]
+  orders      Order[]                     @relation("GrabMartStoreOrders")
   favoritedBy UserFavoriteGrabMartStore[]
 
   @@index([status])
@@ -2349,15 +2351,15 @@ model FraudDecision {
 }
 
 model FraudSignal {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   actorType   String
   actorId     String
   signalType  String
   signalValue Json?
-  weight      Float    @default(0)
-  observedAt  DateTime @default(now())
+  weight      Float     @default(0)
+  observedAt  DateTime  @default(now())
   expiresAt   DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   @@index([actorType, actorId, createdAt])
   @@index([signalType, createdAt])
@@ -2398,15 +2400,15 @@ model FraudFeatureDefinition {
 }
 
 model FraudFeatureSnapshot {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   actorType      String
   actorId        String
   featureName    String
   featureVersion Int
   value          Json
-  computedAt     DateTime @default(now())
+  computedAt     DateTime  @default(now())
   expiresAt      DateTime?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime  @default(now())
 
   @@index([actorType, actorId, computedAt])
   @@index([featureName, featureVersion, computedAt])
@@ -2415,18 +2417,18 @@ model FraudFeatureSnapshot {
 }
 
 model FraudGraphEdge {
-  id           String   @id @default(cuid())
+  id            String   @id @default(cuid())
   fromActorType String
-  fromActorId  String
-  edgeType     String
-  toEntityType String
-  toEntityId   String
-  weight       Float    @default(1)
-  metadata     Json?
-  firstSeenAt  DateTime @default(now())
-  lastSeenAt   DateTime @default(now())
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  fromActorId   String
+  edgeType      String
+  toEntityType  String
+  toEntityId    String
+  weight        Float    @default(1)
+  metadata      Json?
+  firstSeenAt   DateTime @default(now())
+  lastSeenAt    DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@unique([fromActorType, fromActorId, edgeType, toEntityType, toEntityId])
   @@index([fromActorType, fromActorId, lastSeenAt])
@@ -2474,19 +2476,19 @@ model FraudCase {
 }
 
 model FraudEventOutbox {
-  id             String   @id @default(cuid())
-  eventId        String   @unique
+  id             String    @id @default(cuid())
+  eventId        String    @unique
   eventType      String
   aggregateType  String
   aggregateId    String
   payload        Json
-  idempotencyKey String   @unique
-  retryCount     Int      @default(0)
+  idempotencyKey String    @unique
+  retryCount     Int       @default(0)
   nextAttemptAt  DateTime?
   lastError      String?
   publishedAt    DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@index([publishedAt, createdAt])
   @@index([nextAttemptAt, retryCount])
@@ -2494,7 +2496,7 @@ model FraudEventOutbox {
 }
 
 model FraudChallenge {
-  id                String              @id @default(cuid())
+  id                String               @id @default(cuid())
   actorType         String
   actorId           String
   challengeType     FraudChallengeType
@@ -2504,9 +2506,9 @@ model FraudChallenge {
   metadata          Json?
   expiresAt         DateTime
   verifiedAt        DateTime?
-  failedAttempts    Int                 @default(0)
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
+  failedAttempts    Int                  @default(0)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
 
   @@index([actorType, actorId, status, expiresAt])
   @@index([challengeType, status, createdAt])
@@ -2531,20 +2533,88 @@ model FraudPolicy {
 }
 
 model PaymentWebhookEvent {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   provider        String
   providerEventId String
   reference       String?
   signature       String?
   payload         Json
-  status          String   @default("received")
+  status          String    @default("received")
   processedAt     DateTime?
   errorMessage    String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@unique([provider, providerEventId])
   @@index([reference])
   @@index([status, createdAt])
   @@map("payment_webhook_events")
+}
+
+// ==================== RIDER LOAN / CASH ADVANCE SYSTEM ====================
+
+model RiderLoan {
+  id             String     @id @default(cuid())
+  riderId        String
+  amount         Float // Loan principal (GHS)
+  interestRate   Float      @default(0.05) // e.g. 5%
+  interestAmount Float      @default(0) // amount * interestRate
+  totalRepayable Float // amount + interestAmount
+  dailyDeduction Float // totalRepayable / termDays
+  termDays       Int // 7, 14, or 30
+  purpose        String // Fuel, Maintenance, Health, etc.
+  status         LoanStatus @default(pending)
+  partnerLevel   String     @default("L1") // Level at time of application
+
+  // Repayment tracking
+  totalRepaid      Float     @default(0)
+  remainingBalance Float // totalRepayable - totalRepaid
+  repaymentStartAt DateTime? // Day after approval
+  repaymentDueAt   DateTime? // repaymentStartAt + termDays
+
+  // Status timestamps
+  approvedAt      DateTime?
+  disbursedAt     DateTime?
+  completedAt     DateTime?
+  rejectedAt      DateTime?
+  rejectionReason String?
+  defaultedAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user       User                 @relation(fields: [riderId], references: [id], onDelete: Cascade)
+  repayments RiderLoanRepayment[]
+
+  @@index([riderId, status])
+  @@index([status, repaymentDueAt])
+  @@index([riderId, createdAt])
+  @@map("rider_loans")
+}
+
+model RiderLoanRepayment {
+  id          String  @id @default(cuid())
+  loanId      String
+  riderId     String
+  amount      Float
+  type        String  @default("auto_deduction") // auto_deduction | manual_payment
+  description String?
+
+  createdAt DateTime @default(now())
+
+  loan RiderLoan @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  user User      @relation(fields: [riderId], references: [id], onDelete: Cascade)
+
+  @@index([loanId])
+  @@index([riderId])
+  @@map("rider_loan_repayments")
+}
+
+enum LoanStatus {
+  pending // Awaiting review
+  approved // Approved, funds disbursing
+  active // Disbursed, repayment in progress
+  completed // Fully repaid
+  rejected // Application denied
+  defaulted // Missed too many payments
 }

@@ -837,6 +837,7 @@ const featureFlags = require("./config/feature_flags");
 const { scheduleRiderPartnerRecalc } = require("./jobs/rider_partner_recalc");
 const { scheduleIncentiveBudgetApproval } = require("./jobs/incentive_budget_approval");
 const { scheduleWeeklyPayout } = require("./jobs/rider_weekly_payout");
+const { scheduleLoanDailyRepayment } = require("./jobs/loan_daily_repayment");
 
 // Initialize Redis cache (optional - falls back to memory cache)
 cache.initRedis();
@@ -900,6 +901,9 @@ if (featureFlags.isRiderIncentivesEnabled) {
 if (featureFlags.isRiderIncentivesEnabled) {
   scheduleWeeklyPayout();
 }
+
+// Schedule daily loan repayments (04:00 Africa/Accra)
+scheduleLoanDailyRepayment();
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {

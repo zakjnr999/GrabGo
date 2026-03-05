@@ -248,4 +248,124 @@ class RiderWalletService {
     final message = decoded['message']?.toString() ?? 'Withdrawal request failed';
     throw Exception(message);
   }
+
+  // ─── Loan / Cash Advance ─────────────────────────────────────────────────
+
+  /// Fetch loan eligibility and policy info for the current rider.
+  Future<LoanEligibility> fetchLoanEligibility() async {
+    final headers = await _buildHeaders();
+    final response = await _client.get(_riderUri('loan/eligibility'), headers: headers);
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to fetch loan eligibility');
+    }
+
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    final data = decoded['data'] as Map<String, dynamic>? ?? {};
+    return LoanEligibility.fromJson(data);
+  }
+
+  /// Submit a loan application.
+  Future<Map<String, dynamic>> applyForLoan({
+    required double amount,
+    required int termDays,
+    required String purpose,
+  }) async {
+    final headers = await _buildSecureHeaders(idempotencyKey: const Uuid().v4());
+    final body = {'amount': amount, 'termDays': termDays, 'purpose': purpose};
+
+    final response = await _client.post(_riderUri('loan/apply'), headers: headers, body: jsonEncode(body));
+
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return decoded;
+    }
+
+    final message = decoded['message']?.toString() ?? 'Loan application failed';
+    throw Exception(message);
+  }
+
+  /// Fetch loan history.
+  Future<List<Map<String, dynamic>>> fetchLoanHistory({String? status}) async {
+    final headers = await _buildHeaders();
+    final queryParams = <String, String>{};
+    if (status != null) queryParams['status'] = status;
+
+    final response = await _client.get(
+      _riderUri('loan/history', queryParams.isNotEmpty ? queryParams : null),
+      headers: headers,
+    );
+
+    if (response.statusCode != 200) return [];
+
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    final data = decoded['data'] as List<dynamic>? ?? [];
+    return data.whereType<Map<String, dynamic>>().toList();
+  }
+
+  /// Fetch single loan detail.
+  Future<Map<String, dynamic>> fetchLoanDetail(String loanId) async {
+    final headers = await _buildHeaders();
+    final response = await _client.get(_riderUri('loan/$loanId'), headers: headers);
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to fetch loan detail');
+    }
+
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    return decoded['data'] as Map<String, dynamic>? ?? {};
+  }
+}
+
+// ─── Loan Eligibility Model ───────────────────────────────────────────────
+
+class LoanEligibility {
+  final bool eligible;
+  final List<String> reasons;
+  final String partnerLevel;
+  final double maxAmount;
+  final double minAmount;
+  final double interestRate;
+  final List<int> availableTerms;
+  final int activeLoans;
+  final int totalDeliveries;
+  final double averageRating;
+  final double outstandingBalance;
+
+  const LoanEligibility({
+    required this.eligible,
+    required this.reasons,
+    required this.partnerLevel,
+    required this.maxAmount,
+    required this.minAmount,
+    required this.interestRate,
+    required this.availableTerms,
+    required this.activeLoans,
+    required this.totalDeliveries,
+    required this.averageRating,
+    required this.outstandingBalance,
+  });
+
+  factory LoanEligibility.fromJson(Map<String, dynamic> json) {
+    return LoanEligibility(
+      eligible: json['eligible'] as bool? ?? false,
+      reasons: (json['reasons'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      partnerLevel: json['partnerLevel']?.toString() ?? 'L1',
+      maxAmount: _toDouble(json['maxAmount']),
+      minAmount: _toDouble(json['minAmount']),
+      interestRate: _toDouble(json['interestRate']),
+      availableTerms: (json['availableTerms'] as List<dynamic>?)?.map((e) => (e as num).toInt()).toList() ?? [],
+      activeLoans: (json['activeLoans'] as num?)?.toInt() ?? 0,
+      totalDeliveries: (json['totalDeliveries'] as num?)?.toInt() ?? 0,
+      averageRating: _toDouble(json['averageRating']),
+      outstandingBalance: _toDouble(json['outstandingBalance']),
+    );
+  }
+
+  static double _toDouble(dynamic v) {
+    if (v == null) return 0;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString()) ?? 0;
+  }
 }

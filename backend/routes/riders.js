@@ -31,6 +31,12 @@ const {
   createInstantPayoutRequest,
   recordInstantWithdrawal,
 } = require("../services/rider_payout_service");
+const {
+  getLoanEligibility,
+  applyForLoan,
+  getRiderLoans,
+  getLoanDetail,
+} = require("../services/rider_loan_service");
 
 const ORDER_RESERVATION_ENTITY = "order";
 const buildOrderReservationQuery = (query = {}) =>
@@ -3657,6 +3663,113 @@ router.get("/wallet/incentive-balance", protect, authorize("rider"), async (req,
   } catch (error) {
     console.error("Incentive balance error:", error);
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  LOAN / CASH ADVANCE
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * @route   GET /api/riders/loan/eligibility
+ * @desc    Check if rider is eligible for a loan and get policy info
+ * @access  Private (Rider)
+ */
+router.get("/loan/eligibility", protect, authorize("rider"), async (req, res) => {
+  try {
+    const eligibility = await getLoanEligibility(req.user.id);
+    res.json({ success: true, data: eligibility });
+  } catch (error) {
+    console.error("Loan eligibility error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * @route   POST /api/riders/loan/apply
+ * @desc    Submit a loan application
+ * @access  Private (Rider)
+ */
+router.post(
+  "/loan/apply",
+  protect,
+  authorize("rider"),
+  [
+    body("amount").isFloat({ min: 50 }).withMessage("Amount must be at least GHS 50"),
+    body("termDays").isInt().isIn([7, 14, 30]).withMessage("Term must be 7, 14, or 30 days"),
+    body("purpose").notEmpty().trim().withMessage("Purpose is required"),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ success: false, message: errors.array()[0].msg });
+      }
+
+      const { amount, termDays, purpose } = req.body;
+
+      const loan = await applyForLoan({
+        riderId: req.user.id,
+        amount: parseFloat(amount),
+        termDays: parseInt(termDays),
+        purpose: purpose.trim(),
+      });
+
+      res.status(201).json({
+        success: true,
+        message: loan.status === "active"
+          ? "Loan approved and credited to your wallet!"
+          : "Loan application submitted for review.",
+        data: loan,
+      });
+    } catch (error) {
+      console.error("Loan apply error:", error);
+      const status = error.message.includes("not eligible") || error.message.includes("Maximum") || error.message.includes("Minimum")
+        ? 400
+        : 500;
+      res.status(status).json({ success: false, message: error.message });
+    }
+  }
+);
+
+/**
+ * @route   GET /api/riders/loan/history
+ * @desc    Get rider's loan history
+ * @access  Private (Rider)
+ */
+router.get("/loan/history", protect, authorize("rider"), async (req, res) => {
+  try {
+    const { status, limit = 20, offset = 0 } = req.query;
+    const result = await getRiderLoans(req.user.id, {
+      status: status || undefined,
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+    });
+
+    res.json({
+      success: true,
+      data: result.loans,
+      total: result.total,
+    });
+  } catch (error) {
+    console.error("Loan history error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * @route   GET /api/riders/loan/:loanId
+ * @desc    Get single loan detail with repayment history
+ * @access  Private (Rider)
+ */
+router.get("/loan/:loanId", protect, authorize("rider"), async (req, res) => {
+  try {
+    const loan = await getLoanDetail(req.params.loanId, req.user.id);
+    res.json({ success: true, data: loan });
+  } catch (error) {
+    console.error("Loan detail error:", error);
+    const status = error.message === "Loan not found." ? 404 : 500;
+    res.status(status).json({ success: false, message: error.message });
   }
 });
 
