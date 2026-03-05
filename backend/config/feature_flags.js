@@ -70,6 +70,10 @@ module.exports = {
   isPaymentWebhookSourceOfTruthEnabled: parseFlag('PAYMENT_WEBHOOK_SOURCE_OF_TRUTH', true),
   isPrepaidFulfillmentGuardEnabled: parseFlag('PREPAID_FULFILLMENT_GUARD', true),
 
+  // ── Vehicle-Based Delivery Radius ──
+  isVehicleRadiusEnabled: parseFlag('VEHICLE_RADIUS_ENABLED', true),
+  isVehicleRadiusHardBlock: parseFlag('VEHICLE_RADIUS_HARD_BLOCK', false),
+
   // ── Rider Partner & Incentive System ──
   isRiderPartnerSystemEnabled: parseFlag('RIDER_PARTNER_SYSTEM_ENABLED', false),
   isRiderPartnerShadowMode: parseFlag('RIDER_PARTNER_SHADOW_MODE', true),

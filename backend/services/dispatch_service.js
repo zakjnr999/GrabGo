@@ -33,6 +33,27 @@ const CONFIG = {
     MIN_RIDERS_BEFORE_EXPAND: 3,   // Minimum riders before considering radius expansion
 };
 
+// Vehicle-based delivery radius limits (km)
+// Controls the max total delivery distance (pickup → dropoff) a rider can be assigned
+// based on their vehicle type. This ensures fast deliveries and realistic routes.
+const VEHICLE_RADIUS_LIMITS = {
+    bicycle:    parseFloat(process.env.VEHICLE_RADIUS_BICYCLE_KM    || '5'),    // ~20 min at 15 km/h
+    scooter:    parseFloat(process.env.VEHICLE_RADIUS_SCOOTER_KM    || '10'),   // ~20 min at 30 km/h
+    motorcycle: parseFloat(process.env.VEHICLE_RADIUS_MOTORCYCLE_KM || '20'),   // ~35 min at 35 km/h
+    car:        parseFloat(process.env.VEHICLE_RADIUS_CAR_KM        || '25'),   // ~40 min at 40 km/h
+    default:    parseFloat(process.env.VEHICLE_RADIUS_DEFAULT_KM    || '10'),   // Unknown vehicle type
+};
+
+/**
+ * Get the maximum delivery distance allowed for a given vehicle type.
+ * @param {string|null} vehicleType - The rider's vehicle type
+ * @returns {number} Max delivery distance in km
+ */
+function getVehicleRadiusLimit(vehicleType) {
+    if (!vehicleType) return VEHICLE_RADIUS_LIMITS.default;
+    return VEHICLE_RADIUS_LIMITS[vehicleType] || VEHICLE_RADIUS_LIMITS.default;
+}
+
 // Scoring weights
 const SCORING = {
     DISTANCE_WEIGHT: -5,           // -5 points per km from pickup
@@ -54,6 +75,9 @@ const SCORING = {
     ON_TIME_BONUS: 15,                 // +15 points for riders with 90%+ on-time rate
     GOOD_ON_TIME_BONUS: 8,             // +8 points for riders with 80-89% on-time rate
     LOW_ON_TIME_PENALTY: -20,          // -20 points for riders with <70% on-time rate (consistently late)
+    // Vehicle radius scoring
+    VEHICLE_NEAR_LIMIT_PENALTY: -10,   // -10 points if delivery is 80-100% of vehicle's max radius
+    VEHICLE_OVER_LIMIT_PENALTY: -100,  // -100 points if delivery exceeds vehicle's max radius (soft block)
 };
 
 const DISPATCHABLE_STATUSES = new Set(['preparing', 'ready']);
@@ -412,6 +436,70 @@ async function dispatchOrder(orderId) {
 }
 
 /**
+ * Estimate the total delivery distance for an order (pickup → dropoff) in km.
+ * Uses order.deliveryDistance if stored, otherwise calculates from coordinates.
+ */
+function estimateDeliveryDistance(order) {
+    if (order.deliveryDistance && order.deliveryDistance > 0) {
+        return order.deliveryDistance;
+    }
+    const pickup = getPickupLocation(order);
+    const dropLat = order.deliveryLatitude;
+    const dropLon = order.deliveryLongitude;
+    if (pickup.latitude && pickup.longitude && dropLat && dropLon) {
+        return calculateDistance(pickup.latitude, pickup.longitude, dropLat, dropLon);
+    }
+    return null; // Unknown — skip vehicle radius filtering
+}
+
+/**
+ * Filter riders by vehicle-appropriate delivery radius.
+ * Returns { eligible, excluded } where excluded riders failed the vehicle radius check.
+ * @param {Array} riders - Eligible riders with _status
+ * @param {number|null} deliveryDistanceKm - Estimated total delivery distance
+ * @param {boolean} hardBlock - If true, excluded riders are permanently removed.
+ *                              If false, they are kept but will receive a heavy scoring penalty.
+ */
+function filterByVehicleRadius(riders, deliveryDistanceKm, hardBlock = false) {
+    if (deliveryDistanceKm === null || deliveryDistanceKm === undefined) {
+        return { eligible: riders, excluded: [] };
+    }
+
+    const eligible = [];
+    const excluded = [];
+
+    for (const rider of riders) {
+        const vehicleType = rider._status?.vehicleType || rider.rider?.vehicleType || null;
+        const maxRadius = getVehicleRadiusLimit(vehicleType);
+
+        if (deliveryDistanceKm > maxRadius) {
+            excluded.push({ rider, vehicleType, maxRadius, deliveryDistanceKm });
+        } else {
+            eligible.push(rider);
+        }
+    }
+
+    if (excluded.length > 0) {
+        console.log(
+            `🚲 [Dispatch] Vehicle radius filter: ${excluded.length} rider(s) excluded ` +
+            `(delivery ${deliveryDistanceKm.toFixed(1)}km) — ` +
+            excluded.map(e => `${e.rider.username || e.rider.id}:${e.vehicleType || 'unknown'}(max ${e.maxRadius}km)`).join(', ')
+        );
+    }
+
+    // Soft fallback: if ALL riders excluded, return them all (scoring will penalize heavily)
+    if (eligible.length === 0 && !hardBlock) {
+        console.log(
+            `⚠️ [Dispatch] All riders exceeded vehicle radius — soft fallback: ` +
+            `keeping ${excluded.length} rider(s) with scoring penalty`
+        );
+        return { eligible: riders, excluded: [] };
+    }
+
+    return { eligible, excluded };
+}
+
+/**
  * Find eligible riders for an order
  */
 async function findEligibleRiders(order, excludedRiderIds = []) {
@@ -513,6 +601,22 @@ async function findEligibleRiders(order, excludedRiderIds = []) {
         if (eligibleRiders.length < CONFIG.MIN_RIDERS_BEFORE_EXPAND) {
             radius += CONFIG.RADIUS_EXPANSION_KM;
             console.log(`📍 [Dispatch] Expanding radius to ${radius}km (found ${eligibleRiders.length} riders)`);
+        }
+    }
+
+    // ── Vehicle-based delivery radius filtering ──
+    // Filters out riders whose vehicle type can't handle the delivery distance.
+    // E.g., a bicycle rider won't get a 15km order.
+    if (featureFlags.isVehicleRadiusEnabled && eligibleRiders.length > 0) {
+        const deliveryDistanceKm = estimateDeliveryDistance(order);
+        if (deliveryDistanceKm !== null) {
+            console.log(`🚲 [Dispatch] Delivery distance: ${deliveryDistanceKm.toFixed(1)}km — applying vehicle radius limits`);
+            const { eligible } = filterByVehicleRadius(
+                eligibleRiders,
+                deliveryDistanceKm,
+                featureFlags.isVehicleRadiusHardBlock
+            );
+            eligibleRiders = eligible;
         }
     }
 
@@ -725,7 +829,20 @@ async function scoreRiders(riders, order) {
                 vehicleBonus += SCORING.BICYCLE_SHORT_DISTANCE_BONUS;
             }
         }
-        score += vehicleBonus;
+
+        // Vehicle radius penalty (for soft-fallback riders who exceeded their vehicle limit)
+        let vehicleRadiusPenalty = 0;
+        if (featureFlags.isVehicleRadiusEnabled) {
+            const maxRadius = getVehicleRadiusLimit(vehicleType);
+            if (deliveryDistance > maxRadius) {
+                // Rider exceeded vehicle radius — heavy penalty (soft block via scoring)
+                vehicleRadiusPenalty = SCORING.VEHICLE_OVER_LIMIT_PENALTY;
+            } else if (deliveryDistance > maxRadius * 0.8) {
+                // Rider is near the edge of their vehicle's max radius — mild penalty
+                vehicleRadiusPenalty = SCORING.VEHICLE_NEAR_LIMIT_PENALTY;
+            }
+        }
+        score += vehicleBonus + vehicleRadiusPenalty;
 
         // 7) On-time performance from one batched analytics query.
         let onTimeBonus = 0;
@@ -772,6 +889,9 @@ async function scoreRiders(riders, order) {
                 etaScore,
                 vehicleType,
                 vehicleBonus,
+                vehicleRadiusPenalty,
+                vehicleMaxRadius: getVehicleRadiusLimit(vehicleType),
+                deliveryDistance,
                 onTimeRate,
                 onTimeBonus,
                 onTimeReliable,
