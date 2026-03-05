@@ -224,6 +224,75 @@ enum ReturnChargeStatus {
   failed
 }
 
+// ── Rider Partner & Incentive System ──
+
+enum PartnerLevel {
+  L1
+  L2
+  L3
+  L4
+  L5
+}
+
+enum LevelChangeReason {
+  score_upgrade
+  score_downgrade
+  manual_adjustment
+  initial_placement
+  backfill
+}
+
+enum IncentiveSourceType {
+  quest
+  streak
+  milestone
+  peak_hour
+  adjustment
+}
+
+enum IncentiveLedgerStatus {
+  pending_budget
+  available
+  paid_out
+  cancelled
+}
+
+enum QuestPeriod {
+  daily
+  weekly
+}
+
+enum QuestStatus {
+  active
+  completed
+  expired
+}
+
+enum PayoutType {
+  instant
+  weekly_auto
+}
+
+enum PayoutStatus {
+  pending
+  processing
+  completed
+  failed
+  cancelled
+}
+
+enum BudgetWindowType {
+  daily
+  weekly
+  monthly
+}
+
+enum BudgetWindowStatus {
+  active
+  exhausted
+  closed
+}
+
 // ==================== MODELS ====================
 
 model Referral {
@@ -405,6 +474,15 @@ model User {
   targetedPromoCodes     PromoCodeTargetedUser[]
   scheduledNotifications ScheduledNotification[]
   addresses              UserAddress[]
+
+  // Rider Partner & Incentive System
+  partnerProfile         RiderPartnerProfile?
+  incentiveLedger        RiderIncentiveLedger[]
+  questProgress          RiderQuestProgress[]
+  streakState            RiderStreakState?
+  milestoneStates        RiderMilestoneState[]
+  payoutRequests         RiderPayoutRequest[]
+  withdrawalAllowances   RiderWithdrawalAllowance[]
 
   @@index([email])
   @@index([role])
@@ -1661,6 +1739,278 @@ model Transaction {
   @@index([walletId])
   @@index([userId])
   @@map("transactions")
+}
+
+// ==================== RIDER PARTNER & INCENTIVE SYSTEM ====================
+
+model RiderPartnerProfile {
+  id                  String       @id @default(cuid())
+  riderId             String       @unique
+  partnerScore        Float        @default(0)
+  partnerLevel        PartnerLevel @default(L1)
+
+  // Rolling 28-day score window
+  scoreWindowStart    DateTime?
+  scoreWindowEnd      DateTime?
+  lastEvaluatedAt     DateTime?
+
+  // Hysteresis: level lock after upgrade, downgrade delay
+  levelLockedUntil    DateTime?    // 14 days after upgrade
+  downgradeEligibleAt DateTime?    // 7 consecutive days below threshold
+  consecutiveDaysBelowThreshold Int @default(0)
+
+  // Component metrics (snapshot from last evaluation)
+  onTimeRate          Float        @default(100)
+  completionRate      Float        @default(100)
+  customerRating      Float        @default(5.0)
+  deliveryVolume      Int          @default(0)
+  acceptanceRate      Float        @default(100)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User               @relation(fields: [riderId], references: [id], onDelete: Cascade)
+  levelHistory RiderLevelHistory[]
+
+  @@index([partnerLevel])
+  @@index([lastEvaluatedAt])
+  @@map("rider_partner_profiles")
+}
+
+model RiderLevelHistory {
+  id        String            @id @default(cuid())
+  riderId   String
+  fromLevel PartnerLevel
+  toLevel   PartnerLevel
+  score     Float
+  reason    LevelChangeReason
+  changedAt DateTime          @default(now())
+  lockUntil DateTime?         // Level lock expiry after this change
+
+  profile RiderPartnerProfile @relation(fields: [riderId], references: [riderId], onDelete: Cascade)
+
+  @@index([riderId, changedAt])
+  @@map("rider_level_history")
+}
+
+model RiderIncentiveLedger {
+  id          String                @id @default(cuid())
+  riderId     String
+  sourceType  IncentiveSourceType
+  sourceRef   String                // Deterministic key: entityType:entityId:ruleId:windowKey
+  baseAmount  Float
+  multiplier  Float                 @default(1.0)
+  finalAmount Float
+  status      IncentiveLedgerStatus @default(pending_budget)
+  windowKey   String                // e.g. "2026-W10" or "2026-03-05"
+  metadata    Json?                 // Extra context (quest name, streak count, etc.)
+  settledAt   DateTime?             // When status moved to paid_out
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [riderId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceType, sourceRef])
+  @@index([riderId, status])
+  @@index([riderId, windowKey])
+  @@index([status, createdAt])
+  @@map("rider_incentive_ledger")
+}
+
+model QuestDefinition {
+  id             String      @id @default(cuid())
+  name           String      // e.g. "Daily 10 Deliveries"
+  description    String?
+  period         QuestPeriod
+  targetCount    Int         // e.g. 10, 20, 30 deliveries
+  rewardAmount   Float       // Base reward in GHS
+  minLevel       PartnerLevel @default(L1)  // Minimum level to unlock
+  isActive       Boolean     @default(true)
+  sortOrder      Int         @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  progress RiderQuestProgress[]
+
+  @@index([isActive, period])
+  @@map("quest_definitions")
+}
+
+model RiderQuestProgress {
+  id           String      @id @default(cuid())
+  riderId      String
+  questId      String
+  windowKey    String      // e.g. "2026-03-05" for daily, "2026-W10" for weekly
+  currentCount Int         @default(0)
+  targetCount  Int
+  status       QuestStatus @default(active)
+  completedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  quest QuestDefinition @relation(fields: [questId], references: [id], onDelete: Cascade)
+  user  User            @relation(fields: [riderId], references: [id], onDelete: Cascade)
+
+  @@unique([riderId, questId, windowKey])
+  @@index([riderId, status])
+  @@index([riderId, windowKey])
+  @@map("rider_quest_progress")
+}
+
+model RiderStreakState {
+  id                  String   @id @default(cuid())
+  riderId             String   @unique
+  currentStreak       Int      @default(0)
+  longestStreak       Int      @default(0)
+  lastDeliveryDate    DateTime? // Date of last qualifying delivery
+  lastStreakResetAt   DateTime? // When streak was last broken
+  streakStartDate     DateTime? // When current streak started
+
+  // Next reward thresholds: 5, 10, 15
+  nextRewardThreshold Int      @default(5)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user           User                     @relation(fields: [riderId], references: [id], onDelete: Cascade)
+  rewardHistory  RiderStreakRewardHistory[]
+
+  @@index([currentStreak])
+  @@map("rider_streak_states")
+}
+
+model RiderStreakRewardHistory {
+  id             String   @id @default(cuid())
+  riderId        String
+  streakCount    Int      // The streak count that triggered this reward (5, 10, 15)
+  rewardAmount   Float
+  multiplier     Float    @default(1.0)
+  finalAmount    Float
+  windowKey      String   // e.g. "2026-W10"
+  awardedAt      DateTime @default(now())
+
+  streakState RiderStreakState @relation(fields: [riderId], references: [riderId], onDelete: Cascade)
+
+  @@index([riderId, awardedAt])
+  @@map("rider_streak_reward_history")
+}
+
+model MilestoneDefinition {
+  id              String       @id @default(cuid())
+  name            String       // e.g. "Century Rider"
+  description     String?
+  targetCount     Int          // e.g. 100, 500, 1000 lifetime deliveries
+  rewardAmount    Float        // Base reward in GHS
+  badgeIcon       String?      // Icon identifier for rider app
+  isActive        Boolean      @default(true)
+  sortOrder       Int          @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  riderStates RiderMilestoneState[]
+
+  @@index([isActive])
+  @@map("milestone_definitions")
+}
+
+model RiderMilestoneState {
+  id              String   @id @default(cuid())
+  riderId         String
+  milestoneId     String
+  currentCount    Int      @default(0)
+  isCompleted     Boolean  @default(false)
+  completedAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  milestone    MilestoneDefinition        @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  user         User                       @relation(fields: [riderId], references: [id], onDelete: Cascade)
+  rewardHistory RiderMilestoneRewardHistory[]
+
+  @@unique([riderId, milestoneId])
+  @@index([riderId, isCompleted])
+  @@map("rider_milestone_states")
+}
+
+model RiderMilestoneRewardHistory {
+  id             String   @id @default(cuid())
+  riderId        String
+  milestoneId    String
+  stateId        String
+  rewardAmount   Float
+  multiplier     Float    @default(1.0)
+  finalAmount    Float
+  awardedAt      DateTime @default(now())
+
+  state RiderMilestoneState @relation(fields: [stateId], references: [id], onDelete: Cascade)
+
+  @@index([riderId, awardedAt])
+  @@map("rider_milestone_reward_history")
+}
+
+model IncentiveBudgetWindow {
+  id          String             @id @default(cuid())
+  windowType  BudgetWindowType
+  windowKey   String             // e.g. "2026-03-05" for daily, "2026-W10" for weekly
+  startsAt    DateTime
+  endsAt      DateTime
+  capAmount   Float              // Hard cap for this window in GHS
+  spentAmount Float              @default(0)
+  status      BudgetWindowStatus @default(active)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([windowType, windowKey])
+  @@index([status, endsAt])
+  @@map("incentive_budget_windows")
+}
+
+model RiderPayoutRequest {
+  id              String       @id @default(cuid())
+  riderId         String
+  amount          Float
+  fee             Float        @default(0)  // e.g. GHS 2 instant withdrawal fee
+  netAmount       Float                     // amount - fee
+  payoutType      PayoutType
+  status          PayoutStatus @default(pending)
+  method          String?                   // bank_account, mtn_mobile_money, etc.
+  accountSnapshot Json?                     // Snapshot of payout destination at request time
+  requestedAt     DateTime     @default(now())
+  processedAt     DateTime?
+  failureReason   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [riderId], references: [id], onDelete: Cascade)
+
+  @@index([riderId, status])
+  @@index([status, requestedAt])
+  @@index([payoutType, status])
+  @@map("rider_payout_requests")
+}
+
+model RiderWithdrawalAllowance {
+  id                      String   @id @default(cuid())
+  riderId                 String
+  weekStartAt             DateTime // Monday 00:00:00 Africa/Accra
+  freeInstantUsed         Int      @default(0)
+  freeInstantQuota        Int      @default(0)  // Set from partner level: L1=0, L2=1, L3=3, L4=5, L5=999
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [riderId], references: [id], onDelete: Cascade)
+
+  @@unique([riderId, weekStartAt])
+  @@index([riderId])
+  @@map("rider_withdrawal_allowances")
 }
 
 // ==================== STATUS (Stories) ====================

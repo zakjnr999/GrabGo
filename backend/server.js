@@ -834,6 +834,7 @@ const {
 } = require("./jobs/fraud_feature_recompute");
 const { fraudPolicyService } = require("./services/fraud");
 const featureFlags = require("./config/feature_flags");
+const { scheduleRiderPartnerRecalc } = require("./jobs/rider_partner_recalc");
 
 // Initialize Redis cache (optional - falls back to memory cache)
 cache.initRedis();
@@ -882,6 +883,11 @@ setInterval(() => {
 setTimeout(() => {
   runAutoOfflineJob().catch(err => console.error('Auto-offline job startup error:', err));
 }, 10000);
+
+// Schedule rider partner score recalculation (daily at 02:00 Africa/Accra)
+if (featureFlags.isRiderPartnerSystemEnabled || featureFlags.isRiderPartnerShadowMode) {
+  scheduleRiderPartnerRecalc();
+}
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
