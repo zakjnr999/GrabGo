@@ -16,6 +16,7 @@ const {
   fraudDecisionService,
   applyFraudDecision,
 } = require("../services/fraud");
+const { withdrawalBalanceGuard } = require("../middleware/withdrawal_guard");
 
 const ORDER_RESERVATION_ENTITY = "order";
 const buildOrderReservationQuery = (query = {}) =>
@@ -2241,6 +2242,7 @@ router.post(
       .notEmpty()
       .withMessage("Withdrawal account is required"),
   ],
+  withdrawalBalanceGuard,
   async (req, res) => {
     try {
       const errors = validationResult(req);
@@ -2252,25 +2254,16 @@ router.post(
         });
       }
 
-      const { amount, withdrawalMethod, withdrawalAccount, description } = req.body;
-
-      const wallet = await prisma.riderWallet.findUnique({
-        where: { userId: req.user.id }
-      });
-
-      if (!wallet || wallet.balance < parseFloat(amount)) {
-        return res.status(400).json({
-          success: false,
-          message: "Insufficient balance",
-        });
-      }
+      const { withdrawalMethod, withdrawalAccount, description } = req.body;
+      // Use the validated context from withdrawal guard
+      const { wallet, requestedAmount } = req.withdrawalContext;
 
       const transaction = await prisma.transaction.create({
         data: {
           walletId: wallet.id,
           userId: req.user.id,
           type: "withdrawal",
-          amount: parseFloat(amount),
+          amount: requestedAmount,
           description: description || `Withdrawal to ${withdrawalMethod.replace("_", " ")}`,
           status: "pending",
         }

@@ -69,4 +69,12 @@ module.exports = {
   isFraudEventStreamsEnabled: parseFlag('FRAUD_EVENT_STREAMS_ENABLED', true),
   isPaymentWebhookSourceOfTruthEnabled: parseFlag('PAYMENT_WEBHOOK_SOURCE_OF_TRUTH', true),
   isPrepaidFulfillmentGuardEnabled: parseFlag('PREPAID_FULFILLMENT_GUARD', true),
+
+  // ── Rider Partner & Incentive System ──
+  isRiderPartnerSystemEnabled: parseFlag('RIDER_PARTNER_SYSTEM_ENABLED', false),
+  isRiderPartnerShadowMode: parseFlag('RIDER_PARTNER_SHADOW_MODE', true),
+  isRiderIncentivesEnabled: parseFlag('RIDER_INCENTIVES_ENABLED', false),
+  isRiderDeliveryAnalyticsEnabled: parseFlag('RIDER_DELIVERY_ANALYTICS_ENABLED', true),
+  isRiderMetricsSyncEnabled: parseFlag('RIDER_METRICS_SYNC_ENABLED', true),
+  isRiderWithdrawalGuardEnabled: parseFlag('RIDER_WITHDRAWAL_GUARD_ENABLED', true),
 };

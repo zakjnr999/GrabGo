@@ -3867,53 +3867,14 @@ router.put(
           updateData.deliveredDate = new Date();
 
           if (order.riderId) {
-            // Check if transaction already exists for this order
-            const existingTransaction = await tx.transaction.findFirst({
-              where: {
-                referenceId: order.id,
-                type: "delivery",
-                userId: order.riderId,
-              }
+            // Use delivery settlement service (credits riderEarnings, not deliveryFee)
+            const { settleDeliveryInTransaction } = require('../services/delivery_settlement_service');
+            await settleDeliveryInTransaction({
+              tx,
+              order,
+              riderId: order.riderId,
+              orderType: order.orderType || 'food',
             });
-
-            if (!existingTransaction) {
-              const deliveryFee = order.deliveryFee || 0;
-
-              if (deliveryFee > 0) {
-                // Find or create rider wallet
-                let wallet = await tx.riderWallet.findUnique({
-                  where: { userId: order.riderId }
-                });
-
-                if (!wallet) {
-                  wallet = await tx.riderWallet.create({
-                    data: { userId: order.riderId }
-                  });
-                }
-
-                // Create transaction
-                await tx.transaction.create({
-                  data: {
-                    walletId: wallet.id,
-                    userId: order.riderId,
-                    amount: deliveryFee,
-                    type: "delivery",
-                    description: `Delivery fee for order ${order.orderNumber}`,
-                    referenceId: order.id,
-                    status: "completed",
-                  }
-                });
-
-                // Update wallet balance (simplified logic: incremental update)
-                await tx.riderWallet.update({
-                  where: { id: wallet.id },
-                  data: {
-                    balance: { increment: deliveryFee },
-                    totalEarnings: { increment: deliveryFee }
-                  }
-                });
-              }
-            }
           }
         } else if (status === "cancelled") {
           updateData.cancelledDate = new Date();
@@ -4029,6 +3990,32 @@ router.put(
         } catch (statusError) {
           console.error("Reset rider delivery status error:", statusError);
         }
+      }
+
+      // Fire delivery settlement side-effects (analytics write + metrics sync)
+      if (status === 'delivered' && order.riderId) {
+        const { fireDeliverySettlementSideEffects } = require('../services/delivery_settlement_service');
+        fireDeliverySettlementSideEffects({
+          order: updatedOrder,
+          riderId: order.riderId,
+          creditAmount: Number(order.riderEarnings) || Number(order.deliveryFee) || 0,
+          orderType: order.orderType || 'food',
+        });
+      }
+
+      // Record cancellation analytics for score engine completionRate
+      if (status === 'cancelled' && order.riderId) {
+        const { recordDeliveryCancellation } = require('../services/delivery_analytics_service');
+        const cancellationFault = (req.user.role === 'rider') ? 'rider' : 'customer';
+        recordDeliveryCancellation({
+          riderId: order.riderId,
+          orderId: order.id,
+          orderType: order.orderType || 'food',
+          fault: cancellationFault,
+          reason: normalizedCancellationReason || '',
+        }).catch((err) => {
+          console.error(`[DeliveryAnalytics] Cancellation record failed for order=${order.id}:`, err.message);
+        });
       }
 
       // Trigger dispatch only when order is paid and in rider-dispatchable states

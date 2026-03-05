@@ -1610,6 +1610,12 @@ model Rider {
   agreedToAccuracy       Boolean              @default(false)
   notes                  String?
 
+  // Performance metrics (synced by rider_metrics_sync_service)
+  rating                 Float                @default(5.0)
+  ratingCount            Int                  @default(0)
+  totalDeliveries        Int                  @default(0)
+  activeDays             Int                  @default(0)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1619,12 +1625,14 @@ model Rider {
 }
 
 model RiderWallet {
-  id                 String @id @default(cuid())
-  userId             String @unique
-  balance            Float  @default(0)
-  totalEarnings      Float  @default(0)
-  totalWithdrawals   Float  @default(0)
-  pendingWithdrawals Float  @default(0)
+  id                 String    @id @default(cuid())
+  userId             String    @unique
+  balance            Float     @default(0)
+  totalEarnings      Float     @default(0)
+  totalWithdrawals   Float     @default(0)
+  pendingWithdrawals Float     @default(0)
+  pendingEarnings    Float     @default(0)
+  lastWithdrawalAt   DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
