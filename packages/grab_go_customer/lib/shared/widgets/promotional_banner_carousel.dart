@@ -167,7 +167,16 @@ class _PromotionalBannerCarouselState extends State<PromotionalBannerCarousel> w
             bottom: 8.h,
             child: Opacity(
               opacity: 0.65,
-              child: Text(banner.emoji, style: TextStyle(fontSize: (baseHeight * 0.55).clamp(56.0, 90.0))),
+              child: Text(
+                banner.emoji,
+                maxLines: 1,
+                softWrap: false,
+                style: TextStyle(
+                  fontSize: (baseHeight * 0.55).clamp(56.0, 90.0),
+                  height: 1,
+                  fontFamilyFallback: const ['Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji'],
+                ),
+              ),
             ),
           ),
         ],

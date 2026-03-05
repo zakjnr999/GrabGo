@@ -10,7 +10,7 @@ class SubscriptionService {
   static final SubscriptionService _instance = SubscriptionService._();
   factory SubscriptionService() => _instance;
 
-  String get _baseUrl => '${AppConfig.apiBaseUrl}/api/subscriptions';
+  String get _baseUrl => '${AppConfig.apiBaseUrl}/subscriptions';
 
   Future<Map<String, String>> _buildHeaders() async {
     final token = await SecureStorageService.getAuthToken();
