@@ -301,10 +301,10 @@ class _LoanApplicationState extends State<LoanApplication> {
               inactiveTickMarkColor: colors.accentGreen.withValues(alpha: 0.3),
             ),
             child: Slider(
-              value: _amount.clamp(_minAmount, _maxAmount),
+              value: _amount.clamp(_minAmount, _maxAmount.clamp(_minAmount, double.infinity)),
               min: _minAmount,
-              max: _maxAmount,
-              divisions: ((_maxAmount - _minAmount) / 50).round().clamp(1, 100),
+              max: _maxAmount.clamp(_minAmount, double.infinity),
+              divisions: ((_maxAmount - _minAmount).abs() / 50).round().clamp(1, 100),
               onChanged: (!_isLoading && (_eligibility?.eligible ?? false))
                   ? (value) {
                       HapticFeedback.selectionClick();
@@ -470,6 +470,7 @@ class _LoanApplicationState extends State<LoanApplication> {
       width: double.infinity,
       height: 56.h,
       child: AppButton(
+        height: 60.h,
         onPressed: () => isDisabled ? null : _showConfirmationDialog,
         buttonText: _isSubmitting ? "Submitting..." : "Submit Application",
         isLoading: _isSubmitting,

@@ -64,7 +64,6 @@ class _WalletPageState extends State<WalletPage> {
   WithdrawalPolicy? _withdrawalPolicy;
   bool _isLoading = true;
   bool _isScrolled = false;
-  String? _error;
   WalletTransactionPeriod _selectedPeriod = WalletTransactionPeriod.thisWeek;
 
   @override
@@ -79,7 +78,6 @@ class _WalletPageState extends State<WalletPage> {
     if (showLoadingState) {
       setState(() {
         _isLoading = true;
-        _error = null;
       });
     }
 
@@ -110,14 +108,10 @@ class _WalletPageState extends State<WalletPage> {
         _allTransactions = data.transactions;
         _incentiveBalance = incentiveBalance;
         _withdrawalPolicy = withdrawalPolicy;
-        _error = null;
       });
     } catch (e) {
       if (!mounted) return;
 
-      setState(() {
-        _error = 'Failed to load wallet data';
-      });
       AppToastMessage.show(
         context: context,
         showIcon: false,
@@ -248,23 +242,6 @@ class _WalletPageState extends State<WalletPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(height: 20.h),
-
-                  if (_error != null) ...[
-                    Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-                      decoration: BoxDecoration(
-                        color: colors.error.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                        border: Border.all(color: colors.error.withValues(alpha: 0.2)),
-                      ),
-                      child: Text(
-                        _error!,
-                        style: TextStyle(color: colors.error, fontSize: 12.sp, fontWeight: FontWeight.w500),
-                      ),
-                    ),
-                    SizedBox(height: 12.h),
-                  ],
 
                   Stack(
                     children: [
@@ -887,38 +864,21 @@ class _WalletPageState extends State<WalletPage> {
           SizedBox(height: 16.h),
           Row(
             children: [
-              Container(
-                padding: EdgeInsets.all(8.r),
-                decoration: BoxDecoration(
-                  color: colors.accentGreen.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                ),
-                child: SvgPicture.asset(
-                  Assets.icons.shieldCheck,
-                  package: 'grab_go_shared',
-                  width: 18.w,
-                  height: 18.w,
-                  colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
-                ),
-              ),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Level ${partnerLevelLabel(policy.partnerLevel)} Benefits',
-                      style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w600),
-                    ),
-                    SizedBox(height: 4.h),
-                    Text(
-                      policy.instantWithdrawal.totalQuota > 0
-                          ? '${policy.instantWithdrawal.freeRemaining} of ${policy.instantWithdrawal.totalQuota} free instant withdrawals left'
-                          : 'Instant withdrawal fee: ${(policy.instantWithdrawal.fee * 100).toStringAsFixed(1)}%',
-                      style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
-                    ),
-                  ],
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${partnerLevelLabel(policy.partnerLevel)} Level Benefits',
+                    style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w600),
+                  ),
+                  SizedBox(height: 4.h),
+                  Text(
+                    policy.instantWithdrawal.totalQuota > 0
+                        ? '${policy.instantWithdrawal.freeRemaining} of ${policy.instantWithdrawal.totalQuota} free instant withdrawals left'
+                        : 'Instant withdrawal fee: ${(policy.instantWithdrawal.fee * 100).toStringAsFixed(1)}%',
+                    style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
+                  ),
+                ],
               ),
             ],
           ),

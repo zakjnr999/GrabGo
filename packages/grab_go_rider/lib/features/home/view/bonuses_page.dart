@@ -371,21 +371,6 @@ class _BonusesPageState extends State<BonusesPage> {
         children: [
           Row(
             children: [
-              Container(
-                padding: EdgeInsets.all(10.r),
-                decoration: BoxDecoration(
-                  color: colors.accentOrange.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                ),
-                child: SvgPicture.asset(
-                  Assets.icons.fireFlame,
-                  package: 'grab_go_shared',
-                  width: 24.w,
-                  height: 24.w,
-                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                ),
-              ),
-              SizedBox(width: 12.w),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -424,7 +409,7 @@ class _BonusesPageState extends State<BonusesPage> {
                           ? colors.accentOrange.withValues(alpha: 0.15)
                           : colors.divider.withValues(alpha: 0.3),
                       shape: BoxShape.circle,
-                      border: Border.all(color: t.achieved ? colors.accentOrange : colors.divider, width: 2),
+                      border: Border.all(color: t.achieved ? colors.accentGreen : colors.divider, width: 2),
                     ),
                     child: Center(
                       child: t.achieved
@@ -433,7 +418,7 @@ class _BonusesPageState extends State<BonusesPage> {
                               package: 'grab_go_shared',
                               width: 14.w,
                               height: 14.w,
-                              colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                              colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
                             )
                           : Text(
                               '${t.days}',
@@ -449,7 +434,7 @@ class _BonusesPageState extends State<BonusesPage> {
                   Text(
                     '${t.days}d',
                     style: TextStyle(
-                      color: t.achieved ? colors.accentOrange : colors.textSecondary,
+                      color: t.achieved ? colors.accentGreen : colors.textSecondary,
                       fontSize: 10.sp,
                       fontWeight: FontWeight.w500,
                     ),
@@ -464,7 +449,7 @@ class _BonusesPageState extends State<BonusesPage> {
             Container(
               padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
               decoration: BoxDecoration(
-                color: colors.accentOrange.withValues(alpha: 0.06),
+                color: colors.accentGreen.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
               ),
               child: Row(
@@ -474,13 +459,13 @@ class _BonusesPageState extends State<BonusesPage> {
                     package: 'grab_go_shared',
                     width: 14.w,
                     height: 14.w,
-                    colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                    colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
                   ),
                   SizedBox(width: 8.w),
                   Expanded(
                     child: Text(
                       '${streak.nextReward!.daysNeeded} more days for GHC ${streak.nextReward!.finalReward.toStringAsFixed(2)} reward',
-                      style: TextStyle(color: colors.accentOrange, fontSize: 12.sp, fontWeight: FontWeight.w600),
+                      style: TextStyle(color: colors.accentGreen, fontSize: 12.sp, fontWeight: FontWeight.w600),
                     ),
                   ),
                 ],

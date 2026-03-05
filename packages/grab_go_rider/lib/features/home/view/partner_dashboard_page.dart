@@ -139,7 +139,7 @@ class _PartnerDashboardPageState extends State<PartnerDashboardPage> {
               onPressed: () => context.pop(),
             ),
             title: Text(
-              "Partner Dashboard",
+              "Rider Dashboard",
               style: TextStyle(
                 fontFamily: "Lato",
                 package: "grab_go_shared",
@@ -244,18 +244,10 @@ class _PartnerDashboardPageState extends State<PartnerDashboardPage> {
         Container(
           width: double.infinity,
           padding: EdgeInsets.all(24.w),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [color, color.withValues(alpha: 0.85)],
-            ),
-            borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-          ),
+          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(KBorderSize.borderRadius4)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Level label
               Text(
                 partnerLevelLabel(level).toUpperCase(),
                 style: TextStyle(
@@ -267,7 +259,6 @@ class _PartnerDashboardPageState extends State<PartnerDashboardPage> {
               ),
               SizedBox(height: 8.h),
 
-              // Partner Score
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -309,7 +300,6 @@ class _PartnerDashboardPageState extends State<PartnerDashboardPage> {
 
               SizedBox(height: 16.h),
 
-              // Level multiplier & dispatch bonus
               Row(
                 children: [
                   _buildHeroBadge('${dashboard.level.multiplier}x', 'Multiplier', colors),
@@ -325,7 +315,6 @@ class _PartnerDashboardPageState extends State<PartnerDashboardPage> {
           ),
         ),
 
-        // Icon overlay (top-right)
         Positioned(
           top: 16.h,
           right: 16.w,
@@ -334,7 +323,7 @@ class _PartnerDashboardPageState extends State<PartnerDashboardPage> {
             package: 'grab_go_shared',
             width: 48.w,
             height: 48.w,
-            colorFilter: ColorFilter.mode(Colors.white.withValues(alpha: 0.15), BlendMode.srcIn),
+            colorFilter: ColorFilter.mode(Colors.white.withValues(alpha: 0.4), BlendMode.srcIn),
           ),
         ),
       ],
@@ -363,10 +352,6 @@ class _PartnerDashboardPageState extends State<PartnerDashboardPage> {
       ),
     );
   }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  QUICK STATS ROW
-  // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildQuickStatsRow(AppColorsExtension colors) {
     final metrics = _data!.dashboard.metrics;
@@ -434,10 +419,6 @@ class _PartnerDashboardPageState extends State<PartnerDashboardPage> {
       ),
     );
   }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  PERFORMANCE BREAKDOWN
-  // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildPerformanceBreakdown(AppColorsExtension colors) {
     final metrics = _data!.dashboard.metrics;
@@ -545,7 +526,6 @@ class _PartnerDashboardPageState extends State<PartnerDashboardPage> {
                       ),
                     ),
                   ),
-                  // Threshold marker — custom arrow shape
                   Positioned(
                     left: barWidth * (threshold / 100) - 5.w,
                     top: 0,
@@ -564,17 +544,12 @@ class _PartnerDashboardPageState extends State<PartnerDashboardPage> {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  NEXT LEVEL CARD
-  // ═══════════════════════════════════════════════════════════════════════════
-
   Widget _buildNextLevelCard(AppColorsExtension colors) {
     final next = _data!.dashboard.nextLevel!;
     final metrics = _data!.dashboard.metrics;
     final currentScore = _data!.dashboard.liveScore?.partnerScore ?? _data!.dashboard.profile.partnerScore;
     final scoreProgress = next.scoreRequired > 0 ? (currentScore / next.scoreRequired).clamp(0.0, 1.0) : 0.0;
 
-    // Calculate overall progress across all criteria (score + requirements)
     final reqs = next.requirements;
     final criteriaProgress = <double>[scoreProgress];
     if (reqs != null) {
@@ -627,7 +602,6 @@ class _PartnerDashboardPageState extends State<PartnerDashboardPage> {
 
           SizedBox(height: 16.h),
 
-          // Progress bar
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -719,10 +693,6 @@ class _PartnerDashboardPageState extends State<PartnerDashboardPage> {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  PEAK HOUR CARD
-  // ═══════════════════════════════════════════════════════════════════════════
-
   Widget _buildPeakHourCard(AppColorsExtension colors) {
     final peak = _data!.peakHourStatus!;
 
@@ -751,7 +721,7 @@ class _PartnerDashboardPageState extends State<PartnerDashboardPage> {
                 padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                 decoration: BoxDecoration(
                   color: peak.isPeakHour
-                      ? colors.accentOrange.withValues(alpha: 0.1)
+                      ? colors.accentGreen.withValues(alpha: 0.1)
                       : colors.divider.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(4),
                 ),
@@ -764,13 +734,13 @@ class _PartnerDashboardPageState extends State<PartnerDashboardPage> {
                         package: 'grab_go_shared',
                         width: 12.w,
                         height: 12.w,
-                        colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                        colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
                       ),
                     if (peak.isPeakHour) SizedBox(width: 4.w),
                     Text(
                       peak.isPeakHour ? 'ACTIVE' : 'OFF-PEAK',
                       style: TextStyle(
-                        color: peak.isPeakHour ? colors.accentOrange : colors.textSecondary,
+                        color: peak.isPeakHour ? colors.accentGreen : colors.textSecondary,
                         fontSize: 10.sp,
                         fontWeight: FontWeight.w600,
                       ),
@@ -788,21 +758,6 @@ class _PartnerDashboardPageState extends State<PartnerDashboardPage> {
                 padding: EdgeInsets.only(bottom: 12.h),
                 child: Row(
                   children: [
-                    Container(
-                      padding: EdgeInsets.all(8.r),
-                      decoration: BoxDecoration(
-                        color: colors.accentOrange.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                      ),
-                      child: SvgPicture.asset(
-                        Assets.icons.fireFlame,
-                        package: 'grab_go_shared',
-                        width: 20.w,
-                        height: 20.w,
-                        colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                      ),
-                    ),
-                    SizedBox(width: 12.w),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -822,12 +777,12 @@ class _PartnerDashboardPageState extends State<PartnerDashboardPage> {
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
                       decoration: BoxDecoration(
-                        color: colors.accentOrange.withValues(alpha: 0.1),
+                        color: colors.accentGreen.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                       ),
                       child: Text(
                         '+${w.bonusPercent}%',
-                        style: TextStyle(color: colors.accentOrange, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                        style: TextStyle(color: colors.accentGreen, fontSize: 14.sp, fontWeight: FontWeight.w700),
                       ),
                     ),
                   ],
@@ -886,10 +841,6 @@ class _PartnerDashboardPageState extends State<PartnerDashboardPage> {
     return m > 0 ? 'Starts in ${h}h ${m}m' : 'Starts in ${h}h';
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  INCENTIVE BALANCE CARD
-  // ═══════════════════════════════════════════════════════════════════════════
-
   Widget _buildIncentiveBalanceCard(AppColorsExtension colors) {
     final balance = _data!.incentiveBalance!;
 
@@ -927,7 +878,7 @@ class _PartnerDashboardPageState extends State<PartnerDashboardPage> {
                 child: _buildBalanceStat(
                   'Pending',
                   'GHC ${balance.pendingBudgetApproval.toStringAsFixed(2)}',
-                  colors.accentOrange,
+                  colors.warning,
                   colors,
                 ),
               ),
@@ -961,10 +912,6 @@ class _PartnerDashboardPageState extends State<PartnerDashboardPage> {
       ),
     );
   }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  QUICK ACTIONS
-  // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildQuickActions(AppColorsExtension colors) {
     return Column(
@@ -1076,10 +1023,6 @@ class _PartnerDashboardPageState extends State<PartnerDashboardPage> {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  LEVEL HISTORY
-  // ═══════════════════════════════════════════════════════════════════════════
-
   Widget _buildLevelHistory(AppColorsExtension colors) {
     final history = _data!.dashboard.recentHistory;
 
@@ -1162,10 +1105,6 @@ class _PartnerDashboardPageState extends State<PartnerDashboardPage> {
     if (diff.inDays < 7) return '${diff.inDays}d ago';
     return '${date.day}/${date.month}/${date.year}';
   }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  SKELETON / SHIMMER LOADING
-  // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildSkeletonBody(AppColorsExtension colors, bool isDark) {
     return Shimmer.fromColors(
@@ -1266,8 +1205,6 @@ class _PartnerDashboardPageState extends State<PartnerDashboardPage> {
   }
 }
 
-/// Custom painter for threshold marker — draws a downward-pointing
-/// arrow/pin above the bar with a thin stem through it.
 class _ThresholdMarkerPainter extends CustomPainter {
   final Color color;
   _ThresholdMarkerPainter({required this.color});
@@ -1279,7 +1216,6 @@ class _ThresholdMarkerPainter extends CustomPainter {
     final stemTop = arrowH;
     final stemBottom = size.height;
 
-    // Downward-pointing triangle
     final arrowPaint = Paint()
       ..color = color
       ..style = PaintingStyle.fill;
@@ -1290,7 +1226,6 @@ class _ThresholdMarkerPainter extends CustomPainter {
       ..close();
     canvas.drawPath(arrow, arrowPaint);
 
-    // Thin stem line
     final stemPaint = Paint()
       ..color = color
       ..strokeWidth = 1.5

@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:go_router/go_router.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
 import 'package:grab_go_shared/shared/utils/constants.dart';
 import 'package:grab_go_rider/features/home/models/partner_models.dart';
 
-class ProfileSliverAppbar extends StatelessWidget {
+class ProfileSliverAppbar extends StatefulWidget {
   final String? riderName;
   final String? riderEmail;
   final PartnerLevel partnerLevel;
@@ -21,6 +22,12 @@ class ProfileSliverAppbar extends StatelessWidget {
     this.isLoading = false,
   });
 
+  @override
+  State<ProfileSliverAppbar> createState() => _ProfileSliverAppbarState();
+}
+
+class _ProfileSliverAppbarState extends State<ProfileSliverAppbar> {
+  final PartnerLevel _partnerLevel = PartnerLevel.L1;
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
@@ -47,13 +54,7 @@ class ProfileSliverAppbar extends StatelessWidget {
           return FlexibleSpaceBar(
             stretchModes: const [StretchMode.zoomBackground, StretchMode.blurBackground],
             background: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [colors.accentGreen, colors.accentGreen.withValues(alpha: 0.85)],
-                ),
-              ),
+              color: colors.accentGreen,
               child: SafeArea(
                 bottom: false,
                 child: Padding(
@@ -96,10 +97,10 @@ class ProfileSliverAppbar extends StatelessWidget {
                         opacity: expandRatio,
                         duration: const Duration(milliseconds: 200),
                         child: Text(
-                          isLoading
+                          widget.isLoading
                               ? "..."
-                              : ((riderName != null && riderName!.trim().isNotEmpty)
-                                    ? riderName!.trim()
+                              : ((widget.riderName != null && widget.riderName!.trim().isNotEmpty)
+                                    ? widget.riderName!.trim()
                                     : "GrabGo Partner"),
                           style: TextStyle(
                             color: Colors.white,
@@ -113,10 +114,10 @@ class ProfileSliverAppbar extends StatelessWidget {
                         opacity: expandRatio,
                         duration: const Duration(milliseconds: 200),
                         child: Text(
-                          isLoading
+                          widget.isLoading
                               ? "Loading profile..."
-                              : ((riderEmail != null && riderEmail!.trim().isNotEmpty)
-                                    ? riderEmail!.trim()
+                              : ((widget.riderEmail != null && widget.riderEmail!.trim().isNotEmpty)
+                                    ? widget.riderEmail!.trim()
                                     : "rider@grabgo.com"),
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.9),
@@ -129,34 +130,36 @@ class ProfileSliverAppbar extends StatelessWidget {
                       AnimatedOpacity(
                         opacity: expandRatio,
                         duration: const Duration(milliseconds: 200),
-                        child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(KBorderSize.borderRadius50),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 8.w,
-                                height: 8.w,
-                                decoration: BoxDecoration(
-                                  color: _getLevelColor(partnerLevel, colors),
-                                  shape: BoxShape.circle,
+                        child: GestureDetector(
+                          onTap: () => context.push("/partner-dashboard"),
+                          child: Container(
+                            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius50),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SvgPicture.asset(
+                                  Assets.icons.medalSolid,
+                                  package: 'grab_go_shared',
+                                  width: 14.w,
+                                  height: 14.w,
+                                  colorFilter: ColorFilter.mode(_getLevelColor(colors), BlendMode.srcIn),
                                 ),
-                              ),
-                              SizedBox(width: 8.w),
-                              Text(
-                                '${partnerLevelLabel(partnerLevel)} Partner',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13.sp,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.5,
+                                SizedBox(width: 6.w),
+                                Text(
+                                  partnerLevelLabel(widget.partnerLevel),
+                                  style: TextStyle(
+                                    color: _getLevelColor(colors),
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.5,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -212,10 +215,10 @@ class ProfileSliverAppbar extends StatelessWidget {
     );
   }
 
-  Color _getLevelColor(PartnerLevel level, AppColorsExtension colors) {
-    switch (level) {
+  Color _getLevelColor(AppColorsExtension colors) {
+    switch (_partnerLevel) {
       case PartnerLevel.L1:
-        return Colors.white;
+        return colors.textSecondary;
       case PartnerLevel.L2:
         return colors.accentBlue;
       case PartnerLevel.L3:
@@ -223,7 +226,7 @@ class ProfileSliverAppbar extends StatelessWidget {
       case PartnerLevel.L4:
         return colors.accentViolet;
       case PartnerLevel.L5:
-        return Colors.amber;
+        return colors.accentGreen;
     }
   }
 }

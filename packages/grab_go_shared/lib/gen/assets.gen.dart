@@ -361,6 +361,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/map.svg
   String get map => 'lib/assets/icons/map.svg';
 
+  /// File path: lib/assets/icons/medal-solid.svg
+  String get medalSolid => 'lib/assets/icons/medal-solid.svg';
+
   /// File path: lib/assets/icons/media-image-plus.svg
   String get mediaImagePlus => 'lib/assets/icons/media-image-plus.svg';
 
@@ -715,6 +718,7 @@ class $LibAssetsIconsGen {
     mapPinSimpleFill,
     mapPin,
     map,
+    medalSolid,
     mediaImagePlus,
     mediaImageXmark,
     mediaImage,

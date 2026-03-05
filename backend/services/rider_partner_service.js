@@ -97,11 +97,11 @@ const getPartnerDashboard = async (riderId) => {
       levelLockedUntil: profile.levelLockedUntil,
     },
     metrics: {
-      onTimeRate: profile.onTimeRate,
-      completionRate: profile.completionRate,
-      customerRating: profile.customerRating,
-      deliveryVolume: profile.deliveryVolume,
-      acceptanceRate: profile.acceptanceRate,
+      onTimeRate: liveScore?.components?.onTimeRate ?? profile.onTimeRate,
+      completionRate: liveScore?.components?.completionRate ?? profile.completionRate,
+      customerRating: liveScore?.components?.customerRating ?? profile.customerRating,
+      deliveryVolume: liveScore?.components?.deliveryVolume ?? profile.deliveryVolume,
+      acceptanceRate: liveScore?.components?.acceptanceRate ?? profile.acceptanceRate,
     },
     liveScore: liveScore
       ? {

@@ -275,20 +275,7 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
             background: Stack(
               fit: StackFit.expand,
               children: [
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        colors.accentGreen,
-                        colors.accentGreen.withValues(alpha: 0.85),
-                        colors.accentGreen.withValues(alpha: 0.75),
-                      ],
-                      stops: const [0.0, 0.5, 1.0],
-                    ),
-                  ),
-                ),
+                Container(decoration: BoxDecoration(color: colors.accentGreen)),
 
                 Positioned(
                   top: -50 * reverseRatio,
@@ -341,13 +328,12 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Container(
-                                          width: 6.w,
-                                          height: 6.w,
-                                          decoration: BoxDecoration(
-                                            color: _getLevelColor(colors),
-                                            shape: BoxShape.circle,
-                                          ),
+                                        SvgPicture.asset(
+                                          Assets.icons.medalSolid,
+                                          package: 'grab_go_shared',
+                                          width: 14.w,
+                                          height: 14.w,
+                                          colorFilter: ColorFilter.mode(_getLevelColor(colors), BlendMode.srcIn),
                                         ),
                                         SizedBox(width: 6.w),
                                         Text(

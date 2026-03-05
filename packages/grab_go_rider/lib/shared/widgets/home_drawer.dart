@@ -190,7 +190,7 @@ class _HomeDrawerState extends State<HomeDrawer> with SingleTickerProviderStateM
                           Navigator.pop(context);
                           context.push("/performance");
                         }),
-                        _buildDrawerItem("Partner Dashboard", Assets.icons.chart, colors.textPrimary, colors, () {
+                        _buildDrawerItem("Rider Dashboard", Assets.icons.chart, colors.textPrimary, colors, () {
                           Navigator.pop(context);
                           context.push("/partner-dashboard");
                         }),
