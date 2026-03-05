@@ -17,6 +17,19 @@ const {
   applyFraudDecision,
 } = require("../services/fraud");
 const { withdrawalBalanceGuard } = require("../middleware/withdrawal_guard");
+const partnerService = require("../services/rider_partner_service");
+const { getRiderQuestDashboard } = require("../services/rider_quest_engine");
+const { getRiderStreakDashboard } = require("../services/rider_streak_engine");
+const { getRiderMilestoneDashboard } = require("../services/rider_milestone_engine");
+const { getRiderIncentiveSummary } = require("../services/rider_incentive_orchestrator");
+const { getCurrentPeakStatus, getPeakHourSchedule } = require("../services/rider_peak_hour_service");
+const { getBudgetDashboard, updateBudgetCap, runBudgetApprovalCycle } = require("../services/rider_budget_service");
+const {
+  getWithdrawalPolicyInfo,
+  calculateWithdrawalFee,
+  createInstantPayoutRequest,
+  recordInstantWithdrawal,
+} = require("../services/rider_payout_service");
 
 const ORDER_RESERVATION_ENTITY = "order";
 const buildOrderReservationQuery = (query = {}) =>
@@ -2258,6 +2271,29 @@ router.post(
       // Use the validated context from withdrawal guard
       const { wallet, requestedAmount } = req.withdrawalContext;
 
+      // ── Partner-level withdrawal fee logic ──
+      let fee = 0;
+      let netAmount = requestedAmount;
+      let payoutRequest = null;
+
+      if (featureFlags.isRiderIncentivesEnabled) {
+        try {
+          const feeInfo = await calculateWithdrawalFee(req.user.id);
+          fee = feeInfo.fee;
+          netAmount = Math.round((requestedAmount - fee) * 100) / 100;
+
+          payoutRequest = await createInstantPayoutRequest({
+            riderId: req.user.id,
+            amount: requestedAmount,
+            method: withdrawalMethod,
+            accountSnapshot: { account: withdrawalAccount },
+          });
+        } catch (feeErr) {
+          console.error("[Withdraw] Fee calculation error:", feeErr.message);
+          // Fall through with zero fee
+        }
+      }
+
       const transaction = await prisma.transaction.create({
         data: {
           walletId: wallet.id,
@@ -2266,6 +2302,7 @@ router.post(
           amount: requestedAmount,
           description: description || `Withdrawal to ${withdrawalMethod.replace("_", " ")}`,
           status: "pending",
+          ...(payoutRequest ? { referenceId: payoutRequest.id } : {}),
         }
       });
 
@@ -2274,7 +2311,12 @@ router.post(
       res.status(201).json({
         success: true,
         message: "Withdrawal request submitted successfully",
-        data: transaction,
+        data: {
+          ...transaction,
+          fee,
+          netAmount,
+          payoutRequestId: payoutRequest?.id || null,
+        },
       });
     } catch (error) {
       console.error("Withdraw error:", error);
@@ -3102,6 +3144,452 @@ router.get("/orders/:orderId/delay-reason", protect, authorize("rider"), async (
     });
   } catch (error) {
     console.error("Get delay reason error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ────────────────────────────────────────────────────────────────────
+// Partner Profile & Score Endpoints
+// ────────────────────────────────────────────────────────────────────
+
+/**
+ * @route   GET /api/riders/partner-profile
+ * @desc    Get rider's partner dashboard (level, score, metrics, next target)
+ * @access  Private (Rider)
+ */
+router.get("/partner-profile", protect, authorize("rider"), async (req, res) => {
+  try {
+    if (!featureFlags.isRiderPartnerSystemEnabled && !featureFlags.isRiderPartnerShadowMode) {
+      return res.status(404).json({ success: false, message: "Partner system not available" });
+    }
+
+    const dashboard = await partnerService.getPartnerDashboard(req.user.id);
+    res.json({ success: true, data: dashboard });
+  } catch (error) {
+    console.error("Partner profile error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * @route   GET /api/riders/partner-profile/score-breakdown
+ * @desc    Get detailed score breakdown (rider self-view or admin)
+ * @access  Private (Rider or Admin)
+ */
+router.get("/partner-profile/score-breakdown", protect, authorize("rider", "admin"), async (req, res) => {
+  try {
+    if (!featureFlags.isRiderPartnerSystemEnabled && !featureFlags.isRiderPartnerShadowMode) {
+      return res.status(404).json({ success: false, message: "Partner system not available" });
+    }
+
+    const riderId = req.user.role === "admin" && req.query.riderId
+      ? req.query.riderId
+      : req.user.id;
+
+    const breakdown = await partnerService.getScoreBreakdown(riderId);
+    res.json({ success: true, data: breakdown });
+  } catch (error) {
+    console.error("Score breakdown error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * @route   GET /api/riders/partner-profile/history
+ * @desc    Get rider's level change history
+ * @access  Private (Rider)
+ */
+router.get("/partner-profile/history", protect, authorize("rider", "admin"), async (req, res) => {
+  try {
+    if (!featureFlags.isRiderPartnerSystemEnabled && !featureFlags.isRiderPartnerShadowMode) {
+      return res.status(404).json({ success: false, message: "Partner system not available" });
+    }
+
+    const riderId = req.user.role === "admin" && req.query.riderId
+      ? req.query.riderId
+      : req.user.id;
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+
+    const history = await partnerService.getLevelHistory(riderId, limit);
+    res.json({ success: true, data: history });
+  } catch (error) {
+    console.error("Level history error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * @route   POST /api/riders/partner-profile/recalculate
+ * @desc    Force-recalculate rider partner level (admin only)
+ * @access  Private (Admin)
+ */
+router.post("/partner-profile/recalculate", protect, authorize("admin"), async (req, res) => {
+  try {
+    if (!featureFlags.isRiderPartnerSystemEnabled && !featureFlags.isRiderPartnerShadowMode) {
+      return res.status(404).json({ success: false, message: "Partner system not enabled" });
+    }
+
+    const { riderId, force, reason } = req.body;
+
+    if (!riderId) {
+      return res.status(400).json({ success: false, message: "riderId is required" });
+    }
+
+    // Verify rider exists
+    const rider = await prisma.rider.findFirst({ where: { userId: riderId } });
+    if (!rider) {
+      return res.status(404).json({ success: false, message: "Rider not found" });
+    }
+
+    const result = await partnerService.recalculateRiderLevel(riderId, {
+      force: force === true,
+      reason: reason || "admin_manual_recalculation",
+    });
+
+    res.json({
+      success: true,
+      data: {
+        previousLevel: result.previousLevel,
+        effectiveLevel: result.effectiveLevel,
+        levelChanged: result.levelChanged,
+        partnerScore: result.scoreResult.partnerScore,
+        components: result.scoreResult.components,
+      },
+    });
+  } catch (error) {
+    console.error("Partner recalculation error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * @route   GET /api/riders/partner-profile/admin/distribution
+ * @desc    Get partner level distribution across all riders
+ * @access  Private (Admin)
+ */
+router.get("/partner-profile/admin/distribution", protect, authorize("admin"), async (req, res) => {
+  try {
+    if (!featureFlags.isRiderPartnerSystemEnabled && !featureFlags.isRiderPartnerShadowMode) {
+      return res.status(404).json({ success: false, message: "Partner system not enabled" });
+    }
+
+    const distribution = await partnerService.getLevelDistribution();
+    res.json({ success: true, data: distribution });
+  } catch (error) {
+    console.error("Level distribution error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ────────────────────────────────────────────────────────────────────
+// Quest, Streak, Milestone & Incentive Endpoints
+// ────────────────────────────────────────────────────────────────────
+
+/**
+ * @route   GET /api/riders/quests
+ * @desc    Get rider's active quests with progress
+ * @access  Private (Rider)
+ */
+router.get("/quests", protect, authorize("rider"), async (req, res) => {
+  try {
+    if (!featureFlags.isRiderIncentivesEnabled && !featureFlags.isRiderPartnerShadowMode) {
+      return res.status(404).json({ success: false, message: "Incentive system not available" });
+    }
+
+    let partnerLevel = "L1";
+    const profile = await prisma.riderPartnerProfile.findUnique({
+      where: { riderId: req.user.id },
+      select: { partnerLevel: true },
+    });
+    if (profile) partnerLevel = profile.partnerLevel;
+
+    const dashboard = await getRiderQuestDashboard(req.user.id, partnerLevel);
+    res.json({ success: true, data: dashboard });
+  } catch (error) {
+    console.error("Quest dashboard error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * @route   GET /api/riders/streaks
+ * @desc    Get rider's streak state and rewards
+ * @access  Private (Rider)
+ */
+router.get("/streaks", protect, authorize("rider"), async (req, res) => {
+  try {
+    if (!featureFlags.isRiderIncentivesEnabled && !featureFlags.isRiderPartnerShadowMode) {
+      return res.status(404).json({ success: false, message: "Incentive system not available" });
+    }
+
+    let partnerLevel = "L1";
+    const profile = await prisma.riderPartnerProfile.findUnique({
+      where: { riderId: req.user.id },
+      select: { partnerLevel: true },
+    });
+    if (profile) partnerLevel = profile.partnerLevel;
+
+    const dashboard = await getRiderStreakDashboard(req.user.id, partnerLevel);
+    res.json({ success: true, data: dashboard });
+  } catch (error) {
+    console.error("Streak dashboard error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * @route   GET /api/riders/milestones
+ * @desc    Get rider's milestone progress and badges
+ * @access  Private (Rider)
+ */
+router.get("/milestones", protect, authorize("rider"), async (req, res) => {
+  try {
+    if (!featureFlags.isRiderIncentivesEnabled && !featureFlags.isRiderPartnerShadowMode) {
+      return res.status(404).json({ success: false, message: "Incentive system not available" });
+    }
+
+    let partnerLevel = "L1";
+    const profile = await prisma.riderPartnerProfile.findUnique({
+      where: { riderId: req.user.id },
+      select: { partnerLevel: true },
+    });
+    if (profile) partnerLevel = profile.partnerLevel;
+
+    const dashboard = await getRiderMilestoneDashboard(req.user.id, partnerLevel);
+    res.json({ success: true, data: dashboard });
+  } catch (error) {
+    console.error("Milestone dashboard error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * @route   GET /api/riders/incentives
+ * @desc    Get rider's incentive ledger summary for a period
+ * @access  Private (Rider)
+ */
+router.get("/incentives", protect, authorize("rider"), async (req, res) => {
+  try {
+    if (!featureFlags.isRiderIncentivesEnabled && !featureFlags.isRiderPartnerShadowMode) {
+      return res.status(404).json({ success: false, message: "Incentive system not available" });
+    }
+
+    const windowKey = req.query.windowKey || undefined;
+    const summary = await getRiderIncentiveSummary(req.user.id, windowKey);
+    res.json({ success: true, data: summary });
+  } catch (error) {
+    console.error("Incentive summary error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * @route   GET /api/riders/incentives/admin/:riderId
+ * @desc    Get incentive ledger for a specific rider (admin)
+ * @access  Private (Admin)
+ */
+router.get("/incentives/admin/:riderId", protect, authorize("admin"), async (req, res) => {
+  try {
+    const { riderId } = req.params;
+    const windowKey = req.query.windowKey || undefined;
+    const summary = await getRiderIncentiveSummary(riderId, windowKey);
+    res.json({ success: true, data: summary });
+  } catch (error) {
+    console.error("Admin incentive summary error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * @route   GET /api/riders/peak-hours/status
+ * @desc    Get current peak-hour status (is it peak now? what's the bonus?)
+ * @access  Private (Rider)
+ */
+router.get("/peak-hours/status", protect, authorize("rider"), async (req, res) => {
+  try {
+    if (!featureFlags.isRiderIncentivesEnabled && !featureFlags.isRiderPartnerShadowMode) {
+      return res.status(404).json({ success: false, message: "Incentive system not available" });
+    }
+
+    const status = getCurrentPeakStatus();
+    res.json({ success: true, data: status });
+  } catch (error) {
+    console.error("Peak hour status error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * @route   GET /api/riders/peak-hours/schedule
+ * @desc    Get full weekly peak-hour schedule
+ * @access  Private (Rider)
+ */
+router.get("/peak-hours/schedule", protect, authorize("rider"), async (req, res) => {
+  try {
+    if (!featureFlags.isRiderIncentivesEnabled && !featureFlags.isRiderPartnerShadowMode) {
+      return res.status(404).json({ success: false, message: "Incentive system not available" });
+    }
+
+    const schedule = getPeakHourSchedule();
+    res.json({ success: true, data: schedule });
+  } catch (error) {
+    console.error("Peak hour schedule error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ────────────────────────────────────────────────────────────────────
+// Budget Admin Endpoints
+// ────────────────────────────────────────────────────────────────────
+
+/**
+ * @route   GET /api/riders/budget/admin/dashboard
+ * @desc    Get incentive budget utilization dashboard
+ * @access  Private (Admin)
+ */
+router.get("/budget/admin/dashboard", protect, authorize("admin"), async (req, res) => {
+  try {
+    if (!featureFlags.isRiderIncentivesEnabled) {
+      return res.status(404).json({ success: false, message: "Incentive system not enabled" });
+    }
+
+    const dashboard = await getBudgetDashboard();
+    res.json({ success: true, data: dashboard });
+  } catch (error) {
+    console.error("Budget dashboard error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * @route   PUT /api/riders/budget/admin/cap
+ * @desc    Update a budget window cap
+ * @access  Private (Admin)
+ */
+router.put("/budget/admin/cap", protect, authorize("admin"), async (req, res) => {
+  try {
+    if (!featureFlags.isRiderIncentivesEnabled) {
+      return res.status(404).json({ success: false, message: "Incentive system not enabled" });
+    }
+
+    const { windowType, windowKey, capAmount } = req.body;
+
+    if (!windowType || !windowKey || !capAmount) {
+      return res.status(400).json({ success: false, message: "windowType, windowKey, and capAmount are required" });
+    }
+    if (!['daily', 'weekly', 'monthly'].includes(windowType)) {
+      return res.status(400).json({ success: false, message: "windowType must be daily, weekly, or monthly" });
+    }
+    if (typeof capAmount !== 'number' || capAmount < 0) {
+      return res.status(400).json({ success: false, message: "capAmount must be a positive number" });
+    }
+
+    const updated = await updateBudgetCap(windowType, windowKey, capAmount);
+    res.json({ success: true, data: updated });
+  } catch (error) {
+    console.error("Budget cap update error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * @route   POST /api/riders/budget/admin/approve-now
+ * @desc    Trigger immediate budget approval cycle
+ * @access  Private (Admin)
+ */
+router.post("/budget/admin/approve-now", protect, authorize("admin"), async (req, res) => {
+  try {
+    if (!featureFlags.isRiderIncentivesEnabled) {
+      return res.status(404).json({ success: false, message: "Incentive system not enabled" });
+    }
+
+    // Import and run directly (not the job wrapper)
+    const { approvePendingIncentives } = require("../services/rider_budget_service");
+    const result = await approvePendingIncentives();
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error("Manual budget approval error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ────────────────────────────────────────────────────────────────────
+// Wallet & Withdrawal Policy Endpoints
+// ────────────────────────────────────────────────────────────────────
+
+/**
+ * @route   GET /api/riders/wallet/withdrawal-policy
+ * @desc    Get rider's withdrawal policy based on partner level
+ * @access  Private (Rider)
+ */
+router.get("/wallet/withdrawal-policy", protect, authorize("rider"), async (req, res) => {
+  try {
+    if (!featureFlags.isRiderIncentivesEnabled && !featureFlags.isRiderPartnerShadowMode) {
+      return res.status(404).json({ success: false, message: "Incentive system not available" });
+    }
+
+    const policy = await getWithdrawalPolicyInfo(req.user.id);
+    res.json({ success: true, data: policy });
+  } catch (error) {
+    console.error("Withdrawal policy error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * @route   GET /api/riders/wallet/payout-history
+ * @desc    Get rider's payout request history
+ * @access  Private (Rider)
+ */
+router.get("/wallet/payout-history", protect, authorize("rider"), async (req, res) => {
+  try {
+    if (!featureFlags.isRiderIncentivesEnabled && !featureFlags.isRiderPartnerShadowMode) {
+      return res.status(404).json({ success: false, message: "Incentive system not available" });
+    }
+
+    const payouts = await prisma.riderPayoutRequest.findMany({
+      where: { riderId: req.user.id },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+    res.json({ success: true, data: payouts });
+  } catch (error) {
+    console.error("Payout history error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * @route   GET /api/riders/wallet/incentive-balance
+ * @desc    Get rider's pending/available incentive balance
+ * @access  Private (Rider)
+ */
+router.get("/wallet/incentive-balance", protect, authorize("rider"), async (req, res) => {
+  try {
+    if (!featureFlags.isRiderIncentivesEnabled && !featureFlags.isRiderPartnerShadowMode) {
+      return res.status(404).json({ success: false, message: "Incentive system not available" });
+    }
+
+    const [pending, available] = await Promise.all([
+      prisma.riderIncentiveLedger.aggregate({
+        where: { riderId: req.user.id, status: "pending_budget" },
+        _sum: { finalAmount: true },
+      }),
+      prisma.riderIncentiveLedger.aggregate({
+        where: { riderId: req.user.id, status: "available" },
+        _sum: { finalAmount: true },
+      }),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        pendingBudgetApproval: pending._sum.finalAmount || 0,
+        availableForPayout: available._sum.finalAmount || 0,
+      },
+    });
+  } catch (error) {
+    console.error("Incentive balance error:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 });

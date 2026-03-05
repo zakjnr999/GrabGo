@@ -1,4 +1,5 @@
 const prisma = require('../config/prisma');
+const featureFlags = require('../config/feature_flags');
 
 /**
  * Middleware that validates withdrawal requests against true available balance.
@@ -9,6 +10,19 @@ const prisma = require('../config/prisma');
  * downstream handler can proceed without re-querying.
  */
 const withdrawalBalanceGuard = async (req, res, next) => {
+  // Allow bypass if withdrawal guard feature flag is disabled
+  if (!featureFlags.isRiderWithdrawalGuardEnabled) {
+    // Still need basic wallet context for downstream
+    try {
+      const wallet = await prisma.riderWallet.findUnique({ where: { userId: req.user.id } });
+      const amount = typeof req.body.amount === 'string' ? parseFloat(req.body.amount) : req.body.amount;
+      req.withdrawalContext = { wallet, availableBalance: wallet?.balance || 0, requestedAmount: amount };
+      return next();
+    } catch (err) {
+      return next();
+    }
+  }
+
   try {
     const userId = req.user.id;
     const rawAmount = req.body.amount;

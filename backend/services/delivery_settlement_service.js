@@ -2,6 +2,7 @@ const prisma = require('../config/prisma');
 const featureFlags = require('../config/feature_flags');
 const { recordDeliveryAnalytics } = require('./delivery_analytics_service');
 const { syncRiderMetricsOnDelivery, incrementRiderDeliveryCount } = require('./rider_metrics_sync_service');
+const { processDeliveryIncentives } = require('./rider_incentive_orchestrator');
 
 /**
  * Unified delivery settlement handler.
@@ -137,6 +138,19 @@ const fireDeliverySettlementSideEffects = (params) => {
     // Increment rider delivery count in Prisma
     incrementRiderDeliveryCount(riderId).catch((err) => {
       console.error(`[DeliverySettlement] Delivery count increment failed for rider=${riderId}:`, err.message);
+    });
+  }
+
+  // Process incentive engines (quest progress, streak tracking, milestone checks, peak-hour bonuses)
+  if (featureFlags.isRiderIncentivesEnabled) {
+    processDeliveryIncentives({
+      riderId,
+      orderId: order.id,
+      orderType: orderType || order.orderType || 'food',
+      deliveryEarnings: creditAmount,
+      deliveredAt: order.deliveredDate || new Date(),
+    }).catch((err) => {
+      console.error(`[DeliverySettlement] Incentive processing failed for rider=${riderId}:`, err.message);
     });
   }
 };

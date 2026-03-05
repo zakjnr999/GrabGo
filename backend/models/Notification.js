@@ -33,6 +33,12 @@ const notificationSchema = new mongoose.Schema({
             'tracking_update',
             'incoming_call',
             'rider_assignment',
+            'partner_level_change',
+            'quest_completed',
+            'streak_reward',
+            'delivery_milestone',
+            'peak_hour_bonus',
+            'incentive_payout',
             'test'
         ],
         required: true

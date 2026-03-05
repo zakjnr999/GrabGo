@@ -835,6 +835,8 @@ const {
 const { fraudPolicyService } = require("./services/fraud");
 const featureFlags = require("./config/feature_flags");
 const { scheduleRiderPartnerRecalc } = require("./jobs/rider_partner_recalc");
+const { scheduleIncentiveBudgetApproval } = require("./jobs/incentive_budget_approval");
+const { scheduleWeeklyPayout } = require("./jobs/rider_weekly_payout");
 
 // Initialize Redis cache (optional - falls back to memory cache)
 cache.initRedis();
@@ -887,6 +889,16 @@ setTimeout(() => {
 // Schedule rider partner score recalculation (daily at 02:00 Africa/Accra)
 if (featureFlags.isRiderPartnerSystemEnabled || featureFlags.isRiderPartnerShadowMode) {
   scheduleRiderPartnerRecalc();
+}
+
+// Schedule incentive budget approval (every 5 minutes)
+if (featureFlags.isRiderIncentivesEnabled) {
+  scheduleIncentiveBudgetApproval();
+}
+
+// Schedule weekly auto-payout (Monday 06:00 Africa/Accra)
+if (featureFlags.isRiderIncentivesEnabled) {
+  scheduleWeeklyPayout();
 }
 
 const PORT = process.env.PORT || 5000;

@@ -15,6 +15,7 @@ const { calculateRiderEarnings, calculateDistance } = require('../utils/riderEar
 const socketService = require('./socket_service');
 const { sendToUser } = require('./fcm_service');
 const featureFlags = require('../config/feature_flags');
+const { DISPATCH_PRIORITY_BONUS } = require('./rider_score_engine');
 
 const ORDER_RESERVATION_ENTITY = 'order';
 const buildOrderReservationQuery = (query = {}) =>
@@ -584,6 +585,22 @@ async function scoreRiders(riders, order) {
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
     const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
 
+    // Build partner level map for dispatch priority bonus
+    let partnerLevelMap = new Map();
+    if (featureFlags.isRiderPartnerSystemEnabled) {
+        try {
+            const profiles = await prisma.riderPartnerProfile.findMany({
+                where: { riderId: { in: riderIds } },
+                select: { riderId: true, partnerLevel: true },
+            });
+            for (const p of profiles) {
+                partnerLevelMap.set(p.riderId, p.partnerLevel);
+            }
+        } catch (err) {
+            console.error('[Dispatch] Failed to load partner profiles:', err.message);
+        }
+    }
+
     const [declineIdsRaw, recentDeliveryRows, onTimeStatsByRider] = await Promise.all([
         OrderReservation.find(
             buildOrderReservationQuery({
@@ -731,6 +748,11 @@ async function scoreRiders(riders, order) {
         }
         score += onTimeBonus;
 
+        // 8) Partner level soft priority bonus (capped: L1=0, L2=+3, L3=+6, L4=+9, L5=+12)
+        const partnerLevel = partnerLevelMap.get(riderId) || 'L1';
+        const partnerBonus = DISPATCH_PRIORITY_BONUS[partnerLevel] || 0;
+        score += partnerBonus;
+
         scoredRiders.push({
             rider,
             score: Math.round(score * 10) / 10,
@@ -752,7 +774,9 @@ async function scoreRiders(riders, order) {
                 vehicleBonus,
                 onTimeRate,
                 onTimeBonus,
-                onTimeReliable
+                onTimeReliable,
+                partnerLevel,
+                partnerBonus
             }
         });
     }

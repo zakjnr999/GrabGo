@@ -408,6 +408,10 @@ const evaluateRiderPartnerLevel = async (riderId, options = {}) => {
       `[ScoreEngine] Rider ${riderId}: ${previousLevel} → ${effectiveLevel} ` +
       `(score=${partnerScore}, reason=${changeReason})`
     );
+
+    // Non-blocking notification
+    const { notifyLevelChange } = require('./rider_incentive_notifications');
+    notifyLevelChange(riderId, previousLevel, effectiveLevel, changeReason).catch(() => {});
   }
 
   return {
