@@ -81,6 +81,22 @@ class GeofenceService {
                         tracking.status = 'nearby';
                         tracking.lastUpdated = new Date();
                         await tracking.save();
+
+                        // Sync the Redis tracking cache so updateRiderLocation
+                        // doesn't read stale 'in_transit' from cache.
+                        try {
+                            const cacheKey = cache.makeKey(
+                                cache.CACHE_KEYS.ORDER_TRACKING,
+                                tracking.orderId.toString()
+                            );
+                            const cachedMeta = await cache.get(cacheKey);
+                            if (cachedMeta) {
+                                cachedMeta.status = 'nearby';
+                                await cache.set(cacheKey, cachedMeta, 300);
+                            }
+                        } catch (cacheErr) {
+                            console.error('⚠️ [Geofence] Failed to sync Redis cache:', cacheErr.message);
+                        }
                     }
 
                     const shouldEmit = await this.shouldEmitGeofenceEvent(

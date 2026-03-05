@@ -343,9 +343,13 @@ class TrackingService {
             (now - lastPersist) >= MONGO_PERSIST_INTERVAL;
 
         if (shouldPersist) {
-            await this._persistToMongoDB(orderId, queue, distance, status, eta);
+            // Atomically capture and reset the queue BEFORE the async persist.
+            // This prevents a concurrent call from seeing the same queue entries
+            // and double-flushing, or from losing entries added during the await.
+            const batch = [...queue];
             this.pendingLocations.set(orderId, []);
             this.lastPersistTime.set(orderId, now);
+            await this._persistToMongoDB(orderId, batch, distance, status, eta);
         }
     }
 

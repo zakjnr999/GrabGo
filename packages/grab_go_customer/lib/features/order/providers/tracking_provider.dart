@@ -53,9 +53,7 @@ class TrackingProvider extends BaseTrackingProvider {
   static const double _incomingSmoothingMaxAlpha = 0.84;
   static const Duration _autoFollowThrottle = Duration(milliseconds: 900);
   static const double _autoFollowMinDistanceMeters = 10.0;
-  static const Duration _programmaticCameraGuardDuration = Duration(
-    milliseconds: 900,
-  );
+  static const Duration _programmaticCameraGuardDuration = Duration(milliseconds: 900);
 
   // Subscriptions
   StreamSubscription? _locationSubscription;
@@ -77,8 +75,7 @@ class TrackingProvider extends BaseTrackingProvider {
   List<LocationData> _demoRoute = const [];
   int _demoRouteIndex = 0;
   final Map<String, BitmapDescriptor> _markerIconCache = {};
-  TrackingConnectionHealth _connectionHealth =
-      TrackingConnectionHealth.degraded;
+  TrackingConnectionHealth _connectionHealth = TrackingConnectionHealth.degraded;
   DateTime? _lastRealtimeUpdateAt;
   DateTime? _lastSuccessfulApiSyncAt;
   int _consecutiveFallbackFailures = 0;
@@ -87,9 +84,7 @@ class TrackingProvider extends BaseTrackingProvider {
   bool _hasEstablishedSocketConnectionForSession = false;
   bool _forceDemoSession = false;
   final Random _fallbackJitterRandom = Random();
-  final TrackingTelemetryCollector _telemetry = TrackingTelemetryCollector(
-    scope: 'customer_tracking',
-  );
+  final TrackingTelemetryCollector _telemetry = TrackingTelemetryCollector(scope: 'customer_tracking');
 
   // Getters
   @override
@@ -110,15 +105,12 @@ class TrackingProvider extends BaseTrackingProvider {
   TrackingConnectionHealth get connectionHealth => _connectionHealth;
   bool get isFallbackPollingActive => _fallbackPollingTimer != null;
   bool get isAutoFollowEnabled => _isAutoFollowEnabled;
-  TrackingTelemetrySnapshot get telemetrySnapshot =>
-      _telemetry.snapshot(staleThreshold: _degradedFreshnessWindow);
+  TrackingTelemetrySnapshot get telemetrySnapshot => _telemetry.snapshot(staleThreshold: _degradedFreshnessWindow);
   Map<String, dynamic> get telemetryDebugData => telemetrySnapshot.toJson();
 
-  TrackingProvider({
-    required TrackingApiService apiService,
-    required TrackingSocketService socketService,
-  }) : _apiService = apiService,
-       _socketService = socketService {
+  TrackingProvider({required TrackingApiService apiService, required TrackingSocketService socketService})
+    : _apiService = apiService,
+      _socketService = socketService {
     _initializeSocketListeners();
   }
 
@@ -142,9 +134,7 @@ class TrackingProvider extends BaseTrackingProvider {
       },
     );
 
-    _connectionSubscription = _socketService.connectionStatus.listen((
-      isConnected,
-    ) {
+    _connectionSubscription = _socketService.connectionStatus.listen((isConnected) {
       print(isConnected ? '✅ Socket connected' : '❌ Socket disconnected');
       if (isConnected && _activeOrderId != null) {
         if (_hasEstablishedSocketConnectionForSession) {
@@ -200,19 +190,14 @@ class TrackingProvider extends BaseTrackingProvider {
     try {
       // 1. Get initial tracking data from API
       print('📡 Fetching tracking data for order: $orderId');
-      _trackingData = _withSmoothedCurrentLocation(
-        await _apiService.getTrackingInfo(orderId),
-        resetFilter: true,
-      );
+      _trackingData = _withSmoothedCurrentLocation(await _apiService.getTrackingInfo(orderId), resetFilter: true);
       _trackingData = _withInitialRenderableLocation(_trackingData!);
       if (_trackingData?.currentLocation != null) {
         _telemetry.recordLocationSample();
       }
       _lastSuccessfulApiSyncAt = DateTime.now();
       _consecutiveFallbackFailures = 0;
-      print(
-        '✅ Got tracking data: status=${_trackingData?.status}, rider=${_trackingData?.rider?.name}',
-      );
+      print('✅ Got tracking data: status=${_trackingData?.status}, rider=${_trackingData?.rider?.name}');
       _isWaitingForRider = false;
       _stopWaitingForRiderPolling();
 
@@ -273,10 +258,7 @@ class TrackingProvider extends BaseTrackingProvider {
     _demoRouteIndex = 0;
 
     final initialLocation = _demoRoute.first;
-    final initialDistance = _calculateDistance(
-      initialLocation.toLatLng(),
-      destination.toLatLng(),
-    ).round();
+    final initialDistance = _calculateDistance(initialLocation.toLatLng(), destination.toLatLng()).round();
 
     _trackingData = TrackingData(
       orderId: orderId,
@@ -285,15 +267,8 @@ class TrackingProvider extends BaseTrackingProvider {
       pickupLocation: pickup,
       status: 'preparing',
       distanceRemaining: initialDistance,
-      estimatedArrival: DateTime.now().add(
-        Duration(minutes: max((initialDistance / 220).ceil(), 3)),
-      ),
-      rider: RiderInfo(
-        id: 'demo-rider',
-        name: 'Demo Rider',
-        phone: '+233000000000',
-        rating: 4.9,
-      ),
+      estimatedArrival: DateTime.now().add(Duration(minutes: max((initialDistance / 220).ceil(), 3))),
+      rider: RiderInfo(id: 'demo-rider', name: 'Demo Rider', phone: '+233000000000', rating: 4.9),
       locationHistory: const [],
     );
 
@@ -325,16 +300,8 @@ class TrackingProvider extends BaseTrackingProvider {
     final toPickupSegments = max((totalPoints * 0.25).round(), 5);
     final toDestinationSegments = max(totalPoints - toPickupSegments, 12);
 
-    final toPickup = _interpolateSegment(
-      start: start,
-      end: pickup,
-      segments: toPickupSegments,
-    );
-    final toDestination = _interpolateSegment(
-      start: pickup,
-      end: destination,
-      segments: toDestinationSegments,
-    );
+    final toPickup = _interpolateSegment(start: start, end: pickup, segments: toPickupSegments);
+    final toDestination = _interpolateSegment(start: pickup, end: destination, segments: toDestinationSegments);
 
     return [...toPickup, ...toDestination.skip(1)];
   }
@@ -371,16 +338,10 @@ class TrackingProvider extends BaseTrackingProvider {
     final nextLocation = _demoRoute[_demoRouteIndex];
     final destination = _trackingData!.destination;
 
-    final remainingDistance = _calculateDistance(
-      nextLocation.toLatLng(),
-      destination.toLatLng(),
-    ).round();
+    final remainingDistance = _calculateDistance(nextLocation.toLatLng(), destination.toLatLng()).round();
 
     final progress = _demoRouteIndex / (_demoRoute.length - 1);
-    final status = _demoStatusForProgress(
-      progress: progress,
-      remainingMeters: remainingDistance,
-    );
+    final status = _demoStatusForProgress(progress: progress, remainingMeters: remainingDistance);
 
     _lastSuccessfulApiSyncAt = DateTime.now();
 
@@ -389,9 +350,7 @@ class TrackingProvider extends BaseTrackingProvider {
         orderId: orderId,
         location: nextLocation,
         distance: remainingDistance,
-        eta: DateTime.now().add(
-          Duration(minutes: max((remainingDistance / 240).ceil(), 1)),
-        ),
+        eta: DateTime.now().add(Duration(minutes: max((remainingDistance / 240).ceil(), 1))),
         status: status,
       ),
     );
@@ -401,10 +360,7 @@ class TrackingProvider extends BaseTrackingProvider {
     }
   }
 
-  String _demoStatusForProgress({
-    required double progress,
-    required int remainingMeters,
-  }) {
+  String _demoStatusForProgress({required double progress, required int remainingMeters}) {
     if (progress < 0.28) return 'preparing';
     if (remainingMeters <= 450) return 'nearby';
     if (progress < 0.4) return 'picked_up';
@@ -426,13 +382,7 @@ class TrackingProvider extends BaseTrackingProvider {
       ),
     );
 
-    _handleStatusUpdate(
-      StatusUpdateEvent(
-        orderId: orderId,
-        status: 'delivered',
-        message: 'Delivered (demo mode)',
-      ),
-    );
+    _handleStatusUpdate(StatusUpdateEvent(orderId: orderId, status: 'delivered', message: 'Delivered (demo mode)'));
 
     _stopDemoSimulation();
   }
@@ -446,9 +396,7 @@ class TrackingProvider extends BaseTrackingProvider {
 
   void _startWaitingForRiderPolling(String orderId) {
     _waitingForRiderTimer?.cancel();
-    _waitingForRiderTimer = Timer.periodic(const Duration(seconds: 8), (
-      _,
-    ) async {
+    _waitingForRiderTimer = Timer.periodic(const Duration(seconds: 8), (_) async {
       if (!_isWaitingForRider || _trackingData != null) {
         _stopWaitingForRiderPolling();
         return;
@@ -551,10 +499,7 @@ class TrackingProvider extends BaseTrackingProvider {
       _fallbackPollingAttempt = min(_fallbackPollingAttempt + 1, 4);
     } finally {
       _isFallbackRequestInFlight = false;
-      _telemetry.recordFallbackPollResult(
-        success: pollSuccess,
-        latency: pollStopwatch.elapsed,
-      );
+      _telemetry.recordFallbackPollResult(success: pollSuccess, latency: pollStopwatch.elapsed);
       _syncConnectionHealth();
       notifyListeners();
 
@@ -566,12 +511,8 @@ class TrackingProvider extends BaseTrackingProvider {
 
   Duration _nextFallbackPollDelay() {
     final backoffMultiplier = 1 << _fallbackPollingAttempt;
-    final baseDelayMs =
-        _fallbackPollingInterval.inMilliseconds * backoffMultiplier;
-    final cappedDelayMs = min(
-      baseDelayMs,
-      _fallbackPollingMaxInterval.inMilliseconds,
-    );
+    final baseDelayMs = _fallbackPollingInterval.inMilliseconds * backoffMultiplier;
+    final cappedDelayMs = min(baseDelayMs, _fallbackPollingMaxInterval.inMilliseconds);
 
     // Add 15% jitter to avoid synchronized retries under outages.
     final jitterFactor = 0.85 + (_fallbackJitterRandom.nextDouble() * 0.3);
@@ -602,13 +543,8 @@ class TrackingProvider extends BaseTrackingProvider {
     final previous = _connectionHealth;
 
     if (_trackingDemoMode) {
-      _connectionHealth = _trackingData == null
-          ? TrackingConnectionHealth.offline
-          : TrackingConnectionHealth.live;
-      _telemetry.recordHealthTransition(
-        from: previous.name,
-        to: _connectionHealth.name,
-      );
+      _connectionHealth = _trackingData == null ? TrackingConnectionHealth.offline : TrackingConnectionHealth.live;
+      _telemetry.recordHealthTransition(from: previous.name, to: _connectionHealth.name);
       if (previous != _connectionHealth) {
         notifyListeners();
       }
@@ -617,11 +553,9 @@ class TrackingProvider extends BaseTrackingProvider {
 
     final now = DateTime.now();
     final hasFreshRealtime =
-        _lastRealtimeUpdateAt != null &&
-        now.difference(_lastRealtimeUpdateAt!) <= _liveFreshnessWindow;
+        _lastRealtimeUpdateAt != null && now.difference(_lastRealtimeUpdateAt!) <= _liveFreshnessWindow;
     final hasRecentApiSync =
-        _lastSuccessfulApiSyncAt != null &&
-        now.difference(_lastSuccessfulApiSyncAt!) <= _degradedFreshnessWindow;
+        _lastSuccessfulApiSyncAt != null && now.difference(_lastSuccessfulApiSyncAt!) <= _degradedFreshnessWindow;
 
     if (_socketService.isConnected && hasFreshRealtime) {
       _connectionHealth = TrackingConnectionHealth.live;
@@ -635,18 +569,25 @@ class TrackingProvider extends BaseTrackingProvider {
       _connectionHealth = TrackingConnectionHealth.offline;
     }
 
-    _telemetry.recordHealthTransition(
-      from: previous.name,
-      to: _connectionHealth.name,
-    );
+    _telemetry.recordHealthTransition(from: previous.name, to: _connectionHealth.name);
 
     if (previous != _connectionHealth) {
       notifyListeners();
     }
   }
 
-  /// Wait for socket connection and then join the order room
+  /// Wait for socket connection and then join the order room.
+  /// Instead of a hard 10-second timeout (which silently drops the
+  /// subscription if the socket hasn't connected yet), we keep the
+  /// subscription alive for the lifetime of the tracking session.
+  /// The _initializeSocketListeners() reconnect handler also calls
+  /// joinOrderRoom, so this is a belt-and-suspenders approach.
+  StreamSubscription<bool>? _roomJoinSubscription;
+
   void _waitForSocketAndJoinRoom(String orderId) {
+    // Cancel any previous room-join subscription
+    _roomJoinSubscription?.cancel();
+
     // If already connected, join immediately
     if (_socketService.isConnected) {
       print('🚪 Socket already connected, joining order room: $orderId');
@@ -657,20 +598,17 @@ class TrackingProvider extends BaseTrackingProvider {
       return;
     }
 
-    // Otherwise wait for connection
-    print('⏳ Waiting for socket connection...');
-    StreamSubscription<bool>? subscription;
-    subscription = _socketService.connectionStatus.listen((isConnected) {
+    // Otherwise wait for connection — no fixed timeout.
+    // This subscription is cancelled in dispose() or on the next
+    // initializeTracking() call, so it won't leak.
+    print('⏳ Waiting for socket connection to join room: $orderId');
+    _roomJoinSubscription = _socketService.connectionStatus.listen((isConnected) {
       if (isConnected) {
         print('🚪 Socket connected, joining order room: $orderId');
         _socketService.joinOrderRoom(orderId);
-        subscription?.cancel();
+        _roomJoinSubscription?.cancel();
+        _roomJoinSubscription = null;
       }
-    });
-
-    // Cancel subscription after 10 seconds to avoid memory leak
-    Future.delayed(const Duration(seconds: 10), () {
-      subscription?.cancel();
     });
   }
 
@@ -685,18 +623,14 @@ class TrackingProvider extends BaseTrackingProvider {
     if (_trackingData!.currentLocation != null) {
       const cacheKey = 'rider_vehicle';
       if (!_markerIconCache.containsKey(cacheKey)) {
-        _markerIconCache[cacheKey] =
-            await CustomMapMarkers.createRiderVehicleMarker(size: 64);
+        _markerIconCache[cacheKey] = await CustomMapMarkers.createRiderVehicleMarker(size: 64);
       }
 
       final riderMarker = Marker(
         markerId: const MarkerId('rider'),
         position: _trackingData!.currentLocation!.toLatLng(),
         icon: _markerIconCache[cacheKey]!,
-        infoWindow: InfoWindow(
-          title: _trackingData!.rider?.name ?? 'Your Rider',
-          snippet: _trackingData!.statusText,
-        ),
+        infoWindow: InfoWindow(title: _trackingData!.rider?.name ?? 'Your Rider', snippet: _trackingData!.statusText),
         anchor: const Offset(0.5, 0.5),
         // Keep rider icon upright on customer map to avoid a flattened look.
         flat: false,
@@ -709,10 +643,9 @@ class TrackingProvider extends BaseTrackingProvider {
     // Add destination marker (customer's home) with home icon
     final destinationMarkerKey = 'destination_tap_pin_$_markerStyleVersion';
     if (!_markerIconCache.containsKey(destinationMarkerKey)) {
-      _markerIconCache[destinationMarkerKey] =
-          await CustomMapMarkers.createHomeTapPinMarker(
-            primaryColor: AppColors.accentOrange,
-          );
+      _markerIconCache[destinationMarkerKey] = await CustomMapMarkers.createHomeTapPinMarker(
+        primaryColor: AppColors.accentOrange,
+      );
     }
 
     markers.add(
@@ -730,10 +663,9 @@ class TrackingProvider extends BaseTrackingProvider {
     if (_trackingData!.pickupLocation != null) {
       final vendorMarkerKey = 'vendor_tap_pin_$_markerStyleVersion';
       if (!_markerIconCache.containsKey(vendorMarkerKey)) {
-        _markerIconCache[vendorMarkerKey] =
-            await CustomMapMarkers.createStoreTapPinMarker(
-              primaryColor: AppColors.accentOrange,
-            );
+        _markerIconCache[vendorMarkerKey] = await CustomMapMarkers.createStoreTapPinMarker(
+          primaryColor: AppColors.accentOrange,
+        );
       }
 
       markers.add(
@@ -741,10 +673,7 @@ class TrackingProvider extends BaseTrackingProvider {
           markerId: const MarkerId('pickup'),
           position: _trackingData!.pickupLocation!.toLatLng(),
           icon: _markerIconCache[vendorMarkerKey]!,
-          infoWindow: const InfoWindow(
-            title: 'Restaurant',
-            snippet: 'Pickup location',
-          ),
+          infoWindow: const InfoWindow(title: 'Restaurant', snippet: 'Pickup location'),
           anchor: const Offset(0.5, 0.8),
           zIndexInt: 1, // Bottom layer
         ),
@@ -760,9 +689,7 @@ class TrackingProvider extends BaseTrackingProvider {
     final shouldForcePickupPreview = _isPrePickupStatus(status);
 
     bool routeRendered = false;
-    if (!shouldForcePickupPreview &&
-        _trackingData!.route != null &&
-        _trackingData!.route!.polyline.isNotEmpty) {
+    if (!shouldForcePickupPreview && _trackingData!.route != null && _trackingData!.route!.polyline.isNotEmpty) {
       routeRendered = await _createPolyline(_trackingData!.route!.polyline);
     }
 
@@ -827,9 +754,7 @@ class TrackingProvider extends BaseTrackingProvider {
       final polylinePoints = PolylinePoints();
       final decoded = polylinePoints.decodePolyline(encodedPolyline);
 
-      final polylineCoordinates = decoded
-          .map((point) => LatLng(point.latitude, point.longitude))
-          .toList();
+      final polylineCoordinates = decoded.map((point) => LatLng(point.latitude, point.longitude)).toList();
       if (polylineCoordinates.length < 2) return false;
 
       final routePolyline = Polyline(
@@ -851,9 +776,7 @@ class TrackingProvider extends BaseTrackingProvider {
   void _createFallbackRoutePolylines() {
     if (_trackingData == null) return;
 
-    _polylines.removeWhere(
-      (polyline) => polyline.polylineId.value.startsWith('route_'),
-    );
+    _polylines.removeWhere((polyline) => polyline.polylineId.value.startsWith('route_'));
 
     final status = _trackingData!.status.toLowerCase();
     final isHeadingToPickup = _isPrePickupStatus(status);
@@ -912,10 +835,7 @@ class TrackingProvider extends BaseTrackingProvider {
   }
 
   void _removePickupToDestinationPreviewPolyline() {
-    _polylines.removeWhere(
-      (polyline) =>
-          polyline.polylineId.value == 'route_pickup_to_destination_preview',
-    );
+    _polylines.removeWhere((polyline) => polyline.polylineId.value == 'route_pickup_to_destination_preview');
   }
 
   void _upsertPickupToDestinationPreviewPolyline() {
@@ -952,10 +872,7 @@ class TrackingProvider extends BaseTrackingProvider {
         longitude <= 180;
   }
 
-  TrackingData _copyTrackingDataWithCurrentLocation(
-    TrackingData data,
-    LocationData? currentLocation,
-  ) {
+  TrackingData _copyTrackingDataWithCurrentLocation(TrackingData data, LocationData? currentLocation) {
     return TrackingData(
       orderId: data.orderId,
       currentLocation: currentLocation,
@@ -976,32 +893,22 @@ class TrackingProvider extends BaseTrackingProvider {
     return _copyTrackingDataWithCurrentLocation(data, fallback);
   }
 
-  TrackingData _withSmoothedCurrentLocation(
-    TrackingData data, {
-    bool resetFilter = false,
-  }) {
+  TrackingData _withSmoothedCurrentLocation(TrackingData data, {bool resetFilter = false}) {
     final currentLocation = data.currentLocation;
     if (currentLocation == null) {
       return data;
     }
 
-    if (!_isValidCoordinate(
-      currentLocation.latitude,
-      currentLocation.longitude,
-    )) {
+    if (!_isValidCoordinate(currentLocation.latitude, currentLocation.longitude)) {
       _telemetry.recordInvalidCoordinateDrop();
       final fallback = _trackingData?.currentLocation;
-      if (fallback != null &&
-          _isValidCoordinate(fallback.latitude, fallback.longitude)) {
+      if (fallback != null && _isValidCoordinate(fallback.latitude, fallback.longitude)) {
         return _copyTrackingDataWithCurrentLocation(data, fallback);
       }
       return _copyTrackingDataWithCurrentLocation(data, null);
     }
 
-    final smoothedLocation = _smoothIncomingLocation(
-      currentLocation,
-      reset: resetFilter,
-    );
+    final smoothedLocation = _smoothIncomingLocation(currentLocation, reset: resetFilter);
 
     if (smoothedLocation.latitude == currentLocation.latitude &&
         smoothedLocation.longitude == currentLocation.longitude) {
@@ -1011,10 +918,7 @@ class TrackingProvider extends BaseTrackingProvider {
     return _copyTrackingDataWithCurrentLocation(data, smoothedLocation);
   }
 
-  LocationData _smoothIncomingLocation(
-    LocationData incoming, {
-    bool reset = false,
-  }) {
+  LocationData _smoothIncomingLocation(LocationData incoming, {bool reset = false}) {
     if (!_isValidCoordinate(incoming.latitude, incoming.longitude)) {
       if (_smoothedRealtimePosition != null) {
         return LocationData(
@@ -1039,31 +943,22 @@ class TrackingProvider extends BaseTrackingProvider {
     }
 
     if (jumpDistance <= 1.2) {
-      return LocationData(
-        latitude: previous.latitude,
-        longitude: previous.longitude,
-      );
+      return LocationData(latitude: previous.latitude, longitude: previous.longitude);
     }
 
     final normalizedStep = (jumpDistance / 45.0).clamp(0.0, 1.0).toDouble();
     final alpha =
-        (_incomingSmoothingMinAlpha +
-                ((_incomingSmoothingMaxAlpha - _incomingSmoothingMinAlpha) *
-                    normalizedStep))
+        (_incomingSmoothingMinAlpha + ((_incomingSmoothingMaxAlpha - _incomingSmoothingMinAlpha) * normalizedStep))
             .clamp(_incomingSmoothingMinAlpha, _incomingSmoothingMaxAlpha)
             .toDouble();
 
     final smoothed = LatLng(
       previous.latitude + ((rawPosition.latitude - previous.latitude) * alpha),
-      previous.longitude +
-          ((rawPosition.longitude - previous.longitude) * alpha),
+      previous.longitude + ((rawPosition.longitude - previous.longitude) * alpha),
     );
     _smoothedRealtimePosition = smoothed;
 
-    return LocationData(
-      latitude: smoothed.latitude,
-      longitude: smoothed.longitude,
-    );
+    return LocationData(latitude: smoothed.latitude, longitude: smoothed.longitude);
   }
 
   /// Handle real-time location updates from socket
@@ -1076,14 +971,10 @@ class TrackingProvider extends BaseTrackingProvider {
     _consecutiveFallbackFailures = 0;
 
     var incomingLocation = event.location;
-    if (!_isValidCoordinate(
-      incomingLocation.latitude,
-      incomingLocation.longitude,
-    )) {
+    if (!_isValidCoordinate(incomingLocation.latitude, incomingLocation.longitude)) {
       _telemetry.recordInvalidCoordinateDrop();
       final fallback = _trackingData!.currentLocation;
-      if (fallback == null ||
-          !_isValidCoordinate(fallback.latitude, fallback.longitude)) {
+      if (fallback == null || !_isValidCoordinate(fallback.latitude, fallback.longitude)) {
         debugPrint(
           '⚠️ Ignoring invalid rider location update: '
           'lat=${incomingLocation.latitude}, lon=${incomingLocation.longitude}',
@@ -1093,23 +984,14 @@ class TrackingProvider extends BaseTrackingProvider {
       incomingLocation = fallback;
     }
 
-    print(
-      '📍 Updating rider location: ${incomingLocation.latitude}, ${incomingLocation.longitude}',
-    );
+    print('📍 Updating rider location: ${incomingLocation.latitude}, ${incomingLocation.longitude}');
     final smoothedLocation = _smoothIncomingLocation(incomingLocation);
 
     // Add current location to history for the trail
-    final updatedHistory = List<LocationHistory>.from(
-      _trackingData!.locationHistory,
-    );
-    updatedHistory.add(
-      LocationHistory(location: smoothedLocation, timestamp: DateTime.now()),
-    );
+    final updatedHistory = List<LocationHistory>.from(_trackingData!.locationHistory);
+    updatedHistory.add(LocationHistory(location: smoothedLocation, timestamp: DateTime.now()));
     if (updatedHistory.length > _maxLocationHistoryPoints) {
-      updatedHistory.removeRange(
-        0,
-        updatedHistory.length - _maxLocationHistoryPoints,
-      );
+      updatedHistory.removeRange(0, updatedHistory.length - _maxLocationHistoryPoints);
     }
 
     // Update tracking data
@@ -1135,9 +1017,7 @@ class TrackingProvider extends BaseTrackingProvider {
 
       // If distance is too large (>500m), jump directly (could be GPS error or teleport)
       if (distance > 500) {
-        print(
-          '📍 Large position jump detected (${distance.toStringAsFixed(0)}m), jumping directly',
-        );
+        print('📍 Large position jump detected (${distance.toStringAsFixed(0)}m), jumping directly');
         _updateRiderMarker(newPosition, _currentBearing);
         _lastKnownPosition = newPosition;
         notifyListeners();
@@ -1186,42 +1066,38 @@ class TrackingProvider extends BaseTrackingProvider {
     if (bearingDiff > 180) bearingDiff -= 360;
     if (bearingDiff < -180) bearingDiff += 360;
 
-    _animationTimer = Timer.periodic(
-      const Duration(milliseconds: _animationFrameMs),
-      (timer) {
-        if (currentStep >= _animationSteps) {
-          timer.cancel();
-          // Ensure we end exactly at the target position
-          _updateRiderMarker(end, targetBearing);
-          _currentBearing = targetBearing;
-          _maybeAutoFollowRider(end);
-          notifyListeners();
-          return;
-        }
+    _animationTimer = Timer.periodic(const Duration(milliseconds: _animationFrameMs), (timer) {
+      if (currentStep >= _animationSteps) {
+        timer.cancel();
+        // Ensure we end exactly at the target position
+        _updateRiderMarker(end, targetBearing);
+        _currentBearing = targetBearing;
+        _maybeAutoFollowRider(end);
+        notifyListeners();
+        return;
+      }
 
-        currentStep++;
+      currentStep++;
 
-        // Use ease-out cubic for smooth deceleration: 1 - (1 - t)^3
-        double t = currentStep / _animationSteps;
-        double easedT = 1 - pow(1 - t, 3).toDouble();
+      // Use ease-out cubic for smooth deceleration: 1 - (1 - t)^3
+      double t = currentStep / _animationSteps;
+      double easedT = 1 - pow(1 - t, 3).toDouble();
 
-        // Interpolate position
-        double lat = start.latitude + (end.latitude - start.latitude) * easedT;
-        double lng =
-            start.longitude + (end.longitude - start.longitude) * easedT;
+      // Interpolate position
+      double lat = start.latitude + (end.latitude - start.latitude) * easedT;
+      double lng = start.longitude + (end.longitude - start.longitude) * easedT;
 
-        // Interpolate bearing smoothly
-        double currentBearingAnimated = startBearing + bearingDiff * easedT;
-        _currentBearing = currentBearingAnimated;
+      // Interpolate bearing smoothly
+      double currentBearingAnimated = startBearing + bearingDiff * easedT;
+      _currentBearing = currentBearingAnimated;
 
-        _updateRiderMarker(LatLng(lat, lng), currentBearingAnimated);
+      _updateRiderMarker(LatLng(lat, lng), currentBearingAnimated);
 
-        // Only notify every 3rd frame to reduce UI rebuilds while maintaining visual smoothness
-        if (currentStep % 3 == 0 || currentStep == _animationSteps) {
-          notifyListeners();
-        }
-      },
-    );
+      // Only notify every 3rd frame to reduce UI rebuilds while maintaining visual smoothness
+      if (currentStep % 3 == 0 || currentStep == _animationSteps) {
+        notifyListeners();
+      }
+    });
   }
 
   /// Calculate bearing between two points
@@ -1248,9 +1124,7 @@ class TrackingProvider extends BaseTrackingProvider {
     double dLat = (end.latitude - start.latitude) * pi / 180;
     double dLng = (end.longitude - start.longitude) * pi / 180;
 
-    double a =
-        sin(dLat / 2) * sin(dLat / 2) +
-        cos(lat1) * cos(lat2) * sin(dLng / 2) * sin(dLng / 2);
+    double a = sin(dLat / 2) * sin(dLat / 2) + cos(lat1) * cos(lat2) * sin(dLng / 2) * sin(dLng / 2);
     double c = 2 * atan2(sqrt(a), sqrt(1 - a));
 
     return earthRadius * c;
@@ -1277,12 +1151,7 @@ class TrackingProvider extends BaseTrackingProvider {
         .toSet();
 
     _polylines.add(
-      Polyline(
-        polylineId: const PolylineId('trail'),
-        points: points,
-        color: AppColors.serviceFood,
-        width: 5,
-      ),
+      Polyline(polylineId: const PolylineId('trail'), points: points, color: AppColors.serviceFood, width: 5),
     );
   }
 
@@ -1317,11 +1186,7 @@ class TrackingProvider extends BaseTrackingProvider {
   void _updateRiderMarker(LatLng newPosition, double rotation) {
     _markers = _markers.map((marker) {
       if (marker.markerId.value == 'rider') {
-        return marker.copyWith(
-          positionParam: newPosition,
-          rotationParam: rotation,
-          flatParam: false,
-        );
+        return marker.copyWith(positionParam: newPosition, rotationParam: rotation, flatParam: false);
       }
       return marker;
     }).toSet();
@@ -1358,10 +1223,7 @@ class TrackingProvider extends BaseTrackingProvider {
       if (pos.longitude > maxLng) maxLng = pos.longitude;
     }
 
-    final bounds = LatLngBounds(
-      southwest: LatLng(minLat, minLng),
-      northeast: LatLng(maxLat, maxLng),
-    );
+    final bounds = LatLngBounds(southwest: LatLng(minLat, minLng), northeast: LatLng(maxLat, maxLng));
 
     _animateCameraProgrammatically(CameraUpdate.newLatLngBounds(bounds, 100));
   }
@@ -1371,9 +1233,7 @@ class TrackingProvider extends BaseTrackingProvider {
     // Keep camera top-down and north-up (same feel as rider app).
     // A tilted/rotated map makes flat vehicle markers look unnaturally flattened.
     _animateCameraProgrammatically(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(target: position, zoom: 16.0, tilt: 0.0, bearing: 0.0),
-      ),
+      CameraUpdate.newCameraPosition(CameraPosition(target: position, zoom: 16.0, tilt: 0.0, bearing: 0.0)),
     );
   }
 
@@ -1384,16 +1244,12 @@ class TrackingProvider extends BaseTrackingProvider {
 
     final now = DateTime.now();
     if (!force) {
-      if (_lastAutoFollowAt != null &&
-          now.difference(_lastAutoFollowAt!) < _autoFollowThrottle) {
+      if (_lastAutoFollowAt != null && now.difference(_lastAutoFollowAt!) < _autoFollowThrottle) {
         return;
       }
 
       if (_lastAutoFollowPosition != null) {
-        final movement = _calculateDistance(
-          _lastAutoFollowPosition!,
-          riderPosition,
-        );
+        final movement = _calculateDistance(_lastAutoFollowPosition!, riderPosition);
         if (movement < _autoFollowMinDistanceMeters) {
           return;
         }
@@ -1499,6 +1355,8 @@ class TrackingProvider extends BaseTrackingProvider {
     _locationSubscription?.cancel();
     _statusSubscription?.cancel();
     _connectionSubscription?.cancel();
+    _roomJoinSubscription?.cancel();
+    _roomJoinSubscription = null;
     _smoothedRealtimePosition = null;
     _lastAutoFollowAt = null;
     _lastAutoFollowPosition = null;
