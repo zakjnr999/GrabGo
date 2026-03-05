@@ -1,6 +1,6 @@
 const cron = require('node-cron');
 const prisma = require('../config/prisma');
-const cache = require('../middleware/cache');
+const cache = require('../utils/cache');
 const featureFlags = require('../config/feature_flags');
 const {
   evaluateRiderPartnerLevel,

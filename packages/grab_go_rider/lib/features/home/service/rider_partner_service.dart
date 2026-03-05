@@ -194,7 +194,7 @@ class RiderPartnerService {
       ttl: const Duration(minutes: 30), // policy rarely changes
       fetch: () async {
         final headers = await _buildHeaders();
-        final response = await _client.get(_riderUri('payout/policy'), headers: headers);
+        final response = await _client.get(_riderUri('wallet/withdrawal-policy'), headers: headers);
         return WithdrawalPolicy.fromJson(_unwrap(response, 'withdrawal policy'));
       },
     );
@@ -206,7 +206,7 @@ class RiderPartnerService {
       ttl: _ttl,
       fetch: () async {
         final headers = await _buildHeaders();
-        final response = await _client.get(_riderUri('payout/history'), headers: headers);
+        final response = await _client.get(_riderUri('wallet/payout-history'), headers: headers);
         return _unwrapList(
           response,
           'payout history',
@@ -222,7 +222,7 @@ class RiderPartnerService {
       forceRefresh: forceRefresh,
       fetch: () async {
         final headers = await _buildHeaders();
-        final response = await _client.get(_riderUri('payout/balance'), headers: headers);
+        final response = await _client.get(_riderUri('wallet/incentive-balance'), headers: headers);
         return IncentiveBalance.fromJson(_unwrap(response, 'incentive balance'));
       },
     );
@@ -242,7 +242,7 @@ class RiderPartnerService {
 
         final results = await Future.wait([
           _client.get(_riderUri('partner-profile'), headers: headers),
-          _safeGet(_riderUri('payout/balance'), headers),
+          _safeGet(_riderUri('wallet/incentive-balance'), headers),
           _safeGet(_riderUri('peak-hours/status'), headers),
         ]);
 

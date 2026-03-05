@@ -10,7 +10,7 @@
  */
 
 const cron = require('node-cron');
-const cache = require('../middleware/cache');
+const cache = require('../utils/cache');
 const { processWeeklyAutoPayouts } = require('../services/rider_payout_service');
 
 const JOB_LOCK_KEY = 'lock:weekly-payout';

@@ -68,6 +68,8 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
   WithdrawalPolicy? _withdrawalPolicy;
   bool _isLoadingData = true;
   bool _isProcessing = false;
+  bool _hasJustWithdrawn = false;
+  double _lastWithdrawnAmount = 0;
 
   // Selected method
   WithdrawalMethod _selectedMethod = WithdrawalMethod.mtnMobileMoney;
@@ -195,11 +197,12 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
       backgroundColor: Colors.transparent,
       isDismissible: !_isProcessing,
       enableDrag: !_isProcessing,
+      isScrollControlled: true,
       builder: (sheetCtx) => StatefulBuilder(
         builder: (sheetCtx, setSheetState) => PopScope(
           canPop: !_isProcessing,
           child: Container(
-            padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 32.h),
+            padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, MediaQuery.of(context).padding.bottom + 16.h),
             decoration: BoxDecoration(
               color: colors.backgroundPrimary,
               borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
@@ -216,40 +219,40 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
                     borderRadius: BorderRadius.circular(KBorderSize.borderRadius20),
                   ),
                 ),
-                SizedBox(height: 20.h),
+                SizedBox(height: 16.h),
 
                 // ── Shield icon ──
                 Container(
-                  width: 56.w,
-                  height: 56.w,
+                  width: 48.w,
+                  height: 48.w,
                   decoration: BoxDecoration(color: colors.accentGreen.withValues(alpha: 0.1), shape: BoxShape.circle),
                   child: Center(
                     child: SvgPicture.asset(
                       Assets.icons.shieldCheck,
                       package: 'grab_go_shared',
-                      width: 28.w,
-                      height: 28.w,
+                      width: 24.w,
+                      height: 24.w,
                       colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
                     ),
                   ),
                 ),
-                SizedBox(height: 16.h),
+                SizedBox(height: 12.h),
 
                 Text(
                   "Confirm Withdrawal",
-                  style: TextStyle(color: colors.textPrimary, fontSize: 20.sp, fontWeight: FontWeight.w700),
+                  style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w700),
                 ),
-                SizedBox(height: 6.h),
+                SizedBox(height: 4.h),
                 Text(
                   "Please review the details below before confirming.",
-                  style: TextStyle(color: colors.textSecondary, fontSize: 13.sp),
+                  style: TextStyle(color: colors.textSecondary, fontSize: 12.sp),
                   textAlign: TextAlign.center,
                 ),
-                SizedBox(height: 24.h),
+                SizedBox(height: 16.h),
 
                 // ── Summary ──
                 Container(
-                  padding: EdgeInsets.all(16.w),
+                  padding: EdgeInsets.all(14.w),
                   decoration: BoxDecoration(
                     color: colors.backgroundSecondary,
                     borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
@@ -257,88 +260,60 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
                   child: Column(
                     children: [
                       _buildSummaryRow("Amount", "GHC ${amount.toStringAsFixed(2)}", colors),
-                      SizedBox(height: 10.h),
+                      SizedBox(height: 8.h),
                       _buildSummaryRow("Method", _selectedMethod.shortLabel, colors),
-                      SizedBox(height: 10.h),
+                      SizedBox(height: 8.h),
                       _buildSummaryRow("Account", account, colors),
-                      SizedBox(height: 10.h),
+                      SizedBox(height: 8.h),
                       _buildSummaryRow(
                         "Fee",
                         _isFreeWithdrawal ? "FREE" : "GHC ${fee.toStringAsFixed(2)}",
                         colors,
                         valueColor: _isFreeWithdrawal ? colors.accentGreen : null,
                       ),
-                      SizedBox(height: 10.h),
+                      SizedBox(height: 8.h),
                       DottedLine(
                         direction: Axis.horizontal,
                         lineLength: double.infinity,
                         lineThickness: 1.4,
                         dashLength: 6,
                         dashGapLength: 4,
-                        dashColor: colors.inputBorder.withValues(alpha: 0.65),
+                        dashColor: colors.border,
                       ),
-                      SizedBox(height: 10.h),
+                      SizedBox(height: 8.h),
                       _buildSummaryRow("You'll Receive", "GHC ${net.toStringAsFixed(2)}", colors, isTotal: true),
                     ],
                   ),
                 ),
-                SizedBox(height: 24.h),
+                SizedBox(height: 20.h),
 
                 // ── Confirm button ──
-                SizedBox(
+                AppButton(
+                  onPressed: () => _isProcessing
+                      ? null
+                      : () {
+                          Navigator.of(sheetCtx).pop();
+                          _executeWithdrawal();
+                        }(),
+                  buttonText: 'Confirm & Withdraw',
+                  backgroundColor: colors.accentGreen,
                   width: double.infinity,
-                  height: 52.h,
-                  child: ElevatedButton(
-                    onPressed: _isProcessing
-                        ? null
-                        : () {
-                            Navigator.of(sheetCtx).pop();
-                            _executeWithdrawal();
-                          },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colors.accentGreen,
-                      disabledBackgroundColor: colors.accentGreen.withValues(alpha: 0.5),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.borderRadius4)),
-                    ),
-                    child: Text(
-                      "Confirm & Withdraw",
-                      style: TextStyle(
-                        fontFamily: "Lato",
-                        package: "grab_go_shared",
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
+                  borderRadius: KBorderSize.borderRadius4,
+                  height: 60.h,
+                  textStyle: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w700),
                 ),
-                SizedBox(height: 12.h),
+
+                SizedBox(height: 10.h),
 
                 // ── Cancel button ──
-                SizedBox(
+                AppButton(
+                  onPressed: () => _isProcessing ? null : Navigator.of(sheetCtx).pop(),
+                  buttonText: "Cancel",
                   width: double.infinity,
-                  height: 48.h,
-                  child: TextButton(
-                    onPressed: _isProcessing ? null : () => Navigator.of(sheetCtx).pop(),
-                    style: TextButton.styleFrom(
-                      foregroundColor: colors.textSecondary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-                        side: BorderSide(color: colors.border),
-                      ),
-                    ),
-                    child: Text(
-                      "Cancel",
-                      style: TextStyle(
-                        fontFamily: "Lato",
-                        package: "grab_go_shared",
-                        fontSize: 15.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
+                  backgroundColor: colors.backgroundSecondary,
+                  borderRadius: KBorderSize.borderRadius4,
+                  height: 56.h,
+                  textStyle: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
@@ -353,6 +328,12 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
 
     setState(() => _isProcessing = true);
 
+    LoadingDialog.instance().show(
+      context: context,
+      text: "Processing withdrawal...",
+      spinColor: context.appColors.accentGreen,
+    );
+
     try {
       await _walletService.requestWithdrawal(
         amount: _getEnteredAmount()!,
@@ -362,8 +343,21 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
 
       if (!mounted) return;
 
+      LoadingDialog.instance().hide();
+
       // Bust cached wallet data so wallet page refreshes
       RiderPartnerService.invalidateAll();
+
+      // Optimistically update local state so balance reflects the withdrawal
+      final withdrawnAmount = _getEnteredAmount()!;
+      setState(() {
+        _availableBalance = (_availableBalance - withdrawnAmount).clamp(0, double.infinity);
+        _pendingWithdrawals += withdrawnAmount;
+        _lastWithdrawnAmount = withdrawnAmount;
+        _hasJustWithdrawn = true;
+        _amountController.clear();
+        _accountController.clear();
+      });
 
       AppToastMessage.show(
         context: context,
@@ -375,6 +369,8 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
 
       context.pop(true);
     } catch (e) {
+      LoadingDialog.instance().hide();
+
       if (!mounted) return;
 
       final message = e.toString().replaceFirst('Exception: ', '');
@@ -633,118 +629,165 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
   Widget _buildContent(AppColorsExtension colors) {
     final validationError = _amountController.text.isNotEmpty ? _getValidationError() : null;
 
-    return SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Balance card ──
-          _buildBalanceCard(colors),
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Success banner (after withdrawal) ──
+                if (_hasJustWithdrawn) ...[_buildWithdrawalSuccessBanner(colors), SizedBox(height: 16.h)],
 
-          // ── Free withdrawals remaining badge ──
-          if (_withdrawalPolicy != null && _totalFreeQuota > 0) ...[
-            SizedBox(height: 12.h),
-            _buildFreeWithdrawalsBadge(colors),
-          ],
+                // ── Balance card ──
+                _buildBalanceCard(colors),
 
-          SizedBox(height: 24.h),
+                // ── Free withdrawals remaining badge ──
+                if (_withdrawalPolicy != null && _totalFreeQuota > 0) ...[
+                  SizedBox(height: 12.h),
+                  _buildFreeWithdrawalsBadge(colors),
+                ],
 
-          // ── Withdrawal method ──
-          _buildSectionHeader("WITHDRAWAL METHOD", colors),
-          SizedBox(height: 12.h),
-          _buildMethodCard(colors),
+                SizedBox(height: 24.h),
 
-          SizedBox(height: 24.h),
+                // ── Withdrawal method ──
+                _buildSectionHeader("WITHDRAWAL METHOD", colors),
+                SizedBox(height: 12.h),
+                _buildMethodCard(colors),
 
-          // ── Account details ──
-          _buildSectionHeader("ACCOUNT DETAILS", colors),
-          SizedBox(height: 12.h),
-          _buildAccountInput(colors),
+                SizedBox(height: 24.h),
 
-          SizedBox(height: 24.h),
+                // ── Account details ──
+                _buildSectionHeader("ACCOUNT DETAILS", colors),
+                SizedBox(height: 12.h),
+                _buildAccountInput(colors),
 
-          // ── Amount ──
-          _buildSectionHeader("WITHDRAWAL AMOUNT", colors),
-          SizedBox(height: 12.h),
-          _buildAmountInput(colors),
+                SizedBox(height: 24.h),
 
-          // ── Validation error ──
-          if (validationError != null) ...[SizedBox(height: 12.h), _buildValidationError(validationError, colors)],
+                // ── Amount ──
+                _buildSectionHeader("WITHDRAWAL AMOUNT", colors),
+                SizedBox(height: 12.h),
+                _buildAmountInput(colors),
 
-          SizedBox(height: 24.h),
+                // ── Validation error ──
+                if (validationError != null) ...[
+                  SizedBox(height: 12.h),
+                  _buildValidationError(validationError, colors),
+                ],
 
-          // ── Summary ──
-          if (_isValidAmount()) ...[_buildSummaryCard(colors), SizedBox(height: 24.h)],
+                SizedBox(height: 24.h),
 
-          // ── Info notes ──
-          _buildSectionHeader("GOOD TO KNOW", colors),
-          SizedBox(height: 16.h),
-          _buildInfoCard(
-            colors: colors,
-            icon: Assets.icons.clock,
-            iconColor: colors.accentGreen,
-            title: "Processing Time",
-            description:
-                "Instant withdrawals are processed immediately. Bank transfers may take 1\u20133 business days.",
-          ),
-          SizedBox(height: 12.h),
-          _buildInfoCard(
-            colors: colors,
-            icon: Assets.icons.infoCircle,
-            iconColor: colors.accentGreen,
-            title: "Withdrawal Fee",
-            description: _isFreeWithdrawal
-                ? "This withdrawal is free! You have $_freeWithdrawalsRemaining of $_totalFreeQuota free withdrawals left this week."
-                : "A fee of GHC ${_withdrawalFee.toStringAsFixed(2)} applies. Upgrade your partner level for free withdrawals.",
-          ),
-          SizedBox(height: 12.h),
-          _buildInfoCard(
-            colors: colors,
-            icon: Assets.icons.shieldCheck,
-            iconColor: colors.accentGreen,
-            title: "Secure Transaction",
-            description: "Your withdrawal is secured with bank-level encryption.",
-          ),
+                // ── Summary ──
+                if (_isValidAmount()) ...[_buildSummaryCard(colors), SizedBox(height: 24.h)],
 
-          SizedBox(height: 32.h),
+                // ── Info notes ──
+                _buildSectionHeader("GOOD TO KNOW", colors),
+                SizedBox(height: 16.h),
+                _buildInfoCard(
+                  colors: colors,
+                  icon: Assets.icons.clock,
+                  iconColor: colors.accentGreen,
+                  title: "Processing Time",
+                  description:
+                      "Instant withdrawals are processed immediately. Bank transfers may take 1\u20133 business days.",
+                ),
+                SizedBox(height: 12.h),
+                _buildInfoCard(
+                  colors: colors,
+                  icon: Assets.icons.infoCircle,
+                  iconColor: colors.accentGreen,
+                  title: "Withdrawal Fee",
+                  description: _isFreeWithdrawal
+                      ? "This withdrawal is free! You have $_freeWithdrawalsRemaining of $_totalFreeQuota free withdrawals left this week."
+                      : "A fee of GHC ${_withdrawalFee.toStringAsFixed(2)} applies. Upgrade your partner level for free withdrawals.",
+                ),
+                SizedBox(height: 12.h),
+                _buildInfoCard(
+                  colors: colors,
+                  icon: Assets.icons.shieldCheck,
+                  iconColor: colors.accentGreen,
+                  title: "Secure Transaction",
+                  description: "Your withdrawal is secured with bank-level encryption.",
+                ),
 
-          // ── Submit button ──
-          SizedBox(
-            width: double.infinity,
-            height: 56.h,
-            child: ElevatedButton(
-              onPressed: _isValidAmount() && _hasValidAccount && !_isProcessing ? _showConfirmationSheet : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colors.accentGreen,
-                disabledBackgroundColor: colors.accentGreen.withValues(alpha: 0.5),
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.borderRadius4)),
-              ),
-              child: _isProcessing
-                  ? SizedBox(
-                      width: 24.w,
-                      height: 24.w,
-                      child: const CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : Text(
-                      "Request Withdrawal",
-                      style: TextStyle(
-                        fontFamily: "Lato",
-                        package: "grab_go_shared",
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
+                SizedBox(height: 16.h),
+              ],
             ),
           ),
+        ),
 
-          SizedBox(height: 16.h),
+        // ── Sticky bottom button ──
+        Container(
+          padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, MediaQuery.of(context).padding.bottom + 16.h),
+          decoration: BoxDecoration(
+            color: colors.backgroundPrimary,
+            boxShadow: [
+              BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, -2)),
+            ],
+          ),
+          child: AppButton(
+            onPressed: () => _isValidAmount() && _hasValidAccount && !_isProcessing && !_hasJustWithdrawn
+                ? _showConfirmationSheet()
+                : null,
+            buttonText: _hasJustWithdrawn ? "Withdrawal Submitted ✓" : "Request Withdrawal",
+            backgroundColor: colors.accentGreen,
+            width: double.infinity,
+            borderRadius: KBorderSize.borderRadius4,
+            height: 60.h,
+            textStyle: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w700),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  WITHDRAWAL SUCCESS BANNER
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildWithdrawalSuccessBanner(AppColorsExtension colors) {
+    return Container(
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: colors.accentGreen.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+        border: Border.all(color: colors.accentGreen.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40.w,
+            height: 40.w,
+            decoration: BoxDecoration(color: colors.accentGreen.withValues(alpha: 0.15), shape: BoxShape.circle),
+            child: Center(
+              child: SvgPicture.asset(
+                Assets.icons.shieldCheck,
+                package: 'grab_go_shared',
+                width: 20.w,
+                height: 20.w,
+                colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+              ),
+            ),
+          ),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Withdrawal Submitted",
+                  style: TextStyle(color: colors.accentGreen, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                ),
+                SizedBox(height: 2.h),
+                Text(
+                  "GHC ${_lastWithdrawnAmount.toStringAsFixed(2)} is being processed.",
+                  style: TextStyle(color: colors.textSecondary, fontSize: 12.sp),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -1261,7 +1304,7 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
           value,
           style: TextStyle(
             color: valueColor ?? (isTotal ? colors.accentGreen : colors.textPrimary),
-            fontSize: isTotal ? 18.sp : 16.sp,
+            fontSize: isTotal ? 18.sp : 14.sp,
             fontWeight: FontWeight.w700,
           ),
         ),

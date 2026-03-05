@@ -1,5 +1,5 @@
 const cron = require('node-cron');
-const cache = require('../middleware/cache');
+const cache = require('../utils/cache');
 const featureFlags = require('../config/feature_flags');
 const { approvePendingIncentives, closeExpiredBudgetWindows } = require('../services/rider_budget_service');
 const { expireStaleQuests } = require('../services/rider_quest_engine');

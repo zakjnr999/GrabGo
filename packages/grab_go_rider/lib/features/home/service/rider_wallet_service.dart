@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:grab_go_rider/features/home/models/transaction_model.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
+import 'package:grab_go_shared/shared/services/device_id_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 
