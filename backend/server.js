@@ -735,6 +735,7 @@ app.use(
 );
 // Raw parser for payment webhook signature verification.
 app.use("/api/payments/webhooks/paystack", express.raw({ type: "application/json" }));
+app.use("/api/subscriptions/webhook", express.raw({ type: "application/json" }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use("/api", apiGlobalRateLimit);
@@ -770,6 +771,7 @@ app.use("/api/parcel", require("./routes/parcel"));
 app.use("/api/test", require("./routes/test"));
 app.use("/api/tracking", require("./routes/tracking_routes"));
 app.use("/api/credits", require("./routes/credits"));
+app.use("/api/subscriptions", require("./routes/subscriptions"));
 app.use("/api/addresses", require("./routes/address"));
 app.use('/api/calls', callRoutes);
 

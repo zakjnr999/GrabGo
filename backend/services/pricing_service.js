@@ -1,6 +1,7 @@
 const axios = require('axios');
 const prisma = require('../config/prisma');
 const creditService = require('./credit_service');
+const subscriptionService = require('./subscription_service');
 const { calculateDistance, estimateDeliveryTime } = require('../utils/distance');
 
 const toNumber = (value, fallback = 0) => {
@@ -387,7 +388,31 @@ const calculateCartPricing = async (cart, options = {}) => {
     const rainFee = resolvedFulfillmentMode === 'pickup'
         ? 0
         : await getRainFee({ deliveryLocation: resolvedDeliveryLocation, vendorLocation });
-    const totalBeforeCredits = calculateTotal({ subtotal, deliveryFee, serviceFee, tax, rainFee });
+
+    // ── GrabGo Pro Subscription Benefits ──
+    let subscriptionDeliveryDiscount = 0;
+    let subscriptionServiceFeeDiscount = 0;
+    let subscriptionTier = null;
+    let subscriptionId = null;
+
+    if (userId) {
+        const subBenefits = await subscriptionService.calculateSubscriptionBenefits(userId, {
+            subtotal,
+            deliveryFee,
+            serviceFee,
+        });
+        if (subBenefits) {
+            subscriptionDeliveryDiscount = subBenefits.deliveryDiscount;
+            subscriptionServiceFeeDiscount = subBenefits.serviceFeeDiscount;
+            subscriptionTier = subBenefits.tier;
+            subscriptionId = subBenefits.subscriptionId;
+        }
+    }
+
+    const effectiveDeliveryFee = roundCurrency(Math.max(0, deliveryFee - subscriptionDeliveryDiscount));
+    const effectiveServiceFee = roundCurrency(Math.max(0, serviceFee - subscriptionServiceFeeDiscount));
+
+    const totalBeforeCredits = calculateTotal({ subtotal, deliveryFee: effectiveDeliveryFee, serviceFee: effectiveServiceFee, tax, rainFee });
     const itemCount = cart.items.reduce((sum, item) => sum + toNumber(item.quantity, 0), 0);
     const estimatedDelivery = calculateEstimatedDeliveryWindow({
         distanceKm,
@@ -413,8 +438,8 @@ const calculateCartPricing = async (cart, options = {}) => {
 
     return {
         subtotal,
-        deliveryFee,
-        serviceFee,
+        deliveryFee: effectiveDeliveryFee,
+        serviceFee: effectiveServiceFee,
         tax,
         rainFee,
         total: totalAfterCredits,
@@ -425,7 +450,14 @@ const calculateCartPricing = async (cart, options = {}) => {
         creditsApplied,
         totalAfterCredits,
         creditBalance,
-        availableBalance
+        availableBalance,
+        // GrabGo Pro subscription discounts
+        subscriptionTier,
+        subscriptionId,
+        subscriptionDeliveryDiscount,
+        subscriptionServiceFeeDiscount,
+        originalDeliveryFee: deliveryFee,
+        originalServiceFee: serviceFee,
     };
 };
 

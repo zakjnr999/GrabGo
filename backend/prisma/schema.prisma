@@ -486,6 +486,9 @@ model User {
   loans                RiderLoan[]
   loanRepayments       RiderLoanRepayment[]
 
+  // GrabGo Pro Subscription
+  subscriptions Subscription[]
+
   @@index([email])
   @@index([role])
   @@map("users")
@@ -2675,4 +2678,68 @@ enum LoanStatus {
   completed // Fully repaid
   rejected // Application denied
   defaulted // Missed too many payments
+}
+
+enum SubscriptionTier {
+  grabgo_plus
+  grabgo_premium
+}
+
+enum SubscriptionStatus {
+  active
+  cancelled
+  expired
+  past_due
+}
+
+enum SubscriptionPaymentStatus {
+  success
+  failed
+  pending
+}
+
+// ==================== SUBSCRIPTION MODELS ====================
+
+model Subscription {
+  id                       String             @id @default(cuid())
+  userId                   String
+  tier                     SubscriptionTier
+  status                   SubscriptionStatus @default(active)
+  paystackSubscriptionCode String?            @unique
+  paystackCustomerCode     String?
+  paystackEmailToken       String? // Paystack email token for subscription management
+  currentPeriodStart       DateTime
+  currentPeriodEnd         DateTime
+  cancelledAt              DateTime?
+  cancelReason             String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments SubscriptionPayment[]
+
+  @@index([userId, status])
+  @@index([status, currentPeriodEnd])
+  @@index([paystackSubscriptionCode])
+  @@map("subscriptions")
+}
+
+model SubscriptionPayment {
+  id                String                    @id @default(cuid())
+  subscriptionId    String
+  amount            Float
+  currency          String                    @default("GHS")
+  paystackReference String?                   @unique
+  status            SubscriptionPaymentStatus @default(pending)
+  paidAt            DateTime?
+  failureReason     String?
+
+  createdAt DateTime @default(now())
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId])
+  @@index([paystackReference])
+  @@map("subscription_payments")
 }

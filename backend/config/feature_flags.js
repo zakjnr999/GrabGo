@@ -74,6 +74,9 @@ module.exports = {
   isVehicleRadiusEnabled: parseFlag('VEHICLE_RADIUS_ENABLED', true),
   isVehicleRadiusHardBlock: parseFlag('VEHICLE_RADIUS_HARD_BLOCK', false),
 
+  // ── GrabGo Pro Subscriptions ──
+  isSubscriptionEnabled: parseFlag('SUBSCRIPTION_ENABLED', false),
+
   // ── Rider Partner & Incentive System ──
   isRiderPartnerSystemEnabled: parseFlag('RIDER_PARTNER_SYSTEM_ENABLED', false),
   isRiderPartnerShadowMode: parseFlag('RIDER_PARTNER_SHADOW_MODE', true),

@@ -9,6 +9,7 @@ import 'package:grab_go_rider/features/chat/view/chat_detail_page.dart';
 import 'package:grab_go_rider/features/orders/service/available_orders_service.dart';
 import 'package:grab_go_rider/features/orders/viewmodel/rider_tracking_provider.dart';
 import 'package:grab_go_rider/features/orders/widgets/cancel_order_dialog.dart';
+import 'package:grab_go_rider/features/orders/widgets/external_navigation_helper.dart';
 import 'package:grab_go_rider/features/orders/widgets/photo_proof_capture.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -286,6 +287,34 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
     });
   }
 
+  void _launchNavigation() {
+    final isPickup = _currentPhase == "pickup";
+
+    final double? lat = isPickup ? widget.pickupLatitude : widget.destinationLatitude;
+    final double? lng = isPickup ? widget.pickupLongitude : widget.destinationLongitude;
+    final String name = isPickup ? widget.restaurantName : widget.customerName;
+
+    if (lat == null || lng == null) {
+      final colors = context.appColors;
+      AppToastMessage.show(
+        context: context,
+        showIcon: false,
+        backgroundColor: colors.error,
+        maxLines: 2,
+        radius: KBorderSize.borderRadius4,
+        message: 'Navigation coordinates not available',
+      );
+      return;
+    }
+
+    ExternalNavigationHelper.showNavigationOptions(
+      context: context,
+      destinationLat: lat,
+      destinationLng: lng,
+      destinationName: name,
+    );
+  }
+
   Future<void> _refreshTrackingData(AppColorsExtension colors) async {
     final trackingProvider = context.read<RiderTrackingProvider>();
     final refreshed = await _runWithLoadingDialog(
@@ -521,30 +550,33 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage> {
                     isDark: isDark,
                   ),
                   SizedBox(height: 10.h),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-                    decoration: BoxDecoration(color: colors.accentGreen, borderRadius: BorderRadius.circular(999.r)),
-                    child: Row(
-                      children: [
-                        SvgPicture.asset(
-                          Assets.icons.sendDiagonal,
-                          package: 'grab_go_shared',
-                          width: 16.w,
-                          height: 16.h,
-                          colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                        ),
-                        SizedBox(width: 6.w),
-
-                        Text(
-                          "Navigate",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 11.sp,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.4,
+                  GestureDetector(
+                    onTap: () => _launchNavigation(),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                      decoration: BoxDecoration(color: colors.accentGreen, borderRadius: BorderRadius.circular(999.r)),
+                      child: Row(
+                        children: [
+                          SvgPicture.asset(
+                            Assets.icons.sendDiagonal,
+                            package: 'grab_go_shared',
+                            width: 16.w,
+                            height: 16.h,
+                            colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
                           ),
-                        ),
-                      ],
+                          SizedBox(width: 6.w),
+
+                          Text(
+                            "Navigate",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11.sp,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
