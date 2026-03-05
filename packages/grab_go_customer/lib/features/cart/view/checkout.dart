@@ -482,6 +482,7 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
               final double creditsApplied = _effectiveCreditsAppliedForCheckout(provider, isPickupMode: isPickupMode);
               final double effectiveTip = isPickupMode ? 0.0 : _tipAmount;
               final double total = _checkoutGrandTotal(provider, isPickupMode: isPickupMode);
+              final double subscriptionSavings = provider.subscriptionTotalDiscount;
               final bool isCashOnDelivery = !isMixedCheckout && _isCashOnDeliverySelected(isPickupMode: isPickupMode);
               final double payableNowAmount = isCashOnDelivery
                   ? _codUpfrontAmountForCheckout(provider, isPickupMode: isPickupMode)
@@ -920,6 +921,17 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                                           false,
                                           true,
                                           infoType: _FeeInfoType.rain,
+                                        ),
+                                      ],
+                                      if (!isPickupMode && subscriptionSavings > 0) ...[
+                                        SizedBox(height: 6.h),
+                                        _buildPriceRow(
+                                          context,
+                                          "GrabGo Pro Savings",
+                                          -subscriptionSavings,
+                                          colors,
+                                          false,
+                                          false,
                                         ),
                                       ],
                                       if (creditsApplied > 0) ...[
@@ -1861,6 +1873,7 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     final double creditsApplied = _effectiveCreditsAppliedForCheckout(provider, isPickupMode: isPickupMode);
     final double effectiveTip = isPickupMode ? 0.0 : _tipAmount;
     final double total = _checkoutGrandTotal(provider, isPickupMode: isPickupMode);
+    final double subscriptionSavings = provider.subscriptionTotalDiscount;
     final bool isCashOnDelivery = !isMixedCheckout && _isCashOnDeliverySelected(isPickupMode: isPickupMode);
     final double codUpfrontAmount = _codUpfrontAmountForCheckout(provider, isPickupMode: isPickupMode);
     final double codRemainingAmount = _codRemainingAmountForCheckout(provider, isPickupMode: isPickupMode);
@@ -1932,6 +1945,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                 if (!isPickupMode && rainFee > 0) ...[
                   SizedBox(height: 6.h),
                   _buildSummaryRow("Rain Fee", rainFee, colors),
+                ],
+                if (!isPickupMode && subscriptionSavings > 0) ...[
+                  SizedBox(height: 6.h),
+                  _buildSummaryRow("GrabGo Pro Savings", -subscriptionSavings, colors),
                 ],
                 if (creditsApplied > 0) ...[
                   SizedBox(height: 6.h),
