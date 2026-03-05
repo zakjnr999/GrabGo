@@ -9,7 +9,6 @@ import 'package:grab_go_rider/features/home/service/rider_partner_service.dart';
 import 'package:grab_go_rider/features/home/service/rider_wallet_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
-import 'package:shimmer/shimmer.dart';
 
 // ─── Withdrawal method model ───
 enum WithdrawalMethod { mtnMobileMoney, vodafoneCash, bankAccount }
@@ -617,7 +616,7 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
           ),
           centerTitle: true,
         ),
-        body: _isLoadingData ? _buildSkeleton(colors, isDark) : _buildContent(colors),
+        body: _buildContent(colors),
       ),
     );
   }
@@ -645,7 +644,7 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
                 _buildBalanceCard(colors),
 
                 // ── Free withdrawals remaining badge ──
-                if (_withdrawalPolicy != null && _totalFreeQuota > 0) ...[
+                if (!_isLoadingData && _withdrawalPolicy != null && _totalFreeQuota > 0) ...[
                   SizedBox(height: 12.h),
                   _buildFreeWithdrawalsBadge(colors),
                 ],
@@ -699,7 +698,9 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
                   icon: Assets.icons.infoCircle,
                   iconColor: colors.accentGreen,
                   title: "Withdrawal Fee",
-                  description: _isFreeWithdrawal
+                  description: _isLoadingData
+                      ? "Loading fee details..."
+                      : _isFreeWithdrawal
                       ? "This withdrawal is free! You have $_freeWithdrawalsRemaining of $_totalFreeQuota free withdrawals left this week."
                       : "A fee of GHC ${_withdrawalFee.toStringAsFixed(2)} applies. Upgrade your partner level for free withdrawals.",
                 ),
@@ -728,7 +729,8 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
             ],
           ),
           child: AppButton(
-            onPressed: () => _isValidAmount() && _hasValidAccount && !_isProcessing && !_hasJustWithdrawn
+            onPressed: () =>
+                !_isLoadingData && _isValidAmount() && _hasValidAccount && !_isProcessing && !_hasJustWithdrawn
                 ? _showConfirmationSheet()
                 : null,
             buttonText: _hasJustWithdrawn ? "Withdrawal Submitted ✓" : "Request Withdrawal",
@@ -832,7 +834,7 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
               SizedBox(width: 8.w),
               Expanded(
                 child: Text(
-                  _availableBalance.toStringAsFixed(2),
+                  _isLoadingData ? '...' : _availableBalance.toStringAsFixed(2),
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 40.sp,
@@ -844,7 +846,7 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
               ),
             ],
           ),
-          if (_pendingWithdrawals > 0) ...[
+          if (!_isLoadingData && _pendingWithdrawals > 0) ...[
             SizedBox(height: 12.h),
             Row(
               children: [
@@ -1182,63 +1184,6 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
           SizedBox(height: 12.h),
           _buildSummaryRow("You'll Receive", "GHC ${net.toStringAsFixed(2)}", colors, isTotal: true),
         ],
-      ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  SKELETON
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  Widget _buildSkeleton(AppColorsExtension colors, bool isDark) {
-    return Shimmer.fromColors(
-      baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-      highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
-      child: SingleChildScrollView(
-        physics: const NeverScrollableScrollPhysics(),
-        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              height: 120.h,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-              ),
-            ),
-            SizedBox(height: 24.h),
-            Container(height: 14.h, width: 160.w, color: Colors.white),
-            SizedBox(height: 12.h),
-            Container(
-              height: 80.h,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-              ),
-            ),
-            SizedBox(height: 24.h),
-            Container(height: 14.h, width: 140.w, color: Colors.white),
-            SizedBox(height: 12.h),
-            Container(
-              height: 80.h,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-              ),
-            ),
-            SizedBox(height: 24.h),
-            Container(height: 14.h, width: 180.w, color: Colors.white),
-            SizedBox(height: 12.h),
-            Container(
-              height: 120.h,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

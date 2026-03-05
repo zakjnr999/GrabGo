@@ -148,92 +148,39 @@ class _LoanApplicationState extends State<LoanApplication> {
                     ),
                   ),
                   SliverToBoxAdapter(
-                    child: _isLoading
-                        ? Padding(
-                            padding: EdgeInsets.all(60.w),
-                            child: Center(
-                              child: SizedBox(
-                                width: 28.w,
-                                height: 28.w,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  valueColor: AlwaysStoppedAnimation<Color>(colors.accentGreen),
-                                ),
-                              ),
-                            ),
-                          )
-                        : _error != null
-                        ? Padding(
-                            padding: EdgeInsets.all(40.w),
-                            child: Column(
-                              children: [
-                                Text(
-                                  _error!,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(color: colors.error, fontSize: 14.sp),
-                                ),
-                                SizedBox(height: 16.h),
-                                AppButton(
-                                  onPressed: _loadEligibility,
-                                  buttonText: "Retry",
-                                  backgroundColor: colors.accentGreen,
-                                  borderRadius: KBorderSize.borderRadius4,
-                                  width: 120.w,
-                                  height: 40.h,
-                                  textStyle: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14.sp,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : Padding(
-                            padding: EdgeInsets.all(20.w),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildEligibilityCard(colors),
-                                SizedBox(height: 24.h),
-                                Text(
-                                  "How much do you need?",
-                                  style: TextStyle(
-                                    color: colors.textPrimary,
-                                    fontSize: 16.sp,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                SizedBox(height: 16.h),
-                                _buildAmountSelector(colors),
-                                SizedBox(height: 24.h),
-                                Text(
-                                  "What is it for?",
-                                  style: TextStyle(
-                                    color: colors.textPrimary,
-                                    fontSize: 16.sp,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                SizedBox(height: 12.h),
-                                _buildPurposeSelector(colors),
-                                SizedBox(height: 24.h),
-                                Text(
-                                  "Repayment Term",
-                                  style: TextStyle(
-                                    color: colors.textPrimary,
-                                    fontSize: 16.sp,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                SizedBox(height: 12.h),
-                                _buildTermSelector(colors),
-                                SizedBox(height: 24.h),
-                                _buildRepaymentSummary(colors),
-                                SizedBox(height: 24.h),
-                              ],
-                            ),
+                    child: Padding(
+                      padding: EdgeInsets.all(20.w),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildEligibilityCard(colors),
+                          SizedBox(height: 24.h),
+                          Text(
+                            "How much do you need?",
+                            style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w700),
                           ),
+                          SizedBox(height: 16.h),
+                          _buildAmountSelector(colors),
+                          SizedBox(height: 24.h),
+                          Text(
+                            "What is it for?",
+                            style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w700),
+                          ),
+                          SizedBox(height: 12.h),
+                          _buildPurposeSelector(colors),
+                          SizedBox(height: 24.h),
+                          Text(
+                            "Repayment Term",
+                            style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w700),
+                          ),
+                          SizedBox(height: 12.h),
+                          _buildTermSelector(colors),
+                          SizedBox(height: 24.h),
+                          _buildRepaymentSummary(colors),
+                          SizedBox(height: 24.h),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -256,12 +203,24 @@ class _LoanApplicationState extends State<LoanApplication> {
 
   Widget _buildEligibilityCard(AppColorsExtension colors) {
     final isEligible = _eligibility?.eligible ?? false;
-    final rating = _eligibility?.averageRating ?? 0;
-    final cardColor = isEligible ? colors.accentGreen : colors.warning;
+    final cardColor = _isLoading
+        ? colors.textSecondary
+        : _error != null
+        ? colors.error
+        : isEligible
+        ? colors.accentGreen
+        : colors.warning;
 
     String title;
     String subtitle;
-    if (isEligible) {
+    if (_isLoading) {
+      title = 'Checking eligibility...';
+      subtitle = 'Loading your partner level and loan policy...';
+    } else if (_error != null) {
+      title = 'Could not load';
+      subtitle = _error!;
+    } else if (isEligible) {
+      final rating = _eligibility?.averageRating ?? 0;
       title = 'Eligible for Loan';
       subtitle =
           'Based on your ${rating.toStringAsFixed(1)}★ rating & ${_eligibility?.partnerLevel ?? 'L1'} partner level, '
@@ -323,7 +282,7 @@ class _LoanApplicationState extends State<LoanApplication> {
       child: Column(
         children: [
           Text(
-            "GHC ${_amount.toInt()}",
+            _isLoading ? "GHC ..." : "GHC ${_amount.toInt()}",
             style: TextStyle(color: colors.accentGreen, fontSize: 36.sp, fontWeight: FontWeight.w900, letterSpacing: 1),
           ),
           SizedBox(height: 20.h),
@@ -346,7 +305,7 @@ class _LoanApplicationState extends State<LoanApplication> {
               min: _minAmount,
               max: _maxAmount,
               divisions: ((_maxAmount - _minAmount) / 50).round().clamp(1, 100),
-              onChanged: (_eligibility?.eligible ?? false)
+              onChanged: (!_isLoading && (_eligibility?.eligible ?? false))
                   ? (value) {
                       HapticFeedback.selectionClick();
                       setState(() {
@@ -361,11 +320,11 @@ class _LoanApplicationState extends State<LoanApplication> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "GHC ${_minAmount.toStringAsFixed(0)}",
+                _isLoading ? "GHC ..." : "GHC ${_minAmount.toStringAsFixed(0)}",
                 style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w600),
               ),
               Text(
-                "GHC ${_maxAmount.toStringAsFixed(0)}",
+                _isLoading ? "GHC ..." : "GHC ${_maxAmount.toStringAsFixed(0)}",
                 style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w600),
               ),
             ],
@@ -461,7 +420,7 @@ class _LoanApplicationState extends State<LoanApplication> {
                 style: TextStyle(color: colors.textSecondary, fontSize: 14.sp),
               ),
               Text(
-                "GHC ${_totalRepayment.toStringAsFixed(2)}",
+                _isLoading ? "GHC ..." : "GHC ${_totalRepayment.toStringAsFixed(2)}",
                 style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w700),
               ),
             ],
@@ -475,7 +434,7 @@ class _LoanApplicationState extends State<LoanApplication> {
                 style: TextStyle(color: colors.textSecondary, fontSize: 14.sp),
               ),
               Text(
-                "GHC ${_dailyDeduction.toStringAsFixed(2)}",
+                _isLoading ? "GHC ..." : "GHC ${_dailyDeduction.toStringAsFixed(2)}",
                 style: TextStyle(color: colors.accentGreen, fontSize: 18.sp, fontWeight: FontWeight.w800),
               ),
             ],
@@ -506,7 +465,7 @@ class _LoanApplicationState extends State<LoanApplication> {
   }
 
   Widget _buildSubmitButton(AppColorsExtension colors) {
-    final isDisabled = !(_eligibility?.eligible ?? false) || _isSubmitting;
+    final isDisabled = _isLoading || _error != null || !(_eligibility?.eligible ?? false) || _isSubmitting;
     return SizedBox(
       width: double.infinity,
       height: 56.h,

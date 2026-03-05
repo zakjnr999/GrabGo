@@ -44,11 +44,11 @@ const getLoanEligibility = async (riderId) => {
   // Get rider stats
   const rider = await prisma.rider.findFirst({
     where: { userId: riderId },
-    select: { totalDeliveries: true, averageRating: true },
+    select: { totalDeliveries: true, rating: true },
   });
 
   const totalDeliveries = rider?.totalDeliveries || 0;
-  const averageRating = rider?.averageRating || 0;
+  const averageRating = rider?.rating || 0;
 
   // Build rejection reasons
   const reasons = [];
