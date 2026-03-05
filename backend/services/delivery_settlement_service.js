@@ -3,6 +3,7 @@ const featureFlags = require('../config/feature_flags');
 const { recordDeliveryAnalytics } = require('./delivery_analytics_service');
 const { syncRiderMetricsOnDelivery, incrementRiderDeliveryCount } = require('./rider_metrics_sync_service');
 const { processDeliveryIncentives } = require('./rider_incentive_orchestrator');
+const { settleVendorInTransaction } = require('./vendor_settlement_service');
 
 /**
  * Unified delivery settlement handler.
@@ -11,9 +12,10 @@ const { processDeliveryIncentives } = require('./rider_incentive_orchestrator');
  * status transition. Handles:
  *
  * 1. Credit rider wallet with locked riderEarnings (not deliveryFee)
- * 2. Record delivery analytics for score engine
- * 3. Sync RiderStatus.metrics for dispatch freshness
- * 4. Increment rider delivery count
+ * 2. Settle vendor commission & credit vendor wallet
+ * 3. Record delivery analytics for score engine
+ * 4. Sync RiderStatus.metrics for dispatch freshness
+ * 5. Increment rider delivery count
  *
  * This function is called from within a Prisma transaction for the wallet
  * credit, and fires non-blocking side-effects for analytics and metrics.
@@ -23,7 +25,7 @@ const { processDeliveryIncentives } = require('./rider_incentive_orchestrator');
  * @param {Object} params.order           - The order being delivered
  * @param {string} params.riderId         - Rider's user ID
  * @param {string} [params.orderType]     - 'food' | 'grocery' | 'pharmacy' | 'grabmart'
- * @returns {Object} { creditAmount, riderEarnings, deliveryFee, walletCredited }
+ * @returns {Object} { creditAmount, riderEarnings, deliveryFee, walletCredited, vendorSettlement }
  */
 const settleDeliveryInTransaction = async ({ tx, order, riderId, orderType }) => {
   // ---- 1. Determine correct earnings amount ----
@@ -95,7 +97,15 @@ const settleDeliveryInTransaction = async ({ tx, order, riderId, orderType }) =>
     }
   }
 
-  return { creditAmount, riderEarnings, deliveryFee, walletCredited };
+  // ---- 2. Settle vendor commission & payout ----
+  let vendorSettlement = { vendorId: null, vendorCommission: 0, vendorPayout: 0, settled: false };
+  try {
+    vendorSettlement = await settleVendorInTransaction({ tx, order });
+  } catch (vendorErr) {
+    console.error(`[DeliverySettlement] Vendor settlement failed for order=${order.id}:`, vendorErr.message);
+  }
+
+  return { creditAmount, riderEarnings, deliveryFee, walletCredited, vendorSettlement };
 };
 
 /**

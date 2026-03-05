@@ -174,8 +174,7 @@ class _BonusesPageState extends State<BonusesPage> {
                   // Tab content
                   Expanded(
                     child: _selectedTab == 0
-                        ? // Active tab — active quests + streak card
-                          _activeQuests.isEmpty && _streaks == null
+                        ? _activeQuests.isEmpty && _streaks == null
                               ? _buildEmptyState(
                                   "No active quests",
                                   "Check back later for new quest opportunities!",
@@ -189,7 +188,6 @@ class _BonusesPageState extends State<BonusesPage> {
                                     physics: const AlwaysScrollableScrollPhysics(),
                                     padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
                                     children: [
-                                      // Streak card (always visible in active tab)
                                       if (_streaks != null && _streaks!.currentStreak > 0) ...[
                                         _buildStreakCard(colors),
                                         SizedBox(height: 16.h),
@@ -228,10 +226,6 @@ class _BonusesPageState extends State<BonusesPage> {
       ),
     );
   }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  TAB FILTER
-  // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildTabFilter(String label, int index, AppColorsExtension colors) {
     final isSelected = _selectedTab == index;
@@ -353,10 +347,6 @@ class _BonusesPageState extends State<BonusesPage> {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  STREAK CARD
-  // ═══════════════════════════════════════════════════════════════════════════
-
   Widget _buildStreakCard(AppColorsExtension colors) {
     final streak = _streaks!;
 
@@ -476,10 +466,6 @@ class _BonusesPageState extends State<BonusesPage> {
       ),
     );
   }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  QUEST CARD
-  // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildQuestCard(QuestProgress quest, AppColorsExtension colors, {required bool isActive}) {
     return Container(
@@ -656,10 +642,6 @@ class _BonusesPageState extends State<BonusesPage> {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  EMPTY STATE
-  // ═══════════════════════════════════════════════════════════════════════════
-
   Widget _buildEmptyState(String title, String message, AppColorsExtension colors) {
     return Center(
       child: Padding(
@@ -694,10 +676,6 @@ class _BonusesPageState extends State<BonusesPage> {
       ),
     );
   }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  SKELETON / SHIMMER
-  // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildSkeletonBody(AppColorsExtension colors, bool isDark) {
     return Shimmer.fromColors(

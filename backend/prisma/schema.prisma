@@ -729,6 +729,9 @@ model Restaurant {
   timezone       String   @default("Africa/Accra")
   utcOffset      Int      @default(0)
 
+  // Commission & Financials
+  commissionRate Float @default(0) // Platform commission (0 = no commission, 0.15 = 15%)
+
   // Stats
   totalOrders          Int   @default(0)
   totalCancelledOrders Int   @default(0)
@@ -887,6 +890,9 @@ model GroceryStore {
   whatsappNumber String?
   timezone       String   @default("Africa/Accra")
   utcOffset      Int      @default(0)
+
+  // Commission & Financials
+  commissionRate Float @default(0) // Platform commission (0 = no commission, 0.15 = 15%)
 
   // Stats
   totalOrders          Int   @default(0)
@@ -1056,6 +1062,9 @@ model PharmacyStore {
   whatsappNumber String?
   timezone       String   @default("Africa/Accra")
   utcOffset      Int      @default(0)
+
+  // Commission & Financials
+  commissionRate Float @default(0) // Platform commission (0 = no commission, 0.15 = 15%)
 
   // Stats
   totalOrders          Int   @default(0)
@@ -1308,6 +1317,11 @@ model Order {
   riderTip         Float @default(0) // Customer tip
   platformFee      Float @default(0) // Platform commission
   riderEarnings    Float @default(0) // Total rider gets (baseFee + distanceFee + tip - platformFee)
+
+  // Vendor Commission Breakdown
+  vendorCommissionRate Float @default(0) // Rate at time of order (e.g., 0.15 = 15%)
+  vendorCommission     Float @default(0) // Amount GrabGo keeps (subtotal × rate)
+  vendorPayout         Float @default(0) // Amount vendor receives (subtotal − commission)
 
   // Delivery Address
   deliveryStreet    String?
@@ -1741,6 +1755,47 @@ model Transaction {
   @@index([walletId])
   @@index([userId])
   @@map("transactions")
+}
+
+// ==================== VENDOR WALLET & TRANSACTIONS ====================
+
+model VendorWallet {
+  id               String    @id @default(cuid())
+  vendorId         String    @unique // The vendor entity ID (restaurant/grocery/pharmacy/grabmart)
+  vendorType       String // 'restaurant' | 'grocery' | 'pharmacy' | 'grabmart'
+  balance          Float     @default(0)
+  totalEarnings    Float     @default(0)
+  totalWithdrawals Float     @default(0)
+  totalCommission  Float     @default(0) // Lifetime commission paid to GrabGo
+  lastPayoutAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactions VendorTransaction[]
+
+  @@index([vendorType])
+  @@map("vendor_wallets")
+}
+
+model VendorTransaction {
+  id          String  @id @default(cuid())
+  walletId    String
+  vendorId    String
+  type        String // 'sale' | 'commission' | 'payout' | 'adjustment'
+  amount      Float
+  description String?
+  referenceId String? // Order ID
+  status      String  @default("completed")
+
+  createdAt DateTime @default(now())
+
+  wallet VendorWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@index([vendorId])
+  @@index([referenceId])
+  @@map("vendor_transactions")
 }
 
 // ==================== RIDER PARTNER & INCENTIVE SYSTEM ====================
@@ -2196,6 +2251,9 @@ model GrabMartStore {
   whatsappNumber String?
   timezone       String   @default("Africa/Accra")
   utcOffset      Int      @default(0)
+
+  // Commission & Financials
+  commissionRate Float @default(0) // Platform commission (0 = no commission, 0.15 = 15%)
 
   // Stats
   totalOrders          Int   @default(0)
