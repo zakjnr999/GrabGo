@@ -80,6 +80,9 @@ class $LibAssetsIconsGen {
   AssetGenImage get appIconRiderMonochrome =>
       const AssetGenImage('lib/assets/icons/app_icon_rider_monochrome.png');
 
+  /// File path: lib/assets/icons/archery.svg
+  String get archery => 'lib/assets/icons/archery.svg';
+
   /// File path: lib/assets/icons/arrow-up-a-z.svg
   String get arrowUpAZ => 'lib/assets/icons/arrow-up-a-z.svg';
 
@@ -141,6 +144,9 @@ class $LibAssetsIconsGen {
 
   /// File path: lib/assets/icons/cc.png
   AssetGenImage get cc => const AssetGenImage('lib/assets/icons/cc.png');
+
+  /// File path: lib/assets/icons/chart.svg
+  String get chart => 'lib/assets/icons/chart.svg';
 
   /// File path: lib/assets/icons/chat-bubble-solid.svg
   String get chatBubbleSolid => 'lib/assets/icons/chat-bubble-solid.svg';
@@ -261,6 +267,9 @@ class $LibAssetsIconsGen {
 
   /// File path: lib/assets/icons/fire-flame.svg
   String get fireFlame => 'lib/assets/icons/fire-flame.svg';
+
+  /// File path: lib/assets/icons/flag.svg
+  String get flag => 'lib/assets/icons/flag.svg';
 
   /// File path: lib/assets/icons/flame.svg
   String get flame => 'lib/assets/icons/flame.svg';
@@ -615,6 +624,7 @@ class $LibAssetsIconsGen {
     appIconRider,
     appIconRiderMain,
     appIconRiderMonochrome,
+    archery,
     arrowUpAZ,
     backgroundIconMain,
     backgroundIconRider,
@@ -635,6 +645,7 @@ class $LibAssetsIconsGen {
     cart,
     cash,
     cc,
+    chart,
     chatBubbleSolid,
     chatBubble,
     checkCircleSolid,
@@ -674,6 +685,7 @@ class $LibAssetsIconsGen {
     filterList,
     fingerprintScan,
     fireFlame,
+    flag,
     flame,
     folder,
     foregroundIconCustomer,

@@ -16,6 +16,7 @@ class HomeDrawer extends StatefulWidget {
 }
 
 class _HomeDrawerState extends State<HomeDrawer> with SingleTickerProviderStateMixin {
+  User? _user;
   late AnimationController _animationController;
   late Animation<double> _rotationAnimation;
 
@@ -27,6 +28,16 @@ class _HomeDrawerState extends State<HomeDrawer> with SingleTickerProviderStateM
       end: 1.0,
     ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeInOut));
     super.initState();
+    _loadUserData();
+  }
+
+  void _loadUserData() {
+    final userData = CacheService.getUserData();
+    if (userData != null && mounted) {
+      setState(() {
+        _user = User.fromJson(userData);
+      });
+    }
   }
 
   @override
@@ -54,14 +65,7 @@ class _HomeDrawerState extends State<HomeDrawer> with SingleTickerProviderStateM
                     left: 20.w,
                     right: 20.w,
                   ),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [colors.accentGreen, colors.accentGreen.withValues(alpha: 0.85)],
-                    ),
-                    borderRadius: BorderRadius.only(bottomRight: Radius.circular(KBorderSize.borderRadius20)),
-                  ),
+                  color: colors.accentGreen,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -102,10 +106,7 @@ class _HomeDrawerState extends State<HomeDrawer> with SingleTickerProviderStateM
                                           return ScaleTransition(scale: animation, child: child);
                                         },
                                         child: Container(
-                                          decoration: BoxDecoration(
-                                            color: Colors.white.withValues(alpha: 0.2),
-                                            shape: BoxShape.circle,
-                                          ),
+                                          decoration: BoxDecoration(shape: BoxShape.circle),
                                           child: Padding(
                                             padding: EdgeInsets.all(8.r),
                                             child: SvgPicture.asset(
@@ -131,43 +132,44 @@ class _HomeDrawerState extends State<HomeDrawer> with SingleTickerProviderStateM
                       ),
                       SizedBox(height: 20.h),
                       Text(
-                        "John Mensah",
+                        _user?.username ?? "Rider",
                         style: TextStyle(color: Colors.white, fontSize: 20.sp, fontWeight: FontWeight.w700),
                       ),
+                      if (_user?.email != null) ...[
+                        SizedBox(height: 4.h),
+                        Text(
+                          _user!.email!,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.8),
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w400,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                       SizedBox(height: 12.h),
                       Row(
                         children: [
-                          SvgPicture.asset(
-                            Assets.icons.shieldCheck,
-                            package: 'grab_go_shared',
-                            width: 18.w,
-                            height: 18.w,
-                            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                          ),
-                          SizedBox(width: 6.w),
-                          Text(
-                            "Verified Rider",
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.95),
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w500,
+                          if (_user?.isEmailVerified == true) ...[
+                            SvgPicture.asset(
+                              Assets.icons.shieldCheck,
+                              package: 'grab_go_shared',
+                              width: 16.w,
+                              height: 16.w,
+                              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                             ),
-                          ),
-                          SizedBox(width: 12.w),
-                          Container(
-                            width: 6.w,
-                            height: 6.w,
-                            decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                          ),
-                          SizedBox(width: 6.w),
-                          Text(
-                            "Online",
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.95),
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w500,
+                            SizedBox(width: 4.w),
+                            Text(
+                              "Verified",
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.95),
+                                fontSize: 13.sp,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
-                          ),
+                            SizedBox(width: 10.w),
+                          ],
                         ],
                       ),
                     ],
@@ -180,33 +182,31 @@ class _HomeDrawerState extends State<HomeDrawer> with SingleTickerProviderStateM
                     padding: EdgeInsets.symmetric(vertical: 12.h),
                     child: Column(
                       children: [
-                        _buildDrawerItem("Wallet", Assets.icons.creditCard, colors.textPrimary, colors, () {
-                          Navigator.pop(context);
-                          Provider.of<BottomNavProvider>(context, listen: false).setIndex(1);
-                        }),
                         _buildDrawerItem("Earnings History", Assets.icons.dollar, colors.textPrimary, colors, () {
                           Navigator.pop(context);
                           context.push("/earnings-history");
                         }),
-                        _buildDrawerItem("My Orders", Assets.icons.deliveryTruck, colors.textPrimary, colors, () {
-                          Navigator.pop(context);
-                          context.push("/orders");
-                        }),
+
                         _buildDrawerItem("Performance", Assets.icons.star, colors.textPrimary, colors, () {
                           Navigator.pop(context);
                           context.push("/performance");
                         }),
-                        _buildDrawerItem("Bonuses", Assets.icons.gift, colors.textPrimary, colors, () {
+                        _buildDrawerItem("Partner Dashboard", Assets.icons.chart, colors.textPrimary, colors, () {
+                          Navigator.pop(context);
+                          context.push("/partner-dashboard");
+                        }),
+                        _buildDrawerItem("Quests & Streaks", Assets.icons.flag, colors.textPrimary, colors, () {
                           Navigator.pop(context);
                           context.push("/bonuses");
+                        }),
+                        _buildDrawerItem("Milestones", Assets.icons.archery, colors.textPrimary, colors, () {
+                          Navigator.pop(context);
+                          context.push("/milestones");
                         }),
                         SizedBox(height: 8.h),
                         Divider(color: colors.border, thickness: 1, height: 1, indent: 20.w, endIndent: 20.w),
                         SizedBox(height: 8.h),
-                        _buildDrawerItem("Profile", Assets.icons.user, colors.textPrimary, colors, () {
-                          Navigator.pop(context);
-                          Provider.of<BottomNavProvider>(context, listen: false).setIndex(3);
-                        }),
+
                         _buildDrawerItem("Settings", Assets.icons.slidersHorizontal, colors.textPrimary, colors, () {
                           Navigator.pop(context);
                           context.push("/settings");

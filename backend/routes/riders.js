@@ -17,6 +17,7 @@ const {
   applyFraudDecision,
 } = require("../services/fraud");
 const { withdrawalBalanceGuard } = require("../middleware/withdrawal_guard");
+const { withdrawalRateLimit } = require("../middleware/fraud_rate_limit");
 const partnerService = require("../services/rider_partner_service");
 const { getRiderQuestDashboard } = require("../services/rider_quest_engine");
 const { getRiderStreakDashboard } = require("../services/rider_streak_engine");
@@ -2246,6 +2247,7 @@ router.post(
   "/withdraw",
   protect,
   authorize("rider"),
+  withdrawalRateLimit,
   [
     body("amount").isFloat({ min: 1 }).withMessage("Amount must be at least 1"),
     body("withdrawalMethod")
@@ -2270,6 +2272,61 @@ router.post(
       const { withdrawalMethod, withdrawalAccount, description } = req.body;
       // Use the validated context from withdrawal guard
       const { wallet, requestedAmount } = req.withdrawalContext;
+
+      // ── Idempotency check (prevents duplicate submissions) ──
+      const idempotencyKey = req.headers['x-idempotency-key'];
+      if (idempotencyKey) {
+        const cache = require('../utils/cache');
+        const cacheKey = `grabgo:withdrawal:idem:${req.user.id}:${idempotencyKey}`;
+        const existing = await cache.get(cacheKey);
+        if (existing) {
+          const parsed = JSON.parse(existing);
+          return res.status(200).json({
+            success: true,
+            message: "Withdrawal request already processed (duplicate)",
+            data: parsed,
+          });
+        }
+      }
+
+      // ── Fraud evaluation ──
+      if (featureFlags.isFraudEnabled) {
+        try {
+          const fraudContext = buildFraudContextFromRequest({
+            req,
+            actionType: ACTION_TYPES.RIDER_WITHDRAWAL,
+            actorType: 'rider',
+            actorId: req.user.id,
+            extras: {
+              amount: requestedAmount,
+              metadata: {
+                withdrawalMethod,
+                withdrawalAccount,
+                amount: requestedAmount,
+                walletBalance: wallet.balance,
+              },
+            },
+          });
+
+          const fraudDecision = await fraudDecisionService.evaluate({
+            actionType: ACTION_TYPES.RIDER_WITHDRAWAL,
+            actorType: 'rider',
+            actorId: req.user.id,
+            context: fraudContext,
+          });
+
+          const fraudGate = applyFraudDecision({
+            req,
+            res,
+            decision: fraudDecision,
+            actionType: ACTION_TYPES.RIDER_WITHDRAWAL,
+          });
+          if (fraudGate.blocked || fraudGate.challenged) return;
+        } catch (fraudErr) {
+          console.error('[Withdraw] Fraud evaluation error (allowing):', fraudErr.message);
+          // Fail-open: don't block if fraud service is down
+        }
+      }
 
       // ── Partner-level withdrawal fee logic ──
       let fee = 0;
@@ -2308,15 +2365,24 @@ router.post(
 
       await updateWalletBalance(req.user.id);
 
+      const responseData = {
+        ...transaction,
+        fee,
+        netAmount,
+        payoutRequestId: payoutRequest?.id || null,
+      };
+
+      // ── Cache idempotency key (expires in 10 minutes) ──
+      if (idempotencyKey) {
+        const cache = require('../utils/cache');
+        const cacheKey = `grabgo:withdrawal:idem:${req.user.id}:${idempotencyKey}`;
+        await cache.set(cacheKey, JSON.stringify(responseData), 600).catch(() => null);
+      }
+
       res.status(201).json({
         success: true,
         message: "Withdrawal request submitted successfully",
-        data: {
-          ...transaction,
-          fee,
-          netAmount,
-          payoutRequestId: payoutRequest?.id || null,
-        },
+        data: responseData,
       });
     } catch (error) {
       console.error("Withdraw error:", error);

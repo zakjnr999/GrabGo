@@ -4,7 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:grab_go_rider/features/home/models/partner_models.dart';
 import 'package:grab_go_rider/features/home/models/transaction_model.dart';
+import 'package:grab_go_rider/features/home/service/rider_partner_service.dart';
 import 'package:grab_go_rider/features/home/service/rider_wallet_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -50,6 +52,7 @@ class WalletPage extends StatefulWidget {
 
 class _WalletPageState extends State<WalletPage> {
   final RiderWalletService _walletService = RiderWalletService();
+  final RiderPartnerService _partnerService = RiderPartnerService();
 
   List<TransactionModel> _allTransactions = [];
   double? _totalBalance;
@@ -57,6 +60,8 @@ class _WalletPageState extends State<WalletPage> {
   double? _thisWeekEarnings;
   double? _thisMonthEarnings;
   double? _totalEarnings;
+  IncentiveBalance? _incentiveBalance;
+  WithdrawalPolicy? _withdrawalPolicy;
   bool _isLoading = true;
   String? _error;
   WalletTransactionPeriod _selectedPeriod = WalletTransactionPeriod.thisWeek;
@@ -78,8 +83,22 @@ class _WalletPageState extends State<WalletPage> {
     }
 
     try {
-      final data = await _walletService.fetchDashboard(transactionsPeriod: _selectedPeriod.apiValue);
+      final results = await Future.wait([
+        _walletService.fetchDashboard(transactionsPeriod: _selectedPeriod.apiValue),
+        _partnerService
+            .fetchIncentiveBalance()
+            .then<IncentiveBalance?>((v) => v)
+            .catchError((_) => null as IncentiveBalance?),
+        _partnerService
+            .fetchWithdrawalPolicy()
+            .then<WithdrawalPolicy?>((v) => v)
+            .catchError((_) => null as WithdrawalPolicy?),
+      ]);
       if (!mounted) return;
+
+      final data = results[0] as dynamic;
+      final incentiveBalance = results[1] as IncentiveBalance?;
+      final withdrawalPolicy = results[2] as WithdrawalPolicy?;
 
       setState(() {
         _totalBalance = data.balance;
@@ -88,6 +107,8 @@ class _WalletPageState extends State<WalletPage> {
         _thisMonthEarnings = data.thisMonthEarnings;
         _totalEarnings = data.totalEarnings;
         _allTransactions = data.transactions;
+        _incentiveBalance = incentiveBalance;
+        _withdrawalPolicy = withdrawalPolicy;
         _error = null;
       });
     } catch (e) {
@@ -136,21 +157,6 @@ class _WalletPageState extends State<WalletPage> {
       _selectedPeriod = selected;
     });
     await _loadWalletData();
-  }
-
-  String _getTransactionIcon(TransactionType type) {
-    switch (type) {
-      case TransactionType.delivery:
-        return Assets.icons.deliveryTruck;
-      case TransactionType.tip:
-        return Assets.icons.gift;
-      case TransactionType.bonus:
-        return Assets.icons.star;
-      case TransactionType.withdrawal:
-        return Assets.icons.creditCard;
-      case TransactionType.penalty:
-        return Assets.icons.warningCircle;
-    }
   }
 
   String _getTransactionTypeLabel(TransactionType type) {
@@ -475,6 +481,10 @@ class _WalletPageState extends State<WalletPage> {
                   ),
                 ),
 
+                if (_incentiveBalance != null) ...[SizedBox(height: 24.h), _buildIncentiveBalanceCard(colors)],
+
+                if (_withdrawalPolicy != null) ...[SizedBox(height: 24.h), _buildWithdrawalPolicyCard(colors)],
+
                 SizedBox(height: 24.h),
 
                 Row(
@@ -643,7 +653,6 @@ class _WalletPageState extends State<WalletPage> {
       itemBuilder: (context, index) {
         final transaction = _allTransactions[index];
         final typeColor = _getTransactionTypeColor(transaction.type, colors);
-        final iconPath = _getTransactionIcon(transaction.type);
         final typeLabel = _getTransactionTypeLabel(transaction.type);
 
         final timeFormat = DateFormat('MMM dd, hh:mm a');
@@ -735,6 +744,176 @@ class _WalletPageState extends State<WalletPage> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildIncentiveBalanceCard(AppColorsExtension colors) {
+    final balance = _incentiveBalance!;
+    return Container(
+      padding: EdgeInsets.all(20.w),
+      decoration: BoxDecoration(
+        color: colors.backgroundPrimary,
+        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                "INCENTIVE BALANCE",
+                style: TextStyle(
+                  color: colors.textSecondary,
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const Spacer(),
+              SvgPicture.asset(
+                Assets.icons.sparkles,
+                package: 'grab_go_shared',
+                width: 14.w,
+                height: 14.w,
+                colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+              ),
+            ],
+          ),
+          SizedBox(height: 20.h),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Available",
+                      style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
+                    ),
+                    SizedBox(height: 4.h),
+                    Text(
+                      'GHC ${balance.availableForPayout.toStringAsFixed(2)}',
+                      style: TextStyle(color: colors.accentGreen, fontSize: 20.sp, fontWeight: FontWeight.w800),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Pending",
+                      style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
+                    ),
+                    SizedBox(height: 4.h),
+                    Text(
+                      'GHC ${balance.pendingBudgetApproval.toStringAsFixed(2)}',
+                      style: TextStyle(color: colors.warning, fontSize: 20.sp, fontWeight: FontWeight.w800),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16.h),
+          DottedLine(
+            direction: Axis.horizontal,
+            lineLength: double.infinity,
+            lineThickness: 1.5,
+            dashLength: 6,
+            dashColor: colors.inputBorder.withValues(alpha: 0.65),
+            dashGapLength: 4,
+          ),
+          SizedBox(height: 12.h),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "TOTAL EARNED",
+                style: TextStyle(
+                  color: colors.accentGreen,
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              Text(
+                'GHC ${balance.total.toStringAsFixed(2)}',
+                style: TextStyle(
+                  color: colors.accentGreen,
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWithdrawalPolicyCard(AppColorsExtension colors) {
+    final policy = _withdrawalPolicy!;
+    return Container(
+      padding: EdgeInsets.all(20.w),
+      decoration: BoxDecoration(
+        color: colors.backgroundPrimary,
+        borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "WITHDRAWAL POLICY",
+            style: TextStyle(
+              color: colors.textSecondary,
+              fontSize: 11.sp,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.2,
+            ),
+          ),
+          SizedBox(height: 16.h),
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(8.r),
+                decoration: BoxDecoration(
+                  color: colors.accentGreen.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                ),
+                child: SvgPicture.asset(
+                  Assets.icons.shieldCheck,
+                  package: 'grab_go_shared',
+                  width: 18.w,
+                  height: 18.w,
+                  colorFilter: ColorFilter.mode(colors.accentGreen, BlendMode.srcIn),
+                ),
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Level ${partnerLevelLabel(policy.partnerLevel)} Benefits',
+                      style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w600),
+                    ),
+                    SizedBox(height: 4.h),
+                    Text(
+                      policy.instantWithdrawal.totalQuota > 0
+                          ? '${policy.instantWithdrawal.freeRemaining} of ${policy.instantWithdrawal.totalQuota} free instant withdrawals left'
+                          : 'Instant withdrawal fee: ${(policy.instantWithdrawal.fee * 100).toStringAsFixed(1)}%',
+                      style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 

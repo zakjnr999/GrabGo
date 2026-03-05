@@ -7,6 +7,8 @@ import 'package:grab_go_rider/core/api/api_client.dart';
 import 'package:grab_go_rider/features/chat/view/chat_detail_page.dart';
 import 'package:grab_go_rider/shared/service/user_service.dart';
 import 'package:grab_go_rider/shared/widgets/profile_sliver_appbar.dart';
+import 'package:grab_go_rider/features/home/models/partner_models.dart';
+import 'package:grab_go_rider/features/home/service/rider_partner_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
@@ -20,6 +22,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   User? _user;
   Rider? _rider;
+  PartnerLevel _partnerLevel = PartnerLevel.L1;
   bool _isLoading = true;
 
   @override
@@ -57,6 +60,17 @@ class _ProfilePageState extends State<ProfilePage> {
           _rider = response.body!.data;
         });
       }
+
+      try {
+        final dashboard = await RiderPartnerService().fetchPartnerDashboard();
+        if (mounted) {
+          setState(() {
+            _partnerLevel = dashboard.profile.partnerLevel;
+          });
+        }
+      } catch (_) {
+        // Partner system may not be active yet — keep default.
+      }
     } catch (_) {
       // Keep current values and avoid disrupting the page.
     } finally {
@@ -91,9 +105,7 @@ class _ProfilePageState extends State<ProfilePage> {
         statusBarIconBrightness: isDark ? Brightness.dark : Brightness.light,
         systemNavigationBarColor: colors.backgroundPrimary,
         systemNavigationBarDividerColor: Colors.transparent,
-        systemNavigationBarIconBrightness: isDark
-            ? Brightness.light
-            : Brightness.dark,
+        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       ),
       child: Scaffold(
         backgroundColor: colors.backgroundSecondary,
@@ -107,6 +119,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ProfileSliverAppbar(
                 riderName: _user?.username,
                 riderEmail: _user?.email,
+                partnerLevel: _partnerLevel,
                 isLoading: _isLoading,
               ),
               SliverToBoxAdapter(
@@ -154,92 +167,44 @@ class _ProfilePageState extends State<ProfilePage> {
                       padding: EdgeInsets.symmetric(horizontal: 20.w),
                       child: Column(
                         children: [
-                          _buildMenuItem(
-                            "Personal Information",
-                            Assets.icons.user,
-                            colors.textPrimary,
-                            colors,
-                            () {
-                              context.push("/personal-information");
-                            },
-                          ),
+                          _buildMenuItem("Personal Information", Assets.icons.user, colors.textPrimary, colors, () {
+                            context.push("/personal-information");
+                          }),
                           SizedBox(height: 12.h),
-                          _buildMenuItem(
-                            "Vehicle Details",
-                            Assets.icons.deliveryTruck,
-                            colors.textPrimary,
-                            colors,
-                            () {
-                              context.push("/vehicle-details");
-                            },
-                          ),
+                          _buildMenuItem("Vehicle Details", Assets.icons.deliveryTruck, colors.textPrimary, colors, () {
+                            context.push("/vehicle-details");
+                          }),
                           SizedBox(height: 12.h),
-                          _buildMenuItem(
-                            "Bank Account",
-                            Assets.icons.creditCard,
-                            colors.textPrimary,
-                            colors,
-                            () {
-                              context.push("/bank-account");
-                            },
-                          ),
+                          _buildMenuItem("Bank Account", Assets.icons.creditCard, colors.textPrimary, colors, () {
+                            context.push("/bank-account");
+                          }),
                           SizedBox(height: 12.h),
-                          _buildMenuItem(
-                            "Documents",
-                            Assets.icons.idCard,
-                            colors.textPrimary,
-                            colors,
-                            () {
-                              context.push("/documents");
-                            },
-                          ),
+                          _buildMenuItem("Documents", Assets.icons.idCard, colors.textPrimary, colors, () {
+                            context.push("/documents");
+                          }),
                           SizedBox(height: 12.h),
-                          _buildMenuItem(
-                            "Notifications",
-                            Assets.icons.bell,
-                            colors.textPrimary,
-                            colors,
-                            () {
-                              context.push("/notifications");
-                            },
-                          ),
+                          _buildMenuItem("Notifications", Assets.icons.bell, colors.textPrimary, colors, () {
+                            context.push("/notifications");
+                          }),
                           SizedBox(height: 12.h),
-                          _buildMenuItem(
-                            "Help & Support",
-                            Assets.icons.headsetHelp,
-                            colors.textPrimary,
-                            colors,
-                            () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const ChatDetailPage(
-                                    chatId: "support",
-                                    senderName: "GrabGo Support",
-                                    isSupport: true,
-                                  ),
+                          _buildMenuItem("Help & Support", Assets.icons.headsetHelp, colors.textPrimary, colors, () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ChatDetailPage(
+                                  chatId: "support",
+                                  senderName: "GrabGo Support",
+                                  isSupport: true,
                                 ),
-                              );
-                            },
-                          ),
+                              ),
+                            );
+                          }),
                           SizedBox(height: 12.h),
-                          _buildMenuItem(
-                            "Settings",
-                            Assets.icons.slidersHorizontal,
-                            colors.textPrimary,
-                            colors,
-                            () {
-                              context.push("/settings");
-                            },
-                          ),
+                          _buildMenuItem("Settings", Assets.icons.slidersHorizontal, colors.textPrimary, colors, () {
+                            context.push("/settings");
+                          }),
                           SizedBox(height: 12.h),
-                          _buildMenuItem(
-                            "About",
-                            Assets.icons.infoCircle,
-                            colors.textPrimary,
-                            colors,
-                            () {},
-                          ),
+                          _buildMenuItem("About", Assets.icons.infoCircle, colors.textPrimary, colors, () {}),
                         ],
                       ),
                     ),
@@ -250,9 +215,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         width: double.infinity,
                         decoration: BoxDecoration(
                           color: colors.error.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(
-                            KBorderSize.borderRadius4,
-                          ),
+                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                         ),
                         child: Material(
                           color: Colors.transparent,
@@ -260,14 +223,9 @@ class _ProfilePageState extends State<ProfilePage> {
                             onTap: () {
                               _showLogoutDialog(context, colors);
                             },
-                            borderRadius: BorderRadius.circular(
-                              KBorderSize.borderRadius4,
-                            ),
+                            borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                             child: Padding(
-                              padding: EdgeInsets.symmetric(
-                                vertical: 16.h,
-                                horizontal: 20.w,
-                              ),
+                              padding: EdgeInsets.symmetric(vertical: 16.h, horizontal: 20.w),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -276,19 +234,12 @@ class _ProfilePageState extends State<ProfilePage> {
                                     package: 'grab_go_shared',
                                     width: 20.w,
                                     height: 20.w,
-                                    colorFilter: ColorFilter.mode(
-                                      colors.error,
-                                      BlendMode.srcIn,
-                                    ),
+                                    colorFilter: ColorFilter.mode(colors.error, BlendMode.srcIn),
                                   ),
                                   SizedBox(width: 12.w),
                                   Text(
                                     "Logout",
-                                    style: TextStyle(
-                                      color: colors.error,
-                                      fontSize: 16.sp,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                                    style: TextStyle(color: colors.error, fontSize: 16.sp, fontWeight: FontWeight.w600),
                                   ),
                                 ],
                               ),
@@ -300,11 +251,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     SizedBox(height: 32.h),
                     Text(
                       "Version 1.0.0",
-                      style: TextStyle(
-                        color: colors.textSecondary,
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w400,
-                      ),
+                      style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
                     ),
                     SizedBox(height: 16.h),
                   ],
@@ -317,13 +264,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildStatCard(
-    String label,
-    String value,
-    String icon,
-    Color iconColor,
-    AppColorsExtension colors,
-  ) {
+  Widget _buildStatCard(String label, String value, String icon, Color iconColor, AppColorsExtension colors) {
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
@@ -352,21 +293,13 @@ class _ProfilePageState extends State<ProfilePage> {
           SizedBox(height: 12.h),
           Text(
             value,
-            style: TextStyle(
-              color: colors.textPrimary,
-              fontSize: 18.sp,
-              fontWeight: FontWeight.w700,
-            ),
+            style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w700),
           ),
           SizedBox(height: 4.h),
           Text(
             label,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: colors.textSecondary,
-              fontSize: 11.sp,
-              fontWeight: FontWeight.w500,
-            ),
+            style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w500),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -375,13 +308,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildMenuItem(
-    String title,
-    String icon,
-    Color iconColor,
-    AppColorsExtension colors,
-    VoidCallback onTap,
-  ) {
+  Widget _buildMenuItem(String title, String icon, Color iconColor, AppColorsExtension colors, VoidCallback onTap) {
     return Container(
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
@@ -401,9 +328,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   height: 40.w,
                   decoration: BoxDecoration(
                     color: colors.backgroundSecondary,
-                    borderRadius: BorderRadius.circular(
-                      KBorderSize.borderRadius4,
-                    ),
+                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
                   ),
                   child: Center(
                     child: SvgPicture.asset(
@@ -419,11 +344,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 Expanded(
                   child: Text(
                     title,
-                    style: TextStyle(
-                      color: colors.textPrimary,
-                      fontSize: 15.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(color: colors.textPrimary, fontSize: 15.sp, fontWeight: FontWeight.w600),
                   ),
                 ),
                 SvgPicture.asset(
@@ -431,10 +352,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   package: 'grab_go_shared',
                   width: 20.w,
                   height: 20.w,
-                  colorFilter: ColorFilter.mode(
-                    colors.textSecondary,
-                    BlendMode.srcIn,
-                  ),
+                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                 ),
               ],
             ),

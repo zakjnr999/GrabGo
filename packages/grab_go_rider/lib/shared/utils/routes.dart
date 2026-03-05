@@ -15,6 +15,7 @@ import 'package:grab_go_rider/features/auth/view/verify_phone.dart';
 import 'package:grab_go_rider/features/home/view/bonuses_page.dart';
 import 'package:grab_go_rider/features/home/view/earnings_history_page.dart';
 import 'package:grab_go_rider/features/home/view/loan_application.dart';
+import 'package:grab_go_rider/features/home/view/milestones_page.dart';
 import 'package:grab_go_rider/features/home/view/notifications_page.dart';
 import 'package:grab_go_rider/features/orders/service/available_order_dto.dart';
 import 'package:grab_go_rider/features/orders/service/order_statistics_service.dart';
@@ -22,6 +23,7 @@ import 'package:grab_go_rider/features/orders/view/available_orders.dart';
 import 'package:grab_go_rider/features/orders/view/available_orders_map.dart';
 import 'package:grab_go_rider/features/orders/view/orders_page.dart';
 import 'package:grab_go_rider/features/home/view/performance_page.dart';
+import 'package:grab_go_rider/features/home/view/partner_dashboard_page.dart';
 import 'package:grab_go_rider/features/settings/view/settings_page.dart';
 import 'package:grab_go_rider/features/settings/view/support_page.dart';
 import 'package:grab_go_rider/features/home/view/faq_page.dart';
@@ -358,10 +360,7 @@ final GoRouter appRouter = GoRouter(
 
         return CustomTransitionPage(
           key: state.pageKey,
-          child: AvailableOrders(
-            preloadedOrders: preloadedOrders,
-            preloadedStatistics: preloadedStatistics,
-          ),
+          child: AvailableOrders(preloadedOrders: preloadedOrders, preloadedStatistics: preloadedStatistics),
           transitionDuration: const Duration(milliseconds: 800),
           reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -457,6 +456,44 @@ final GoRouter appRouter = GoRouter(
         return CustomTransitionPage(
           key: state.pageKey,
           child: const BonusesPage(),
+          transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.scaled,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/partner-dashboard",
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: const PartnerDashboardPage(),
+          transitionDuration: const Duration(milliseconds: 800),
+          reverseTransitionDuration: const Duration(milliseconds: 800),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.scaled,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/milestones",
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: const MilestonesPage(),
           transitionDuration: const Duration(milliseconds: 800),
           reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -672,16 +709,11 @@ final GoRouter appRouter = GoRouter(
             orderStatus: extra?['orderStatus'],
             orderInstructions: extra?['orderInstructions'] ?? "",
             customerName: extra?['customerName'] ?? "John Doe",
-            customerAddress:
-                extra?['customerAddress'] ?? "123 Main Street, Accra, Ghana",
+            customerAddress: extra?['customerAddress'] ?? "123 Main Street, Accra, Ghana",
             customerPhoto: extra?['profilePhoto'] ?? extra?['customerPhoto'],
-            customerPhone:
-                extra?['customerPhone'] ??
-                extra?['phone'] ??
-                "+233 123 456 789",
+            customerPhone: extra?['customerPhone'] ?? extra?['phone'] ?? "+233 123 456 789",
             restaurantName: extra?['restaurantName'] ?? "Pizza Palace",
-            restaurantAddress:
-                extra?['restaurantAddress'] ?? "456 Food Street, Accra, Ghana",
+            restaurantAddress: extra?['restaurantAddress'] ?? "456 Food Street, Accra, Ghana",
             orderTotal: extra?['orderTotal'] ?? "GHS 45.00",
             orderItems: extra?['orderItems'] != null
                 ? (extra!['orderItems'] is List<String>
@@ -692,8 +724,7 @@ final GoRouter appRouter = GoRouter(
             customerId: extra?['customerId'],
             riderId: extra?['riderId'],
             isGiftOrder: extra?['isGiftOrder'] == true,
-            deliveryVerificationRequired:
-                extra?['deliveryVerificationRequired'] == true,
+            deliveryVerificationRequired: extra?['deliveryVerificationRequired'] == true,
             giftRecipientName: extra?['giftRecipientName'],
             giftRecipientPhone: extra?['giftRecipientPhone'],
             deliveryVerificationMethod: extra?['deliveryVerificationMethod'],
@@ -726,13 +757,11 @@ final GoRouter appRouter = GoRouter(
           child: DeliveryTrackingPage(
             orderId: extra?['orderId'] ?? "ORD-12345",
             customerName: extra?['customerName'] ?? "John Doe",
-            customerAddress:
-                extra?['customerAddress'] ?? "123 Main Street, Accra, Ghana",
+            customerAddress: extra?['customerAddress'] ?? "123 Main Street, Accra, Ghana",
             customerPhone: extra?['customerPhone'] ?? "+233 123 456 789",
             customerPhoto: extra?['customerPhoto'] ?? extra?['profilePhoto'],
             restaurantName: extra?['restaurantName'] ?? "Pizza Palace",
-            restaurantAddress:
-                extra?['restaurantAddress'] ?? "456 Food Street, Accra, Ghana",
+            restaurantAddress: extra?['restaurantAddress'] ?? "456 Food Street, Accra, Ghana",
             restaurantLogo: extra?['restaurantLogo'],
             orderTotal: extra?['orderTotal'] ?? "GHS 45.00",
             orderItems: extra?['orderItems'] != null
@@ -744,8 +773,7 @@ final GoRouter appRouter = GoRouter(
             customerId: extra?['customerId'],
             riderId: extra?['riderId'],
             isGiftOrder: extra?['isGiftOrder'] == true,
-            deliveryVerificationRequired:
-                extra?['deliveryVerificationRequired'] == true,
+            deliveryVerificationRequired: extra?['deliveryVerificationRequired'] == true,
             giftRecipientName: extra?['giftRecipientName'],
             giftRecipientPhone: extra?['giftRecipientPhone'],
             deliveryVerificationMethod: extra?['deliveryVerificationMethod'],
@@ -776,11 +804,9 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: RiderDeliverySuccessPage(
             orderId: extra?['orderId'] ?? '',
-            vendorName:
-                extra?['vendorName'] ?? extra?['restaurantName'] ?? "Vendor",
+            vendorName: extra?['vendorName'] ?? extra?['restaurantName'] ?? "Vendor",
             vendorLogo: extra?['vendorLogo'] ?? extra?['restaurantLogo'],
-            customerName:
-                extra?['customerName'] ?? extra?['customer'] ?? "Customer",
+            customerName: extra?['customerName'] ?? extra?['customer'] ?? "Customer",
             customerPhoto: extra?['customerPhoto'] ?? extra?['profilePhoto'],
           ),
           transitionDuration: const Duration(milliseconds: 800),
@@ -804,8 +830,7 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: RiderVendorRatingPage(
             orderId: extra?['orderId'] ?? '',
-            vendorName:
-                extra?['vendorName'] ?? extra?['restaurantName'] ?? "Vendor",
+            vendorName: extra?['vendorName'] ?? extra?['restaurantName'] ?? "Vendor",
           ),
           transitionDuration: const Duration(milliseconds: 800),
           reverseTransitionDuration: const Duration(milliseconds: 800),
@@ -828,11 +853,9 @@ final GoRouter appRouter = GoRouter(
           key: state.pageKey,
           child: RiderRatingOnboardingPage(
             orderId: extra?['orderId'] ?? '',
-            vendorName:
-                extra?['vendorName'] ?? extra?['restaurantName'] ?? "Vendor",
+            vendorName: extra?['vendorName'] ?? extra?['restaurantName'] ?? "Vendor",
             vendorLogo: extra?['vendorLogo'] ?? extra?['restaurantLogo'],
-            customerName:
-                extra?['customerName'] ?? extra?['customer'] ?? "Customer",
+            customerName: extra?['customerName'] ?? extra?['customer'] ?? "Customer",
             customerPhoto: extra?['customerPhoto'] ?? extra?['profilePhoto'],
           ),
           transitionDuration: const Duration(milliseconds: 800),

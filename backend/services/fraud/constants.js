@@ -8,6 +8,7 @@ const ACTION_TYPES = Object.freeze({
   PAYMENT_WEBHOOK_EVENT: 'payment_webhook_event',
   RIDER_STATUS_UPDATE: 'rider_status_update',
   RIDER_ACCEPT_ORDER: 'rider_accept_order',
+  RIDER_WITHDRAWAL: 'rider_withdrawal',
   ORDER_FULFILLMENT_TRANSITION: 'order_fulfillment_transition',
 });
 
@@ -39,6 +40,9 @@ const REASON_CODES = Object.freeze({
   REFERRAL_VELOCITY_IP: 'REFERRAL_VELOCITY_IP',
   SIGNUP_VELOCITY_DEVICE: 'ACCOUNT_SIGNUP_VELOCITY_DEVICE',
   PAYMENT_ATTEMPT_VELOCITY_USER: 'PAYMENT_ATTEMPT_VELOCITY_USER',
+  WITHDRAWAL_VELOCITY_USER: 'WITHDRAWAL_VELOCITY_USER',
+  WITHDRAWAL_NEW_ACCOUNT: 'WITHDRAWAL_NEW_ACCOUNT_RISK',
+  WITHDRAWAL_ACCOUNT_CHANGE: 'WITHDRAWAL_ACCOUNT_CHANGE_RISK',
   CHALLENGE_CAP_REACHED: 'SYSTEM_CHALLENGE_CAP_REACHED',
   HIGH_RISK_SCORE: 'SYSTEM_HIGH_RISK_SCORE',
   MEDIUM_RISK_SCORE: 'SYSTEM_MEDIUM_RISK_SCORE',
@@ -89,6 +93,11 @@ const CONTEXT_RULES = Object.freeze({
     requiredFields: ['actorId', 'orderId', 'occurredAt'],
     missingRequired: 'fail_closed',
     timeoutBehavior: 'conditional_fail_closed',
+  },
+  [ACTION_TYPES.RIDER_WITHDRAWAL]: {
+    requiredFields: ['actorId', 'amount', 'occurredAt', 'ipHash'],
+    missingRequired: 'fail_closed',
+    timeoutBehavior: 'fail_closed',
   },
   [ACTION_TYPES.ORDER_FULFILLMENT_TRANSITION]: {
     requiredFields: ['orderId', 'paymentState', 'actorId'],

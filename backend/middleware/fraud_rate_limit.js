@@ -560,6 +560,50 @@ const fraudChallengeVerifyRateLimit = createCompositeRateLimit((req) => {
   ];
 });
 
+// ── Withdrawal rate limits ──
+
+const withdrawalRateLimit = createCompositeRateLimit((req) => {
+  const userId = req.user?.id || 'guest';
+  const ipHash = toHashedKey(getClientIp(req), 'ip');
+  const deviceId = req.headers['x-device-id'] || req.headers['x-app-instance-id'] || null;
+
+  const rules = [
+    {
+      key: ruleKey('withdrawal:user:10m', userId),
+      limit: 3,
+      windowSeconds: 600,
+      reasonCode: 'WITHDRAWAL_VELOCITY_USER',
+      message: 'Too many withdrawal requests. Please wait before trying again.',
+    },
+    {
+      key: ruleKey('withdrawal:user:1h', userId),
+      limit: 5,
+      windowSeconds: 3600,
+      reasonCode: 'WITHDRAWAL_VELOCITY_USER_HOURLY',
+      message: 'Hourly withdrawal limit reached. Please try again later.',
+    },
+    {
+      key: ruleKey('withdrawal:ip:1h', ipHash),
+      limit: 10,
+      windowSeconds: 3600,
+      reasonCode: 'WITHDRAWAL_VELOCITY_IP',
+      message: 'Too many withdrawal requests from this network.',
+    },
+  ];
+
+  if (deviceId) {
+    rules.push({
+      key: ruleKey('withdrawal:device:1h', toHashedKey(deviceId, 'device')),
+      limit: 5,
+      windowSeconds: 3600,
+      reasonCode: 'WITHDRAWAL_VELOCITY_DEVICE',
+      message: 'Too many withdrawal requests from this device.',
+    });
+  }
+
+  return rules;
+});
+
 module.exports = {
   apiGlobalRateLimit,
   signupRateLimit,
@@ -582,4 +626,5 @@ module.exports = {
   callTurnCredentialsRateLimit,
   fraudChallengeSendRateLimit,
   fraudChallengeVerifyRateLimit,
+  withdrawalRateLimit,
 };

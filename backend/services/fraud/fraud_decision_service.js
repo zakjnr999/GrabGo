@@ -286,6 +286,34 @@ const applyVelocitySignals = async ({ actionType, actorType, actorId, context, s
       scoreState.reasonDetails.paymentAttemptCount = count;
     }
   }
+
+  if (actionType === ACTION_TYPES.RIDER_WITHDRAWAL && actorId) {
+    const count10m = await velocityCounter({ key: `grabgo:fraud:velocity:withdrawal:user:10m:${actorId}`, ttlSeconds: 600 });
+    if (count10m > 3) {
+      scoreState.score += 30;
+      scoreState.reasonCodes.add(REASON_CODES.WITHDRAWAL_VELOCITY_USER);
+      scoreState.reasonDetails.withdrawalAttempt10m = count10m;
+    }
+
+    const count1h = await velocityCounter({ key: `grabgo:fraud:velocity:withdrawal:user:1h:${actorId}`, ttlSeconds: 3600 });
+    if (count1h > 5) {
+      scoreState.score += 25;
+      scoreState.reasonCodes.add(REASON_CODES.WITHDRAWAL_VELOCITY_USER);
+      scoreState.reasonDetails.withdrawalAttempt1h = count1h;
+    }
+
+    // Track withdrawal account changes — >3 different accounts in 24h is suspicious
+    const accountId = context.metadata?.withdrawalAccount || null;
+    if (accountId) {
+      const accountChangeKey = `grabgo:fraud:velocity:withdrawal_account:user:24h:${actorId}`;
+      const accountsUsed = await velocityCounter({ key: accountChangeKey, ttlSeconds: 86400 });
+      if (accountsUsed > 3) {
+        scoreState.score += 20;
+        scoreState.reasonCodes.add(REASON_CODES.WITHDRAWAL_ACCOUNT_CHANGE);
+        scoreState.reasonDetails.withdrawalAccountChanges24h = accountsUsed;
+      }
+    }
+  }
 };
 
 const applyColdStartSignals = async ({ actionType, actorType, actorId, context, scoreState, policy }) => {
@@ -313,6 +341,25 @@ const applyColdStartSignals = async ({ actionType, actorType, actorId, context, 
       scoreState.score += 30;
       scoreState.reasonCodes.add(REASON_CODES.RIDER_COLD_START_LOCATION_ANOMALY);
       scoreState.reasonDetails.riderColdStart = { riderAgeDays, highValueOrder, locationAnomaly };
+    }
+  }
+
+  // ── New-account withdrawal cold-start ──
+  if (actionType === ACTION_TYPES.RIDER_WITHDRAWAL && actorType === 'rider') {
+    const riderAgeDays = Number(age?.days ?? Number.NaN);
+    const withdrawalAmount = Number(context.amount || context.metadata?.amount || 0);
+
+    // Riders with accounts younger than 3 days withdrawing more than threshold
+    if (Number.isFinite(riderAgeDays) && riderAgeDays < 3 && withdrawalAmount >= threshold) {
+      scoreState.score += 35;
+      scoreState.reasonCodes.add(REASON_CODES.WITHDRAWAL_NEW_ACCOUNT);
+      scoreState.reasonDetails.withdrawalColdStart = { riderAgeDays, withdrawalAmount };
+    }
+    // Less severe: accounts < 7 days withdrawing any amount get a lighter bump
+    else if (Number.isFinite(riderAgeDays) && riderAgeDays < 7) {
+      scoreState.score += 10;
+      scoreState.reasonCodes.add(REASON_CODES.WITHDRAWAL_NEW_ACCOUNT);
+      scoreState.reasonDetails.withdrawalColdStart = { riderAgeDays, withdrawalAmount };
     }
   }
 };
@@ -429,7 +476,9 @@ const decide = async ({ actionType, actorType, actorId, context }) => {
   const challengeType = decision === DECISIONS.STEP_UP
     ? ([ACTION_TYPES.PAYMENT_CLIENT_CONFIRM, ACTION_TYPES.ORDER_CREATE].includes(actionType)
       ? CHALLENGE_TYPES.PAYMENT_REAUTH
-      : CHALLENGE_TYPES.OTP)
+      : actionType === ACTION_TYPES.RIDER_WITHDRAWAL
+        ? CHALLENGE_TYPES.OTP
+        : CHALLENGE_TYPES.OTP)
     : null;
 
   return {

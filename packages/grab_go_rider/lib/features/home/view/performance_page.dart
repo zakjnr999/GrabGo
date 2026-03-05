@@ -303,23 +303,11 @@ class _PerformancePageState extends State<PerformancePage> {
                       ),
                     ),
                     SizedBox(height: 20.h),
-                    _buildPerformanceRow("Success Rate", _successRate, 100, colors.accentGreen, colors),
+                    _buildPerformanceRow("Success Rate", _successRate, 100, colors),
                     SizedBox(height: 16.h),
-                    _buildPerformanceRow(
-                      "On-Time Rate",
-                      (_onTimeDeliveries / _totalDeliveries * 100),
-                      100,
-                      colors.accentOrange,
-                      colors,
-                    ),
+                    _buildPerformanceRow("On-Time Rate", (_onTimeDeliveries / _totalDeliveries * 100), 100, colors),
                     SizedBox(height: 16.h),
-                    _buildPerformanceRow(
-                      "Customer Satisfaction",
-                      _overallRating * 20,
-                      100,
-                      colors.accentViolet,
-                      colors,
-                    ),
+                    _buildPerformanceRow("Customer Satisfaction", _overallRating * 20, 100, colors),
                   ],
                 ),
               ),
@@ -416,8 +404,16 @@ class _PerformancePageState extends State<PerformancePage> {
     );
   }
 
-  Widget _buildPerformanceRow(String label, double value, double max, Color color, AppColorsExtension colors) {
+  Widget _buildPerformanceRow(
+    String label,
+    double value,
+    double max,
+    AppColorsExtension colors, {
+    double threshold = 80,
+  }) {
     final percentage = (value / max * 100).clamp(0.0, 100.0);
+    final isGood = percentage >= threshold;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -426,22 +422,68 @@ class _PerformancePageState extends State<PerformancePage> {
           children: [
             Text(
               label,
-              style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w600),
+              style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
             ),
             Text(
               '${percentage.toStringAsFixed(1)}%',
-              style: TextStyle(color: color, fontSize: 14.sp, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                color: isGood ? colors.textPrimary : colors.warning,
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ],
         ),
         SizedBox(height: 8.h),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: percentage / 100,
-            minHeight: 8.h,
-            backgroundColor: colors.divider.withValues(alpha: 0.3),
-            valueColor: AlwaysStoppedAnimation<Color>(color),
+        SizedBox(
+          height: 16.h,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final barWidth = constraints.maxWidth;
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  // Background track
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      height: 6.h,
+                      decoration: BoxDecoration(
+                        color: colors.divider.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                  ),
+                  // Filled track
+                  Positioned(
+                    left: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: barWidth * (percentage / 100),
+                      height: 6.h,
+                      decoration: BoxDecoration(
+                        color: isGood
+                            ? colors.accentGreen.withValues(alpha: 0.75)
+                            : colors.warning.withValues(alpha: 0.75),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                  ),
+                  // Threshold marker — custom arrow shape
+                  Positioned(
+                    left: barWidth * (threshold / 100) - 5.w,
+                    top: 0,
+                    bottom: 0,
+                    child: CustomPaint(
+                      size: Size(10.w, 16.h),
+                      painter: _ThresholdMarkerPainter(color: colors.textSecondary.withValues(alpha: 0.7)),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ],
@@ -547,4 +589,40 @@ class _PerformancePageState extends State<PerformancePage> {
       return DateFormat('MMM d').format(timestamp);
     }
   }
+}
+
+/// Custom painter for threshold marker — draws a downward-pointing
+/// arrow/pin above the bar with a thin stem through it.
+class _ThresholdMarkerPainter extends CustomPainter {
+  final Color color;
+  _ThresholdMarkerPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final arrowH = size.height * 0.45;
+    final stemTop = arrowH;
+    final stemBottom = size.height;
+
+    // Downward-pointing triangle
+    final arrowPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    final arrow = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(cx, arrowH)
+      ..close();
+    canvas.drawPath(arrow, arrowPaint);
+
+    // Thin stem line
+    final stemPaint = Paint()
+      ..color = color
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset(cx, stemTop), Offset(cx, stemBottom), stemPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _ThresholdMarkerPainter old) => old.color != color;
 }

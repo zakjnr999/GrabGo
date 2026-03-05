@@ -12,6 +12,8 @@ import 'package:chopper/chopper.dart';
 import 'package:grab_go_shared/core/auth/user_model.dart';
 import 'package:grab_go_shared/core/auth/rider_model.dart';
 import 'package:grab_go_rider/core/api/api_client.dart' show riderService;
+import 'package:grab_go_rider/features/home/models/partner_models.dart';
+import 'package:grab_go_rider/features/home/service/rider_partner_service.dart';
 
 class HomeSliverAppbar extends StatefulWidget {
   const HomeSliverAppbar({super.key});
@@ -24,6 +26,7 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
   User? _user;
   Rider? _rider;
   double _balance = 0.0;
+  PartnerLevel _partnerLevel = PartnerLevel.L1;
   bool _isLoading = true;
   bool _isWalletLoading = true;
 
@@ -34,6 +37,7 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
     _loadCachedVehicleType();
     _loadRiderData();
     _loadWalletData();
+    _loadPartnerLevel();
   }
 
   Future<void> _loadUserData() async {
@@ -69,17 +73,9 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
         return;
       }
 
-      final uri = Uri.parse(
-        '${riderService.client.baseUrl}/riders/verification',
-      );
-      final request = Request(
-        'GET',
-        uri,
-        riderService.client.baseUrl,
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      final response = await riderService.client
-          .send<RiderResponse, RiderResponse>(request);
+      final uri = Uri.parse('${riderService.client.baseUrl}/riders/verification');
+      final request = Request('GET', uri, riderService.client.baseUrl, headers: {'Authorization': 'Bearer $token'});
+      final response = await riderService.client.send<RiderResponse, RiderResponse>(request);
 
       if (response.isSuccessful && response.body != null) {
         if (response.body!.data != null) {
@@ -128,14 +124,8 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
       }
 
       final uri = Uri.parse('${riderService.client.baseUrl}/riders/wallet');
-      final request = Request(
-        'GET',
-        uri,
-        riderService.client.baseUrl,
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      final response = await riderService.client
-          .send<Map<String, dynamic>, Map<String, dynamic>>(request);
+      final request = Request('GET', uri, riderService.client.baseUrl, headers: {'Authorization': 'Bearer $token'});
+      final response = await riderService.client.send<Map<String, dynamic>, Map<String, dynamic>>(request);
 
       if (response.isSuccessful && response.body != null) {
         final data = response.body!['data'] as Map<String, dynamic>?;
@@ -161,6 +151,19 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
     }
   }
 
+  Future<void> _loadPartnerLevel() async {
+    try {
+      final dashboard = await RiderPartnerService().fetchPartnerDashboard();
+      if (mounted) {
+        setState(() {
+          _partnerLevel = dashboard.profile.partnerLevel;
+        });
+      }
+    } catch (_) {
+      // Silently keep default — partner system may not be enrolled yet.
+    }
+  }
+
   String _getGreetingText() {
     final username = _user?.username ?? '';
     if (username.isEmpty) {
@@ -171,9 +174,22 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
     final firstName = username.split(' ').first.trim();
 
     final vehicleType = _rider?.vehicleType ?? CacheService.getVehicleType();
-    return vehicleType?.toLowerCase() == "car"
-        ? "Driver $firstName"
-        : "Rider $firstName";
+    return vehicleType?.toLowerCase() == "car" ? "Driver $firstName" : "Rider $firstName";
+  }
+
+  Color _getLevelColor(AppColorsExtension colors) {
+    switch (_partnerLevel) {
+      case PartnerLevel.L1:
+        return colors.textSecondary;
+      case PartnerLevel.L2:
+        return colors.accentBlue;
+      case PartnerLevel.L3:
+        return colors.accentOrange;
+      case PartnerLevel.L4:
+        return colors.accentViolet;
+      case PartnerLevel.L5:
+        return colors.accentGreen;
+    }
   }
 
   Widget _getVehicleImage({
@@ -182,10 +198,8 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
     required double reverseRatio,
     required Size size,
   }) {
-    final height =
-        size.height * 0.48 * expandRatio + size.height * 0.35 * reverseRatio;
-    final width =
-        size.width * 0.48 * expandRatio + size.width * 0.35 * reverseRatio;
+    final height = size.height * 0.48 * expandRatio + size.height * 0.35 * reverseRatio;
+    final width = size.width * 0.48 * expandRatio + size.width * 0.35 * reverseRatio;
 
     final cachedVehicleType = CacheService.getVehicleType();
     final effectiveVehicleType = vehicleType ?? cachedVehicleType;
@@ -253,10 +267,8 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
       automaticallyImplyLeading: false,
       flexibleSpace: LayoutBuilder(
         builder: (context, constraints) {
-          final double expandRatio =
-              ((constraints.maxHeight - kToolbarHeight) /
-                      (size.height * 0.40 - kToolbarHeight))
-                  .clamp(0.0, 1.0);
+          final double expandRatio = ((constraints.maxHeight - kToolbarHeight) / (size.height * 0.40 - kToolbarHeight))
+              .clamp(0.0, 1.0);
           final double reverseRatio = 1.0 - expandRatio;
 
           return FlexibleSpaceBar(
@@ -310,12 +322,7 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
                       Expanded(
                         flex: 2,
                         child: Padding(
-                          padding: EdgeInsets.only(
-                            left: 20.w,
-                            right: 16.w,
-                            top: 40.h,
-                            bottom: 20.h,
-                          ),
+                          padding: EdgeInsets.only(left: 20.w, right: 16.w, top: 40.h, bottom: 20.h),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -324,17 +331,12 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
                                 opacity: expandRatio,
                                 duration: const Duration(milliseconds: 200),
                                 child: GestureDetector(
-                                  onTap: () => context.push("/verifyEmail"),
+                                  onTap: () => context.push("/partner-dashboard"),
                                   child: Container(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 10.w,
-                                      vertical: 4.h,
-                                    ),
+                                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
                                     decoration: BoxDecoration(
                                       color: Colors.white,
-                                      borderRadius: BorderRadius.circular(
-                                        KBorderSize.borderRadius50,
-                                      ),
+                                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius50),
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
@@ -343,15 +345,15 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
                                           width: 6.w,
                                           height: 6.w,
                                           decoration: BoxDecoration(
-                                            color: colors.accentGreen,
+                                            color: _getLevelColor(colors),
                                             shape: BoxShape.circle,
                                           ),
                                         ),
                                         SizedBox(width: 6.w),
                                         Text(
-                                          "Level 4",
+                                          partnerLevelLabel(_partnerLevel),
                                           style: TextStyle(
-                                            color: colors.accentGreen,
+                                            color: _getLevelColor(colors),
                                             fontSize: 12.sp,
                                             fontWeight: FontWeight.w700,
                                             letterSpacing: 0.5,
@@ -373,9 +375,7 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
                                     Text(
                                       "Welcome back,",
                                       style: TextStyle(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.9,
-                                        ),
+                                        color: Colors.white.withValues(alpha: 0.9),
                                         fontSize: 14.sp,
                                         fontWeight: FontWeight.w500,
                                         letterSpacing: 0.3,
@@ -386,9 +386,7 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.w900,
-                                        fontSize:
-                                            28.sp * expandRatio +
-                                            18.sp * reverseRatio,
+                                        fontSize: 28.sp * expandRatio + 18.sp * reverseRatio,
                                         height: 1.2,
                                         letterSpacing: -0.1,
                                       ),
@@ -410,23 +408,18 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
                                       style: TextStyle(
                                         fontSize: 11.sp,
                                         fontWeight: FontWeight.w600,
-                                        color: Colors.white.withValues(
-                                          alpha: 0.8,
-                                        ),
+                                        color: Colors.white.withValues(alpha: 0.8),
                                         letterSpacing: 1.2,
                                       ),
                                     ),
                                     SizedBox(height: 6.h),
                                     Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           "GHC",
                                           style: TextStyle(
-                                            color: Colors.white.withValues(
-                                              alpha: 0.9,
-                                            ),
+                                            color: Colors.white.withValues(alpha: 0.9),
                                             fontWeight: FontWeight.w600,
                                             fontSize: 18.sp,
                                             height: 1,
@@ -435,15 +428,11 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
                                         SizedBox(width: 4.w),
                                         Flexible(
                                           child: Text(
-                                            _isWalletLoading
-                                                ? "..."
-                                                : _balance.toStringAsFixed(2),
+                                            _isWalletLoading ? "..." : _balance.toStringAsFixed(2),
                                             style: TextStyle(
                                               color: Colors.white,
                                               fontWeight: FontWeight.w800,
-                                              fontSize:
-                                                  32.sp * expandRatio +
-                                                  24.sp * reverseRatio,
+                                              fontSize: 32.sp * expandRatio + 24.sp * reverseRatio,
                                               height: 1,
                                               letterSpacing: -1,
                                             ),
@@ -468,19 +457,13 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
                               bottom: 0,
                               right: 0,
                               child: Container(
-                                width:
-                                    size.width * 0.42 * expandRatio +
-                                    size.width * 0.30 * reverseRatio,
-                                height:
-                                    size.width * 0.42 * expandRatio +
-                                    size.width * 0.30 * reverseRatio,
+                                width: size.width * 0.42 * expandRatio + size.width * 0.30 * reverseRatio,
+                                height: size.width * 0.42 * expandRatio + size.width * 0.30 * reverseRatio,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   gradient: RadialGradient(
                                     colors: [
-                                      Colors.white.withValues(
-                                        alpha: 0.15 * expandRatio,
-                                      ),
+                                      Colors.white.withValues(alpha: 0.15 * expandRatio),
                                       Colors.transparent,
                                     ],
                                   ),
@@ -524,11 +507,7 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
               topRight: Radius.circular(KBorderSize.borderRadius20),
             ),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 8,
-                offset: const Offset(0, -2),
-              ),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, -2)),
             ],
           ),
         ),
@@ -558,11 +537,7 @@ class _HomeSliverAppbarState extends State<HomeSliverAppbar> {
               offset: Offset(-6.w, 6.h),
               label: const Text(
                 '99+',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
               ),
               backgroundColor: colors.error,
               child: IconButton(

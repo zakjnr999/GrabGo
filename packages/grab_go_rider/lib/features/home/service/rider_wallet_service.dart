@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:grab_go_rider/features/home/models/transaction_model.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:http/http.dart' as http;
+import 'package:uuid/uuid.dart';
 
 class RiderWalletDashboardData {
   final double balance;
@@ -42,25 +43,32 @@ class RiderWalletService {
     return headers;
   }
 
-  Uri _riderUri(String path, [Map<String, String>? queryParameters]) {
-    return Uri.parse(
-      '$_baseUrl/riders/$path',
-    ).replace(queryParameters: queryParameters);
+  /// Build headers with device fingerprint + optional idempotency key.
+  /// Used for sensitive operations like withdrawals.
+  Future<Map<String, String>> _buildSecureHeaders({String? idempotencyKey}) async {
+    final headers = await _buildHeaders();
+    try {
+      final deviceId = await DeviceIdService().getDeviceId();
+      headers['X-Device-Id'] = deviceId;
+    } catch (_) {
+      // Best-effort — don't block the request
+    }
+    if (idempotencyKey != null) {
+      headers['X-Idempotency-Key'] = idempotencyKey;
+    }
+    return headers;
   }
 
-  Future<RiderWalletDashboardData> fetchDashboard({
-    String transactionsPeriod = 'thisWeek',
-  }) async {
+  Uri _riderUri(String path, [Map<String, String>? queryParameters]) {
+    return Uri.parse('$_baseUrl/riders/$path').replace(queryParameters: queryParameters);
+  }
+
+  Future<RiderWalletDashboardData> fetchDashboard({String transactionsPeriod = 'thisWeek'}) async {
     final headers = await _buildHeaders();
 
-    final walletResponse = await _client.get(
-      _riderUri('wallet'),
-      headers: headers,
-    );
+    final walletResponse = await _client.get(_riderUri('wallet'), headers: headers);
     if (walletResponse.statusCode != 200) {
-      throw Exception(
-        'Failed to fetch wallet: ${walletResponse.statusCode} ${walletResponse.body}',
-      );
+      throw Exception('Failed to fetch wallet: ${walletResponse.statusCode} ${walletResponse.body}');
     }
 
     final walletJson = jsonDecode(walletResponse.body) as Map<String, dynamic>;
@@ -70,10 +78,7 @@ class RiderWalletService {
       _safeGet(_riderUri('earnings', {'period': 'today'}), headers),
       _safeGet(_riderUri('earnings', {'period': 'thisWeek'}), headers),
       _safeGet(_riderUri('earnings', {'period': 'thisMonth'}), headers),
-      _safeGet(
-        _riderUri('transactions', {'period': transactionsPeriod}),
-        headers,
-      ),
+      _safeGet(_riderUri('transactions', {'period': transactionsPeriod}), headers),
     ]);
 
     final todayEarnings = _parseEarningsTotal(results[0], period: 'today');
@@ -102,23 +107,16 @@ class RiderWalletService {
     }
   }
 
-  double? _parseEarningsTotal(
-    http.Response? response, {
-    required String period,
-  }) {
+  double? _parseEarningsTotal(http.Response? response, {required String period}) {
     if (response == null) return null;
     if (response.statusCode != 200) {
-      debugPrint(
-        'Failed earnings response for $period: ${response.statusCode} ${response.body}',
-      );
+      debugPrint('Failed earnings response for $period: ${response.statusCode} ${response.body}');
       return null;
     }
 
     try {
       final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-      final summary =
-          (decoded['data'] as Map<String, dynamic>?)?['summary']
-              as Map<String, dynamic>?;
+      final summary = (decoded['data'] as Map<String, dynamic>?)?['summary'] as Map<String, dynamic>?;
       return _asDouble(summary?['total']);
     } catch (e) {
       debugPrint('Failed to parse earnings response for $period: $e');
@@ -129,9 +127,7 @@ class RiderWalletService {
   List<TransactionModel> _parseTransactions(http.Response? response) {
     if (response == null) return [];
     if (response.statusCode != 200) {
-      debugPrint(
-        'Failed transactions response: ${response.statusCode} ${response.body}',
-      );
+      debugPrint('Failed transactions response: ${response.statusCode} ${response.body}');
       return [];
     }
 
@@ -139,10 +135,7 @@ class RiderWalletService {
       final decoded = jsonDecode(response.body) as Map<String, dynamic>;
       final rawTransactions = decoded['data'] as List<dynamic>? ?? [];
 
-      return rawTransactions
-          .whereType<Map<String, dynamic>>()
-          .map(_mapTransaction)
-          .toList();
+      return rawTransactions.whereType<Map<String, dynamic>>().map(_mapTransaction).toList();
     } catch (e) {
       debugPrint('Failed to parse transactions response: $e');
       return [];
@@ -152,14 +145,9 @@ class RiderWalletService {
   TransactionModel _mapTransaction(Map<String, dynamic> raw) {
     final type = _parseTransactionType(raw['type']?.toString());
     final status = _parseTransactionStatus(raw['status']?.toString());
-    final createdAtRaw =
-        raw['createdAt']?.toString() ?? raw['updatedAt']?.toString() ?? '';
-    final createdAt =
-        DateTime.tryParse(createdAtRaw)?.toLocal() ?? DateTime.now();
-    final description = _resolveDescription(
-      type,
-      raw['description']?.toString(),
-    );
+    final createdAtRaw = raw['createdAt']?.toString() ?? raw['updatedAt']?.toString() ?? '';
+    final createdAt = DateTime.tryParse(createdAtRaw)?.toLocal() ?? DateTime.now();
+    final description = _resolveDescription(type, raw['description']?.toString());
 
     return TransactionModel(
       id: raw['id']?.toString() ?? '',
@@ -222,5 +210,41 @@ class RiderWalletService {
     if (value == null) return 0;
     if (value is num) return value.toDouble();
     return double.tryParse(value.toString()) ?? 0;
+  }
+
+  /// Submit a withdrawal request to the backend.
+  ///
+  /// [amount] – the GHS amount to withdraw.
+  /// [withdrawalMethod] – one of `bank_account`, `mtn_mobile_money`, `vodafone_cash`.
+  /// [withdrawalAccount] – account identifier (phone number or bank details).
+  ///
+  /// Returns a map with the transaction data on success, or throws on error.
+  Future<Map<String, dynamic>> requestWithdrawal({
+    required double amount,
+    required String withdrawalMethod,
+    required String withdrawalAccount,
+    String? description,
+  }) async {
+    // Generate a unique idempotency key to prevent duplicate submissions
+    final idempotencyKey = const Uuid().v4();
+    final headers = await _buildSecureHeaders(idempotencyKey: idempotencyKey);
+    final body = {
+      'amount': amount,
+      'withdrawalMethod': withdrawalMethod,
+      'withdrawalAccount': withdrawalAccount,
+      if (description != null) 'description': description,
+    };
+
+    final response = await _client.post(_riderUri('withdraw'), headers: headers, body: jsonEncode(body));
+
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return decoded['data'] as Map<String, dynamic>? ?? {};
+    }
+
+    // Extract error message from backend
+    final message = decoded['message']?.toString() ?? 'Withdrawal request failed';
+    throw Exception(message);
   }
 }
