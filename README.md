@@ -101,6 +101,12 @@
 - Scheduled-order release job for paid delivery orders
 - Durable dispatch retry queue for unassigned delivery orders (backoff retries + stale-lock recovery)
 - Tracking resilience hardening (customer fallback polling + rider offline queue + health state UI)
+- Rider Partner & Incentive System rollout
+  - Tiered partner levels (`L1` → `L5`) with score-based upgrades/downgrades
+  - Incentive engines for quests, streaks, milestones, and peak-hour boosts
+  - Budget-window approval flow with incentive ledger states (`pending_budget`, `available`, `paid_out`)
+  - Weekly auto-payout + instant payout requests with guarded withdrawal allowances
+  - Rider metrics sync + partner recalculation jobs for consistent progression state
 - OTP system via Arkesel (SMS + WhatsApp) with Redis rate limiting/lockouts
 - Fraud Prevention Service v3 (hybrid sync decisions + async enrichment)
   - `FraudContextV1` with deterministic `context_hash` and action-scoped required-field rules
@@ -158,6 +164,13 @@ GrabGo/
 │   │   ├── cart_service.js      # Vendor-scoped cart grouping logic
 │   │   ├── tracking_service.js  # Real-time order tracking & ETA
 │   │   ├── analytic_service.js  # Delivery analytics & metrics
+│   │   ├── rider_partner_service.js # Rider level progression and partner profile management
+│   │   ├── rider_incentive_orchestrator.js # Incentive orchestration pipeline (quests/streaks/milestones)
+│   │   ├── rider_quest_engine.js # Quest eligibility/progress/reward calculations
+│   │   ├── rider_streak_engine.js # Consecutive-delivery streak logic
+│   │   ├── rider_milestone_engine.js # Milestone tracking and payouts
+│   │   ├── rider_payout_service.js # Payout request validation and settlement workflow
+│   │   ├── rider_budget_service.js # Budget window checks and approvals
 │   │   ├── cod_service.js       # COD eligibility and policy checks
 │   │   ├── delivery_verification_service.js # Gift delivery verification
 │   │   ├── parcel_validation_service.js # Parcel validation + policy guardrails
@@ -184,6 +197,8 @@ GrabGo/
 │   │   ├── scheduled_order_release.js # Release scheduled delivery orders
 │   │   ├── fraud_outbox_worker.js # Fraud outbox publisher -> Redis Streams
 │   │   ├── fraud_feature_recompute.js # Fraud feature recomputation scheduler
+│   │   ├── rider_partner_recalc.js # Rider partner level and score recalculation
+│   │   ├── rider_weekly_payout.js # Weekly incentive payout processor
 │   │   ├── cart_abandonment.js  # Cart abandonment nudges
 │   │   ├── meal_nudges.js       # Meal-time notifications
 │   │   └── statusCleanup.js     # Expired stories cleanup
@@ -400,6 +415,19 @@ DISPATCH_RETRY_JOB_BATCH_LIMIT=20
 DISPATCH_RETRY_STALE_PROCESSING_SECONDS=90
 ```
 
+### Rider Partner & Incentive Configuration (Backend `.env`)
+
+Use these feature flags to control rollout and safety mode:
+
+```bash
+RIDER_PARTNER_SYSTEM_ENABLED=true
+RIDER_PARTNER_SHADOW_MODE=true        # when true, computes outcomes without enforcing payout side-effects
+RIDER_INCENTIVES_ENABLED=true
+RIDER_DELIVERY_ANALYTICS_ENABLED=true
+RIDER_METRICS_SYNC_ENABLED=true
+RIDER_WITHDRAWAL_GUARD_ENABLED=true
+```
+
 ### Rate Limiting Configuration (Backend `.env`)
 
 HTTP endpoint throttles are enabled by default in code (global `/api` + route-level composite limits).
@@ -505,6 +533,10 @@ dart run build_runner build --delete-conflicting-outputs
 - **Gift Verification**: Verify delivery by code, resend code, or upload authorized photo fallback
 - **Navigation**: Integrated maps with turn-by-turn directions
 - **Earnings Breakdown**: Base fee, distance fee, tips, platform commission
+- **Rider Partner Levels**: Automatic progression across `L1`–`L5` based on performance score
+- **Quest Rewards**: Daily/weekly target quests with completion payouts
+- **Streak & Milestone Bonuses**: Consecutive-delivery streak rewards and cumulative milestone unlocks
+- **Payout Controls**: Instant payout requests + scheduled weekly auto-payouts with withdrawal guardrails
 - **Performance Metrics**: On-time rate, completion rate, ratings
 - **Customer Communication**: In-app chat and voice/video calls
 - **Online/Offline Status**: Toggle availability with auto-offline detection
