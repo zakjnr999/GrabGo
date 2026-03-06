@@ -1,0 +1,14 @@
+{
+  "project": "GrabGo",
+  "platform": "ios",
+  "github": {
+    "owner": "zakjnr999",
+    "repo": "GrabGo"
+  },
+  "ios": {},
+  "flutter": {
+    "version": "3.38.5"
+  },
+  "reactNative": {},
+  "mobai": {}
+}
