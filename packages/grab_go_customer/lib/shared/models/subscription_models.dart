@@ -45,6 +45,7 @@ class UserSubscription {
   final String tier;
   final String tierName;
   final String status;
+  final String? pendingPaymentReference;
   final DateTime? currentPeriodStart;
   final DateTime? currentPeriodEnd;
   final DateTime? cancelledAt;
@@ -54,6 +55,7 @@ class UserSubscription {
     required this.tier,
     required this.tierName,
     required this.status,
+    this.pendingPaymentReference,
     required this.currentPeriodStart,
     required this.currentPeriodEnd,
     required this.cancelledAt,
@@ -67,6 +69,7 @@ class UserSubscription {
       tier: (json['tier'] ?? '').toString(),
       tierName: (json['tierName'] ?? json['tier'] ?? '').toString(),
       status: (json['status'] ?? '').toString(),
+      pendingPaymentReference: json['pendingPaymentReference']?.toString(),
       currentPeriodStart: DateTime.tryParse((json['currentPeriodStart'] ?? '').toString()),
       currentPeriodEnd: DateTime.tryParse((json['currentPeriodEnd'] ?? '').toString()),
       cancelledAt: DateTime.tryParse((json['cancelledAt'] ?? '').toString()),

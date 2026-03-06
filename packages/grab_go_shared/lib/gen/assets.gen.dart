@@ -295,6 +295,15 @@ class $LibAssetsIconsGen {
   AssetGenImage get google =>
       const AssetGenImage('lib/assets/icons/google.png');
 
+  /// File path: lib/assets/icons/grabgo_credit_icon.svg
+  String get grabgoCreditIcon => 'lib/assets/icons/grabgo_credit_icon.svg';
+
+  /// File path: lib/assets/icons/grabgo_plus_badge.svg
+  String get grabgoPlusBadge => 'lib/assets/icons/grabgo_plus_badge.svg';
+
+  /// File path: lib/assets/icons/grabgo_premium_badge.svg
+  String get grabgoPremiumBadge => 'lib/assets/icons/grabgo_premium_badge.svg';
+
   /// File path: lib/assets/icons/grabmart_icon.svg
   String get grabmartIcon => 'lib/assets/icons/grabmart_icon.svg';
 
@@ -476,6 +485,24 @@ class $LibAssetsIconsGen {
 
   /// File path: lib/assets/icons/profile-circle.svg
   String get profileCircle => 'lib/assets/icons/profile-circle.svg';
+
+  /// File path: lib/assets/icons/promo_banner_five.svg
+  String get promoBannerFive => 'lib/assets/icons/promo_banner_five.svg';
+
+  /// File path: lib/assets/icons/promo_banner_four.svg
+  String get promoBannerFour => 'lib/assets/icons/promo_banner_four.svg';
+
+  /// File path: lib/assets/icons/promo_banner_one.svg
+  String get promoBannerOne => 'lib/assets/icons/promo_banner_one.svg';
+
+  /// File path: lib/assets/icons/promo_banner_three.svg
+  String get promoBannerThree => 'lib/assets/icons/promo_banner_three.svg';
+
+  /// File path: lib/assets/icons/promo_banner_two.svg
+  String get promoBannerTwo => 'lib/assets/icons/promo_banner_two.svg';
+
+  /// File path: lib/assets/icons/promo_code_icon.svg
+  String get promoCodeIcon => 'lib/assets/icons/promo_code_icon.svg';
 
   /// File path: lib/assets/icons/refresh.svg
   String get refresh => 'lib/assets/icons/refresh.svg';
@@ -696,6 +723,9 @@ class $LibAssetsIconsGen {
     gift,
     goceriesIcon,
     google,
+    grabgoCreditIcon,
+    grabgoPlusBadge,
+    grabgoPremiumBadge,
     grabmartIcon,
     group,
     halfMoon,
@@ -755,6 +785,12 @@ class $LibAssetsIconsGen {
     plus,
     position,
     profileCircle,
+    promoBannerFive,
+    promoBannerFour,
+    promoBannerOne,
+    promoBannerThree,
+    promoBannerTwo,
+    promoCodeIcon,
     refresh,
     riderMarkerIcon,
     riderOnboardingOne,

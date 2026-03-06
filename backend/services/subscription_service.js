@@ -155,6 +155,41 @@ const getActiveSubscription = async (userId) => {
 };
 
 /**
+ * Get a user's latest pending subscription, or null.
+ * This is used for frontend pending-payment UX.
+ */
+const getLatestPendingSubscription = async (userId) => {
+  if (!userId) return null;
+
+  const subscription = await prisma.subscription.findFirst({
+    where: {
+      userId,
+      status: 'pending',
+    },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      payments: {
+        where: { status: 'pending' },
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+      },
+    },
+  });
+
+  if (!subscription) return null;
+
+  const pendingPayment = subscription.payments?.[0] || null;
+  const plan = PLANS[subscription.tier];
+  const { payments, ...rest } = subscription;
+
+  return {
+    ...rest,
+    plan: plan || null,
+    pendingPaymentReference: pendingPayment?.paystackReference || null,
+  };
+};
+
+/**
  * Initialize a new subscription.
  * Returns a Paystack authorization URL for the customer to complete payment.
  */
@@ -174,6 +209,22 @@ const subscribe = async ({ userId, email, tier }) => {
     }
     // Upgrading/downgrading — cancel the old one first
     await cancelSubscription(userId, `Switching to ${plan.name}`);
+  }
+
+  // Clear stale pending attempts before creating a fresh payment session.
+  const existingPending = await prisma.subscription.findFirst({
+    where: { userId, status: 'pending' },
+    orderBy: { createdAt: 'desc' },
+  });
+  if (existingPending) {
+    await prisma.subscription.update({
+      where: { id: existingPending.id },
+      data: {
+        status: 'cancelled',
+        cancelledAt: new Date(),
+        cancelReason: 'Replaced by a new subscription payment attempt',
+      },
+    });
   }
 
   // Ensure Paystack plan exists
@@ -778,6 +829,7 @@ module.exports = {
   PLANS,
   getPlans,
   getActiveSubscription,
+  getLatestPendingSubscription,
   subscribe,
   cancelSubscription,
   calculateSubscriptionBenefits,

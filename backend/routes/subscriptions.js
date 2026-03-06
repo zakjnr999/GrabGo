@@ -43,7 +43,12 @@ router.get('/me', protect, async (req, res) => {
       return res.json({ success: true, data: null, message: 'Subscriptions are not available' });
     }
 
-    const subscription = await subscriptionService.getActiveSubscription(req.user.id);
+    const activeSubscription = await subscriptionService.getActiveSubscription(req.user.id);
+    const pendingSubscription = activeSubscription
+      ? null
+      : await subscriptionService.getLatestPendingSubscription(req.user.id);
+    const subscription = activeSubscription || pendingSubscription;
+
     if (!subscription) {
       return res.json({ success: true, data: null, message: 'No active subscription' });
     }
@@ -58,6 +63,7 @@ router.get('/me', protect, async (req, res) => {
         currentPeriodStart: subscription.currentPeriodStart,
         currentPeriodEnd: subscription.currentPeriodEnd,
         cancelledAt: subscription.cancelledAt,
+        pendingPaymentReference: subscription.pendingPaymentReference || null,
         benefits: {
           freeDelivery: subscription.plan?.freeDeliveryMinOrder === 0
             ? 'All orders'

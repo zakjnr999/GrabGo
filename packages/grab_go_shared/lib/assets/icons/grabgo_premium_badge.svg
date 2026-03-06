@@ -1,0 +1,33 @@
+<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  
+  <!-- === 3D GOLD CROWN === -->
+  
+  <!-- Left Half (Brighter Yellow) -->
+  <polygon points="60,88 25,88 15,35 40,60 60,20" fill="#FFD166" />
+  
+  <!-- Right Half (Deeper Golden Orange for 3D depth) -->
+  <polygon points="60,88 60,20 80,60 105,35 95,88" fill="#FFB703" />
+
+  <!-- Left Base Rim (Shadowed for volume) -->
+  <polygon points="60,88 25,88 22,100 60,100" fill="#F4A261" />
+  
+  <!-- Right Base Rim (Darkest for depth) -->
+  <polygon points="60,88 60,100 98,100 95,88" fill="#E76F51" />
+
+  <!-- Center Highlight Line -->
+  <line x1="60" y1="12" x2="60" y2="100" stroke="#FFFFFF" stroke-width="1.5" opacity="0.6" />
+  
+  <!-- Base Separator Highlight Line -->
+  <line x1="25" y1="88" x2="95" y2="88" stroke="#FFFFFF" stroke-width="1.5" opacity="0.4" stroke-linecap="round" />
+
+  <!-- Left Tip Ornament -->
+  <circle cx="15" cy="35" r="6" fill="#FFD166" />
+  
+  <!-- Right Tip Ornament -->
+  <circle cx="105" cy="35" r="6" fill="#FFB703" />
+  
+  <!-- Center Tip Ornament (Split precisely in half for the 3D effect) -->
+  <path d="M 60,12 A 8 8 0 0 0 60,28 Z" fill="#FFD166" />
+  <path d="M 60,12 A 8 8 0 0 1 60,28 Z" fill="#FFB703" />
+
+</svg>

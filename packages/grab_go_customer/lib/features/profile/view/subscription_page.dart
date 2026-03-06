@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -29,6 +30,13 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
   List<SubscriptionPlan> _plans = const [];
   UserSubscription? _current;
   String? _selectedTier;
+  Timer? _pendingPollingTimer;
+  bool _isConfirmingPending = false;
+  int _pendingPollAttempts = 0;
+  static const int _maxPendingPollAttempts = 8;
+
+  bool get _hasPendingSubscription => _current?.status.toLowerCase() == 'pending';
+  String? get _pendingPaymentReference => _current?.pendingPaymentReference;
 
   SubscriptionPlan? get _selectedPlan {
     if (_plans.isEmpty) return null;
@@ -43,6 +51,12 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _pendingPollingTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadData({bool forceRefresh = false}) async {
@@ -63,6 +77,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
             _selectedTier = selectedTier;
             _isLoading = false;
           });
+          _configurePendingPolling();
         }
         hydratedFromCache = true;
         if (!cached.isStale) {
@@ -82,6 +97,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
         _selectedTier = selectedTier;
         _isLoading = false;
       });
+      _configurePendingPolling();
       await _saveSubscriptionDataToCache(plans: plans, current: current);
     } catch (e) {
       if (!mounted) return;
@@ -98,10 +114,99 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
     }
   }
 
+  void _configurePendingPolling() {
+    _pendingPollingTimer?.cancel();
+    _pendingPollAttempts = 0;
+
+    if (!_hasPendingSubscription || (_pendingPaymentReference?.isEmpty ?? true)) {
+      return;
+    }
+
+    _pendingPollingTimer = Timer.periodic(const Duration(seconds: 8), (timer) async {
+      if (!mounted || !_hasPendingSubscription) {
+        timer.cancel();
+        return;
+      }
+      if (_pendingPollAttempts >= _maxPendingPollAttempts) {
+        timer.cancel();
+        return;
+      }
+
+      _pendingPollAttempts += 1;
+      final confirmed = await _confirmPendingPayment(silent: true);
+      if (confirmed) {
+        timer.cancel();
+      }
+    });
+  }
+
+  Future<bool> _confirmPendingPayment({bool silent = false}) async {
+    if (_isConfirmingPending) return false;
+    final reference = _pendingPaymentReference;
+    if (reference == null || reference.isEmpty) {
+      if (!silent && mounted) {
+        AppToastMessage.show(
+          context: context,
+          message: 'No pending payment reference found. Start a new payment attempt.',
+          backgroundColor: context.appColors.error,
+        );
+      }
+      return false;
+    }
+
+    _isConfirmingPending = true;
+    if (!silent && mounted) {
+      setState(() => _isSubmitting = true);
+    }
+
+    try {
+      final result = await _service.confirmPayment(reference);
+      if (!mounted) return false;
+
+      if (result.confirmed) {
+        if (!silent) {
+          AppToastMessage.show(
+            context: context,
+            message: result.alreadyConfirmed
+                ? 'Payment already confirmed. Loading your subscription...'
+                : 'Payment confirmed. Activating your plan...',
+            backgroundColor: context.appColors.success,
+          );
+        }
+        await _loadData(forceRefresh: true);
+        return true;
+      }
+
+      if (!silent) {
+        AppToastMessage.show(
+          context: context,
+          message: result.message ?? 'Payment is still pending or failed.',
+          backgroundColor: context.appColors.error,
+        );
+      }
+      return false;
+    } catch (e) {
+      if (!silent && mounted) {
+        AppToastMessage.show(
+          context: context,
+          message: e.toString().replaceFirst('Exception: ', ''),
+          backgroundColor: context.appColors.error,
+        );
+      }
+      return false;
+    } finally {
+      _isConfirmingPending = false;
+      if (!silent && mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
+
   Future<void> _startSubscription(SubscriptionPlan plan) async {
     if (_isSubmitting) return;
 
     setState(() => _isSubmitting = true);
+    _pendingPollingTimer?.cancel();
 
     try {
       final start = await _service.subscribe(plan.tier);
@@ -290,6 +395,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
       'tier': current.tier,
       'tierName': current.tierName,
       'status': current.status,
+      'pendingPaymentReference': current.pendingPaymentReference,
       'currentPeriodStart': current.currentPeriodStart?.toIso8601String(),
       'currentPeriodEnd': current.currentPeriodEnd?.toIso8601String(),
       'cancelledAt': current.cancelledAt?.toIso8601String(),
@@ -371,6 +477,10 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
 
   Future<void> _onPrimaryAction(SubscriptionPlan selectedPlan) async {
     if (_isSubmitting) return;
+    if (_hasPendingSubscription) {
+      await _confirmPendingPayment();
+      return;
+    }
     if (_current == null) {
       await _startSubscription(selectedPlan);
       return;
@@ -600,19 +710,24 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
 
   Widget _buildCurrentPlanCard(AppColorsExtension colors) {
     final current = _current!;
+    final isPending = current.status.toLowerCase() == 'pending';
+    final hasPendingReference = (current.pendingPaymentReference?.isNotEmpty ?? false);
+
     return Container(
       margin: EdgeInsets.only(bottom: 14.h),
       padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
-        color: colors.accentViolet.withValues(alpha: 0.08),
+        color: isPending ? colors.accentOrange.withValues(alpha: 0.08) : colors.accentViolet.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(color: colors.accentViolet.withValues(alpha: 0.32)),
+        border: Border.all(
+          color: isPending ? colors.accentOrange.withValues(alpha: 0.32) : colors.accentViolet.withValues(alpha: 0.32),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Active Plan',
+            isPending ? 'Payment Pending' : 'Active Plan',
             style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w700),
           ),
           SizedBox(height: 4.h),
@@ -620,7 +735,66 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
             current.tierName,
             style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w800),
           ),
-          if (current.currentPeriodEnd != null) ...[
+          if (isPending) ...[
+            SizedBox(height: 4.h),
+            Text(
+              'We are waiting for Paystack confirmation. Tap confirm after payment.',
+              style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w500),
+            ),
+            SizedBox(height: 10.h),
+            Row(
+              children: [
+                Expanded(
+                  child: AppButton(
+                    width: double.infinity,
+                    onPressed: _isSubmitting ? () {} : () => _confirmPendingPayment(),
+                    isLoading: _isSubmitting,
+                    backgroundColor: colors.accentOrange,
+                    borderRadius: 12.r,
+                    buttonText: 'Confirm Payment',
+                    padding: EdgeInsets.symmetric(vertical: 12.h),
+                    textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12.sp),
+                  ),
+                ),
+                SizedBox(width: 10.w),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _isSubmitting
+                        ? null
+                        : () async {
+                            final pendingPlan = _findPlanByTier(current.tier);
+                            if (pendingPlan == null) {
+                              AppToastMessage.show(
+                                context: context,
+                                message: 'Plan not available. Please refresh and try again.',
+                                backgroundColor: colors.error,
+                              );
+                              return;
+                            }
+                            if (!hasPendingReference) {
+                              AppToastMessage.show(
+                                context: context,
+                                message: 'Starting a new payment attempt...',
+                                backgroundColor: colors.accentOrange,
+                              );
+                            }
+                            await _startSubscription(pendingPlan);
+                          },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colors.textPrimary,
+                      side: BorderSide(color: colors.inputBorder.withValues(alpha: 0.8)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                      padding: EdgeInsets.symmetric(vertical: 12.h),
+                    ),
+                    child: Text(
+                      'Start New Payment',
+                      style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ] else if (current.currentPeriodEnd != null) ...[
             SizedBox(height: 4.h),
             Text(
               'Renews on ${_formatRenewalDate(current.currentPeriodEnd!)}',
@@ -638,7 +812,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
     final planDescription = _buildPlanDescription(plan);
 
     return GestureDetector(
-      onTap: _isSubmitting ? null : () => setState(() => _selectedTier = plan.tier),
+      onTap: (_isSubmitting || _hasPendingSubscription) ? null : () => setState(() => _selectedTier = plan.tier),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
@@ -894,6 +1068,19 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
 
   Widget _buildPrimaryActionButton(AppColorsExtension colors, SubscriptionPlan? selectedPlan) {
     if (selectedPlan == null) return const SizedBox.shrink();
+
+    if (_hasPendingSubscription) {
+      return AppButton(
+        width: double.infinity,
+        onPressed: () => _onPrimaryAction(selectedPlan),
+        isLoading: _isSubmitting,
+        backgroundColor: _isSubmitting ? colors.accentOrange.withValues(alpha: 0.7) : colors.accentOrange,
+        borderRadius: KBorderSize.borderRadius15,
+        buttonText: 'Confirm Payment',
+        padding: EdgeInsets.symmetric(vertical: 16.h),
+        textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15.sp),
+      );
+    }
 
     final hasCurrent = _current != null;
     final isCurrentTier = _current?.tier == selectedPlan.tier;
