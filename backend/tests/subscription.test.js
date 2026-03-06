@@ -46,14 +46,16 @@ jest.mock('../config/feature_flags', () => ({
   isSubscriptionEnabled: true,
 }));
 
-const axios = require('axios');
-const featureFlags = require('../config/feature_flags');
-
+let axios;
+let featureFlags;
 let subscriptionService;
 
 beforeEach(() => {
   jest.clearAllMocks();
   jest.resetModules();
+
+  axios = require('axios');
+  featureFlags = require('../config/feature_flags');
 
   // Re-enable feature flag
   featureFlags.isSubscriptionEnabled = true;
@@ -132,7 +134,7 @@ describe('getActiveSubscription', () => {
     expect(result.plan.name).toBe('GrabGo Plus');
   });
 
-  test('queries for active or past_due status with future end date', async () => {
+  test('queries active and billable past_due subscriptions with future end date', async () => {
     mockPrismaSubscription.findFirst.mockResolvedValue(null);
     await subscriptionService.getActiveSubscription('user123');
 
@@ -140,10 +142,89 @@ describe('getActiveSubscription', () => {
       expect.objectContaining({
         where: expect.objectContaining({
           userId: 'user123',
-          status: { in: ['active', 'past_due'] },
           currentPeriodEnd: { gte: expect.any(Date) },
+          OR: expect.arrayContaining([
+            expect.objectContaining({ status: 'active' }),
+            expect.objectContaining({
+              status: 'past_due',
+              payments: expect.objectContaining({
+                some: expect.objectContaining({ status: 'success' }),
+              }),
+            }),
+          ]),
         }),
       })
+    );
+  });
+});
+
+// ── Subscribe / Retry Flow ────────────────────────────────────────────────
+
+describe('subscribe', () => {
+  test('allows retry for past_due subscription by cancelling then creating a new payment session', async () => {
+    const future = new Date(Date.now() + 86400000);
+    const existingPastDue = {
+      id: 'sub_old',
+      userId: 'user123',
+      tier: 'grabgo_premium',
+      status: 'past_due',
+      currentPeriodEnd: future,
+    };
+
+    mockPrismaSubscription.findFirst
+      .mockResolvedValueOnce(existingPastDue) // getActiveSubscription in subscribe()
+      .mockResolvedValueOnce(existingPastDue) // find in cancelSubscription()
+      .mockResolvedValueOnce(null); // existing pending attempt check
+
+    mockPrismaSubscription.update.mockResolvedValue({
+      ...existingPastDue,
+      status: 'cancelled',
+      cancelledAt: new Date(),
+    });
+    mockPrismaSubscription.create.mockResolvedValue({ id: 'sub_new' });
+    mockPrismaSubscriptionPayment.create.mockResolvedValue({
+      id: 'pay_new',
+      subscriptionId: 'sub_new',
+      status: 'pending',
+    });
+
+    axios._instance.get.mockResolvedValue({
+      data: {
+        data: [
+          {
+            name: 'GrabGo Premium',
+            amount: 6000,
+            plan_code: 'PLN_existing',
+          },
+        ],
+      },
+    });
+    axios._instance.post.mockResolvedValue({
+      data: {
+        status: true,
+        data: {
+          authorization_url: 'https://paystack.test/authorize',
+          access_code: 'ACCESS_test',
+        },
+      },
+    });
+
+    const result = await subscriptionService.subscribe({
+      userId: 'user123',
+      email: 'test@example.com',
+      tier: 'grabgo_premium',
+    });
+
+    expect(result).toBeDefined();
+    expect(result.subscriptionId).toBe('sub_new');
+    expect(mockPrismaSubscription.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'sub_old' },
+        data: expect.objectContaining({
+          status: 'cancelled',
+          cancelReason: expect.stringContaining('Retrying subscription'),
+        }),
+      }),
     );
   });
 });
@@ -426,8 +507,11 @@ describe('handleWebhook', () => {
     expect(mockPrismaSubscription.findUnique).not.toHaveBeenCalled();
   });
 
-  test('invoice.payment_failed marks subscription as past_due', async () => {
-    mockPrismaSubscription.findUnique.mockResolvedValue({ id: 'sub1' });
+  test('invoice.payment_failed marks active subscription as past_due', async () => {
+    mockPrismaSubscription.findUnique.mockResolvedValue({
+      id: 'sub1',
+      status: 'active',
+    });
 
     await subscriptionService.handleWebhook('invoice.payment_failed', {
       data: {
@@ -438,9 +522,38 @@ describe('handleWebhook', () => {
       },
     });
 
-    // Should call $transaction with update + create
-    const prisma = require('../config/prisma');
-    expect(prisma.$transaction).toHaveBeenCalled();
+    expect(mockPrismaSubscription.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'sub1' },
+        data: expect.objectContaining({ status: 'past_due' }),
+      }),
+    );
+  });
+
+  test('invoice.payment_failed cancels pending initial subscription attempt', async () => {
+    mockPrismaSubscription.findUnique.mockResolvedValue({
+      id: 'sub_pending',
+      status: 'pending',
+    });
+
+    await subscriptionService.handleWebhook('invoice.payment_failed', {
+      data: {
+        reference: 'ref_pending_fail',
+        amount: 3000,
+        metadata: { subscriptionId: 'sub_pending' },
+        gateway_response: 'Insufficient funds',
+      },
+    });
+
+    expect(mockPrismaSubscription.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'sub_pending' },
+        data: expect.objectContaining({
+          status: 'cancelled',
+          cancelledAt: expect.any(Date),
+        }),
+      }),
+    );
   });
 
   test('unknown events return null gracefully', async () => {

@@ -548,6 +548,7 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
               );
               final double subscriptionSavings =
                   provider.subscriptionTotalDiscount;
+              final String? subscriptionTier = provider.subscriptionTier;
               final bool isCashOnDelivery =
                   !isMixedCheckout &&
                   _isCashOnDeliverySelected(isPickupMode: isPickupMode);
@@ -1113,6 +1114,11 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                                           colors,
                                           false,
                                           false,
+                                          labelWidget:
+                                              _buildSubscriptionSavingsLabel(
+                                                colors: colors,
+                                                tier: subscriptionTier,
+                                              ),
                                         ),
                                       ],
                                       if (promoDiscount > 0) ...[
@@ -1280,17 +1286,19 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     bool info, {
     _FeeInfoType? infoType,
     bool isLoading = false,
+    Widget? labelWidget,
   }) {
     return Row(
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: colors.textSecondary,
-            fontSize: 13.sp,
-            fontWeight: isTotal ? FontWeight.w600 : FontWeight.w400,
-          ),
-        ),
+        labelWidget ??
+            Text(
+              label,
+              style: TextStyle(
+                color: colors.textSecondary,
+                fontSize: 13.sp,
+                fontWeight: isTotal ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
         info
             ? Material(
                 color: Colors.transparent,
@@ -2319,6 +2327,7 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
       isPickupMode: isPickupMode,
     );
     final double subscriptionSavings = provider.subscriptionTotalDiscount;
+    final String? subscriptionTier = provider.subscriptionTier;
     final double promoDiscount = provider.promoDiscount;
     final bool isCashOnDelivery =
         !isMixedCheckout &&
@@ -2430,6 +2439,11 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                     "GrabGo Pro Savings",
                     -subscriptionSavings,
                     colors,
+                    labelWidget: _buildSubscriptionSavingsLabel(
+                      colors: colors,
+                      tier: subscriptionTier,
+                      summaryStyle: true,
+                    ),
                   ),
                 ],
                 if (promoDiscount > 0) ...[
@@ -2534,18 +2548,20 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     double amount,
     AppColorsExtension colors, {
     bool isEmphasis = false,
+    Widget? labelWidget,
   }) {
     final displayAmount = "GHS ${amount.toStringAsFixed(2)}";
     return Row(
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: colors.textSecondary,
-            fontSize: 12.sp,
-            fontWeight: isEmphasis ? FontWeight.w700 : FontWeight.w500,
-          ),
-        ),
+        labelWidget ??
+            Text(
+              label,
+              style: TextStyle(
+                color: colors.textSecondary,
+                fontSize: 12.sp,
+                fontWeight: isEmphasis ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
         const Spacer(),
         Text(
           displayAmount,
@@ -2554,6 +2570,50 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
             fontSize: 12.sp,
             fontWeight: isEmphasis ? FontWeight.w800 : FontWeight.w600,
           ),
+        ),
+      ],
+    );
+  }
+
+  String? _subscriptionBadgeAssetForTier(String? tier) {
+    if (tier == null) return null;
+    switch (tier.trim().toLowerCase()) {
+      case 'grabgo_plus':
+        return Assets.icons.grabgoPlusBadge;
+      case 'grabgo_premium':
+        return Assets.icons.grabgoPremiumBadge;
+      default:
+        return null;
+    }
+  }
+
+  Widget _buildSubscriptionSavingsLabel({
+    required AppColorsExtension colors,
+    required String? tier,
+    bool summaryStyle = false,
+  }) {
+    final badgeAsset = _subscriptionBadgeAssetForTier(tier);
+    final baseTextStyle = TextStyle(
+      color: colors.textSecondary,
+      fontSize: summaryStyle ? 12.sp : 13.sp,
+      fontWeight: summaryStyle ? FontWeight.w500 : FontWeight.w400,
+    );
+
+    if (badgeAsset == null) {
+      return Text('GrabGo Pro Savings', style: baseTextStyle);
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('GrabGo Pro Savings', style: baseTextStyle),
+        SizedBox(width: 6.w),
+        SvgPicture.asset(
+          badgeAsset,
+          package: 'grab_go_shared',
+          height: 15.h,
+          width: 15.w,
+          fit: BoxFit.contain,
         ),
       ],
     );

@@ -8,7 +8,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_customer/shared/models/subscription_models.dart';
-import 'package:grab_go_customer/shared/services/paystack_service.dart' as paystack;
+import 'package:grab_go_customer/shared/services/paystack_service.dart'
+    as paystack;
 import 'package:grab_go_customer/shared/services/subscription_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -22,7 +23,8 @@ class SubscriptionPage extends StatefulWidget {
 
 class _SubscriptionPageState extends State<SubscriptionPage> {
   final SubscriptionService _service = SubscriptionService();
-  static const String _subscriptionPromoAsset = 'lib/assets/icons/promo_banner_five.svg';
+  static const String _subscriptionPromoAsset =
+      'lib/assets/icons/promo_banner_five.svg';
   static const Duration _subscriptionCacheMaxAge = Duration(minutes: 30);
 
   bool _isLoading = true;
@@ -35,7 +37,8 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
   int _pendingPollAttempts = 0;
   static const int _maxPendingPollAttempts = 8;
 
-  bool get _hasPendingSubscription => _current?.status.toLowerCase() == 'pending';
+  bool get _hasPendingSubscription =>
+      _current?.status.toLowerCase() == 'pending';
   String? get _pendingPaymentReference => _current?.pendingPaymentReference;
 
   SubscriptionPlan? get _selectedPlan {
@@ -80,16 +83,19 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
           _configurePendingPolling();
         }
         hydratedFromCache = true;
-        if (!cached.isStale) {
-          return;
-        }
+        // Render cached data immediately, then always do a silent refresh.
+        // Subscription status can change quickly (e.g. pending -> active).
       }
     }
 
     try {
       final plans = await _service.getPlans();
       final current = await _service.getMySubscription();
-      final selectedTier = _resolveSelectedTier(plans: plans, current: current, existingSelectedTier: _selectedTier);
+      final selectedTier = _resolveSelectedTier(
+        plans: plans,
+        current: current,
+        existingSelectedTier: _selectedTier,
+      );
       if (!mounted) return;
       setState(() {
         _plans = plans;
@@ -102,7 +108,9 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
     } catch (e) {
       if (!mounted) return;
       if (hydratedFromCache) {
-        debugPrint('SubscriptionPage: using cached data due to refresh error: $e');
+        debugPrint(
+          'SubscriptionPage: using cached data due to refresh error: $e',
+        );
       } else {
         setState(() => _isLoading = false);
         AppToastMessage.show(
@@ -118,11 +126,14 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
     _pendingPollingTimer?.cancel();
     _pendingPollAttempts = 0;
 
-    if (!_hasPendingSubscription || (_pendingPaymentReference?.isEmpty ?? true)) {
+    if (!_hasPendingSubscription ||
+        (_pendingPaymentReference?.isEmpty ?? true)) {
       return;
     }
 
-    _pendingPollingTimer = Timer.periodic(const Duration(seconds: 8), (timer) async {
+    _pendingPollingTimer = Timer.periodic(const Duration(seconds: 8), (
+      timer,
+    ) async {
       if (!mounted || !_hasPendingSubscription) {
         timer.cancel();
         return;
@@ -147,7 +158,8 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
       if (!silent && mounted) {
         AppToastMessage.show(
           context: context,
-          message: 'No pending payment reference found. Start a new payment attempt.',
+          message:
+              'No pending payment reference found. Start a new payment attempt.',
           backgroundColor: context.appColors.error,
         );
       }
@@ -275,7 +287,8 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
     final shouldCancel = await AppDialog.show(
       context: context,
       title: 'Cancel GrabGo Pro',
-      message: 'Your benefits will remain active until the end of your current billing period. Continue?',
+      message:
+          'Your benefits will remain active until the end of your current billing period. Continue?',
       type: AppDialogType.warning,
       primaryButtonText: 'Cancel Plan',
       secondaryButtonText: 'Keep Plan',
@@ -311,7 +324,8 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
     }
   }
 
-  String _subscriptionCacheKey(String userId) => 'subscription_page_cache_v1_$userId';
+  String _subscriptionCacheKey(String userId) =>
+      'subscription_page_cache_v1_$userId';
 
   _CachedSubscriptionData? _readCachedSubscriptionData() {
     try {
@@ -334,18 +348,27 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
       final plans = <SubscriptionPlan>[];
       for (final entry in plansRaw) {
         if (entry is Map) {
-          plans.add(SubscriptionPlan.fromJson(Map<String, dynamic>.from(entry)));
+          plans.add(
+            SubscriptionPlan.fromJson(Map<String, dynamic>.from(entry)),
+          );
         }
       }
 
       final currentRaw = decoded['current'];
       UserSubscription? current;
       if (currentRaw is Map) {
-        current = UserSubscription.fromJson(Map<String, dynamic>.from(currentRaw));
+        current = UserSubscription.fromJson(
+          Map<String, dynamic>.from(currentRaw),
+        );
       }
 
-      final isStale = DateTime.now().difference(cachedAt) > _subscriptionCacheMaxAge;
-      return _CachedSubscriptionData(plans: plans, current: current, isStale: isStale);
+      final isStale =
+          DateTime.now().difference(cachedAt) > _subscriptionCacheMaxAge;
+      return _CachedSubscriptionData(
+        plans: plans,
+        current: current,
+        isStale: isStale,
+      );
     } catch (e) {
       debugPrint('SubscriptionPage: failed to read subscription cache: $e');
       return null;
@@ -366,7 +389,10 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
         'current': current == null ? null : _mapCurrentToJson(current),
       };
 
-      await CacheService.saveData(_subscriptionCacheKey(userId), jsonEncode(payload));
+      await CacheService.saveData(
+        _subscriptionCacheKey(userId),
+        jsonEncode(payload),
+      );
     } catch (e) {
       debugPrint('SubscriptionPage: failed to save subscription cache: $e');
     }
@@ -407,7 +433,8 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
     required UserSubscription? current,
     required String? existingSelectedTier,
   }) {
-    bool hasTier(String? tier) => tier != null && plans.any((plan) => plan.tier == tier);
+    bool hasTier(String? tier) =>
+        tier != null && plans.any((plan) => plan.tier == tier);
 
     if (plans.isEmpty) return null;
     if (hasTier(existingSelectedTier)) return existingSelectedTier;
@@ -445,7 +472,9 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
 
   String _buildPlanDescription(SubscriptionPlan? plan) {
     if (plan == null) {
-      return _isLoading ? '...' : 'Select a plan to view your GrabGo subscription details and benefits.';
+      return _isLoading
+          ? '...'
+          : 'Select a plan to view your GrabGo subscription details and benefits.';
     }
 
     final description = plan.description.trim();
@@ -475,6 +504,49 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
     return '$day/$month/${date.year}';
   }
 
+  String? _badgeAssetForTier(String? tier) {
+    if (tier == null) return null;
+    switch (tier.trim().toLowerCase()) {
+      case 'grabgo_plus':
+        return Assets.icons.grabgoPlusBadge;
+      case 'grabgo_premium':
+        return Assets.icons.grabgoPremiumBadge;
+      default:
+        return null;
+    }
+  }
+
+  Widget _buildTierBadge(
+    String? tier,
+    AppColorsExtension colors, {
+    double size = 18,
+    bool onOrangeSurface = false,
+  }) {
+    final asset = _badgeAssetForTier(tier);
+    if (asset == null) return const SizedBox.shrink();
+
+    final badge = SvgPicture.asset(
+      asset,
+      package: 'grab_go_shared',
+      width: size,
+      height: size,
+      fit: BoxFit.contain,
+    );
+
+    if (!onOrangeSurface) {
+      return badge;
+    }
+
+    return Container(
+      padding: EdgeInsets.all(4.r),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(999.r),
+      ),
+      child: badge,
+    );
+  }
+
   Future<void> _onPrimaryAction(SubscriptionPlan selectedPlan) async {
     if (_isSubmitting) return;
     if (_hasPendingSubscription) {
@@ -485,6 +557,15 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
       await _startSubscription(selectedPlan);
       return;
     }
+
+    final isPastDueCurrentTier =
+        _current?.status.trim().toLowerCase() == 'past_due' &&
+        _current?.tier == selectedPlan.tier;
+    if (isPastDueCurrentTier) {
+      await _startSubscription(selectedPlan);
+      return;
+    }
+
     await _cancelCurrentPlan();
   }
 
@@ -499,7 +580,9 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
       statusBarColor: colors.accentViolet,
       statusBarIconBrightness: Brightness.light,
       systemNavigationBarColor: colors.backgroundPrimary,
-      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      systemNavigationBarIconBrightness: isDark
+          ? Brightness.light
+          : Brightness.dark,
     );
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -521,7 +604,11 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.subscriptions_outlined, size: 42.r, color: colors.textSecondary),
+                            Icon(
+                              Icons.subscriptions_outlined,
+                              size: 42.r,
+                              color: colors.textSecondary,
+                            ),
                             SizedBox(height: 12.h),
                             Text(
                               'No subscription plans are available right now.',
@@ -546,7 +633,11 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                             if (_current != null) _buildCurrentPlanCard(colors),
                             Text(
                               'Choose a plan',
-                              style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w800),
+                              style: TextStyle(
+                                color: colors.textPrimary,
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                             SizedBox(height: 12.h),
                             if (_plans.isNotEmpty)
@@ -562,12 +653,24 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
             ),
             if (_isLoading || _plans.isNotEmpty)
               Container(
-                padding: EdgeInsets.only(left: 16.w, right: 16.w, top: 14.h, bottom: safePadding.bottom + 14.h),
+                padding: EdgeInsets.only(
+                  left: 16.w,
+                  right: 16.w,
+                  top: 14.h,
+                  bottom: safePadding.bottom + 14.h,
+                ),
                 decoration: BoxDecoration(
                   color: colors.backgroundPrimary,
-                  border: Border(top: BorderSide(color: colors.backgroundSecondary, width: 0.5)),
+                  border: Border(
+                    top: BorderSide(
+                      color: colors.backgroundSecondary,
+                      width: 0.5,
+                    ),
+                  ),
                 ),
-                child: _isLoading ? _buildLoadingActionButton(colors) : _buildPrimaryActionButton(colors, selectedPlan),
+                child: _isLoading
+                    ? _buildLoadingActionButton(colors)
+                    : _buildPrimaryActionButton(colors, selectedPlan),
               ),
           ],
         ),
@@ -575,8 +678,13 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
     );
   }
 
-  Widget _buildHeaderSliver(AppColorsExtension colors, SubscriptionPlan? selectedPlan) {
-    final expandedHeight = (MediaQuery.sizeOf(context).height * 0.34).clamp(260.0, 330.0).toDouble();
+  Widget _buildHeaderSliver(
+    AppColorsExtension colors,
+    SubscriptionPlan? selectedPlan,
+  ) {
+    final expandedHeight = (MediaQuery.sizeOf(context).height * 0.34)
+        .clamp(260.0, 330.0)
+        .toDouble();
     final headerDescription = _buildPlanDescription(selectedPlan);
 
     return SliverAppBar(
@@ -595,7 +703,10 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
             height: 44,
             width: 44,
             child: Container(
-              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
@@ -605,7 +716,10 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                     child: SvgPicture.asset(
                       Assets.icons.navArrowLeft,
                       package: 'grab_go_shared',
-                      colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                      colorFilter: const ColorFilter.mode(
+                        Colors.white,
+                        BlendMode.srcIn,
+                      ),
                       width: 24.w,
                       height: 24.h,
                     ),
@@ -631,9 +745,15 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
         builder: (context, constraints) {
           final topPadding = MediaQuery.paddingOf(context).top;
           final minHeight = kToolbarHeight + topPadding;
-          final rawProgress = (constraints.maxHeight - minHeight) / (expandedHeight - minHeight);
+          final rawProgress =
+              (constraints.maxHeight - minHeight) /
+              (expandedHeight - minHeight);
           final expandedProgress = rawProgress.clamp(0.0, 1.0);
-          final artworkOpacity = (Curves.easeOut.transform(expandedProgress) * 0.36).clamp(0.0, 0.36);
+          final artworkOpacity =
+              (Curves.easeOut.transform(expandedProgress) * 0.36).clamp(
+                0.0,
+                0.36,
+              );
           final artworkScale = 0.88 + (expandedProgress * 0.12);
 
           return Stack(
@@ -710,36 +830,75 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
 
   Widget _buildCurrentPlanCard(AppColorsExtension colors) {
     final current = _current!;
-    final isPending = current.status.toLowerCase() == 'pending';
-    final hasPendingReference = (current.pendingPaymentReference?.isNotEmpty ?? false);
+    final currentStatus = current.status.trim().toLowerCase();
+    final isPending = currentStatus == 'pending';
+    final isPastDue = currentStatus == 'past_due';
+    final hasPendingReference =
+        (current.pendingPaymentReference?.isNotEmpty ?? false);
+    final currentBadgeAsset = _badgeAssetForTier(current.tier);
+    final headerTitle = isPending
+        ? 'Payment Pending'
+        : isPastDue
+        ? 'Payment Overdue'
+        : 'Active Plan';
+    final backgroundColor = isPending
+        ? colors.accentOrange.withValues(alpha: 0.08)
+        : isPastDue
+        ? colors.error.withValues(alpha: 0.08)
+        : colors.accentViolet.withValues(alpha: 0.08);
+    final borderColor = isPending
+        ? colors.accentOrange.withValues(alpha: 0.32)
+        : isPastDue
+        ? colors.error.withValues(alpha: 0.32)
+        : colors.accentViolet.withValues(alpha: 0.32);
 
     return Container(
       margin: EdgeInsets.only(bottom: 14.h),
       padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
-        color: isPending ? colors.accentOrange.withValues(alpha: 0.08) : colors.accentViolet.withValues(alpha: 0.08),
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(14.r),
-        border: Border.all(
-          color: isPending ? colors.accentOrange.withValues(alpha: 0.32) : colors.accentViolet.withValues(alpha: 0.32),
-        ),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            isPending ? 'Payment Pending' : 'Active Plan',
-            style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w700),
+            headerTitle,
+            style: TextStyle(
+              color: colors.textSecondary,
+              fontSize: 11.sp,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           SizedBox(height: 4.h),
-          Text(
-            current.tierName,
-            style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w800),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  current.tierName,
+                  style: TextStyle(
+                    color: colors.textPrimary,
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              if (currentBadgeAsset != null) ...[
+                SizedBox(width: 8.w),
+                _buildTierBadge(current.tier, colors, size: 20),
+              ],
+            ],
           ),
           if (isPending) ...[
             SizedBox(height: 4.h),
             Text(
               'We are waiting for Paystack confirmation. Tap confirm after payment.',
-              style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                color: colors.textSecondary,
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w500,
+              ),
             ),
             SizedBox(height: 10.h),
             Row(
@@ -747,13 +906,19 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                 Expanded(
                   child: AppButton(
                     width: double.infinity,
-                    onPressed: _isSubmitting ? () {} : () => _confirmPendingPayment(),
+                    onPressed: _isSubmitting
+                        ? () {}
+                        : () => _confirmPendingPayment(),
                     isLoading: _isSubmitting,
                     backgroundColor: colors.accentOrange,
                     borderRadius: 12.r,
                     buttonText: 'Confirm Payment',
                     padding: EdgeInsets.symmetric(vertical: 12.h),
-                    textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12.sp),
+                    textStyle: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12.sp,
+                    ),
                   ),
                 ),
                 SizedBox(width: 10.w),
@@ -766,7 +931,8 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                             if (pendingPlan == null) {
                               AppToastMessage.show(
                                 context: context,
-                                message: 'Plan not available. Please refresh and try again.',
+                                message:
+                                    'Plan not available. Please refresh and try again.',
                                 backgroundColor: colors.error,
                               );
                               return;
@@ -782,23 +948,73 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                           },
                     style: OutlinedButton.styleFrom(
                       foregroundColor: colors.textPrimary,
-                      side: BorderSide(color: colors.inputBorder.withValues(alpha: 0.8)),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                      side: BorderSide(
+                        color: colors.inputBorder.withValues(alpha: 0.8),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12.r),
+                      ),
                       padding: EdgeInsets.symmetric(vertical: 12.h),
                     ),
                     child: Text(
                       'Start New Payment',
-                      style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
               ],
             ),
+          ] else if (isPastDue) ...[
+            SizedBox(height: 4.h),
+            Text(
+              'Your latest renewal payment failed. Retry payment to keep this plan active.',
+              style: TextStyle(
+                color: colors.textSecondary,
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(height: 10.h),
+            AppButton(
+              width: double.infinity,
+              onPressed: _isSubmitting
+                  ? () {}
+                  : () async {
+                      final overduePlan = _findPlanByTier(current.tier);
+                      if (overduePlan == null) {
+                        AppToastMessage.show(
+                          context: context,
+                          message:
+                              'Plan not available. Please refresh and try again.',
+                          backgroundColor: colors.error,
+                        );
+                        return;
+                      }
+                      await _startSubscription(overduePlan);
+                    },
+              isLoading: _isSubmitting,
+              backgroundColor: colors.accentOrange,
+              borderRadius: 12.r,
+              buttonText: 'Retry Payment',
+              padding: EdgeInsets.symmetric(vertical: 12.h),
+              textStyle: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 12.sp,
+              ),
+            ),
           ] else if (current.currentPeriodEnd != null) ...[
             SizedBox(height: 4.h),
             Text(
               'Renews on ${_formatRenewalDate(current.currentPeriodEnd!)}',
-              style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                color: colors.textSecondary,
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ],
@@ -810,15 +1026,21 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
     final isSelected = _selectedTier == plan.tier;
     final isCurrentTier = _current?.tier == plan.tier;
     final planDescription = _buildPlanDescription(plan);
+    final planBadgeAsset = _badgeAssetForTier(plan.tier);
 
     return GestureDetector(
-      onTap: (_isSubmitting || _hasPendingSubscription) ? null : () => setState(() => _selectedTier = plan.tier),
+      onTap: (_isSubmitting || _hasPendingSubscription)
+          ? null
+          : () => setState(() => _selectedTier = plan.tier),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
         margin: EdgeInsets.zero,
         padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
-        decoration: BoxDecoration(color: colors.backgroundPrimary, borderRadius: BorderRadius.circular(14.r)),
+        decoration: BoxDecoration(
+          color: colors.backgroundPrimary,
+          borderRadius: BorderRadius.circular(14.r),
+        ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -831,7 +1053,9 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                 width: 24.w,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isSelected ? colors.accentOrange.withValues(alpha: 0.12) : Colors.transparent,
+                  color: isSelected
+                      ? colors.accentOrange.withValues(alpha: 0.12)
+                      : Colors.transparent,
                 ),
                 child: Center(
                   child: AnimatedScale(
@@ -844,7 +1068,10 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                       child: Container(
                         height: 10.h,
                         width: 10.w,
-                        decoration: BoxDecoration(color: colors.accentOrange, shape: BoxShape.circle),
+                        decoration: BoxDecoration(
+                          color: colors.accentOrange,
+                          shape: BoxShape.circle,
+                        ),
                       ),
                     ),
                   ),
@@ -860,9 +1087,24 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: Text(
-                          plan.name,
-                          style: TextStyle(color: colors.textPrimary, fontSize: 21.sp, fontWeight: FontWeight.w800),
+                        child: Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                plan.name,
+                                style: TextStyle(
+                                  color: colors.textPrimary,
+                                  fontSize: 21.sp,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (planBadgeAsset != null) ...[
+                              SizedBox(width: 6.w),
+                              _buildTierBadge(plan.tier, colors, size: 20),
+                            ],
+                          ],
                         ),
                       ),
                       SizedBox(width: 8.w),
@@ -881,7 +1123,11 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                           SizedBox(height: 2.h),
                           Text(
                             _formatInterval(plan.interval),
-                            style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                              color: colors.textSecondary,
+                              fontSize: 11.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ],
                       ),
@@ -903,7 +1149,11 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                     SizedBox(height: 6.h),
                     Text(
                       'Current plan',
-                      style: TextStyle(color: colors.accentOrange, fontSize: 11.sp, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        color: colors.accentOrange,
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ],
@@ -927,7 +1177,11 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
               child: Column(
                 children: [
                   SizedBox(height: 12.h),
-                  Divider(height: 1.h, thickness: 1, color: colors.inputBorder.withValues(alpha: 0.35)),
+                  Divider(
+                    height: 1.h,
+                    thickness: 1,
+                    color: colors.inputBorder.withValues(alpha: 0.35),
+                  ),
                   SizedBox(height: 12.h),
                 ],
               ),
@@ -937,13 +1191,19 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
     });
   }
 
-  Widget _buildLoadingPlanCard(AppColorsExtension colors, {required bool isSelected}) {
+  Widget _buildLoadingPlanCard(
+    AppColorsExtension colors, {
+    required bool isSelected,
+  }) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
       margin: EdgeInsets.zero,
       padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
-      decoration: BoxDecoration(color: colors.backgroundPrimary, borderRadius: BorderRadius.circular(14.r)),
+      decoration: BoxDecoration(
+        color: colors.backgroundPrimary,
+        borderRadius: BorderRadius.circular(14.r),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -956,7 +1216,9 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
               width: 24.w,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isSelected ? colors.accentOrange.withValues(alpha: 0.12) : Colors.transparent,
+                color: isSelected
+                    ? colors.accentOrange.withValues(alpha: 0.12)
+                    : Colors.transparent,
               ),
               child: Center(
                 child: AnimatedScale(
@@ -969,7 +1231,10 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                     child: Container(
                       height: 10.h,
                       width: 10.w,
-                      decoration: BoxDecoration(color: colors.accentOrange, shape: BoxShape.circle),
+                      decoration: BoxDecoration(
+                        color: colors.accentOrange,
+                        shape: BoxShape.circle,
+                      ),
                     ),
                   ),
                 ),
@@ -987,7 +1252,11 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                     Expanded(
                       child: Text(
                         '...',
-                        style: TextStyle(color: colors.textPrimary, fontSize: 21.sp, fontWeight: FontWeight.w800),
+                        style: TextStyle(
+                          color: colors.textPrimary,
+                          fontSize: 21.sp,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                     SizedBox(width: 8.w),
@@ -1006,7 +1275,11 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                         SizedBox(height: 2.h),
                         Text(
                           '...',
-                          style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            color: colors.textSecondary,
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ),
@@ -1042,7 +1315,11 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
             child: Column(
               children: [
                 SizedBox(height: 12.h),
-                Divider(height: 1.h, thickness: 1, color: colors.inputBorder.withValues(alpha: 0.35)),
+                Divider(
+                  height: 1.h,
+                  thickness: 1,
+                  color: colors.inputBorder.withValues(alpha: 0.35),
+                ),
                 SizedBox(height: 12.h),
               ],
             ),
@@ -1062,11 +1339,18 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
       borderRadius: KBorderSize.borderRadius15,
       buttonText: '...',
       padding: EdgeInsets.symmetric(vertical: 16.h),
-      textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15.sp),
+      textStyle: TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.w700,
+        fontSize: 15.sp,
+      ),
     );
   }
 
-  Widget _buildPrimaryActionButton(AppColorsExtension colors, SubscriptionPlan? selectedPlan) {
+  Widget _buildPrimaryActionButton(
+    AppColorsExtension colors,
+    SubscriptionPlan? selectedPlan,
+  ) {
     if (selectedPlan == null) return const SizedBox.shrink();
 
     if (_hasPendingSubscription) {
@@ -1074,29 +1358,47 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
         width: double.infinity,
         onPressed: () => _onPrimaryAction(selectedPlan),
         isLoading: _isSubmitting,
-        backgroundColor: _isSubmitting ? colors.accentOrange.withValues(alpha: 0.7) : colors.accentOrange,
+        backgroundColor: _isSubmitting
+            ? colors.accentOrange.withValues(alpha: 0.7)
+            : colors.accentOrange,
         borderRadius: KBorderSize.borderRadius15,
         buttonText: 'Confirm Payment',
         padding: EdgeInsets.symmetric(vertical: 16.h),
-        textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15.sp),
+        textStyle: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w700,
+          fontSize: 15.sp,
+        ),
       );
     }
 
     final hasCurrent = _current != null;
     final isCurrentTier = _current?.tier == selectedPlan.tier;
+    final isPastDueCurrentTier =
+        _current?.status.trim().toLowerCase() == 'past_due' && isCurrentTier;
     final buttonText = hasCurrent
-        ? (isCurrentTier ? 'Cancel Plan' : 'Cancel current plan to switch')
+        ? (isPastDueCurrentTier
+              ? 'Retry Payment'
+              : (isCurrentTier
+                    ? 'Cancel Plan'
+                    : 'Cancel current plan to switch'))
         : 'Start Subscription';
 
     return AppButton(
       width: double.infinity,
       onPressed: () => _onPrimaryAction(selectedPlan),
       isLoading: _isSubmitting,
-      backgroundColor: _isSubmitting ? colors.accentOrange.withValues(alpha: 0.7) : colors.accentOrange,
+      backgroundColor: _isSubmitting
+          ? colors.accentOrange.withValues(alpha: 0.7)
+          : colors.accentOrange,
       borderRadius: KBorderSize.borderRadius15,
       buttonText: buttonText,
       padding: EdgeInsets.symmetric(vertical: 16.h),
-      textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15.sp),
+      textStyle: TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.w700,
+        fontSize: 15.sp,
+      ),
     );
   }
 }
@@ -1106,5 +1408,9 @@ class _CachedSubscriptionData {
   final UserSubscription? current;
   final bool isStale;
 
-  const _CachedSubscriptionData({required this.plans, required this.current, required this.isStale});
+  const _CachedSubscriptionData({
+    required this.plans,
+    required this.current,
+    required this.isStale,
+  });
 }

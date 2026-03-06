@@ -132,6 +132,11 @@ const getPlans = () => {
 
 /**
  * Get a user's active subscription, or null.
+ *
+ * Notes:
+ * - `past_due` is only considered active-like if the subscription has at
+ *   least one successful payment. This avoids treating failed initial payment
+ *   attempts as active subscriptions.
  */
 const getActiveSubscription = async (userId) => {
   if (!userId) return null;
@@ -139,8 +144,16 @@ const getActiveSubscription = async (userId) => {
   const subscription = await prisma.subscription.findFirst({
     where: {
       userId,
-      status: { in: ['active', 'past_due'] },
       currentPeriodEnd: { gte: new Date() },
+      OR: [
+        { status: 'active' },
+        {
+          status: 'past_due',
+          payments: {
+            some: { status: 'success' },
+          },
+        },
+      ],
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -204,11 +217,15 @@ const subscribe = async ({ userId, email, tier }) => {
   // Check for existing active subscription
   const existing = await getActiveSubscription(userId);
   if (existing) {
-    if (existing.tier === tier) {
+    if (existing.status === 'past_due') {
+      // Allow a fresh payment attempt for delinquent subscriptions.
+      await cancelSubscription(userId, 'Retrying subscription after payment failure');
+    } else if (existing.tier === tier) {
       throw new Error('You already have an active subscription to this plan');
+    } else {
+      // Upgrading/downgrading — cancel the old one first
+      await cancelSubscription(userId, `Switching to ${plan.name}`);
     }
-    // Upgrading/downgrading — cancel the old one first
-    await cancelSubscription(userId, `Switching to ${plan.name}`);
   }
 
   // Clear stale pending attempts before creating a fresh payment session.
@@ -556,7 +573,10 @@ const handlePaymentSuccess = async (payload) => {
 
 /**
  * Handle invoice.payment_failed webhook.
- * Marks the subscription as past_due.
+ *
+ * Behavior:
+ * - Initial subscription payment failure (`pending` subscription) -> `cancelled`
+ * - Renewal failure on an already-running subscription -> `past_due`
  */
 const handlePaymentFailed = async (payload) => {
   const meta = payload?.data?.metadata || {};
@@ -587,10 +607,21 @@ const handlePaymentFailed = async (payload) => {
 
   if (!subscription) return null;
 
+  const isInitialSubscriptionAttempt =
+    (paymentByReference?.status === 'pending') ||
+    String(subscription.status || '').toLowerCase() === 'pending';
+  const nextStatus = isInitialSubscriptionAttempt ? 'cancelled' : 'past_due';
+
   const operations = [
     prisma.subscription.update({
       where: { id: subscription.id },
-      data: { status: 'past_due' },
+      data: isInitialSubscriptionAttempt
+        ? {
+            status: 'cancelled',
+            cancelledAt: new Date(),
+            cancelReason: `Initial payment failed: ${failureReason}`,
+          }
+        : { status: 'past_due' },
     }),
   ];
 
@@ -628,7 +659,7 @@ const handlePaymentFailed = async (payload) => {
 
   await prisma.$transaction(operations);
 
-  console.log(`⚠️ [SUBSCRIPTION] Payment failed for ${subscription.id}, marked as past_due`);
+  console.log(`⚠️ [SUBSCRIPTION] Payment failed for ${subscription.id}, marked as ${nextStatus}`);
   return subscription;
 };
 

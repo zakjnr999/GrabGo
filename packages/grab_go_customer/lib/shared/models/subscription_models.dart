@@ -61,7 +61,7 @@ class UserSubscription {
     required this.cancelledAt,
   });
 
-  bool get isActive => status == 'active' || status == 'past_due';
+  bool get isActive => status.trim().toLowerCase() == 'active';
 
   factory UserSubscription.fromJson(Map<String, dynamic> json) {
     return UserSubscription(
@@ -70,8 +70,12 @@ class UserSubscription {
       tierName: (json['tierName'] ?? json['tier'] ?? '').toString(),
       status: (json['status'] ?? '').toString(),
       pendingPaymentReference: json['pendingPaymentReference']?.toString(),
-      currentPeriodStart: DateTime.tryParse((json['currentPeriodStart'] ?? '').toString()),
-      currentPeriodEnd: DateTime.tryParse((json['currentPeriodEnd'] ?? '').toString()),
+      currentPeriodStart: DateTime.tryParse(
+        (json['currentPeriodStart'] ?? '').toString(),
+      ),
+      currentPeriodEnd: DateTime.tryParse(
+        (json['currentPeriodEnd'] ?? '').toString(),
+      ),
       cancelledAt: DateTime.tryParse((json['cancelledAt'] ?? '').toString()),
     );
   }
@@ -82,7 +86,11 @@ class SubscriptionStartResponse {
   final String authorizationUrl;
   final String reference;
 
-  SubscriptionStartResponse({required this.subscriptionId, required this.authorizationUrl, required this.reference});
+  SubscriptionStartResponse({
+    required this.subscriptionId,
+    required this.authorizationUrl,
+    required this.reference,
+  });
 
   factory SubscriptionStartResponse.fromJson(Map<String, dynamic> json) {
     return SubscriptionStartResponse(

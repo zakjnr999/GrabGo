@@ -5,6 +5,8 @@ import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
+import 'package:grab_go_customer/shared/models/subscription_models.dart';
+import 'package:grab_go_customer/shared/services/subscription_service.dart';
 import 'package:grab_go_customer/features/auth/service/phone_auth_service.dart';
 import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/theme_provider.dart';
@@ -29,7 +31,9 @@ class Account extends StatefulWidget {
 }
 
 class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
-  static final Uri _vendorSignupUrl = Uri.parse('https://grabgo.app/partner-with-us');
+  static final Uri _vendorSignupUrl = Uri.parse(
+    'https://grabgo.app/partner-with-us',
+  );
 
   User? _user;
   bool _isLoading = true;
@@ -37,10 +41,14 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
 
   final CreditService _creditService = CreditService();
+  final SubscriptionService _subscriptionService = SubscriptionService();
   CreditBalance? _creditBalance;
+  UserSubscription? _currentSubscription;
 
   final ScrollController _scrollController = ScrollController();
-  final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0.0);
+  final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(
+    0.0,
+  );
   static const double _collapsedHeight = 70.0;
   static const double _scrollThreshold = 150.0;
 
@@ -48,7 +56,10 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    _animationController = AnimationController(duration: const Duration(milliseconds: 600), vsync: this);
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
     _loadUserData();
   }
 
@@ -62,11 +73,13 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
       await Future.delayed(const Duration(milliseconds: 100));
 
       _loadCreditBalance();
+      _loadSubscriptionData();
 
       var user = await UserService().getCurrentUser();
 
       if (user == null) {
-        final userId = UserService().currentUser?.id ?? PhoneAuthService().userId;
+        final userId =
+            UserService().currentUser?.id ?? PhoneAuthService().userId;
         if (userId != null && userId.isNotEmpty) {
           user = await UserService().getUserById(userId);
           if (user != null) {
@@ -103,6 +116,18 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
     }
   }
 
+  Future<void> _loadSubscriptionData() async {
+    try {
+      final subscription = await _subscriptionService.getMySubscription();
+      if (!mounted) return;
+      setState(() {
+        _currentSubscription = subscription;
+      });
+    } catch (_) {
+      // Keep current UI state if subscription fetch fails.
+    }
+  }
+
   @override
   void dispose() {
     _scrollController.removeListener(_onScroll);
@@ -116,7 +141,8 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
     final shouldLogout = await AppDialog.show(
       context: context,
       title: 'Logout',
-      message: 'Are you sure you want to logout? You will need to sign in again to access your account.',
+      message:
+          'Are you sure you want to logout? You will need to sign in again to access your account.',
       type: AppDialogType.logout,
       primaryButtonText: 'Logout',
       secondaryButtonText: 'Cancel',
@@ -160,11 +186,17 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
     final name = parts[0];
     final domain = parts[1];
 
-    final maskedName = name.length <= 2 ? '${name.substring(0, 1)}...' : '${name.substring(0, 2)}...';
+    final maskedName = name.length <= 2
+        ? '${name.substring(0, 1)}...'
+        : '${name.substring(0, 2)}...';
     final domainParts = domain.split('.');
     final domainName = domainParts.first;
-    final domainExt = domainParts.length > 1 ? domainParts.sublist(1).join('.') : '';
-    final maskedDomain = domainName.isEmpty ? '...' : '${domainName.substring(0, domainName.length >= 2 ? 2 : 1)}...';
+    final domainExt = domainParts.length > 1
+        ? domainParts.sublist(1).join('.')
+        : '';
+    final maskedDomain = domainName.isEmpty
+        ? '...'
+        : '${domainName.substring(0, domainName.length >= 2 ? 2 : 1)}...';
 
     return '$maskedName@$maskedDomain${domainExt.isNotEmpty ? '.$domainExt' : ''}';
   }
@@ -205,7 +237,10 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
 
   Future<void> _openExternalBrowserLink(Uri url) async {
     try {
-      final launched = await launchUrl(url, mode: LaunchMode.externalApplication);
+      final launched = await launchUrl(
+        url,
+        mode: LaunchMode.externalApplication,
+      );
       if (!launched && mounted) {
         AppToastMessage.show(
           context: context,
@@ -238,7 +273,9 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
             statusBarIconBrightness: Brightness.light,
             systemNavigationBarColor: colors.backgroundPrimary,
             systemNavigationBarDividerColor: Colors.transparent,
-            systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+            systemNavigationBarIconBrightness: isDark
+                ? Brightness.light
+                : Brightness.dark,
           ),
           child: Scaffold(
             backgroundColor: colors.backgroundPrimary,
@@ -250,7 +287,9 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                     SingleChildScrollView(
                       controller: _scrollController,
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: EdgeInsets.only(top: UmbrellaHeaderMetrics.contentPaddingFor(size)),
+                      padding: EdgeInsets.only(
+                        top: UmbrellaHeaderMetrics.contentPaddingFor(size),
+                      ),
                       child: Padding(
                         padding: EdgeInsets.symmetric(horizontal: 0.w),
                         child: Column(
@@ -258,7 +297,9 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                           children: [
                             Container(
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                                borderRadius: BorderRadius.circular(
+                                  KBorderSize.borderRadius15,
+                                ),
                               ),
                               child: Padding(
                                 padding: EdgeInsets.symmetric(horizontal: 20.w),
@@ -270,32 +311,41 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                                           height: size.width * 0.15,
                                           width: size.width * 0.15,
                                           fit: BoxFit.cover,
-                                          imageUrl: ImageOptimizer.getPreviewUrl(
-                                            _user?.profilePicture ?? "",
-                                            width: 200,
-                                          ),
+                                          imageUrl:
+                                              ImageOptimizer.getPreviewUrl(
+                                                _user?.profilePicture ?? "",
+                                                width: 200,
+                                              ),
                                           memCacheWidth: 200,
                                           maxHeightDiskCache: 200,
-                                          placeholder: (context, url) => Container(
-                                            height: size.width * 0.15,
-                                            width: size.width * 0.15,
-                                            padding: EdgeInsets.all(12.r),
-                                            child: SvgPicture.asset(
-                                              Assets.icons.user,
-                                              package: "grab_go_shared",
-                                              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                                            ),
-                                          ),
-                                          errorWidget: (context, url, error) => Container(
-                                            height: size.width * 0.15,
-                                            width: size.width * 0.15,
-                                            padding: EdgeInsets.all(12.r),
-                                            child: SvgPicture.asset(
-                                              Assets.icons.user,
-                                              package: "grab_go_shared",
-                                              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                                            ),
-                                          ),
+                                          placeholder: (context, url) =>
+                                              Container(
+                                                height: size.width * 0.15,
+                                                width: size.width * 0.15,
+                                                padding: EdgeInsets.all(12.r),
+                                                child: SvgPicture.asset(
+                                                  Assets.icons.user,
+                                                  package: "grab_go_shared",
+                                                  colorFilter: ColorFilter.mode(
+                                                    colors.textPrimary,
+                                                    BlendMode.srcIn,
+                                                  ),
+                                                ),
+                                              ),
+                                          errorWidget: (context, url, error) =>
+                                              Container(
+                                                height: size.width * 0.15,
+                                                width: size.width * 0.15,
+                                                padding: EdgeInsets.all(12.r),
+                                                child: SvgPicture.asset(
+                                                  Assets.icons.user,
+                                                  package: "grab_go_shared",
+                                                  colorFilter: ColorFilter.mode(
+                                                    colors.textPrimary,
+                                                    BlendMode.srcIn,
+                                                  ),
+                                                ),
+                                              ),
                                         ),
                                       ),
                                     ),
@@ -303,10 +353,14 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
 
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            _isLoading ? "..." : (_user?.username ?? "Guest User"),
+                                            _isLoading
+                                                ? "..."
+                                                : (_user?.username ??
+                                                      "Guest User"),
                                             style: TextStyle(
                                               color: colors.textPrimary,
                                               fontSize: 18.sp,
@@ -323,13 +377,22 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                                                     ? "..."
                                                     : (_user == null
                                                           ? "Please log in to continue"
-                                                          : (_user?.email == null || _user!.email!.isEmpty)
+                                                          : (_user?.email ==
+                                                                    null ||
+                                                                _user!
+                                                                    .email!
+                                                                    .isEmpty)
                                                           ? "No email added"
                                                           : (_isEmailHidden
-                                                                ? _maskEmail(_user!.email!)
-                                                                : _user!.email!)),
+                                                                ? _maskEmail(
+                                                                    _user!
+                                                                        .email!,
+                                                                  )
+                                                                : _user!
+                                                                      .email!)),
                                                 style: TextStyle(
-                                                  color: colors.textPrimary.withValues(alpha: 0.9),
+                                                  color: colors.textPrimary
+                                                      .withValues(alpha: 0.9),
                                                   fontSize: 13.sp,
                                                   fontWeight: FontWeight.w500,
                                                 ),
@@ -345,18 +408,25 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                                                 GestureDetector(
                                                   onTap: () {
                                                     setState(() {
-                                                      _isEmailHidden = !_isEmailHidden;
+                                                      _isEmailHidden =
+                                                          !_isEmailHidden;
                                                     });
                                                   },
                                                   child: SvgPicture.asset(
-                                                    _isEmailHidden ? Assets.icons.eyeClosed : Assets.icons.eye,
+                                                    _isEmailHidden
+                                                        ? Assets.icons.eyeClosed
+                                                        : Assets.icons.eye,
                                                     package: 'grab_go_shared',
                                                     height: 18.h,
                                                     width: 18.w,
-                                                    colorFilter: ColorFilter.mode(
-                                                      colors.textPrimary.withValues(alpha: 0.9),
-                                                      BlendMode.srcIn,
-                                                    ),
+                                                    colorFilter:
+                                                        ColorFilter.mode(
+                                                          colors.textPrimary
+                                                              .withValues(
+                                                                alpha: 0.9,
+                                                              ),
+                                                          BlendMode.srcIn,
+                                                        ),
                                                   ),
                                                 ),
                                               ],
@@ -371,15 +441,26 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                             ),
                             SizedBox(height: 12.h),
                             if (_user != null &&
-                                ((_user?.email == null || _user!.email!.isEmpty) || _user?.isEmailVerified == false))
+                                ((_user?.email == null ||
+                                        _user!.email!.isEmpty) ||
+                                    _user?.isEmailVerified == false))
                               GestureDetector(
                                 onTap: () => context.push("/emailVerification"),
                                 child: Container(
-                                  margin: EdgeInsets.symmetric(horizontal: 20.w),
-                                  padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+                                  margin: EdgeInsets.symmetric(
+                                    horizontal: 20.w,
+                                  ),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 14.w,
+                                    vertical: 10.h,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: colors.accentOrange.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                                    color: colors.accentOrange.withValues(
+                                      alpha: 0.1,
+                                    ),
+                                    borderRadius: BorderRadius.circular(
+                                      KBorderSize.borderMedium,
+                                    ),
                                   ),
                                   child: Row(
                                     children: [
@@ -388,12 +469,16 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                                         package: 'grab_go_shared',
                                         height: 18.h,
                                         width: 18.w,
-                                        colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                        colorFilter: ColorFilter.mode(
+                                          colors.accentOrange,
+                                          BlendMode.srcIn,
+                                        ),
                                       ),
                                       SizedBox(width: 8.w),
                                       Expanded(
                                         child: Text(
-                                          (_user?.email == null || _user!.email!.isEmpty)
+                                          (_user?.email == null ||
+                                                  _user!.email!.isEmpty)
                                               ? "Add your email for receipts and recovery."
                                               : "Verify your email for receipts and account recovery.",
                                           style: TextStyle(
@@ -413,7 +498,10 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
 
                             Container(
                               width: double.infinity,
-                              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 20.w,
+                                vertical: 10.h,
+                              ),
                               color: colors.backgroundSecondary,
                               child: Text(
                                 "General",
@@ -428,34 +516,65 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
 
                             Column(
                               children: [
-                                itemTile("Saved Addresses", Assets.icons.mapPin, context, () {
-                                  // context.push("/mapTracking");
-                                }),
+                                itemTile(
+                                  "Saved Addresses",
+                                  Assets.icons.mapPin,
+                                  context,
+                                  () {
+                                    // context.push("/mapTracking");
+                                  },
+                                ),
                                 _favoritesTile(context),
 
-                                itemTile("Refer & Earn", Assets.icons.gift, context, () {
-                                  context.push("/referral");
-                                }),
-                                itemTile("Subscription", Assets.icons.star, context, () {
-                                  if (_ensureEmailVerified()) {
-                                    context.push("/subscription");
-                                  }
-                                }),
-                                itemTile("Promo Codes", Assets.icons.badgePercent, context, () {
-                                  context.push("/promos");
-                                }),
-                                itemTile("Change Password", Assets.icons.lock, context, () {
-                                  if (_ensureEmailVerified()) {
-                                    // context.push("/orderTracking");
-                                  }
-                                }),
+                                itemTile(
+                                  "Refer & Earn",
+                                  Assets.icons.gift,
+                                  context,
+                                  () {
+                                    context.push("/referral");
+                                  },
+                                ),
+                                itemTile(
+                                  "Subscription",
+                                  Assets.icons.star,
+                                  context,
+                                  () {
+                                    if (_ensureEmailVerified()) {
+                                      context.push("/subscription");
+                                    }
+                                  },
+                                  trailing: _buildSubscriptionTileTrailing(
+                                    colors,
+                                  ),
+                                ),
+                                itemTile(
+                                  "Promo Codes",
+                                  Assets.icons.badgePercent,
+                                  context,
+                                  () {
+                                    context.push("/promos");
+                                  },
+                                ),
+                                itemTile(
+                                  "Change Password",
+                                  Assets.icons.lock,
+                                  context,
+                                  () {
+                                    if (_ensureEmailVerified()) {
+                                      // context.push("/orderTracking");
+                                    }
+                                  },
+                                ),
                               ],
                             ),
                             SizedBox(height: 24.h),
 
                             Container(
                               width: double.infinity,
-                              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 20.w,
+                                vertical: 10.h,
+                              ),
                               color: colors.backgroundSecondary,
                               child: Text(
                                 "Other Information",
@@ -470,28 +589,56 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
 
                             Column(
                               children: [
-                                itemTile("Settings", Assets.icons.settings, context, () {
-                                  context.push("/settings");
-                                }),
-                                itemTile("Notifications", Assets.icons.bell, context, () {
-                                  context.push("/notification");
-                                }),
-                                itemTile("Help & Support", Assets.icons.headsetHelp, context, () {
-                                  //Do nothing for now
-                                }),
-                                itemTile("About App", Assets.icons.infoCircle, context, () {
-                                  //Do nothing for now
-                                }),
-                                itemTile("Logout", Assets.icons.logOut, context, () {
-                                  _handleLogout();
-                                }),
+                                itemTile(
+                                  "Settings",
+                                  Assets.icons.settings,
+                                  context,
+                                  () {
+                                    context.push("/settings");
+                                  },
+                                ),
+                                itemTile(
+                                  "Notifications",
+                                  Assets.icons.bell,
+                                  context,
+                                  () {
+                                    context.push("/notification");
+                                  },
+                                ),
+                                itemTile(
+                                  "Help & Support",
+                                  Assets.icons.headsetHelp,
+                                  context,
+                                  () {
+                                    //Do nothing for now
+                                  },
+                                ),
+                                itemTile(
+                                  "About App",
+                                  Assets.icons.infoCircle,
+                                  context,
+                                  () {
+                                    //Do nothing for now
+                                  },
+                                ),
+                                itemTile(
+                                  "Logout",
+                                  Assets.icons.logOut,
+                                  context,
+                                  () {
+                                    _handleLogout();
+                                  },
+                                ),
                               ],
                             ),
                             SizedBox(height: 24.h),
 
                             Container(
                               width: double.infinity,
-                              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 20.w,
+                                vertical: 10.h,
+                              ),
                               color: colors.backgroundSecondary,
                               child: Text(
                                 "Grow with GrabGo",
@@ -506,12 +653,24 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
 
                             Column(
                               children: [
-                                itemTile("Earn with us (Become a rider)", Assets.icons.deliveryTruck, context, () {
-                                  context.push("/mapTracking?orderId=DEMO-CUSTOMER-TRACK-001&testTrigger=true");
-                                }),
-                                itemTile("Partner with us (Become a vendor)", Assets.icons.store, context, () {
-                                  _openExternalBrowserLink(_vendorSignupUrl);
-                                }),
+                                itemTile(
+                                  "Earn with us (Become a rider)",
+                                  Assets.icons.deliveryTruck,
+                                  context,
+                                  () {
+                                    context.push(
+                                      "/mapTracking?orderId=DEMO-CUSTOMER-TRACK-001&testTrigger=true",
+                                    );
+                                  },
+                                ),
+                                itemTile(
+                                  "Partner with us (Become a vendor)",
+                                  Assets.icons.store,
+                                  context,
+                                  () {
+                                    _openExternalBrowserLink(_vendorSignupUrl);
+                                  },
+                                ),
                               ],
                             ),
                             SizedBox(height: 24.h),
@@ -520,7 +679,12 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                       ),
                     ),
 
-                    Positioned(top: 0, left: 0, right: 0, child: _buildCollapsibleUmbrellaHeader(colors, size)),
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: _buildCollapsibleUmbrellaHeader(colors, size),
+                    ),
                   ],
                 ),
               ),
@@ -535,11 +699,16 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
     return ValueListenableBuilder<double>(
       valueListenable: _scrollOffsetNotifier,
       builder: (context, scrollOffset, _) {
-        final collapseProgress = (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
+        final collapseProgress = (scrollOffset / _scrollThreshold).clamp(
+          0.0,
+          1.0,
+        );
 
         final expandedHeight = UmbrellaHeaderMetrics.expandedHeightFor(size);
 
-        final currentHeight = expandedHeight - ((expandedHeight - _collapsedHeight) * collapseProgress);
+        final currentHeight =
+            expandedHeight -
+            ((expandedHeight - _collapsedHeight) * collapseProgress);
 
         final contentOpacity = (1.0 - collapseProgress).clamp(0.0, 1.0);
 
@@ -565,7 +734,11 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
 
     return SizedBox.expand(
       child: Padding(
-        padding: EdgeInsets.only(left: 20.w, right: 20.w, top: statusBarHeight + 10.h),
+        padding: EdgeInsets.only(
+          left: 20.w,
+          right: 20.w,
+          top: statusBarHeight + 10.h,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -596,7 +769,13 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
     );
   }
 
-  Widget itemTile(String title, String icon, BuildContext context, VoidCallback onTap) {
+  Widget itemTile(
+    String title,
+    String icon,
+    BuildContext context,
+    VoidCallback onTap, {
+    Widget? trailing,
+  }) {
     final colors = context.appColors;
 
     return Material(
@@ -613,26 +792,105 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                 package: 'grab_go_shared',
                 height: 18.h,
                 width: 18.w,
-                colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                colorFilter: ColorFilter.mode(
+                  colors.textPrimary,
+                  BlendMode.srcIn,
+                ),
               ),
               SizedBox(width: 14.w),
               Expanded(
                 child: Text(
                   title,
-                  style: TextStyle(fontSize: 14.sp, color: colors.textPrimary, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    color: colors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-              SvgPicture.asset(
-                Assets.icons.navArrowRight,
-                package: 'grab_go_shared',
-                height: 20.h,
-                width: 20.w,
-                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-              ),
+              trailing ?? _buildTileArrow(colors),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTileArrow(AppColorsExtension colors) {
+    return SvgPicture.asset(
+      Assets.icons.navArrowRight,
+      package: 'grab_go_shared',
+      height: 20.h,
+      width: 20.w,
+      colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+    );
+  }
+
+  String? _subscriptionBadgeAssetForTier(String? tier) {
+    if (tier == null) return null;
+    switch (tier.trim().toLowerCase()) {
+      case 'grabgo_plus':
+        return Assets.icons.grabgoPlusBadge;
+      case 'grabgo_premium':
+        return Assets.icons.grabgoPremiumBadge;
+      default:
+        return null;
+    }
+  }
+
+  bool _shouldShowSubscriptionBadge(UserSubscription? subscription) {
+    final status = subscription?.status.trim().toLowerCase();
+    return status == 'active' || status == 'past_due' || status == 'pending';
+  }
+
+  Widget _buildSubscriptionTileTrailing(AppColorsExtension colors) {
+    final subscription = _currentSubscription;
+    final badgeAsset = _subscriptionBadgeAssetForTier(subscription?.tier);
+    if (!_shouldShowSubscriptionBadge(subscription) || badgeAsset == null) {
+      return _buildTileArrow(colors);
+    }
+
+    final status = subscription?.status.trim().toLowerCase();
+    final isPending = status == 'pending';
+    final isPastDue = status == 'past_due';
+    final chipText = isPending
+        ? 'Pending'
+        : isPastDue
+        ? 'Past due'
+        : null;
+    final chipColor = isPending ? colors.accentOrange : colors.error;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (chipText != null) ...[
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h),
+            decoration: BoxDecoration(
+              color: chipColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(999.r),
+            ),
+            child: Text(
+              chipText,
+              style: TextStyle(
+                color: chipColor,
+                fontSize: 9.sp,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          SizedBox(width: 6.w),
+        ],
+        SvgPicture.asset(
+          badgeAsset,
+          package: 'grab_go_shared',
+          height: 18.h,
+          width: 18.w,
+          fit: BoxFit.contain,
+        ),
+        SizedBox(width: 6.w),
+        _buildTileArrow(colors),
+      ],
     );
   }
 
@@ -663,7 +921,10 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                 package: 'grab_go_shared',
                 height: 28.h,
                 width: 28.w,
-                colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                colorFilter: const ColorFilter.mode(
+                  Colors.white,
+                  BlendMode.srcIn,
+                ),
               ),
             ),
             SizedBox(width: 16.w),
@@ -683,7 +944,11 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
 
                   Text(
                     _isLoading ? "..." : _creditBalance?.formatted ?? "₵0.00",
-                    style: TextStyle(color: Colors.white, fontSize: 24.sp, fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ],
               ),
@@ -692,7 +957,10 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 10.w,
+                    vertical: 4.h,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20.r),
@@ -702,7 +970,11 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                     children: [
                       Text(
                         "View",
-                        style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       SizedBox(width: 4.w),
                       SvgPicture.asset(
@@ -710,7 +982,10 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                         package: "grab_go_shared",
                         height: 14.h,
                         width: 14.w,
-                        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                        colorFilter: const ColorFilter.mode(
+                          Colors.white,
+                          BlendMode.srcIn,
+                        ),
                       ),
                     ],
                   ),
@@ -718,7 +993,10 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                 SizedBox(height: 8.h),
                 Text(
                   "Tap to see history",
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 10.sp),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 10.sp,
+                  ),
                 ),
               ],
             ),
@@ -752,13 +1030,20 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                         package: 'grab_go_shared',
                         height: 18.h,
                         width: 18.w,
-                        colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                        colorFilter: ColorFilter.mode(
+                          colors.textPrimary,
+                          BlendMode.srcIn,
+                        ),
                       ),
                       SizedBox(width: 14.w),
                       Expanded(
                         child: Text(
                           "Favorites",
-                          style: TextStyle(fontSize: 14.sp, color: colors.textPrimary, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            fontSize: 14.sp,
+                            color: colors.textPrimary,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                       SizedBox(width: 8.w),
@@ -767,7 +1052,10 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                         package: 'grab_go_shared',
                         height: 20.h,
                         width: 20.w,
-                        colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                        colorFilter: ColorFilter.mode(
+                          colors.textSecondary,
+                          BlendMode.srcIn,
+                        ),
                       ),
                     ],
                   ),
@@ -780,19 +1068,27 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                         itemCount: favoritesProvider.favoriteItems.length,
                         padding: EdgeInsets.zero,
                         itemBuilder: (context, index) {
-                          final item = favoritesProvider.favoriteItems.toList()[index];
+                          final item = favoritesProvider.favoriteItems
+                              .toList()[index];
                           return Container(
                             margin: EdgeInsets.only(right: 8.w),
                             width: 60,
                             height: 60,
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(KBorderSize.borderRadius12),
+                              borderRadius: BorderRadius.circular(
+                                KBorderSize.borderRadius12,
+                              ),
                               color: colors.inputBorder.withValues(alpha: 0.5),
                             ),
                             child: ClipRRect(
-                              borderRadius: const BorderRadius.all(Radius.circular(KBorderSize.borderRadius12)),
+                              borderRadius: const BorderRadius.all(
+                                Radius.circular(KBorderSize.borderRadius12),
+                              ),
                               child: CachedNetworkImage(
-                                imageUrl: ImageOptimizer.getPreviewUrl(item.image, width: 100),
+                                imageUrl: ImageOptimizer.getPreviewUrl(
+                                  item.image,
+                                  width: 100,
+                                ),
                                 fit: BoxFit.cover,
                                 memCacheWidth: 100,
                                 maxHeightDiskCache: 100,
@@ -805,7 +1101,10 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                                         package: 'grab_go_shared',
                                         height: 24.h,
                                         width: 24.w,
-                                        colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                        colorFilter: ColorFilter.mode(
+                                          colors.textSecondary,
+                                          BlendMode.srcIn,
+                                        ),
                                       ),
                                     ),
                                   );
@@ -819,7 +1118,10 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                                         package: 'grab_go_shared',
                                         height: 24.h,
                                         width: 24.w,
-                                        colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                        colorFilter: ColorFilter.mode(
+                                          colors.textSecondary,
+                                          BlendMode.srcIn,
+                                        ),
                                       ),
                                     ),
                                   );
