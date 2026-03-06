@@ -101,6 +101,11 @@
 - Scheduled-order release job for paid delivery orders
 - Durable dispatch retry queue for unassigned delivery orders (backoff retries + stale-lock recovery)
 - Tracking resilience hardening (customer fallback polling + rider offline queue + health state UI)
+- GrabGo Pro subscription plans rollout (customer premium tiers)
+  - `GrabGo Plus` (GHS 30/month): free delivery on eligible orders + service-fee discount
+  - `GrabGo Premium` (GHS 60/month): free delivery on all orders + higher fee savings + priority perks
+  - Paystack-backed recurring billing with webhook-driven renewal/failure/cancellation handling
+  - Checkout pricing integration for automatic subscription savings display
 - Rider Partner & Incentive System rollout
   - Tiered partner levels (`L1` → `L5`) with score-based upgrades/downgrades
   - Incentive engines for quests, streaks, milestones, and peak-hour boosts
@@ -154,6 +159,7 @@ GrabGo/
 │   │   ├── credits.js           # Wallet credits & transactions
 │   │   ├── statuses.js          # Stories/status updates
 │   │   ├── referrals.js         # Referral program
+│   │   ├── subscriptions.js     # GrabGo Pro plans, subscribe/cancel, webhook endpoints
 │   │   ├── fraud.js             # Fraud step-up challenge APIs
 │   │   ├── admin_fraud.js       # Admin fraud ops APIs
 │   │   └── tracking_routes.js   # Order tracking
@@ -184,6 +190,7 @@ GrabGo/
 │   │   ├── chat_service.js      # Chat & messaging logic
 │   │   ├── referral_service.js  # Referral program logic
 │   │   ├── promo_service.js     # Promotions & discounts
+│   │   ├── subscription_service.js # Subscription plans, recurring billing flow, and benefit calculations
 │   │   ├── notification_service.js # Push notification management
 │   │   ├── fraud/               # Fraud engine (context/policy/decision/challenges/features/graph/events/cases)
 │   │   └── webrtcSignalingService.js # Voice/Video call signaling
@@ -199,6 +206,7 @@ GrabGo/
 │   │   ├── fraud_feature_recompute.js # Fraud feature recomputation scheduler
 │   │   ├── rider_partner_recalc.js # Rider partner level and score recalculation
 │   │   ├── rider_weekly_payout.js # Weekly incentive payout processor
+│   │   ├── subscription_expiry.js # Mark expired subscriptions after billing window end
 │   │   ├── cart_abandonment.js  # Cart abandonment nudges
 │   │   ├── meal_nudges.js       # Meal-time notifications
 │   │   └── statusCleanup.js     # Expired stories cleanup
@@ -428,6 +436,19 @@ RIDER_METRICS_SYNC_ENABLED=true
 RIDER_WITHDRAWAL_GUARD_ENABLED=true
 ```
 
+### Subscription Configuration (Backend `.env`)
+
+```bash
+SUBSCRIPTION_ENABLED=true
+
+# Optional pricing overrides
+GRABGO_PLUS_PRICE=30
+GRABGO_PREMIUM_PRICE=60
+GRABGO_PLUS_FREE_DELIVERY_MIN=30
+GRABGO_PLUS_SERVICE_DISCOUNT=0.05
+GRABGO_PREMIUM_SERVICE_DISCOUNT=0.10
+```
+
 ### Rate Limiting Configuration (Backend `.env`)
 
 HTTP endpoint throttles are enabled by default in code (global `/api` + route-level composite limits).
@@ -503,6 +524,7 @@ dart run build_runner build --delete-conflicting-outputs
 - **Parcel Guardrails**: Declared value cap, liability cap/disclaimer, prohibited-items and terms acceptance
 - **Gift Orders**: Recipient details, gift note, and delivery code verification flow
 - **Wallet Credits**: Checkout calculation, hold/release, and transaction history
+- **GrabGo Pro Subscriptions**: Plus/Premium monthly plans with delivery and service-fee savings
 - **Stories**: Instagram-style promotional content with reactions and comments
 - **Favorites**: Save favorite restaurants, stores, pharmacies, and items
 - **Order History**: View past orders with one-tap reorder
