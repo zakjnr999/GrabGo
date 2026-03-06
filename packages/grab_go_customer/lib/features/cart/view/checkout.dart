@@ -528,7 +528,13 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
               final double subtotal = provider.subtotal;
               final double deliveryFee = provider.deliveryFee;
               final double serviceFee = provider.serviceFee;
+              final double originalDeliveryFee = provider.originalDeliveryFee;
+              final double originalServiceFee = provider.originalServiceFee;
               final double rainFee = provider.rainFee;
+              final double subscriptionDeliveryDiscount =
+                  provider.subscriptionDeliveryDiscount;
+              final double subscriptionServiceFeeDiscount =
+                  provider.subscriptionServiceFeeDiscount;
               final double promoDiscount = provider.promoDiscount;
               final bool isPickupMode =
                   provider.fulfillmentMode == 'pickup' || isPickupTab;
@@ -1079,6 +1085,18 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                                           true,
                                           infoType: _FeeInfoType.delivery,
                                           isLoading: isPricingLoading,
+                                          amountWidget:
+                                              _buildDiscountedFeeAmount(
+                                                colors: colors,
+                                                amount: deliveryFee,
+                                                originalAmount:
+                                                    originalDeliveryFee,
+                                                discount:
+                                                    subscriptionDeliveryDiscount,
+                                                subscriptionTier:
+                                                    subscriptionTier,
+                                                isLoading: isPricingLoading,
+                                              ),
                                         ),
                                       ],
                                       SizedBox(height: 6.h),
@@ -1091,6 +1109,15 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                                         true,
                                         infoType: _FeeInfoType.service,
                                         isLoading: isPricingLoading,
+                                        amountWidget: _buildDiscountedFeeAmount(
+                                          colors: colors,
+                                          amount: serviceFee,
+                                          originalAmount: originalServiceFee,
+                                          discount:
+                                              subscriptionServiceFeeDiscount,
+                                          subscriptionTier: subscriptionTier,
+                                          isLoading: isPricingLoading,
+                                        ),
                                       ),
                                       if (!isPickupMode && rainFee > 0) ...[
                                         SizedBox(height: 6.h),
@@ -1287,6 +1314,7 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     _FeeInfoType? infoType,
     bool isLoading = false,
     Widget? labelWidget,
+    Widget? amountWidget,
   }) {
     return Row(
       children: [
@@ -1324,23 +1352,24 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
               )
             : const SizedBox.shrink(),
         const Spacer(),
-        isLoading
-            ? Text(
-                "...",
-                style: TextStyle(
-                  color: colors.textSecondary,
-                  fontSize: 13.sp,
-                  fontWeight: isTotal ? FontWeight.w600 : FontWeight.w400,
-                ),
-              )
-            : Text(
-                "GHS ${amount.toStringAsFixed(2)}",
-                style: TextStyle(
-                  color: colors.textPrimary,
-                  fontSize: 13.sp,
-                  fontWeight: isTotal ? FontWeight.w600 : FontWeight.w400,
-                ),
-              ),
+        amountWidget ??
+            (isLoading
+                ? Text(
+                    "...",
+                    style: TextStyle(
+                      color: colors.textSecondary,
+                      fontSize: 13.sp,
+                      fontWeight: isTotal ? FontWeight.w600 : FontWeight.w400,
+                    ),
+                  )
+                : Text(
+                    "GHS ${amount.toStringAsFixed(2)}",
+                    style: TextStyle(
+                      color: colors.textPrimary,
+                      fontSize: 13.sp,
+                      fontWeight: isTotal ? FontWeight.w600 : FontWeight.w400,
+                    ),
+                  )),
       ],
     );
   }
@@ -2316,7 +2345,16 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     final double subtotal = provider.subtotal;
     final double deliveryFee = isPickupMode ? 0 : provider.deliveryFee;
     final double serviceFee = provider.serviceFee;
+    final double originalDeliveryFee = isPickupMode
+        ? 0
+        : provider.originalDeliveryFee;
+    final double originalServiceFee = provider.originalServiceFee;
     final double rainFee = isPickupMode ? 0 : provider.rainFee;
+    final double subscriptionDeliveryDiscount = isPickupMode
+        ? 0
+        : provider.subscriptionDeliveryDiscount;
+    final double subscriptionServiceFeeDiscount =
+        provider.subscriptionServiceFeeDiscount;
     final double creditsApplied = _effectiveCreditsAppliedForCheckout(
       provider,
       isPickupMode: isPickupMode,
@@ -2425,10 +2463,34 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                 _buildSummaryRow("Subtotal", subtotal, colors),
                 if (!isPickupMode) ...[
                   SizedBox(height: 6.h),
-                  _buildSummaryRow("Delivery Fee", deliveryFee, colors),
+                  _buildSummaryRow(
+                    "Delivery Fee",
+                    deliveryFee,
+                    colors,
+                    amountWidget: _buildDiscountedFeeAmount(
+                      colors: colors,
+                      amount: deliveryFee,
+                      originalAmount: originalDeliveryFee,
+                      discount: subscriptionDeliveryDiscount,
+                      subscriptionTier: subscriptionTier,
+                      compact: true,
+                    ),
+                  ),
                 ],
                 SizedBox(height: 6.h),
-                _buildSummaryRow("Service Fee", serviceFee, colors),
+                _buildSummaryRow(
+                  "Service Fee",
+                  serviceFee,
+                  colors,
+                  amountWidget: _buildDiscountedFeeAmount(
+                    colors: colors,
+                    amount: serviceFee,
+                    originalAmount: originalServiceFee,
+                    discount: subscriptionServiceFeeDiscount,
+                    subscriptionTier: subscriptionTier,
+                    compact: true,
+                  ),
+                ),
                 if (!isPickupMode && rainFee > 0) ...[
                   SizedBox(height: 6.h),
                   _buildSummaryRow("Rain Fee", rainFee, colors),
@@ -2549,6 +2611,7 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
     AppColorsExtension colors, {
     bool isEmphasis = false,
     Widget? labelWidget,
+    Widget? amountWidget,
   }) {
     final displayAmount = "GHS ${amount.toStringAsFixed(2)}";
     return Row(
@@ -2563,14 +2626,15 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
               ),
             ),
         const Spacer(),
-        Text(
-          displayAmount,
-          style: TextStyle(
-            color: colors.textPrimary,
-            fontSize: 12.sp,
-            fontWeight: isEmphasis ? FontWeight.w800 : FontWeight.w600,
-          ),
-        ),
+        amountWidget ??
+            Text(
+              displayAmount,
+              style: TextStyle(
+                color: colors.textPrimary,
+                fontSize: 12.sp,
+                fontWeight: isEmphasis ? FontWeight.w800 : FontWeight.w600,
+              ),
+            ),
       ],
     );
   }
@@ -2585,6 +2649,96 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
       default:
         return null;
     }
+  }
+
+  Widget _buildDiscountedFeeAmount({
+    required AppColorsExtension colors,
+    required double amount,
+    required double originalAmount,
+    required double discount,
+    required String? subscriptionTier,
+    bool compact = false,
+    bool isLoading = false,
+  }) {
+    final badgeAsset = _subscriptionBadgeAssetForTier(subscriptionTier);
+
+    Widget withBadge(Widget child) {
+      if (badgeAsset == null) return child;
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          child,
+          SizedBox(width: compact ? 3.w : 4.w),
+          SvgPicture.asset(
+            badgeAsset,
+            package: 'grab_go_shared',
+            height: compact ? 12.h : 13.h,
+            width: compact ? 12.w : 13.w,
+            fit: BoxFit.contain,
+          ),
+        ],
+      );
+    }
+
+    if (isLoading) {
+      return Text(
+        "...",
+        style: TextStyle(
+          color: colors.textSecondary,
+          fontSize: compact ? 12.sp : 13.sp,
+          fontWeight: FontWeight.w500,
+        ),
+      );
+    }
+
+    final double resolvedOriginalAmount = math.max(amount, originalAmount);
+    final bool hasDiscountDisplay =
+        discount > 0 || resolvedOriginalAmount > amount + 0.001;
+
+    if (!hasDiscountDisplay) {
+      return withBadge(
+        Text(
+          "GHS ${amount.toStringAsFixed(2)}",
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontSize: compact ? 12.sp : 13.sp,
+            fontWeight: compact ? FontWeight.w600 : FontWeight.w400,
+          ),
+        ),
+      );
+    }
+
+    final oldStyle = TextStyle(
+      color: colors.textSecondary,
+      fontSize: compact ? 12.sp : 13.sp,
+      fontWeight: FontWeight.w500,
+      decoration: TextDecoration.lineThrough,
+    );
+    final newStyle = TextStyle(
+      color: amount <= 0 ? colors.accentOrange : colors.textPrimary,
+      fontSize: compact ? 12.sp : 13.sp,
+      fontWeight: FontWeight.w700,
+    );
+
+    final Widget text = RichText(
+      text: TextSpan(
+        children: [
+          TextSpan(
+            text: "GHS ${resolvedOriginalAmount.toStringAsFixed(2)}",
+            style: oldStyle,
+          ),
+          TextSpan(
+            text: " / ",
+            style: oldStyle.copyWith(decoration: TextDecoration.none),
+          ),
+          TextSpan(
+            text: amount <= 0 ? "FREE" : "GHS ${amount.toStringAsFixed(2)}",
+            style: newStyle,
+          ),
+        ],
+      ),
+    );
+    return withBadge(text);
   }
 
   Widget _buildSubscriptionSavingsLabel({

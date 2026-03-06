@@ -594,6 +594,12 @@ const calculateCartGroupsPricing = async (carts = [], options = {}) => {
                 totalAfterCredits: 0,
                 creditBalance: 0,
                 availableBalance: 0,
+                subscriptionTier: null,
+                subscriptionId: null,
+                subscriptionDeliveryDiscount: 0,
+                subscriptionServiceFeeDiscount: 0,
+                originalDeliveryFee: 0,
+                originalServiceFee: 0,
             },
         };
     }
@@ -628,6 +634,12 @@ const calculateCartGroupsPricing = async (carts = [], options = {}) => {
     let promoCodeApplied = null;
     let promoType = null;
     let promoDiscount = 0;
+    let subscriptionTier = null;
+    let subscriptionId = null;
+    let subscriptionDeliveryDiscount = 0;
+    let subscriptionServiceFeeDiscount = 0;
+    let originalDeliveryFee = 0;
+    let originalServiceFee = 0;
     let promoValidationMessage =
         normalizedPromoCode && safeCarts.length > 1
             ? 'Promo codes are currently available for single-vendor carts only.'
@@ -644,11 +656,27 @@ const calculateCartGroupsPricing = async (carts = [], options = {}) => {
         totalBeforePromo += toNumber(pricing?.totalBeforePromo, pricing?.total);
         itemCount += toNumber(pricing?.itemCount, 0);
         promoDiscount += toNumber(pricing?.promoDiscount, 0);
+        subscriptionDeliveryDiscount += toNumber(pricing?.subscriptionDeliveryDiscount, 0);
+        subscriptionServiceFeeDiscount += toNumber(pricing?.subscriptionServiceFeeDiscount, 0);
+        originalDeliveryFee += toNumber(
+            pricing?.originalDeliveryFee,
+            toNumber(pricing?.deliveryFee, 0) + toNumber(pricing?.subscriptionDeliveryDiscount, 0)
+        );
+        originalServiceFee += toNumber(
+            pricing?.originalServiceFee,
+            toNumber(pricing?.serviceFee, 0) + toNumber(pricing?.subscriptionServiceFeeDiscount, 0)
+        );
         if (!promoCodeApplied && pricing?.promoCode) {
             promoCodeApplied = pricing.promoCode;
         }
         if (!promoType && pricing?.promoType) {
             promoType = pricing.promoType;
+        }
+        if (!subscriptionTier && pricing?.subscriptionTier) {
+            subscriptionTier = pricing.subscriptionTier;
+        }
+        if (!subscriptionId && pricing?.subscriptionId) {
+            subscriptionId = pricing.subscriptionId;
         }
         if (!promoValidationMessage && pricing?.promoValidationMessage) {
             promoValidationMessage = pricing.promoValidationMessage;
@@ -681,6 +709,10 @@ const calculateCartGroupsPricing = async (carts = [], options = {}) => {
     total = roundCurrency(total);
     totalBeforePromo = roundCurrency(totalBeforePromo);
     promoDiscount = roundCurrency(promoDiscount);
+    subscriptionDeliveryDiscount = roundCurrency(subscriptionDeliveryDiscount);
+    subscriptionServiceFeeDiscount = roundCurrency(subscriptionServiceFeeDiscount);
+    originalDeliveryFee = roundCurrency(originalDeliveryFee);
+    originalServiceFee = roundCurrency(originalServiceFee);
 
     let creditsApplied = 0;
     let totalBeforeCredits = total;
@@ -749,6 +781,12 @@ const calculateCartGroupsPricing = async (carts = [], options = {}) => {
             totalAfterCredits,
             creditBalance,
             availableBalance,
+            subscriptionTier,
+            subscriptionId,
+            subscriptionDeliveryDiscount,
+            subscriptionServiceFeeDiscount,
+            originalDeliveryFee,
+            originalServiceFee,
         },
     };
 };

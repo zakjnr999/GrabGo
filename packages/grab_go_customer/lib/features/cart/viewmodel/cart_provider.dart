@@ -21,6 +21,8 @@ class CartProvider extends ChangeNotifier {
   double? _subtotal;
   double _deliveryFee = 0.0;
   double _serviceFee = 0.0;
+  double _originalDeliveryFee = 0.0;
+  double _originalServiceFee = 0.0;
   double _tax = 0.0;
   double _rainFee = 0.0;
   String? _subscriptionTier;
@@ -60,6 +62,8 @@ class CartProvider extends ChangeNotifier {
   double get subtotal => _subtotal ?? totalPrice;
   double get deliveryFee => _deliveryFee;
   double get serviceFee => _serviceFee;
+  double get originalDeliveryFee => _originalDeliveryFee;
+  double get originalServiceFee => _originalServiceFee;
   double get tax => _tax;
   double get rainFee => _rainFee;
   String? get subscriptionTier => _subscriptionTier;
@@ -911,6 +915,8 @@ class CartProvider extends ChangeNotifier {
       _subtotal = null;
       _deliveryFee = 0.0;
       _serviceFee = 0.0;
+      _originalDeliveryFee = 0.0;
+      _originalServiceFee = 0.0;
       _tax = 0.0;
       _rainFee = 0.0;
       _appliedPromoCode = null;
@@ -936,6 +942,16 @@ class CartProvider extends ChangeNotifier {
     _subtotal = (pricing['subtotal'] as num?)?.toDouble();
     _deliveryFee = (pricing['deliveryFee'] as num?)?.toDouble() ?? 0.0;
     _serviceFee = (pricing['serviceFee'] as num?)?.toDouble() ?? 0.0;
+    _originalDeliveryFee =
+        (pricing['originalDeliveryFee'] as num?)?.toDouble() ??
+        _deliveryFee +
+            ((pricing['subscriptionDeliveryDiscount'] as num?)?.toDouble() ??
+                0.0);
+    _originalServiceFee =
+        (pricing['originalServiceFee'] as num?)?.toDouble() ??
+        _serviceFee +
+            ((pricing['subscriptionServiceFeeDiscount'] as num?)?.toDouble() ??
+                0.0);
     _tax = (pricing['tax'] as num?)?.toDouble() ?? 0.0;
     _rainFee = (pricing['rainFee'] as num?)?.toDouble() ?? 0.0;
     final promoCodeRaw = pricing['promoCode']?.toString().trim();
@@ -1017,6 +1033,8 @@ class CartProvider extends ChangeNotifier {
     _subscriptionTier = null;
     _subscriptionDeliveryDiscount = 0.0;
     _subscriptionServiceFeeDiscount = 0.0;
+    _originalDeliveryFee = _deliveryFee;
+    _originalServiceFee = _serviceFee;
     _total = _subtotal! + _deliveryFee + _serviceFee + _tax + _rainFee;
     _hasPricingFromBackend = false;
   }
