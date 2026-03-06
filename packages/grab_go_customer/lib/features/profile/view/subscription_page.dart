@@ -115,7 +115,27 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
 
       if (!mounted) return;
 
-      if (result.success) {
+      if (result.status == paystack.PaystackPaymentStatus.cancelled) {
+        AppToastMessage.show(
+          context: context,
+          message: result.message ?? 'Payment was cancelled.',
+          backgroundColor: context.appColors.error,
+        );
+        return;
+      }
+
+      final confirmationResult = await context.push<bool>(
+        '/paymentConfirming',
+        extra: {
+          'reference': result.reference ?? start.reference,
+          'paymentData': const <String, dynamic>{},
+          'flow': 'subscription',
+        },
+      );
+
+      if (!mounted) return;
+
+      if (confirmationResult == true) {
         AppToastMessage.show(
           context: context,
           message: 'Payment successful. Activating your plan...',
@@ -126,7 +146,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
       } else {
         AppToastMessage.show(
           context: context,
-          message: result.message ?? 'Subscription payment not completed',
+          message: 'Subscription payment not completed',
           backgroundColor: context.appColors.error,
         );
       }

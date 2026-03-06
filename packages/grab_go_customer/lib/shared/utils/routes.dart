@@ -769,6 +769,7 @@ final GoRouter appRouter = GoRouter(
             sessionId: extra['sessionId']?.toString(),
             reference: extra['reference']?.toString() ?? '',
             paymentData: (extra['paymentData'] as Map<String, dynamic>?) ?? {},
+            flow: extra['flow']?.toString() ?? 'order',
           ),
           transitionDuration: const Duration(milliseconds: 500),
           reverseTransitionDuration: const Duration(milliseconds: 500),

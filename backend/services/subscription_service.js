@@ -58,6 +58,12 @@ const paystackClient = axios.create({
   },
 });
 
+const addOneMonth = (date) => {
+  const next = new Date(date);
+  next.setMonth(next.getMonth() + 1);
+  return next;
+};
+
 // ── Paystack Plan Management ────────────────────────────────────────────────
 
 /**
@@ -177,15 +183,14 @@ const subscribe = async ({ userId, email, tier }) => {
   const reference = `sub_${tier}_${userId}_${Date.now()}`;
 
   const now = new Date();
-  const periodEnd = new Date(now);
-  periodEnd.setMonth(periodEnd.getMonth() + 1);
+  const periodEnd = addOneMonth(now);
 
   // Create pending subscription record
   const subscription = await prisma.subscription.create({
     data: {
       userId,
       tier,
-      status: 'active', // Will be activated on webhook confirmation
+      status: 'pending',
       currentPeriodStart: now,
       currentPeriodEnd: periodEnd,
     },
@@ -411,7 +416,19 @@ const handlePaymentSuccess = async (payload) => {
   const amount = (payload?.data?.amount || 0) / 100; // pesewas → GHS
   const meta = payload?.data?.metadata || {};
 
-  // Find subscription by reference or metadata
+  let paymentByReference = null;
+  if (reference) {
+    paymentByReference = await prisma.subscriptionPayment.findUnique({
+      where: { paystackReference: reference },
+      include: { subscription: true },
+    });
+  }
+
+  if (paymentByReference?.status === 'success') {
+    return paymentByReference.subscription;
+  }
+
+  // Find subscription by metadata or reference
   let subscription;
 
   if (meta.subscriptionId) {
@@ -420,13 +437,8 @@ const handlePaymentSuccess = async (payload) => {
     });
   }
 
-  if (!subscription && reference) {
-    // Try to find by payment reference
-    const payment = await prisma.subscriptionPayment.findUnique({
-      where: { paystackReference: reference },
-      include: { subscription: true },
-    });
-    subscription = payment?.subscription;
+  if (!subscription && paymentByReference) {
+    subscription = paymentByReference.subscription;
   }
 
   if (!subscription) {
@@ -434,36 +446,58 @@ const handlePaymentSuccess = async (payload) => {
     return null;
   }
 
-  // Extend the subscription period
   const now = new Date();
-  const newPeriodEnd = new Date(Math.max(now.getTime(), subscription.currentPeriodEnd.getTime()));
-  newPeriodEnd.setMonth(newPeriodEnd.getMonth() + 1);
+  const isInitialPendingPayment = paymentByReference?.status === 'pending';
 
-  await prisma.$transaction([
+  const newPeriodStart = now;
+  const newPeriodEnd = isInitialPendingPayment
+    ? (subscription.currentPeriodEnd > now ? subscription.currentPeriodEnd : addOneMonth(now))
+    : addOneMonth(new Date(Math.max(now.getTime(), subscription.currentPeriodEnd.getTime())));
+
+  const operations = [
     prisma.subscription.update({
       where: { id: subscription.id },
       data: {
         status: 'active',
-        currentPeriodStart: now,
+        currentPeriodStart: newPeriodStart,
         currentPeriodEnd: newPeriodEnd,
       },
     }),
-    prisma.subscriptionPayment.upsert({
-      where: { paystackReference: reference || `manual_${subscription.id}_${Date.now()}` },
-      create: {
-        subscriptionId: subscription.id,
-        amount,
-        currency: PAYSTACK_CURRENCY,
-        paystackReference: reference,
-        status: 'success',
-        paidAt: now,
-      },
-      update: {
-        status: 'success',
-        paidAt: now,
-      },
-    }),
-  ]);
+  ];
+
+  if (reference) {
+    operations.push(
+      prisma.subscriptionPayment.upsert({
+        where: { paystackReference: reference },
+        create: {
+          subscriptionId: subscription.id,
+          amount,
+          currency: PAYSTACK_CURRENCY,
+          paystackReference: reference,
+          status: 'success',
+          paidAt: now,
+        },
+        update: {
+          status: 'success',
+          paidAt: now,
+        },
+      })
+    );
+  } else {
+    operations.push(
+      prisma.subscriptionPayment.create({
+        data: {
+          subscriptionId: subscription.id,
+          amount,
+          currency: PAYSTACK_CURRENCY,
+          status: 'success',
+          paidAt: now,
+        },
+      })
+    );
+  }
+
+  await prisma.$transaction(operations);
 
   console.log(`✅ [SUBSCRIPTION] Payment recorded for ${subscription.id}, extended to ${newPeriodEnd.toISOString()}`);
   return subscription;
@@ -476,41 +510,159 @@ const handlePaymentSuccess = async (payload) => {
 const handlePaymentFailed = async (payload) => {
   const meta = payload?.data?.metadata || {};
   const reference = payload?.data?.reference;
+  const failureReason = payload?.data?.gateway_response || 'Payment failed';
+  const amount = (payload?.data?.amount || 0) / 100;
+
+  let paymentByReference = null;
+  if (reference) {
+    paymentByReference = await prisma.subscriptionPayment.findUnique({
+      where: { paystackReference: reference },
+      include: { subscription: true },
+    });
+  }
+
+  if (paymentByReference?.status === 'success') {
+    return paymentByReference.subscription;
+  }
 
   let subscription;
   if (meta.subscriptionId) {
     subscription = await prisma.subscription.findUnique({ where: { id: meta.subscriptionId } });
   }
 
-  if (!subscription && reference) {
-    const payment = await prisma.subscriptionPayment.findUnique({
-      where: { paystackReference: reference },
-      include: { subscription: true },
-    });
-    subscription = payment?.subscription;
+  if (!subscription && paymentByReference) {
+    subscription = paymentByReference.subscription;
   }
 
   if (!subscription) return null;
 
-  await prisma.$transaction([
+  const operations = [
     prisma.subscription.update({
       where: { id: subscription.id },
       data: { status: 'past_due' },
     }),
-    prisma.subscriptionPayment.create({
-      data: {
-        subscriptionId: subscription.id,
-        amount: (payload?.data?.amount || 0) / 100,
-        currency: PAYSTACK_CURRENCY,
-        paystackReference: reference,
-        status: 'failed',
-        failureReason: payload?.data?.gateway_response || 'Payment failed',
-      },
-    }),
-  ]);
+  ];
+
+  if (reference) {
+    operations.push(
+      prisma.subscriptionPayment.upsert({
+        where: { paystackReference: reference },
+        create: {
+          subscriptionId: subscription.id,
+          amount,
+          currency: PAYSTACK_CURRENCY,
+          paystackReference: reference,
+          status: 'failed',
+          failureReason,
+        },
+        update: {
+          status: 'failed',
+          failureReason,
+        },
+      })
+    );
+  } else {
+    operations.push(
+      prisma.subscriptionPayment.create({
+        data: {
+          subscriptionId: subscription.id,
+          amount,
+          currency: PAYSTACK_CURRENCY,
+          status: 'failed',
+          failureReason,
+        },
+      })
+    );
+  }
+
+  await prisma.$transaction(operations);
 
   console.log(`⚠️ [SUBSCRIPTION] Payment failed for ${subscription.id}, marked as past_due`);
   return subscription;
+};
+
+/**
+ * Explicitly confirm a subscription payment after client-side checkout.
+ * This prevents stale "pending" rows when webhook delivery is delayed.
+ */
+const confirmPayment = async ({ userId, reference }) => {
+  if (!userId) throw new Error('User is required');
+  if (!reference) throw new Error('Payment reference is required');
+
+  const payment = await prisma.subscriptionPayment.findUnique({
+    where: { paystackReference: reference },
+    include: { subscription: true },
+  });
+
+  if (!payment || !payment.subscription) {
+    throw new Error('Subscription payment not found for this reference');
+  }
+
+  if (payment.subscription.userId !== userId) {
+    throw new Error('Not authorized to confirm this subscription payment');
+  }
+
+  if (payment.status === 'success') {
+    return {
+      confirmed: true,
+      alreadyConfirmed: true,
+      status: 'success',
+      reference,
+      subscriptionId: payment.subscriptionId,
+    };
+  }
+
+  const verified = await paystackService.verifyTransaction(reference);
+  const paystackStatus = String(verified?.status || '').toLowerCase();
+
+  if (paystackStatus !== 'success') {
+    await handlePaymentFailed({
+      data: {
+        reference,
+        amount: verified?.amount || 0,
+        gateway_response: verified?.gateway_response || verified?.message || 'Payment not successful',
+        metadata: {
+          ...(verified?.metadata || {}),
+          subscriptionId: payment.subscriptionId,
+          type: 'subscription',
+        },
+      },
+    });
+
+    return {
+      confirmed: false,
+      alreadyConfirmed: false,
+      status: paystackStatus || 'unknown',
+      reference,
+      subscriptionId: payment.subscriptionId,
+      message: verified?.gateway_response || verified?.message || 'Payment not successful',
+    };
+  }
+
+  await handlePaymentSuccess({
+    data: {
+      reference,
+      amount: verified?.amount || 0,
+      metadata: {
+        ...(verified?.metadata || {}),
+        subscriptionId: payment.subscriptionId,
+        type: 'subscription',
+      },
+    },
+  });
+
+  const updated = await prisma.subscription.findUnique({
+    where: { id: payment.subscriptionId },
+  });
+
+  return {
+    confirmed: true,
+    alreadyConfirmed: false,
+    status: 'success',
+    reference,
+    subscriptionId: payment.subscriptionId,
+    currentPeriodEnd: updated?.currentPeriodEnd || null,
+  };
 };
 
 /**
@@ -630,6 +782,7 @@ module.exports = {
   cancelSubscription,
   calculateSubscriptionBenefits,
   previewBenefits,
+  confirmPayment,
   handleWebhook,
   expireStaleSubscriptions,
   getSubscriptionStats,

@@ -5,6 +5,7 @@
  *   GET    /api/subscriptions/plans       — List available plans
  *   GET    /api/subscriptions/me          — Get current subscription
  *   POST   /api/subscriptions/subscribe   — Start a new subscription
+ *   POST   /api/subscriptions/confirm-payment — Confirm a subscription payment
  *   POST   /api/subscriptions/cancel      — Cancel subscription
  *   GET    /api/subscriptions/benefits    — Preview benefits for an order
  *   POST   /api/subscriptions/webhook     — Paystack subscription webhooks
@@ -148,6 +149,64 @@ router.post(
       }
 
       return res.status(500).json({ success: false, message: 'Server error' });
+    }
+  }
+);
+
+// ── POST /confirm-payment — Verify and finalize subscription payment ───────
+router.post(
+  '/confirm-payment',
+  protect,
+  [
+    body('reference')
+      .isString()
+      .trim()
+      .notEmpty()
+      .withMessage('Payment reference is required'),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ success: false, errors: errors.array() });
+      }
+
+      if (req.user.role !== 'customer') {
+        return res.status(403).json({ success: false, message: 'Only customers can confirm payments' });
+      }
+
+      const result = await subscriptionService.confirmPayment({
+        userId: req.user.id,
+        reference: req.body.reference.trim(),
+      });
+
+      if (!result.confirmed) {
+        return res.status(400).json({
+          success: false,
+          message: result.message || 'Payment not successful',
+          data: result,
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: result.alreadyConfirmed ? 'Payment already confirmed' : 'Payment confirmed',
+        data: result,
+      });
+    } catch (error) {
+      console.error('[SUBSCRIPTION] Error confirming payment:', error);
+
+      if (error.message.includes('not found')) {
+        return res.status(404).json({ success: false, message: error.message });
+      }
+      if (error.message.includes('Not authorized')) {
+        return res.status(403).json({ success: false, message: error.message });
+      }
+      if (error.message.includes('required')) {
+        return res.status(400).json({ success: false, message: error.message });
+      }
+
+      return res.status(500).json({ success: false, message: 'Server error', error: error.message });
     }
   }
 );

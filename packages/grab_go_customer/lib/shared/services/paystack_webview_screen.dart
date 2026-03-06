@@ -78,11 +78,12 @@ class _PaystackWebViewScreenState extends State<PaystackWebViewScreen> {
     _hasHandledCompletion = true;
     final lower = message.toLowerCase();
     final isSuccess = lower.contains('success');
+    final status = isSuccess ? PaystackPaymentStatus.success : PaystackPaymentStatus.unknown;
     Navigator.of(context).pop(
       PaystackPaymentResult(
-        status: isSuccess ? PaystackPaymentStatus.success : PaystackPaymentStatus.failed,
+        status: status,
         reference: widget.reference,
-        message: isSuccess ? 'Payment completed' : 'Payment failed',
+        message: isSuccess ? 'Payment completed' : 'Payment status unknown',
       ),
     );
   }
@@ -149,13 +150,6 @@ class _PaystackWebViewScreenState extends State<PaystackWebViewScreen> {
               body.includes('approved')) {
             if (window.PaystackComplete) {
               window.PaystackComplete.postMessage('success');
-            }
-          }
-          if (body.includes('payment failed') || 
-              body.includes('transaction failed') ||
-              body.includes('declined')) {
-            if (window.PaystackComplete) {
-              window.PaystackComplete.postMessage('failed');
             }
           }
         };

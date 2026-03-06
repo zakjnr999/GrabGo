@@ -83,4 +83,24 @@ class SubscriptionService {
       throw Exception((body?['message'] ?? 'Unable to cancel subscription').toString());
     }
   }
+
+  Future<SubscriptionPaymentConfirmation> confirmPayment(String reference) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/confirm-payment'),
+      headers: await _buildHeaders(),
+      body: jsonEncode({'reference': reference}),
+    );
+
+    final body = _decodeResponse(response) as Map<String, dynamic>?;
+    final data = body?['data'];
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception((body?['message'] ?? 'Unable to confirm subscription payment').toString());
+    }
+
+    if (data is! Map) {
+      throw Exception('Invalid payment confirmation response');
+    }
+
+    return SubscriptionPaymentConfirmation.fromJson(Map<String, dynamic>.from(data));
+  }
 }

@@ -1,0 +1,13 @@
+<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  
+  <!-- === 3D GOLD STAR === -->
+  <!-- Left Side (Brighter Yellow) -->
+  <polygon points="60,15 46,44 14,49 37,72 31,104 60,89" fill="#FFD166" />
+  
+  <!-- Right Side (Deeper Golden Orange for 3D depth) -->
+  <polygon points="60,15 74,44 106,49 83,72 89,104 60,89" fill="#FFB703" />
+
+  <!-- Subtle Center Highlight Line -->
+  <line x1="60" y1="15" x2="60" y2="89" stroke="#FFFFFF" stroke-width="1.5" opacity="0.6" />
+
+</svg>

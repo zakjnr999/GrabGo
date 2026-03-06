@@ -89,3 +89,29 @@ class SubscriptionStartResponse {
     );
   }
 }
+
+class SubscriptionPaymentConfirmation {
+  final bool confirmed;
+  final bool alreadyConfirmed;
+  final String status;
+  final String reference;
+  final String? message;
+
+  SubscriptionPaymentConfirmation({
+    required this.confirmed,
+    required this.alreadyConfirmed,
+    required this.status,
+    required this.reference,
+    this.message,
+  });
+
+  factory SubscriptionPaymentConfirmation.fromJson(Map<String, dynamic> json) {
+    return SubscriptionPaymentConfirmation(
+      confirmed: json['confirmed'] == true,
+      alreadyConfirmed: json['alreadyConfirmed'] == true,
+      status: (json['status'] ?? '').toString(),
+      reference: (json['reference'] ?? '').toString(),
+      message: json['message']?.toString(),
+    );
+  }
+}

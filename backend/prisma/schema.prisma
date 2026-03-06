@@ -2686,6 +2686,7 @@ enum SubscriptionTier {
 }
 
 enum SubscriptionStatus {
+  pending
   active
   cancelled
   expired
