@@ -24,6 +24,7 @@ final class _$CartApiService extends CartApiService {
     double? lat,
     double? lng,
     bool? useCredits,
+    String? promoCode,
   }) {
     final Uri $url = Uri.parse('/cart/groups');
     final Map<String, dynamic> $params = <String, dynamic>{
@@ -31,6 +32,7 @@ final class _$CartApiService extends CartApiService {
       'lat': lat,
       'lng': lng,
       'useCredits': useCredits,
+      'promoCode': promoCode,
     };
     final Request $request = Request(
       'GET',
@@ -48,6 +50,7 @@ final class _$CartApiService extends CartApiService {
     double? lat,
     double? lng,
     bool? useCredits,
+    String? promoCode,
   }) {
     final Uri $url = Uri.parse('/cart');
     final Map<String, dynamic> $params = <String, dynamic>{
@@ -56,6 +59,7 @@ final class _$CartApiService extends CartApiService {
       'lat': lat,
       'lng': lng,
       'useCredits': useCredits,
+      'promoCode': promoCode,
     };
     final Request $request = Request(
       'GET',
@@ -73,6 +77,7 @@ final class _$CartApiService extends CartApiService {
     double? lat,
     double? lng,
     bool? useCredits,
+    String? promoCode,
   }) {
     final Uri $url = Uri.parse('/cart/add');
     final Map<String, dynamic> $params = <String, dynamic>{
@@ -80,6 +85,7 @@ final class _$CartApiService extends CartApiService {
       'lat': lat,
       'lng': lng,
       'useCredits': useCredits,
+      'promoCode': promoCode,
     };
     final $body = body;
     final Request $request = Request(
@@ -100,14 +106,15 @@ final class _$CartApiService extends CartApiService {
     double? lat,
     double? lng,
     bool? useCredits,
-  }
-  ) {
+    String? promoCode,
+  }) {
     final Uri $url = Uri.parse('/cart/update/${itemId}');
     final Map<String, dynamic> $params = <String, dynamic>{
       'fulfillmentMode': fulfillmentMode,
       'lat': lat,
       'lng': lng,
       'useCredits': useCredits,
+      'promoCode': promoCode,
     };
     final $body = body;
     final Request $request = Request(
@@ -127,6 +134,7 @@ final class _$CartApiService extends CartApiService {
     double? lat,
     double? lng,
     bool? useCredits,
+    String? promoCode,
   }) {
     final Uri $url = Uri.parse('/cart/remove/${itemId}');
     final Map<String, dynamic> $params = <String, dynamic>{
@@ -134,6 +142,7 @@ final class _$CartApiService extends CartApiService {
       'lat': lat,
       'lng': lng,
       'useCredits': useCredits,
+      'promoCode': promoCode,
     };
     final Request $request = Request(
       'DELETE',
@@ -150,6 +159,7 @@ final class _$CartApiService extends CartApiService {
     double? lat,
     double? lng,
     bool? useCredits,
+    String? promoCode,
   }) {
     final Uri $url = Uri.parse('/cart/clear');
     final Map<String, dynamic> $params = <String, dynamic>{
@@ -157,6 +167,7 @@ final class _$CartApiService extends CartApiService {
       'lat': lat,
       'lng': lng,
       'useCredits': useCredits,
+      'promoCode': promoCode,
     };
     final Request $request = Request(
       'DELETE',

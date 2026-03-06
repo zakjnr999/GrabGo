@@ -529,6 +529,7 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
               final double deliveryFee = provider.deliveryFee;
               final double serviceFee = provider.serviceFee;
               final double rainFee = provider.rainFee;
+              final double promoDiscount = provider.promoDiscount;
               final bool isPickupMode =
                   provider.fulfillmentMode == 'pickup' || isPickupTab;
               final bool isMixedCheckout = _isMixedCartCheckout(
@@ -1109,6 +1110,17 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                                           context,
                                           "GrabGo Pro Savings",
                                           -subscriptionSavings,
+                                          colors,
+                                          false,
+                                          false,
+                                        ),
+                                      ],
+                                      if (promoDiscount > 0) ...[
+                                        SizedBox(height: 6.h),
+                                        _buildPriceRow(
+                                          context,
+                                          "Promo Discount",
+                                          -promoDiscount,
                                           colors,
                                           false,
                                           false,
@@ -2307,6 +2319,7 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
       isPickupMode: isPickupMode,
     );
     final double subscriptionSavings = provider.subscriptionTotalDiscount;
+    final double promoDiscount = provider.promoDiscount;
     final bool isCashOnDelivery =
         !isMixedCheckout &&
         _isCashOnDeliverySelected(isPickupMode: isPickupMode);
@@ -2418,6 +2431,10 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
                     -subscriptionSavings,
                     colors,
                   ),
+                ],
+                if (promoDiscount > 0) ...[
+                  SizedBox(height: 6.h),
+                  _buildSummaryRow("Promo Discount", -promoDiscount, colors),
                 ],
                 if (creditsApplied > 0) ...[
                   SizedBox(height: 6.h),
@@ -3247,6 +3264,7 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         deliveryFee: deliveryFee,
         total: total,
         useCredits: selectedPaymentMethod == "cash" ? false : cart.useCredits,
+        promoCode: cart.appliedPromoCode,
         notes: _getConcatenatedNotes(
           provider: cart,
           isPickupMode: isPickupMode,
@@ -3294,6 +3312,7 @@ class _CheckoutState extends State<Checkout> with TickerProviderStateMixin {
         paymentMethod: 'card',
         deliveryAddress: deliveryAddress,
         useCredits: cart.useCredits,
+        promoCode: cart.appliedPromoCode,
         notes: _getConcatenatedNotes(
           provider: cart,
           isPickupMode: isPickupMode,

@@ -163,7 +163,7 @@ class Notification extends StatefulWidget {
   State<Notification> createState() => _NotificationState();
 }
 
-class _NotificationState extends State<Notification> with SingleTickerProviderStateMixin {
+class _NotificationState extends State<Notification> {
   List<NotificationModel> _notifications = [];
   bool _isLoading = false;
   bool _isLoadingMore = false;
@@ -174,21 +174,12 @@ class _NotificationState extends State<Notification> with SingleTickerProviderSt
   final ScrollController _scrollController = ScrollController();
   bool isSocketConnected = false;
   late final void Function(dynamic) _notificationListener;
-  late TabController _tabController;
   int _selectedTabIndex = 0;
   final List<String> _notificationTabs = ["All", "Orders", "Promos", "Updates"];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
-        setState(() {
-          _selectedTabIndex = _tabController.index;
-        });
-      }
-    });
     _notificationListener = _handleNewNotification;
     _loadInitialData();
     _scrollController.addListener(_onScroll);
@@ -211,7 +202,6 @@ class _NotificationState extends State<Notification> with SingleTickerProviderSt
 
   @override
   void dispose() {
-    _tabController.dispose();
     _scrollController.dispose();
     SocketService().removeNotificationListener(_notificationListener);
     super.dispose();
@@ -447,38 +437,9 @@ class _NotificationState extends State<Notification> with SingleTickerProviderSt
                     ),
                   ),
                   SizedBox(height: 16.h),
-                  Container(
-                    decoration: BoxDecoration(
-                      border: Border(bottom: BorderSide(color: colors.inputBorder.withValues(alpha: 0.5), width: 1)),
-                    ),
-                    child: TabBar(
-                      controller: _tabController,
-                      indicatorSize: TabBarIndicatorSize.tab,
-                      indicatorWeight: 3,
-                      dividerColor: Colors.transparent,
-                      labelColor: colors.accentOrange,
-                      unselectedLabelColor: colors.textSecondary,
-                      splashFactory: NoSplash.splashFactory,
-                      labelStyle: TextStyle(
-                        fontSize: 15.sp,
-                        fontWeight: FontWeight.w700,
-                        fontFamily: 'Lato',
-                        package: 'grab_go_shared',
-                      ),
-                      unselectedLabelStyle: TextStyle(
-                        fontSize: 15.sp,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'Lato',
-                        package: 'grab_go_shared',
-                      ),
-                      overlayColor: WidgetStateProperty.all(Colors.transparent),
-                      tabs: const [
-                        Tab(text: "All"),
-                        Tab(text: "Orders"),
-                        Tab(text: "Promos"),
-                        Tab(text: "Updates"),
-                      ],
-                    ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20.w),
+                    child: _buildTabSelector(colors),
                   ),
                 ],
               ),
@@ -555,7 +516,89 @@ class _NotificationState extends State<Notification> with SingleTickerProviderSt
     );
   }
 
+  int _countForTab(int tabIndex) {
+    if (tabIndex == 0) return _notifications.length;
+    if (tabIndex == 1) {
+      return _notifications.where((n) => n.type == NotificationType.order).length;
+    }
+    if (tabIndex == 2) {
+      return _notifications.where((n) => n.type == NotificationType.promo).length;
+    }
+    return _notifications.where((n) => n.type == NotificationType.update || n.type == NotificationType.system).length;
+  }
+
+  Widget _buildTabSelector(AppColorsExtension colors) {
+    final totalTabs = _notificationTabs.length;
+    final selectedIndex = _selectedTabIndex.clamp(0, totalTabs - 1);
+
+    return Container(
+      padding: EdgeInsets.all(3.r),
+      decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(999.r)),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final tabWidth = constraints.maxWidth / totalTabs;
+          return Stack(
+            children: [
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutCubic,
+                left: tabWidth * selectedIndex,
+                top: 0,
+                bottom: 0,
+                width: tabWidth,
+                child: Container(
+                  decoration: BoxDecoration(color: colors.accentOrange, borderRadius: BorderRadius.circular(999.r)),
+                ),
+              ),
+              Row(
+                children: List.generate(totalTabs, (index) {
+                  final selected = selectedIndex == index;
+                  final count = _countForTab(index);
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        if (_selectedTabIndex == index) return;
+                        setState(() {
+                          _selectedTabIndex = index;
+                        });
+                      },
+                      behavior: HitTestBehavior.opaque,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 6.w),
+                        child: AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeOutCubic,
+                          style: TextStyle(
+                            color: selected ? Colors.white : colors.textSecondary,
+                            fontSize: 11.sp,
+                            fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                            fontFamily: 'Lato',
+                            package: 'grab_go_shared',
+                          ),
+                          child: Text(
+                            '${_notificationTabs[index]} ($count)',
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            softWrap: false,
+                            overflow: TextOverflow.fade,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildNotificationCard(NotificationModel notification, AppColorsExtension colors, bool isDark) {
+    final isUnread = !notification.isRead;
+    final cardColor = isUnread ? colors.accentOrange.withValues(alpha: isDark ? 0.14 : 0.08) : colors.backgroundPrimary;
+
     return GestureDetector(
       onTap: () {
         _markAsRead(notification.id);
@@ -617,10 +660,7 @@ class _NotificationState extends State<Notification> with SingleTickerProviderSt
       },
       child: Container(
         padding: EdgeInsets.all(16.r),
-        decoration: BoxDecoration(
-          color: notification.isRead ? colors.backgroundSecondary : colors.backgroundPrimary,
-          borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
-        ),
+        decoration: BoxDecoration(color: cardColor),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -636,12 +676,6 @@ class _NotificationState extends State<Notification> with SingleTickerProviderSt
                           style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
                         ),
                       ),
-                      if (!notification.isRead)
-                        Container(
-                          width: 8.w,
-                          height: 8.h,
-                          decoration: const BoxDecoration(color: Colors.transparent, shape: BoxShape.circle),
-                        ),
                     ],
                   ),
                   SizedBox(height: 6.h),

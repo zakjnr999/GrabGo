@@ -54,10 +54,12 @@ class Cart extends StatelessWidget {
             final double serviceFee = provider.serviceFee;
             final double rainFee = provider.rainFee;
             final double creditsApplied = provider.creditsApplied;
+            final double promoDiscount = provider.promoDiscount;
             final double total = provider.total;
             final bool isPricingLoading = provider.isPricingLoading;
             final bool hasCredits = provider.availableCredits > 0;
             final bool useCredits = hasCredits && provider.useCredits;
+            final String? appliedPromoCode = provider.appliedPromoCode;
             final bool isPickupMode = provider.fulfillmentMode == 'pickup' || isPickupTab;
             final int itemCount = provider.cartItems.values.fold(0, (sum, quantity) => sum + quantity);
             final List<String> providerNames = provider.cartItems.keys
@@ -167,74 +169,11 @@ class Cart extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                GestureDetector(
-                                  onTap: () async {
-                                    final promoCode = await PromoCodeDialog.show(
-                                      context: context,
-                                      onApply: (code) {
-                                        AppToastMessage.show(
-                                          context: context,
-                                          message: 'Promo code "$code" applied successfully!',
-                                          backgroundColor: colors.accentGreen,
-                                        );
-                                      },
-                                    );
-
-                                    if (promoCode != null) {
-                                      debugPrint('Promo code applied: $promoCode');
-                                    }
-                                  },
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        padding: EdgeInsets.all(8.r),
-                                        decoration: BoxDecoration(
-                                          color: colors.accentOrange.withValues(alpha: 0.15),
-                                          borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-                                        ),
-                                        child: SvgPicture.asset(
-                                          Assets.icons.badgePercent,
-                                          package: 'grab_go_shared',
-                                          height: 20.h,
-                                          width: 20.w,
-                                          colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                                        ),
-                                      ),
-                                      SizedBox(width: 12.w),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              AppStrings.cartPromoCode,
-                                              style: TextStyle(
-                                                color: colors.textPrimary,
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: 13.sp,
-                                              ),
-                                            ),
-                                            SizedBox(height: 2.h),
-                                            Text(
-                                              AppStrings.cartPromoCodeSub,
-                                              style: TextStyle(
-                                                color: colors.textSecondary,
-                                                fontWeight: FontWeight.w500,
-                                                fontSize: 11.sp,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      SvgPicture.asset(
-                                        Assets.icons.navArrowRight,
-                                        package: 'grab_go_shared',
-                                        height: 18.h,
-                                        width: 18.w,
-                                        colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                                _buildPromoEntry(context, provider, colors, appliedPromoCode),
+                                if (appliedPromoCode != null) ...[
+                                  SizedBox(height: 10.h),
+                                  _buildAppliedPromoActions(context, provider, colors, appliedPromoCode),
+                                ],
                                 if (!isPickupMode && provider.providerCount <= 1) ...[
                                   SizedBox(height: 12.h),
                                   _buildGiftEntry(provider, colors),
@@ -342,6 +281,18 @@ class Cart extends StatelessWidget {
                                         infoType: _FeeInfoType.rain,
                                       ),
                                     ],
+                                    if (promoDiscount > 0) ...[
+                                      SizedBox(height: 6.h),
+                                      _buildPriceRow(
+                                        context,
+                                        "Promo Discount",
+                                        -promoDiscount,
+                                        colors,
+                                        Assets.icons.badgePercent,
+                                        false,
+                                        false,
+                                      ),
+                                    ],
                                     if (creditsApplied > 0) ...[
                                       SizedBox(height: 6.h),
                                       _buildPriceRow(
@@ -355,7 +306,14 @@ class Cart extends StatelessWidget {
                                       ),
                                     ],
                                     SizedBox(height: 6.h),
-                                    _buildTotalRow(context, total, creditsApplied, colors, isLoading: isPricingLoading),
+                                    _buildTotalRow(
+                                      context,
+                                      total,
+                                      creditsApplied,
+                                      promoDiscount,
+                                      colors,
+                                      isLoading: isPricingLoading,
+                                    ),
                                   ],
                                 ),
                                 SizedBox(height: 12.h),
@@ -667,6 +625,143 @@ class Cart extends StatelessWidget {
     }
   }
 
+  Widget _buildPromoEntry(
+    BuildContext context,
+    CartProvider provider,
+    AppColorsExtension colors,
+    String? appliedPromoCode,
+  ) {
+    final hasAppliedPromo = appliedPromoCode != null && appliedPromoCode.trim().isNotEmpty;
+
+    return GestureDetector(
+      onTap: () => _promptAndApplyPromoCode(context, provider, currentCode: hasAppliedPromo ? appliedPromoCode : null),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(8.r),
+            decoration: BoxDecoration(
+              color: colors.accentOrange.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+            ),
+            child: SvgPicture.asset(
+              Assets.icons.badgePercent,
+              package: 'grab_go_shared',
+              height: 20.h,
+              width: 20.w,
+              colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+            ),
+          ),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  AppStrings.cartPromoCode,
+                  style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w700, fontSize: 13.sp),
+                ),
+                SizedBox(height: 2.h),
+                Text(
+                  hasAppliedPromo ? 'Applied code: $appliedPromoCode' : AppStrings.cartPromoCodeSub,
+                  style: TextStyle(color: colors.textSecondary, fontWeight: FontWeight.w500, fontSize: 11.sp),
+                ),
+              ],
+            ),
+          ),
+
+          SvgPicture.asset(
+            Assets.icons.navArrowRight,
+            package: 'grab_go_shared',
+            height: 18.h,
+            width: 18.w,
+            colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAppliedPromoActions(
+    BuildContext context,
+    CartProvider provider,
+    AppColorsExtension colors,
+    String code,
+  ) {
+    return Row(
+      children: [
+        TextButton(
+          onPressed: () => _promptAndApplyPromoCode(context, provider, currentCode: code),
+          style: TextButton.styleFrom(
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            minimumSize: Size.zero,
+            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
+          ),
+          child: Text(
+            'Change',
+            style: TextStyle(color: colors.accentOrange, fontSize: 12.sp, fontWeight: FontWeight.w700),
+          ),
+        ),
+        SizedBox(width: 4.w),
+        TextButton(
+          onPressed: () => _removePromoCode(context, provider),
+          style: TextButton.styleFrom(
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            minimumSize: Size.zero,
+            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
+          ),
+          child: Text(
+            'Remove',
+            style: TextStyle(color: colors.error, fontSize: 12.sp, fontWeight: FontWeight.w700),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _promptAndApplyPromoCode(BuildContext context, CartProvider provider, {String? currentCode}) async {
+    final code = await PromoCodeDialog.show(context: context, currentPromoCode: currentCode);
+    if (code == null) return;
+
+    final normalizedCode = code.trim().toUpperCase();
+    LoadingDialog.instance().show(context: context, text: 'Applying promo code...');
+    try {
+      provider.clearPromoErrorMessage();
+      final applyError = await provider.applyPromoCode(code);
+      if (!context.mounted) return;
+
+      if (applyError == null) {
+        AppToastMessage.show(
+          context: context,
+          message: 'Promo code "$normalizedCode" applied successfully!',
+          maxLines: 2,
+          backgroundColor: context.appColors.accentGreen,
+        );
+        return;
+      }
+
+      AppToastMessage.show(context: context, message: applyError, backgroundColor: context.appColors.error);
+    } catch (e) {
+      if (!context.mounted) return;
+      AppToastMessage.show(
+        context: context,
+        message: e.toString().replaceFirst('Exception: ', ''),
+        backgroundColor: context.appColors.error,
+      );
+    } finally {
+      LoadingDialog.instance().hide();
+    }
+  }
+
+  Future<void> _removePromoCode(BuildContext context, CartProvider provider) async {
+    await provider.removePromoCode();
+    if (!context.mounted) return;
+    AppToastMessage.show(
+      context: context,
+      message: 'Promo code removed.',
+      backgroundColor: context.appColors.accentGreen,
+    );
+  }
+
   Widget _buildGiftEntry(CartProvider provider, AppColorsExtension colors) {
     final isGiftEnabled = provider.isGiftOrderDraftEnabled;
     final recipientName = provider.giftRecipientNameDraft.trim();
@@ -724,6 +819,7 @@ class Cart extends StatelessWidget {
     BuildContext context,
     double total,
     double creditsApplied,
+    double promoDiscount,
     AppColorsExtension colors, {
     bool isLoading = false,
   }) {
@@ -743,7 +839,8 @@ class Cart extends StatelessWidget {
       );
     }
 
-    final double? originalTotal = creditsApplied > 0 ? total + creditsApplied : null;
+    final double discountTotal = creditsApplied + promoDiscount;
+    final double? originalTotal = discountTotal > 0 ? total + discountTotal : null;
 
     return Row(
       children: [

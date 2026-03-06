@@ -11,6 +11,7 @@ abstract class CartApiService extends ChopperService {
     @Query('lat') double? lat,
     @Query('lng') double? lng,
     @Query('useCredits') bool? useCredits,
+    @Query('promoCode') String? promoCode,
   });
 
   /// Get user's active cart
@@ -21,6 +22,7 @@ abstract class CartApiService extends ChopperService {
     @Query('lat') double? lat,
     @Query('lng') double? lng,
     @Query('useCredits') bool? useCredits,
+    @Query('promoCode') String? promoCode,
   });
 
   /// Add item to cart
@@ -31,6 +33,7 @@ abstract class CartApiService extends ChopperService {
     @Query('lat') double? lat,
     @Query('lng') double? lng,
     @Query('useCredits') bool? useCredits,
+    @Query('promoCode') String? promoCode,
   });
 
   /// Update cart item quantity
@@ -42,6 +45,7 @@ abstract class CartApiService extends ChopperService {
     @Query('lat') double? lat,
     @Query('lng') double? lng,
     @Query('useCredits') bool? useCredits,
+    @Query('promoCode') String? promoCode,
   });
 
   /// Remove item from cart
@@ -52,6 +56,7 @@ abstract class CartApiService extends ChopperService {
     @Query('lat') double? lat,
     @Query('lng') double? lng,
     @Query('useCredits') bool? useCredits,
+    @Query('promoCode') String? promoCode,
   });
 
   /// Clear entire cart
@@ -61,6 +66,7 @@ abstract class CartApiService extends ChopperService {
     @Query('lat') double? lat,
     @Query('lng') double? lng,
     @Query('useCredits') bool? useCredits,
+    @Query('promoCode') String? promoCode,
   });
 
   static CartApiService create([ChopperClient? client]) {

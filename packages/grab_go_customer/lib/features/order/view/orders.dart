@@ -91,9 +91,9 @@ class Orders extends StatefulWidget {
   State<Orders> createState() => _OrdersState();
 }
 
-class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
+class _OrdersState extends State<Orders> {
   int selectedTabIndex = 0;
-  late TabController _tabController;
+  final List<String> _orderTabs = [AppStrings.ordersOngoing, AppStrings.ordersCompleted];
 
   final ScrollController _scrollController = ScrollController();
   final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0.0);
@@ -104,14 +104,6 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
-        setState(() {
-          selectedTabIndex = _tabController.index;
-        });
-      }
-    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<OrderProvider>(context, listen: false).fetchOrders();
     });
@@ -122,7 +114,6 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _scrollOffsetNotifier.dispose();
-    _tabController.dispose();
     super.dispose();
   }
 
@@ -656,54 +647,70 @@ class _OrdersState extends State<Orders> with SingleTickerProviderStateMixin {
   }
 
   Widget _buildTabs(AppColorsExtension colors) {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
-      switchInCurve: Curves.easeInOut,
-      switchOutCurve: Curves.easeInOut,
-      transitionBuilder: (Widget child, Animation<double> animation) {
-        return FadeTransition(
-          opacity: animation,
-          child: SlideTransition(
-            position: Tween<Offset>(begin: const Offset(0, -0.1), end: Offset.zero).animate(animation),
-            child: child,
-          ),
-        );
-      },
-      child: Container(
-        key: const ValueKey('tabs'),
-        margin: EdgeInsets.symmetric(horizontal: 20.w),
-        padding: EdgeInsets.all(4.r),
-        decoration: BoxDecoration(
-          color: colors.backgroundSecondary,
-          borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-        ),
-        child: TabBar(
-          controller: _tabController,
-          indicator: BoxDecoration(
-            color: colors.accentOrange,
-            borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-          ),
-          indicatorSize: TabBarIndicatorSize.tab,
-          dividerColor: Colors.transparent,
-          labelColor: Colors.white,
-          unselectedLabelColor: colors.textSecondary,
-          labelStyle: TextStyle(
-            fontFamily: "Lato",
-            package: "grab_go_shared",
-            fontSize: 13.sp,
-            fontWeight: FontWeight.w700,
-          ),
-          unselectedLabelStyle: TextStyle(
-            fontFamily: "Lato",
-            package: 'grab_go_shared',
-            fontSize: 13.sp,
-            fontWeight: FontWeight.w600,
-          ),
-          tabs: const [
-            Tab(text: AppStrings.ordersOngoing),
-            Tab(text: AppStrings.ordersCompleted),
-          ],
-        ),
+    final totalTabs = _orderTabs.length;
+    final selectedIndex = selectedTabIndex.clamp(0, totalTabs - 1);
+
+    return Container(
+      key: const ValueKey('tabs'),
+      margin: EdgeInsets.symmetric(horizontal: 20.w),
+      padding: EdgeInsets.all(3.r),
+      decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(999.r)),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final tabWidth = constraints.maxWidth / totalTabs;
+          return Stack(
+            children: [
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutCubic,
+                left: tabWidth * selectedIndex,
+                top: 0,
+                bottom: 0,
+                width: tabWidth,
+                child: Container(
+                  decoration: BoxDecoration(color: colors.accentOrange, borderRadius: BorderRadius.circular(999.r)),
+                ),
+              ),
+              Row(
+                children: List.generate(totalTabs, (index) {
+                  final selected = selectedIndex == index;
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        if (selectedTabIndex == index) return;
+                        setState(() {
+                          selectedTabIndex = index;
+                        });
+                      },
+                      behavior: HitTestBehavior.opaque,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 6.w),
+                        child: AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeOutCubic,
+                          style: TextStyle(
+                            color: selected ? Colors.white : colors.textSecondary,
+                            fontSize: 11.sp,
+                            fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                            fontFamily: 'Lato',
+                            package: 'grab_go_shared',
+                          ),
+                          child: Text(
+                            _orderTabs[index],
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            softWrap: false,
+                            overflow: TextOverflow.fade,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

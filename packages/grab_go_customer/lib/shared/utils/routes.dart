@@ -34,7 +34,8 @@ import 'package:grab_go_customer/features/auth/view/verify_phone.dart';
 import 'package:grab_go_customer/features/cart/view/checkout.dart';
 import 'package:grab_go_customer/features/home/view/food_details.dart';
 import 'package:grab_go_customer/features/home/view/search_page.dart';
-import 'package:grab_go_customer/features/home/view/notification.dart' as notification_page;
+import 'package:grab_go_customer/features/home/view/notification.dart'
+    as notification_page;
 import 'package:grab_go_customer/features/services/view/service_hub_page.dart';
 import 'package:grab_go_customer/features/order/view/order_tracking.dart';
 import 'package:grab_go_customer/features/restaurant/view/restaurant_account_creation_tracking.dart';
@@ -47,6 +48,7 @@ import 'package:grab_go_customer/features/order/view/orders.dart';
 import 'package:grab_go_customer/features/profile/view/referral_page.dart';
 import 'package:grab_go_customer/features/profile/view/credits_screen.dart';
 import 'package:grab_go_customer/features/profile/view/subscription_page.dart';
+import 'package:grab_go_customer/features/profile/view/promo_codes_page.dart';
 import 'package:grab_go_customer/features/order/view/payment_complete.dart';
 import 'package:grab_go_customer/features/order/view/payment_confirming.dart';
 import 'package:grab_go_customer/features/order/view/payment_failed.dart';
@@ -90,9 +92,14 @@ final GoRouter appRouter = GoRouter(
       }
     }
 
-    if ((uri.scheme == 'https' || uri.scheme == 'http') && uri.host.contains('grabgo')) {
+    if ((uri.scheme == 'https' || uri.scheme == 'http') &&
+        uri.host.contains('grabgo')) {
       if (uri.path.startsWith('/food/')) {
-        final foodId = uri.path.replaceFirst('/food/', '').split('?').first.trim();
+        final foodId = uri.path
+            .replaceFirst('/food/', '')
+            .split('?')
+            .first
+            .trim();
         if (foodId.isNotEmpty) {
           return '/food/$foodId';
         }
@@ -103,8 +110,10 @@ final GoRouter appRouter = GoRouter(
       final extra = state.extra;
       final hasExtraCategory =
           extra is Map<String, dynamic> &&
-          (extra['categoryId'] is String && (extra['categoryId'] as String).isNotEmpty);
-      final hasQueryCategory = uri.queryParameters['categoryId']?.isNotEmpty == true;
+          (extra['categoryId'] is String &&
+              (extra['categoryId'] as String).isNotEmpty);
+      final hasQueryCategory =
+          uri.queryParameters['categoryId']?.isNotEmpty == true;
 
       if (!hasExtraCategory && !hasQueryCategory) {
         return '/homepage';
@@ -128,10 +137,16 @@ final GoRouter appRouter = GoRouter(
           });
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (context.mounted) {
-              LoadingDialog.instance().show(context: context, text: "Loading food item...");
+              LoadingDialog.instance().show(
+                context: context,
+                text: "Loading food item...",
+              );
             }
           });
-          return const Scaffold(backgroundColor: Colors.transparent, body: SizedBox.shrink());
+          return const Scaffold(
+            backgroundColor: Colors.transparent,
+            body: SizedBox.shrink(),
+          );
         }
       }
     }
@@ -387,6 +402,25 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
+      path: "/promos",
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: const PromoCodesPage(),
+          transitionDuration: const Duration(milliseconds: 400),
+          reverseTransitionDuration: const Duration(milliseconds: 400),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.horizontal,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
       path: "/review",
       pageBuilder: (context, state) {
         final registrationData = state.extra as RestaurantRegistrationData?;
@@ -456,7 +490,10 @@ final GoRouter appRouter = GoRouter(
         }
         return CustomTransitionPage(
           key: state.pageKey,
-          child: NotificationPermission(nextRoute: nextRoute, nextExtra: nextExtra),
+          child: NotificationPermission(
+            nextRoute: nextRoute,
+            nextExtra: nextExtra,
+          ),
           transitionDuration: const Duration(milliseconds: 800),
           reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -530,12 +567,16 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: "/mapTracking",
       pageBuilder: (context, state) {
-        final extra = state.extra is Map<String, dynamic> ? state.extra as Map<String, dynamic> : null;
+        final extra = state.extra is Map<String, dynamic>
+            ? state.extra as Map<String, dynamic>
+            : null;
         final queryOrderId = state.uri.queryParameters['orderId'];
         final rawOrderId = extra?['orderId']?.toString() ?? queryOrderId ?? '';
         final inferredDemoOrder = rawOrderId.toUpperCase().startsWith('DEMO-');
         final testTrigger =
-            extra?['testTrigger'] == true || state.uri.queryParameters['testTrigger'] == 'true' || inferredDemoOrder;
+            extra?['testTrigger'] == true ||
+            state.uri.queryParameters['testTrigger'] == 'true' ||
+            inferredDemoOrder;
         final orderId = rawOrderId.isNotEmpty
             ? rawOrderId
             : queryOrderId ?? (testTrigger ? 'DEMO-CUSTOMER-TRACK-001' : '');
@@ -732,7 +773,11 @@ final GoRouter appRouter = GoRouter(
           transitionDuration: const Duration(milliseconds: 500),
           reverseTransitionDuration: const Duration(milliseconds: 500),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeThroughTransition(animation: animation, secondaryAnimation: secondaryAnimation, child: child);
+            return FadeThroughTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              child: child,
+            );
           },
         );
       },
@@ -841,17 +886,20 @@ final GoRouter appRouter = GoRouter(
         if (extra is! VendorModel) {
           return CustomTransitionPage(
             key: state.pageKey,
-            child: const Scaffold(body: Center(child: Text('Vendor details unavailable'))),
+            child: const Scaffold(
+              body: Center(child: Text('Vendor details unavailable')),
+            ),
             transitionDuration: const Duration(milliseconds: 350),
             reverseTransitionDuration: const Duration(milliseconds: 350),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return SharedAxisTransition(
-                animation: animation,
-                secondaryAnimation: secondaryAnimation,
-                transitionType: SharedAxisTransitionType.vertical,
-                child: child,
-              );
-            },
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  return SharedAxisTransition(
+                    animation: animation,
+                    secondaryAnimation: secondaryAnimation,
+                    transitionType: SharedAxisTransitionType.vertical,
+                    child: child,
+                  );
+                },
           );
         }
 
@@ -878,17 +926,20 @@ final GoRouter appRouter = GoRouter(
         if (extra is! VendorModel) {
           return CustomTransitionPage(
             key: state.pageKey,
-            child: const Scaffold(body: Center(child: Text('Vendor info unavailable'))),
+            child: const Scaffold(
+              body: Center(child: Text('Vendor info unavailable')),
+            ),
             transitionDuration: const Duration(milliseconds: 350),
             reverseTransitionDuration: const Duration(milliseconds: 350),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return SharedAxisTransition(
-                animation: animation,
-                secondaryAnimation: secondaryAnimation,
-                transitionType: SharedAxisTransitionType.vertical,
-                child: child,
-              );
-            },
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  return SharedAxisTransition(
+                    animation: animation,
+                    secondaryAnimation: secondaryAnimation,
+                    transitionType: SharedAxisTransitionType.vertical,
+                    child: child,
+                  );
+                },
           );
         }
 
@@ -926,9 +977,10 @@ final GoRouter appRouter = GoRouter(
             child: const SizedBox.shrink(),
             transitionDuration: const Duration(milliseconds: 400),
             reverseTransitionDuration: const Duration(milliseconds: 400),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return child;
-            },
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  return child;
+                },
           );
         }
 
@@ -943,7 +995,9 @@ final GoRouter appRouter = GoRouter(
         } else if (extra is GrabMartItem) {
           child = FoodDetails(grabMartItem: extra);
         } else {
-          child = const Scaffold(body: Center(child: Text('Invalid item type')));
+          child = const Scaffold(
+            body: Center(child: Text('Invalid item type')),
+          );
         }
 
         return CustomTransitionPage(
@@ -1046,7 +1100,10 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (context, state) {
         return CustomTransitionPage(
           key: state.pageKey,
-          child: ChangeNotifierProvider(create: (_) => ParcelProvider(), child: const ParcelDeliveryPage()),
+          child: ChangeNotifierProvider(
+            create: (_) => ParcelProvider(),
+            child: const ParcelDeliveryPage(),
+          ),
           transitionDuration: const Duration(milliseconds: 400),
           reverseTransitionDuration: const Duration(milliseconds: 400),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -1065,7 +1122,10 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (context, state) {
         return CustomTransitionPage(
           key: state.pageKey,
-          child: ChangeNotifierProvider(create: (_) => ParcelProvider(), child: const ParcelOrdersPage()),
+          child: ChangeNotifierProvider(
+            create: (_) => ParcelProvider(),
+            child: const ParcelOrdersPage(),
+          ),
           transitionDuration: const Duration(milliseconds: 400),
           reverseTransitionDuration: const Duration(milliseconds: 400),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -1102,16 +1162,27 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: "/categoryItems/:categoryId",
       pageBuilder: (context, state) {
-        final extra = state.extra is Map<String, dynamic> ? state.extra as Map<String, dynamic> : <String, dynamic>{};
-        final categoryId = state.pathParameters['categoryId'] ?? (extra['categoryId'] as String?) ?? '';
+        final extra = state.extra is Map<String, dynamic>
+            ? state.extra as Map<String, dynamic>
+            : <String, dynamic>{};
+        final categoryId =
+            state.pathParameters['categoryId'] ??
+            (extra['categoryId'] as String?) ??
+            '';
         final query = state.uri.queryParameters;
 
         return CustomTransitionPage(
           key: state.pageKey,
           child: CategoryItemsPage(
             categoryId: categoryId,
-            categoryName: query['categoryName'] ?? (extra['categoryName'] as String?) ?? 'Items',
-            categoryEmoji: query['categoryEmoji'] ?? (extra['categoryEmoji'] as String?) ?? '📦',
+            categoryName:
+                query['categoryName'] ??
+                (extra['categoryName'] as String?) ??
+                'Items',
+            categoryEmoji:
+                query['categoryEmoji'] ??
+                (extra['categoryEmoji'] as String?) ??
+                '📦',
             serviceType:
                 query['serviceType'] ??
                 (extra['serviceType'] as String?) ??
@@ -1133,11 +1204,15 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: "/confirm-address",
       pageBuilder: (context, state) {
-        final returnToPrevious = state.uri.queryParameters['returnTo'] == 'previous';
+        final returnToPrevious =
+            state.uri.queryParameters['returnTo'] == 'previous';
         final selectionOnly = state.uri.queryParameters['mode'] == 'select';
         return CustomTransitionPage(
           key: state.pageKey,
-          child: ConfirmAddressPage(returnToPrevious: returnToPrevious, selectionOnly: selectionOnly),
+          child: ConfirmAddressPage(
+            returnToPrevious: returnToPrevious,
+            selectionOnly: selectionOnly,
+          ),
           transitionDuration: const Duration(milliseconds: 400),
           reverseTransitionDuration: const Duration(milliseconds: 400),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -1166,7 +1241,10 @@ final GoRouter appRouter = GoRouter(
         }
         return CustomTransitionPage(
           key: state.pageKey,
-          child: LocationPickerPage(isFromRegistration: isFromRegistration, goHomeOnComplete: goHomeOnComplete),
+          child: LocationPickerPage(
+            isFromRegistration: isFromRegistration,
+            goHomeOnComplete: goHomeOnComplete,
+          ),
           transitionDuration: const Duration(milliseconds: 400),
           reverseTransitionDuration: const Duration(milliseconds: 400),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {

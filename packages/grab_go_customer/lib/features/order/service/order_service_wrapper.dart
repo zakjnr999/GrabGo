@@ -140,6 +140,7 @@ class OrderServiceWrapper {
     required double deliveryFee,
     required double total,
     bool? useCredits,
+    String? promoCode,
     String? notes,
     bool? isGiftOrder,
     String? giftRecipientName,
@@ -219,6 +220,7 @@ class OrderServiceWrapper {
         noShowPolicyVersion: noShowPolicyVersion,
         paymentMethod: paymentMethod.toLowerCase().replaceAll(' ', '_'),
         useCredits: useCredits,
+        promoCode: promoCode,
         notes: notes,
         isGiftOrder: isGiftOrder,
         giftRecipientName: giftRecipientName,
@@ -396,6 +398,7 @@ class OrderServiceWrapper {
     required String paymentMethod,
     required DeliveryAddress deliveryAddress,
     bool? useCredits,
+    String? promoCode,
     String? notes,
     bool? isGiftOrder,
     String? deliveryTimeType,
@@ -407,6 +410,8 @@ class OrderServiceWrapper {
         'paymentMethod': paymentMethod,
         'deliveryAddress': deliveryAddress.toJson(),
         if (useCredits != null) 'useCredits': useCredits,
+        if (promoCode != null && promoCode.trim().isNotEmpty)
+          'promoCode': promoCode.trim().toUpperCase(),
         if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
         if (isGiftOrder != null) 'isGiftOrder': isGiftOrder,
         if (deliveryTimeType != null && deliveryTimeType.trim().isNotEmpty)

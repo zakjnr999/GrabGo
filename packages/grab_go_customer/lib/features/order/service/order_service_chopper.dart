@@ -82,6 +82,7 @@ class CreateOrderRequest {
   final String? noShowPolicyVersion;
   final String paymentMethod;
   final bool? useCredits;
+  final String? promoCode;
   final String? notes;
   final bool? isGiftOrder;
   final String? giftRecipientName;
@@ -103,6 +104,7 @@ class CreateOrderRequest {
     this.noShowPolicyVersion,
     required this.paymentMethod,
     this.useCredits,
+    this.promoCode,
     this.notes,
     this.isGiftOrder,
     this.giftRecipientName,

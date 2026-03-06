@@ -428,7 +428,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
 
                             Column(
                               children: [
-                                itemTile("Pickup Location", Assets.icons.sendDiagonal, context, () {
+                                itemTile("Saved Addresses", Assets.icons.mapPin, context, () {
                                   // context.push("/mapTracking");
                                 }),
                                 _favoritesTile(context),
@@ -440,6 +440,9 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                                   if (_ensureEmailVerified()) {
                                     context.push("/subscription");
                                   }
+                                }),
+                                itemTile("Promo Codes", Assets.icons.badgePercent, context, () {
+                                  context.push("/promos");
                                 }),
                                 itemTile("Change Password", Assets.icons.lock, context, () {
                                   if (_ensureEmailVerified()) {
