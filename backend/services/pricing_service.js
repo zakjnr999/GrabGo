@@ -2,6 +2,7 @@ const axios = require('axios');
 const prisma = require('../config/prisma');
 const creditService = require('./credit_service');
 const subscriptionService = require('./subscription_service');
+const { validatePromoCode } = require('./promo_service');
 const { calculateDistance, estimateDeliveryTime } = require('../utils/distance');
 
 const toNumber = (value, fallback = 0) => {
@@ -352,6 +353,57 @@ const getMaxItemPrepMinutes = (items = []) => {
     return Math.max(...prepTimes);
 };
 
+const normalizePromoCode = (value) => {
+    if (!value) return null;
+    const normalized = String(value).trim().toUpperCase();
+    return normalized.length > 0 ? normalized : null;
+};
+
+const mapCartTypeToPromoOrderType = (cartType) => {
+    const normalized = String(cartType || '').trim().toLowerCase();
+    if (normalized === 'food') return 'food';
+    if (normalized === 'grocery') return 'grocery';
+    return null;
+};
+
+const isPromoSupportedOrderType = (orderType) => {
+    return orderType === 'food' || orderType === 'grocery';
+};
+
+const resolvePromoDiscountForPricing = ({
+    promoValidation,
+    effectiveDeliveryFee,
+    subtotal,
+}) => {
+    if (!promoValidation?.valid) {
+        return {
+            promoCode: null,
+            promoType: null,
+            promoDiscount: 0,
+            promoValidationMessage: promoValidation?.error || null,
+        };
+    }
+
+    const promoType = promoValidation.type || null;
+    let promoDiscount = Number(promoValidation.discount || 0);
+
+    if (promoType === 'free_delivery') {
+        promoDiscount = Number(effectiveDeliveryFee || 0);
+    }
+
+    promoDiscount = roundCurrency(Math.max(0, promoDiscount));
+    if (promoDiscount > subtotal && promoType !== 'free_delivery') {
+        promoDiscount = roundCurrency(Math.max(0, subtotal));
+    }
+
+    return {
+        promoCode: promoValidation.code || null,
+        promoType,
+        promoDiscount,
+        promoValidationMessage: null,
+    };
+};
+
 const calculateCartPricing = async (cart, options = {}) => {
     if (!cart || !cart.items || cart.items.length === 0) {
         return {
@@ -361,18 +413,26 @@ const calculateCartPricing = async (cart, options = {}) => {
             tax: 0,
             rainFee: 0,
             total: 0,
+            totalBeforePromo: 0,
+            totalBeforeCredits: 0,
             itemCount: 0,
             deliveryDistanceKm: 0,
             estimatedDeliveryMin: null,
             estimatedDeliveryMax: null,
+            promoCode: null,
+            promoType: null,
+            promoDiscount: 0,
+            promoValidationMessage: null,
             creditsApplied: 0,
             totalAfterCredits: 0
         };
     }
 
-    const { userId, deliveryLocation, useCredits, fulfillmentMode } = options;
+    const { userId, deliveryLocation, useCredits, fulfillmentMode, promoCode } = options;
+    const normalizedPromoCode = normalizePromoCode(promoCode);
     const resolvedFulfillmentMode = normalizeFulfillmentMode(fulfillmentMode || cart?.fulfillmentMode);
     const subtotal = calculateSubtotal(cart.items);
+    const promoOrderType = mapCartTypeToPromoOrderType(cart?.cartType);
     const { baseFee, vendorLocation, vendorPrepTime, vendorDeliveryTime } = await getVendorDeliveryContext(cart);
     const maxItemPrepMinutes = getMaxItemPrepMinutes(cart.items);
     const effectivePrepMinutes = maxItemPrepMinutes ?? vendorPrepTime;
@@ -412,7 +472,43 @@ const calculateCartPricing = async (cart, options = {}) => {
     const effectiveDeliveryFee = roundCurrency(Math.max(0, deliveryFee - subscriptionDeliveryDiscount));
     const effectiveServiceFee = roundCurrency(Math.max(0, serviceFee - subscriptionServiceFeeDiscount));
 
-    const totalBeforeCredits = calculateTotal({ subtotal, deliveryFee: effectiveDeliveryFee, serviceFee: effectiveServiceFee, tax, rainFee });
+    let promoCodeApplied = null;
+    let promoType = null;
+    let promoDiscount = 0;
+    let promoValidationMessage = null;
+
+    if (normalizedPromoCode) {
+        if (!userId) {
+            promoValidationMessage = 'Please sign in to use promo codes.';
+        } else if (!isPromoSupportedOrderType(promoOrderType)) {
+            promoValidationMessage = 'Promo codes are currently available for food and grocery orders only.';
+        } else {
+            const promoValidation = await validatePromoCode(
+                normalizedPromoCode,
+                userId,
+                subtotal,
+                promoOrderType
+            );
+            const promoResolution = resolvePromoDiscountForPricing({
+                promoValidation,
+                effectiveDeliveryFee,
+                subtotal,
+            });
+            promoCodeApplied = promoResolution.promoCode;
+            promoType = promoResolution.promoType;
+            promoDiscount = promoResolution.promoDiscount;
+            promoValidationMessage = promoResolution.promoValidationMessage;
+        }
+    }
+
+    const totalBeforePromo = calculateTotal({
+        subtotal,
+        deliveryFee: effectiveDeliveryFee,
+        serviceFee: effectiveServiceFee,
+        tax,
+        rainFee,
+    });
+    const totalBeforeCredits = roundCurrency(Math.max(0, totalBeforePromo - promoDiscount));
     const itemCount = cart.items.reduce((sum, item) => sum + toNumber(item.quantity, 0), 0);
     const estimatedDelivery = calculateEstimatedDeliveryWindow({
         distanceKm,
@@ -442,11 +538,17 @@ const calculateCartPricing = async (cart, options = {}) => {
         serviceFee: effectiveServiceFee,
         tax,
         rainFee,
+        totalBeforePromo,
+        totalBeforeCredits,
         total: totalAfterCredits,
         itemCount,
         deliveryDistanceKm: distanceKm ?? 0,
         estimatedDeliveryMin: estimatedDelivery.minMinutes,
         estimatedDeliveryMax: estimatedDelivery.maxMinutes,
+        promoCode: promoCodeApplied,
+        promoType,
+        promoDiscount,
+        promoValidationMessage,
         creditsApplied,
         totalAfterCredits,
         creditBalance,
@@ -474,6 +576,8 @@ const calculateCartGroupsPricing = async (carts = [], options = {}) => {
                 tax: 0,
                 rainFee: 0,
                 total: 0,
+                totalBeforePromo: 0,
+                totalBeforeCredits: 0,
                 itemCount: 0,
                 vendorCount: 0,
                 estimatedDeliveryMin: null,
@@ -482,6 +586,10 @@ const calculateCartGroupsPricing = async (carts = [], options = {}) => {
                 estimatedDeliveryFirstMax: null,
                 estimatedDeliveryCompletionMin: null,
                 estimatedDeliveryCompletionMax: null,
+                promoCode: null,
+                promoType: null,
+                promoDiscount: 0,
+                promoValidationMessage: null,
                 creditsApplied: 0,
                 totalAfterCredits: 0,
                 creditBalance: 0,
@@ -490,8 +598,11 @@ const calculateCartGroupsPricing = async (carts = [], options = {}) => {
         };
     }
 
-    const { userId, deliveryLocation, useCredits, fulfillmentMode } = options;
+    const { userId, deliveryLocation, useCredits, fulfillmentMode, promoCode } = options;
     const shouldUseCredits = useCredits !== false;
+    const normalizedPromoCode = normalizePromoCode(promoCode);
+    const promoForSingleVendor = safeCarts.length === 1 ? normalizedPromoCode : null;
+
     const groupResults = await Promise.all(
         safeCarts.map(async (cart) => {
             const pricing = await calculateCartPricing(cart, {
@@ -499,6 +610,7 @@ const calculateCartGroupsPricing = async (carts = [], options = {}) => {
                 deliveryLocation,
                 useCredits: false,
                 fulfillmentMode,
+                promoCode: promoForSingleVendor,
             });
 
             return { cart, pricing };
@@ -511,7 +623,15 @@ const calculateCartGroupsPricing = async (carts = [], options = {}) => {
     let tax = 0;
     let rainFee = 0;
     let total = 0;
+    let totalBeforePromo = 0;
     let itemCount = 0;
+    let promoCodeApplied = null;
+    let promoType = null;
+    let promoDiscount = 0;
+    let promoValidationMessage =
+        normalizedPromoCode && safeCarts.length > 1
+            ? 'Promo codes are currently available for single-vendor carts only.'
+            : null;
     const etaGroups = [];
 
     const groups = groupResults.map(({ cart, pricing }) => {
@@ -521,7 +641,18 @@ const calculateCartGroupsPricing = async (carts = [], options = {}) => {
         tax += toNumber(pricing?.tax, 0);
         rainFee += toNumber(pricing?.rainFee, 0);
         total += toNumber(pricing?.total, 0);
+        totalBeforePromo += toNumber(pricing?.totalBeforePromo, pricing?.total);
         itemCount += toNumber(pricing?.itemCount, 0);
+        promoDiscount += toNumber(pricing?.promoDiscount, 0);
+        if (!promoCodeApplied && pricing?.promoCode) {
+            promoCodeApplied = pricing.promoCode;
+        }
+        if (!promoType && pricing?.promoType) {
+            promoType = pricing.promoType;
+        }
+        if (!promoValidationMessage && pricing?.promoValidationMessage) {
+            promoValidationMessage = pricing.promoValidationMessage;
+        }
         const minMinutes = toNumber(pricing?.estimatedDeliveryMin, NaN);
         const maxMinutes = toNumber(pricing?.estimatedDeliveryMax, NaN);
         if (
@@ -548,20 +679,23 @@ const calculateCartGroupsPricing = async (carts = [], options = {}) => {
     tax = roundCurrency(tax);
     rainFee = roundCurrency(rainFee);
     total = roundCurrency(total);
+    totalBeforePromo = roundCurrency(totalBeforePromo);
+    promoDiscount = roundCurrency(promoDiscount);
 
     let creditsApplied = 0;
-    let totalAfterCredits = total;
+    let totalBeforeCredits = total;
+    let totalAfterCredits = totalBeforeCredits;
     let creditBalance = 0;
     let availableBalance = 0;
 
     if (userId) {
         const creditResult = await creditService.calculateCreditApplication(
             userId,
-            total,
+            totalBeforeCredits,
             shouldUseCredits
         );
         creditsApplied = toNumber(creditResult?.creditsApplied, 0);
-        totalAfterCredits = roundCurrency(toNumber(creditResult?.remainingPayment, total));
+        totalAfterCredits = roundCurrency(toNumber(creditResult?.remainingPayment, totalBeforeCredits));
         creditBalance = toNumber(creditResult?.creditBalance, 0);
         availableBalance = toNumber(
             creditResult?.availableBalance,
@@ -596,6 +730,8 @@ const calculateCartGroupsPricing = async (carts = [], options = {}) => {
             serviceFee,
             tax,
             rainFee,
+            totalBeforePromo,
+            totalBeforeCredits,
             total: totalAfterCredits,
             itemCount,
             vendorCount: groups.length,
@@ -605,6 +741,10 @@ const calculateCartGroupsPricing = async (carts = [], options = {}) => {
             estimatedDeliveryFirstMax,
             estimatedDeliveryCompletionMin,
             estimatedDeliveryCompletionMax,
+            promoCode: promoCodeApplied,
+            promoType,
+            promoDiscount,
+            promoValidationMessage,
             creditsApplied,
             totalAfterCredits,
             creditBalance,
@@ -621,9 +761,13 @@ const calculateOrderPricing = async ({
     vendorLocation,
     vendorPrepTime,
     vendorDeliveryTime,
-    fulfillmentMode
+    fulfillmentMode,
+    orderType,
+    promoCode,
 }) => {
     const resolvedFulfillmentMode = normalizeFulfillmentMode(fulfillmentMode);
+    const resolvedOrderType = String(orderType || '').trim().toLowerCase();
+    const normalizedPromoCode = normalizePromoCode(promoCode);
     const normalizedSubtotal = roundCurrency(toNumber(subtotal, 0));
     const normalizedVendorLocation = normalizeLocation(vendorLocation);
     const resolvedDeliveryLocation = normalizeLocation(deliveryLocation) || await getUserDeliveryLocation(userId);
@@ -636,31 +780,97 @@ const calculateOrderPricing = async ({
             baseFee: roundCurrency(toNumber(baseDeliveryFee, 0)),
             distanceKm
         });
-    const serviceFee = calculateServiceFee(normalizedSubtotal);
+    const baseServiceFee = calculateServiceFee(normalizedSubtotal);
     const tax = calculateTax(normalizedSubtotal);
     const rainFee = resolvedFulfillmentMode === 'pickup'
         ? 0
         : await getRainFee({ deliveryLocation: resolvedDeliveryLocation, vendorLocation: normalizedVendorLocation });
+
+    let subscriptionDeliveryDiscount = 0;
+    let subscriptionServiceFeeDiscount = 0;
+    let subscriptionTier = null;
+    let subscriptionId = null;
+
+    if (userId) {
+        const subBenefits = await subscriptionService.calculateSubscriptionBenefits(userId, {
+            subtotal: normalizedSubtotal,
+            deliveryFee: normalizedDeliveryFee,
+            serviceFee: baseServiceFee,
+        });
+        if (subBenefits) {
+            subscriptionDeliveryDiscount = subBenefits.deliveryDiscount;
+            subscriptionServiceFeeDiscount = subBenefits.serviceFeeDiscount;
+            subscriptionTier = subBenefits.tier;
+            subscriptionId = subBenefits.subscriptionId;
+        }
+    }
+
+    const effectiveDeliveryFee = roundCurrency(Math.max(0, normalizedDeliveryFee - subscriptionDeliveryDiscount));
+    const effectiveServiceFee = roundCurrency(Math.max(0, baseServiceFee - subscriptionServiceFeeDiscount));
+
+    let promoCodeApplied = null;
+    let promoType = null;
+    let promoDiscount = 0;
+    let promoValidationMessage = null;
+
+    if (normalizedPromoCode) {
+        if (!userId) {
+            promoValidationMessage = 'Please sign in to use promo codes.';
+        } else if (!isPromoSupportedOrderType(resolvedOrderType)) {
+            promoValidationMessage = 'Promo codes are currently available for food and grocery orders only.';
+        } else {
+            const promoValidation = await validatePromoCode(
+                normalizedPromoCode,
+                userId,
+                normalizedSubtotal,
+                resolvedOrderType
+            );
+            const promoResolution = resolvePromoDiscountForPricing({
+                promoValidation,
+                effectiveDeliveryFee,
+                subtotal: normalizedSubtotal,
+            });
+            promoCodeApplied = promoResolution.promoCode;
+            promoType = promoResolution.promoType;
+            promoDiscount = promoResolution.promoDiscount;
+            promoValidationMessage = promoResolution.promoValidationMessage;
+        }
+    }
+
+    const totalBeforePromo = calculateTotal({
+        subtotal: normalizedSubtotal,
+        deliveryFee: effectiveDeliveryFee,
+        serviceFee: effectiveServiceFee,
+        tax,
+        rainFee,
+    });
+    const totalBeforeCredits = roundCurrency(Math.max(0, totalBeforePromo - promoDiscount));
+
     const estimatedDelivery = calculateEstimatedDeliveryWindow({
         distanceKm,
         vendorPrepTime,
         vendorDeliveryTime: resolvedFulfillmentMode === 'pickup' ? null : vendorDeliveryTime
     });
-    const total = calculateTotal({
-        subtotal: normalizedSubtotal,
-        deliveryFee: normalizedDeliveryFee,
-        serviceFee,
-        tax,
-        rainFee
-    });
 
     return {
         subtotal: normalizedSubtotal,
-        deliveryFee: normalizedDeliveryFee,
-        serviceFee,
+        deliveryFee: effectiveDeliveryFee,
+        serviceFee: effectiveServiceFee,
         tax,
         rainFee,
-        total,
+        totalBeforePromo,
+        totalBeforeCredits,
+        total: totalBeforeCredits,
+        promoCode: promoCodeApplied,
+        promoType,
+        promoDiscount,
+        promoValidationMessage,
+        subscriptionTier,
+        subscriptionId,
+        subscriptionDeliveryDiscount,
+        subscriptionServiceFeeDiscount,
+        originalDeliveryFee: normalizedDeliveryFee,
+        originalServiceFee: baseServiceFee,
         deliveryDistanceKm: distanceKm ?? 0,
         estimatedDeliveryMin: estimatedDelivery.minMinutes,
         estimatedDeliveryMax: estimatedDelivery.maxMinutes

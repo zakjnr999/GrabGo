@@ -1,0 +1,95 @@
+<svg viewBox="0 0 160 160" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+  <!-- Soft Drop Shadow -->
+  <ellipse cx="80" cy="135" rx="45" ry="8" fill="rgba(0,0,0,0.15)" />
+
+  <!-- === CELEBRATION CONFETTI === -->
+  <path d="M 30,75 Q 15,55 35,45" fill="none" stroke="#FFD166" stroke-width="3" stroke-linecap="round" />
+  <path d="M 130,105 Q 145,120 125,130" fill="none" stroke="#F4A261" stroke-width="3" stroke-linecap="round" />
+  
+  <circle cx="25" cy="100" r="3" fill="#FFFFFF" />
+  <circle cx="125" cy="65" r="3" fill="#FFD166" />
+  <circle cx="45" cy="40" r="4" fill="#E76F51" />
+
+  <!-- === POPPING OUT ELEMENTS (Envelope & Coins) === -->
+  
+  <!-- "Invite/Share" Envelope -->
+  <g transform="translate(60, 50) rotate(-15)">
+    <!-- Envelope Shadow -->
+    <rect x="-20" y="-14" width="40" height="28" rx="3" fill="rgba(0,0,0,0.1)" transform="translate(2, 4)" />
+    <!-- Envelope Base -->
+    <rect x="-20" y="-14" width="40" height="28" rx="3" fill="#F8FAFC" />
+    <!-- Envelope Back Flap Lines -->
+    <path d="M -20,14 L -5,0 M 20,14 L 5,0" fill="none" stroke="#E2E8F0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <!-- Envelope Top Flap -->
+    <path d="M -20,-14 L 0,2 L 20,-14" fill="none" stroke="#CBD5E1" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+    <!-- Red Wax Seal -->
+    <circle cx="0" cy="2" r="5" fill="#E63946" />
+  </g>
+
+  <!-- Gold Coin 1 (Center Right) -->
+  <g transform="translate(95, 65) rotate(10)">
+    <circle cx="0" cy="0" r="14" fill="#FFD166" />
+    <circle cx="0" cy="0" r="10" fill="none" stroke="#F4A261" stroke-width="2" />
+    <text x="0" y="5" fill="#D97706" font-family="sans-serif" font-weight="bold" font-size="14" text-anchor="middle">₵</text>
+  </g>
+
+  <!-- Gold Coin 2 (Top Left) -->
+  <g transform="translate(40, 45) rotate(-20) scale(0.7)">
+    <circle cx="0" cy="0" r="14" fill="#FFD166" />
+    <circle cx="0" cy="0" r="10" fill="none" stroke="#F4A261" stroke-width="2" />
+    <text x="0" y="5" fill="#D97706" font-family="sans-serif" font-weight="bold" font-size="14" text-anchor="middle">₵</text>
+  </g>
+
+  <!-- Gold Coin 3 (Bottom Right - peeking out) -->
+  <g transform="translate(110, 95) rotate(25) scale(0.6)">
+    <circle cx="0" cy="0" r="14" fill="#FFD166" />
+    <circle cx="0" cy="0" r="10" fill="none" stroke="#F4A261" stroke-width="2" />
+    <text x="0" y="5" fill="#D97706" font-family="sans-serif" font-weight="bold" font-size="14" text-anchor="middle">₵</text>
+  </g>
+
+  <!-- === THE GIFT BOX (White & Orange to contrast Dark Green) === -->
+  
+  <!-- Inside of the box (Dark grey/blue depth) -->
+  <rect x="45" y="85" width="70" height="15" fill="#94A3B8" />
+
+  <!-- Front Box Base (White) -->
+  <rect x="45" y="90" width="70" height="40" rx="4" fill="#FFFFFF" />
+  
+  <!-- Ribbon Vertical (Orange) -->
+  <rect x="75" y="90" width="10" height="40" fill="#F4A261" />
+  
+  <!-- Ribbon Horizontal (Orange) -->
+  <rect x="45" y="105" width="70" height="10" fill="#F4A261" />
+
+  <!-- Gift Box Lid (Tilted back/left to reveal contents) -->
+  <g transform="translate(35, 95) rotate(-15)">
+    <!-- Lid Drop Shadow on the box -->
+    <rect x="0" y="-8" width="80" height="12" rx="3" fill="rgba(0,0,0,0.15)" transform="translate(2, 6)" />
+    <!-- Lid Base (White) -->
+    <rect x="0" y="-12" width="80" height="14" rx="4" fill="#F8FAFC" />
+    <!-- Lid Ribbon (Orange) -->
+    <rect x="40" y="-12" width="10" height="14" fill="#F4A261" />
+  </g>
+
+  <!-- === THE REWARD BADGE (GH₵20) === -->
+  <g transform="translate(125, 45)">
+    <!-- Badge Shadow -->
+    <circle cx="0" cy="6" r="26" fill="rgba(0,0,0,0.2)" />
+    <!-- Gold/Yellow Badge Base -->
+    <circle cx="0" cy="0" r="26" fill="#FFD166" />
+    <!-- Inner Dashed Border (Orange) -->
+    <circle cx="0" cy="0" r="21" fill="none" stroke="#E76F51" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.8" />
+    <!-- Text (Colored Dark Green #0B6E4F to harmonize with your banner background) -->
+    <text x="0" y="5" fill="#0B6E4F" font-family="sans-serif" font-weight="900" font-size="13" text-anchor="middle" letter-spacing="-0.5">GH₵20</text>
+  </g>
+
+  <!-- Floating Sparkle (White) -->
+  <g transform="translate(30, 40) scale(0.6)">
+    <path d="M 0,-15 Q 0,0 15,0 Q 0,0 0,15 Q 0,0 -15,0 Q 0,0 0,-15 Z" fill="#FFFFFF" />
+  </g>
+  <!-- Floating Sparkle (Orange) -->
+  <g transform="translate(135, 120) scale(0.5) rotate(15)">
+    <path d="M 0,-15 Q 0,0 15,0 Q 0,0 0,15 Q 0,0 -15,0 Q 0,0 0,-15 Z" fill="#F4A261" />
+  </g>
+
+</svg>

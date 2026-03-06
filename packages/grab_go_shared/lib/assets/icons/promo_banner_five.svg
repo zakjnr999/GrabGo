@@ -1,0 +1,78 @@
+<svg viewBox="0 0 160 160" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+  <!-- Soft Drop Shadow -->
+  <ellipse cx="80" cy="140" rx="50" ry="8" fill="rgba(0,0,0,0.2)" />
+
+  <!-- Glowing Backdrop (Makes the diamond radiate on dark backgrounds) -->
+  <circle cx="80" cy="85" r="50" fill="#0EA5E9" opacity="0.2" />
+  <circle cx="80" cy="85" r="30" fill="#00F5D4" opacity="0.2" />
+
+  <!-- === THE CROWN (Gold/Yellow for premium contrast) === -->
+  <g transform="translate(80, 48) rotate(8)">
+    <!-- Crown Back/Shadow -->
+    <path d="M -12,8 L -15,-2 L 0,2 L 15,-2 L 12,8 Z" fill="#F4A261" />
+    
+    <!-- Crown Base -->
+    <rect x="-16" y="8" width="32" height="4" rx="2" fill="#FFB703" />
+    
+    <!-- Crown Front Peaks -->
+    <path d="M -16,8 L -22,-8 L -8,0 L 0,-12 L 8,0 L 22,-8 L 16,8 Z" fill="#FFD166" />
+    
+    <!-- Jewels -->
+    <circle cx="-22" cy="-8" r="2.5" fill="#E63946" />
+    <circle cx="0" cy="-12" r="3" fill="#00F5D4" />
+    <circle cx="22" cy="-8" r="2.5" fill="#E63946" />
+    
+    <!-- Base Jewels -->
+    <circle cx="-8" cy="10" r="1" fill="#FFFFFF" opacity="0.8" />
+    <circle cx="0" cy="10" r="1" fill="#FFFFFF" opacity="0.8" />
+    <circle cx="8" cy="10" r="1" fill="#FFFFFF" opacity="0.8" />
+  </g>
+
+  <!-- === THE 3D DIAMOND === -->
+  <g transform="translate(80, 90)">
+    
+    <!-- Top Left Facet -->
+    <polygon points="-40,0 -20,-20 -10,0" fill="#38BDF8" />
+    <!-- Top Center Facet -->
+    <polygon points="-20,-20 20,-20 10,0 -10,0" fill="#BAE6FD" />
+    <!-- Top Right Facet -->
+    <polygon points="20,-20 40,0 10,0" fill="#0EA5E9" />
+    
+    <!-- Bottom Left Facet -->
+    <polygon points="-40,0 -10,0 0,40" fill="#0284C7" />
+    <!-- Bottom Center Facet -->
+    <polygon points="-10,0 10,0 0,40" fill="#38BDF8" />
+    <!-- Bottom Right Facet -->
+    <polygon points="10,0 40,0 0,40" fill="#0369A1" />
+
+    <!-- Diamond Edge Highlights (Creates the shiny glass effect) -->
+    <path d="M -40,0 L 40,0" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" opacity="0.8" />
+    <path d="M -20,-20 L -10,0 L 10,0 L 20,-20" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.8" />
+    <path d="M -10,0 L 0,40 M 10,0 L 0,40" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" opacity="0.6" />
+    <path d="M -40,0 L -20,-20 L 20,-20 L 40,0 L 0,40 Z" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linejoin="round" opacity="0.9" />
+
+    <!-- Sparkle Glint on the Diamond -->
+    <g transform="translate(-20, -20) scale(0.5)">
+      <path d="M 0,-15 Q 0,0 15,0 Q 0,0 0,15 Q 0,0 -15,0 Q 0,0 0,-15 Z" fill="#FFFFFF" />
+    </g>
+  </g>
+
+  <!-- === THE "PRO" BADGE === -->
+  <g transform="translate(125, 110)">
+    <!-- White Badge Base -->
+    <circle cx="0" cy="0" r="26" fill="#FFFFFF" />
+    <!-- Inner Dashed Border (Gold/Yellow to match the crown) -->
+    <circle cx="0" cy="0" r="21" fill="none" stroke="#FFB703" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.9" />
+    <!-- Text (Colored Purple #8E24AA to tie seamlessly into your banner background) -->
+    <text x="0" y="5" fill="#8E24AA" font-family="sans-serif" font-weight="900" font-size="16" text-anchor="middle" letter-spacing="0.5">PRO</text>
+  </g>
+
+  <!-- Floating Sparkles (Brand Accents) -->
+  <g transform="translate(30, 45) scale(0.6)">
+    <path d="M 0,-15 Q 0,0 15,0 Q 0,0 0,15 Q 0,0 -15,0 Q 0,0 0,-15 Z" fill="#FFD166" />
+  </g>
+  <g transform="translate(135, 40) scale(0.5) rotate(15)">
+    <path d="M 0,-15 Q 0,0 15,0 Q 0,0 0,15 Q 0,0 -15,0 Q 0,0 0,-15 Z" fill="#FFFFFF" />
+  </g>
+
+</svg>

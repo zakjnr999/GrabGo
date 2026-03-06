@@ -1,0 +1,71 @@
+<svg viewBox="0 0 160 160" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+  <!-- Soft Drop Shadow -->
+  <ellipse cx="80" cy="140" rx="50" ry="8" fill="rgba(0,0,0,0.15)" />
+
+  <!-- === GROCERIES === -->
+  
+  <!-- Baguette (Tilted Right) -->
+  <g transform="translate(85, 35) rotate(15)">
+    <rect x="0" y="0" width="24" height="60" rx="12" fill="#FFB703" />
+    <path d="M 4,15 L 15,5 M 4,30 L 15,20 M 4,45 L 15,35" stroke="#E76F51" stroke-width="3" stroke-linecap="round" opacity="0.4" />
+  </g>
+
+  <!-- Milk Carton (Left) -->
+  <g transform="translate(45, 45)">
+    <!-- Top spout -->
+    <polygon points="5,15 15,0 35,0 35,15" fill="#E2E8F0" />
+    <!-- Main body -->
+    <rect x="5" y="15" width="30" height="40" fill="#F8FAFC" />
+    <!-- Blue Label -->
+    <rect x="5" y="30" width="30" height="15" fill="#0EA5E9" />
+    <!-- Cap -->
+    <rect x="25" y="-3" width="8" height="6" rx="2" fill="#EF476F" />
+  </g>
+
+  <!-- Fresh Apple / Tomato (Front Center) -->
+  <g transform="translate(80, 70)">
+    <!-- Apple Body -->
+    <circle cx="0" cy="0" r="15" fill="#E63946" />
+    <!-- Leaf -->
+    <path d="M -3,-15 C 5,-25 15,-20 12,-10 Z" fill="#80B918" />
+    <!-- Highlight -->
+    <path d="M -8,-5 A 10,10 0 0,1 0,-12" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity="0.4" />
+  </g>
+
+  <!-- === PAPER GROCERY BAG === -->
+  
+  <!-- Back inside depth -->
+  <path d="M 38,75 L 122,75 L 115,85 L 45,85 Z" fill="#9C6644" />
+  
+  <!-- Front base of the bag -->
+  <path d="M 38,75 L 122,75 L 110,135 L 50,135 Z" fill="#D4A373" />
+  
+  <!-- Bag Fold/Lip (Lighter for top-down lighting) -->
+  <polygon points="36,75 124,75 120,88 40,88" fill="#E6CCB2" />
+  
+  <!-- Subtle Fold Line details -->
+  <line x1="50" y1="135" x2="40" y2="88" stroke="#B5835A" stroke-width="2" opacity="0.3" stroke-linecap="round" />
+  <line x1="110" y1="135" x2="120" y2="88" stroke="#B5835A" stroke-width="2" opacity="0.3" stroke-linecap="round" />
+
+  <!-- === THE "20 MIN" SPEED BADGE === -->
+  <g transform="translate(125, 105)">
+    <!-- Badge Shadow -->
+    <circle cx="0" cy="6" r="26" fill="rgba(0,0,0,0.15)" />
+    <!-- White Badge Base -->
+    <circle cx="0" cy="0" r="26" fill="#FFFFFF" />
+    <!-- Inner Dashed Border (Using a vibrant sky blue) -->
+    <circle cx="0" cy="0" r="21" fill="none" stroke="#0EA5E9" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.8" />
+    <!-- Text -->
+    <text x="-1" y="0" fill="#0EA5E9" font-family="sans-serif" font-weight="900" font-size="18" text-anchor="middle" letter-spacing="-0.5">20</text>
+    <text x="-1" y="11" fill="#0EA5E9" font-family="sans-serif" font-weight="800" font-size="9" text-anchor="middle">MIN</text>
+  </g>
+
+  <!-- Floating Sparkles (Brand Accents) -->
+  <g transform="translate(30, 45) scale(0.6)">
+    <path d="M 0,-15 Q 0,0 15,0 Q 0,0 0,15 Q 0,0 -15,0 Q 0,0 0,-15 Z" fill="#FFFFFF" />
+  </g>
+  <g transform="translate(135, 45) scale(0.5) rotate(15)">
+    <path d="M 0,-15 Q 0,0 15,0 Q 0,0 0,15 Q 0,0 -15,0 Q 0,0 0,-15 Z" fill="#FFD166" />
+  </g>
+
+</svg>

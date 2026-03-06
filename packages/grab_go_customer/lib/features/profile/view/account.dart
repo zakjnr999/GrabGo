@@ -436,7 +436,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                                 itemTile("Refer & Earn", Assets.icons.gift, context, () {
                                   context.push("/referral");
                                 }),
-                                itemTile("GrabGo Pro", Assets.icons.wallet, context, () {
+                                itemTile("Subscription", Assets.icons.star, context, () {
                                   if (_ensureEmailVerified()) {
                                     context.push("/subscription");
                                   }

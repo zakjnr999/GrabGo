@@ -324,6 +324,16 @@ const createCheckoutSession = async ({ customer, payload }) => {
     });
   }
 
+  const requestedPromoCode = payload?.promoCode
+    ? String(payload.promoCode).trim()
+    : '';
+  if (requestedPromoCode) {
+    throw new CheckoutSessionError('Promo codes are currently available for single-vendor carts only.', {
+      code: 'PROMO_MIXED_CHECKOUT_NOT_SUPPORTED',
+      status: 400,
+    });
+  }
+
   if (payload?.isGiftOrder === true) {
     throw new CheckoutSessionError('Gift orders are unavailable for mixed checkout', {
       code: 'MIXED_CHECKOUT_GIFT_NOT_SUPPORTED',

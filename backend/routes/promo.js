@@ -14,6 +14,7 @@ const {
     applyPromoCode,
     createPromoCode,
     getAvailablePromoCodes,
+    getMyPromoCodes,
     getAllPromoCodes,
     deactivatePromoCode
 } = require('../services/promo_service');
@@ -141,8 +142,10 @@ router.post('/validate', protect, [
             res.json({
                 success: true,
                 valid: true,
+                code: result.code || code.toUpperCase(),
                 discount: result.discount,
                 type: result.type,
+                description: result.description || null,
                 message: result.message
             });
         } else {
@@ -157,6 +160,32 @@ router.post('/validate', protect, [
         res.status(500).json({
             success: false,
             error: 'Failed to validate promo code'
+        });
+    }
+});
+
+/**
+ * @route   GET /api/promo/my-codes
+ * @desc    Get promo codes grouped by available/used/expired
+ * @access  Protected
+ */
+router.get('/my-codes', protect, async (req, res) => {
+    try {
+        const data = await getMyPromoCodes(req.user.id);
+        res.json({
+            success: true,
+            data: {
+                available: data.available,
+                used: data.used,
+                expired: data.expired,
+                fetchedAt: new Date().toISOString()
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching my promo codes:', error.message);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch promo codes'
         });
     }
 });

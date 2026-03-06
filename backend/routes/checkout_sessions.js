@@ -57,6 +57,7 @@ router.post(
     body('isGiftOrder').optional({ nullable: true }).isBoolean().withMessage('isGiftOrder must be a boolean'),
     body('deliveryTimeType').optional({ nullable: true }).isString().withMessage('deliveryTimeType must be a string'),
     body('scheduledForAt').optional({ nullable: true }).isString().withMessage('scheduledForAt must be a string'),
+    body('promoCode').optional({ nullable: true }).isString().withMessage('promoCode must be a string'),
     body('deliveryAddress').isObject().withMessage('deliveryAddress is required'),
     body('deliveryAddress.street').isString().withMessage('deliveryAddress.street is required'),
     body('deliveryAddress.city').isString().withMessage('deliveryAddress.city is required'),
@@ -80,6 +81,17 @@ router.post(
         return res.status(403).json({
           success: false,
           message: 'Only customers can create checkout sessions',
+        });
+      }
+
+      const requestedPromoCode = req.body?.promoCode
+        ? String(req.body.promoCode).trim()
+        : '';
+      if (requestedPromoCode) {
+        return res.status(400).json({
+          success: false,
+          message: 'Promo codes are currently available for single-vendor carts only.',
+          code: 'PROMO_MIXED_CHECKOUT_NOT_SUPPORTED',
         });
       }
 

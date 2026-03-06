@@ -1,0 +1,80 @@
+<svg viewBox="0 0 160 160" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+  <!-- Soft Drop Shadow -->
+  <ellipse cx="80" cy="135" rx="45" ry="8" fill="rgba(0,0,0,0.15)" />
+
+  <!-- === CELEBRATION CONFETTI === -->
+  <path d="M 25,80 Q 15,60 30,50" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" />
+  <path d="M 135,100 Q 150,115 130,125" fill="none" stroke="#2A9D8F" stroke-width="3" stroke-linecap="round" />
+  
+  <circle cx="35" cy="110" r="3" fill="#FFD166" />
+  <circle cx="120" cy="65" r="3" fill="#FFFFFF" />
+  <circle cx="45" cy="45" r="4" fill="#2A9D8F" />
+
+  <!-- === THE FOOD (Popping out of the box) === -->
+  <g transform="translate(0, -18)">
+    <!-- Bottom Bun (Lightened to contrast orange bg) -->
+    <rect x="55" y="85" width="50" height="8" rx="4" fill="#FFE8D6" />
+    
+    <!-- Meat Patty -->
+    <rect x="50" y="75" width="60" height="10" rx="4" fill="#5E3023" />
+    
+    <!-- Melted Cheese -->
+    <polygon points="50,75 58,85 66,75 78,87 90,75 102,85 110,75" fill="#FFD166" />
+    
+    <!-- Wavy Lettuce -->
+    <path d="M 45,70 Q 55,60 65,70 T 85,70 T 105,70 T 115,70 L 115,75 L 45,75 Z" fill="#80B918" />
+    
+    <!-- Top Bun (Yellow tint to stand out) -->
+    <path d="M 50,65 C 50,38 110,38 110,65 Z" fill="#FFD166" />
+    
+    <!-- Sesame Seeds (White) -->
+    <ellipse cx="65" cy="52" rx="1.5" ry="2.5" fill="#FFFFFF" transform="rotate(-15, 65, 52)" />
+    <ellipse cx="80" cy="48" rx="1.5" ry="2.5" fill="#FFFFFF" transform="rotate(5, 80, 48)" />
+    <ellipse cx="95" cy="52" rx="1.5" ry="2.5" fill="#FFFFFF" transform="rotate(20, 95, 52)" />
+    <ellipse cx="72" cy="58" rx="1.5" ry="2.5" fill="#FFFFFF" transform="rotate(-5, 72, 58)" />
+    <ellipse cx="88" cy="58" rx="1.5" ry="2.5" fill="#FFFFFF" transform="rotate(10, 88, 58)" />
+  </g>
+
+  <!-- === THE GIFT BOX (Teal contrasts perfectly against Orange) === -->
+  
+  <!-- Inside of the box (Dark Teal depth) -->
+  <rect x="45" y="85" width="70" height="15" fill="#21867A" />
+
+  <!-- Front Box Base -->
+  <rect x="45" y="90" width="70" height="40" rx="4" fill="#2A9D8F" />
+  
+  <!-- Ribbon Vertical -->
+  <rect x="75" y="90" width="10" height="40" fill="#FFFFFF" />
+  
+  <!-- Ribbon Horizontal -->
+  <rect x="45" y="105" width="70" height="10" fill="#FFFFFF" />
+
+  <!-- Gift Box Lid (Tilted back/left to reveal the burger) -->
+  <g transform="translate(35, 95) rotate(-20)">
+    <!-- Lid Drop Shadow on the box -->
+    <rect x="0" y="-8" width="80" height="12" rx="3" fill="rgba(0,0,0,0.15)" transform="translate(2, 6)" />
+    <!-- Lid Base -->
+    <rect x="0" y="-12" width="80" height="14" rx="4" fill="#38B2A5" />
+    <!-- Lid Ribbon -->
+    <rect x="40" y="-12" width="10" height="14" fill="#E2E8F0" />
+  </g>
+
+  <!-- === THE BADGE (-50%) === -->
+  <!-- Placed in a stark white bubble so it doesn't get lost on the orange background -->
+  <g transform="translate(120, 40)">
+    <!-- Badge Shadow -->
+    <circle cx="0" cy="6" r="24" fill="rgba(0,0,0,0.15)" />
+    <!-- White Badge Base -->
+    <circle cx="0" cy="0" r="24" fill="#FFFFFF" />
+    <!-- Inner Dashed Border (Teal) -->
+    <circle cx="0" cy="0" r="19" fill="none" stroke="#2A9D8F" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.6" />
+    <!-- Text (Colored Orange to tie into your banner background!) -->
+    <text x="0" y="6" fill="#E76F51" font-family="sans-serif" font-weight="900" font-size="16" text-anchor="middle" letter-spacing="-0.5">-50%</text>
+  </g>
+
+  <!-- Floating Sparkle -->
+  <g transform="translate(30, 40) scale(0.6)">
+    <path d="M 0,-15 Q 0,0 15,0 Q 0,0 0,15 Q 0,0 -15,0 Q 0,0 0,-15 Z" fill="#FFFFFF" />
+  </g>
+
+</svg>

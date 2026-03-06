@@ -24,6 +24,12 @@ const parseBoolean = (value) => {
     return undefined;
 };
 
+const normalizePromoCode = (value) => {
+    if (!value) return null;
+    const normalized = String(value).trim().toUpperCase();
+    return normalized.length > 0 ? normalized : null;
+};
+
 /**
  * @route   GET /api/cart/groups
  * @desc    Get grouped cart data (one group per vendor)
@@ -46,12 +52,16 @@ router.get('/groups', protect, async (req, res) => {
         const deliveryLocation =
             Number.isFinite(lat) && Number.isFinite(lng) ? { latitude: lat, longitude: lng } : null;
         const useCredits = parseBoolean(req.query.useCredits);
+        const promoCode = featureFlags.isPromoCheckoutEnabled
+            ? normalizePromoCode(req.query.promoCode)
+            : null;
 
         const groupedPricing = await calculateCartGroupsPricing(carts, {
             userId: req.user.id,
             deliveryLocation,
             useCredits,
             fulfillmentMode,
+            promoCode,
         });
 
         return res.json({
@@ -85,6 +95,9 @@ router.get('/', protect, async (req, res) => {
         const deliveryLocation =
             Number.isFinite(lat) && Number.isFinite(lng) ? { latitude: lat, longitude: lng } : null;
         const useCredits = parseBoolean(req.query.useCredits);
+        const promoCode = featureFlags.isPromoCheckoutEnabled
+            ? normalizePromoCode(req.query.promoCode)
+            : null;
 
         if (!cart) {
             return res.json({
@@ -99,16 +112,30 @@ router.get('/', protect, async (req, res) => {
                         serviceFee: 0,
                         tax: 0,
                         rainFee: 0,
+                        totalBeforePromo: 0,
+                        totalBeforeCredits: 0,
                         total: 0,
+                        promoCode: null,
+                        promoType: null,
+                        promoDiscount: 0,
+                        promoValidationMessage: null,
                         itemCount: 0,
                         creditsApplied: 0,
-                        totalAfterCredits: 0
+                        totalAfterCredits: 0,
+                        creditBalance: 0,
+                        availableBalance: 0,
+                        subscriptionTier: null,
+                        subscriptionId: null,
+                        subscriptionDeliveryDiscount: 0,
+                        subscriptionServiceFeeDiscount: 0,
+                        originalDeliveryFee: 0,
+                        originalServiceFee: 0
                     }
                 }
             });
         }
 
-        const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation, useCredits });
+        const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation, useCredits, promoCode });
 
         res.json({
             success: true,
@@ -149,6 +176,9 @@ router.post('/add', protect, async (req, res) => {
         const deliveryLocation =
             Number.isFinite(lat) && Number.isFinite(lng) ? { latitude: lat, longitude: lng } : null;
         const useCredits = parseBoolean(req.query.useCredits ?? req.body.useCredits);
+        const promoCode = featureFlags.isPromoCheckoutEnabled
+            ? normalizePromoCode(req.query.promoCode ?? req.body.promoCode)
+            : null;
 
         if (!itemId || !itemType) {
             return res.status(400).json({
@@ -178,7 +208,7 @@ router.post('/add', protect, async (req, res) => {
             fulfillmentMode
         });
 
-        const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation, useCredits });
+        const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation, useCredits, promoCode });
 
         res.json({
             success: true,
@@ -231,6 +261,9 @@ router.patch('/update/:itemId', protect, async (req, res) => {
         const deliveryLocation =
             Number.isFinite(lat) && Number.isFinite(lng) ? { latitude: lat, longitude: lng } : null;
         const useCredits = parseBoolean(req.query.useCredits ?? req.body.useCredits);
+        const promoCode = featureFlags.isPromoCheckoutEnabled
+            ? normalizePromoCode(req.query.promoCode ?? req.body.promoCode)
+            : null;
 
         if (quantity === undefined || quantity < 0) {
             return res.status(400).json({
@@ -240,7 +273,7 @@ router.patch('/update/:itemId', protect, async (req, res) => {
         }
 
         const cart = await updateCartItem(req.user.id, itemId, quantity, fulfillmentMode);
-        const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation, useCredits });
+        const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation, useCredits, promoCode });
 
         res.json({
             success: true,
@@ -279,8 +312,11 @@ router.delete('/remove/:itemId', protect, async (req, res) => {
         const deliveryLocation =
             Number.isFinite(lat) && Number.isFinite(lng) ? { latitude: lat, longitude: lng } : null;
         const useCredits = parseBoolean(req.query.useCredits ?? req.body?.useCredits);
+        const promoCode = featureFlags.isPromoCheckoutEnabled
+            ? normalizePromoCode(req.query.promoCode ?? req.body?.promoCode)
+            : null;
         const cart = await removeFromCart(req.user.id, itemId, fulfillmentMode);
-        const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation, useCredits });
+        const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation, useCredits, promoCode });
 
         res.json({
             success: true,
@@ -318,8 +354,11 @@ router.delete('/clear', protect, async (req, res) => {
         const deliveryLocation =
             Number.isFinite(lat) && Number.isFinite(lng) ? { latitude: lat, longitude: lng } : null;
         const useCredits = parseBoolean(req.query.useCredits ?? req.body?.useCredits);
+        const promoCode = featureFlags.isPromoCheckoutEnabled
+            ? normalizePromoCode(req.query.promoCode ?? req.body?.promoCode)
+            : null;
         const cart = await clearCart(req.user.id, fulfillmentMode);
-        const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation, useCredits });
+        const pricing = await calculateCartPricing(cart, { userId: req.user.id, deliveryLocation, useCredits, promoCode });
 
         res.json({
             success: true,

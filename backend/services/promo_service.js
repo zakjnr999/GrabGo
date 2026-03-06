@@ -1,5 +1,7 @@
 const prisma = require('../config/prisma');
 
+const roundCurrency = (value) => Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
+
 /**
  * Promo Code Service
  * 
@@ -121,6 +123,7 @@ const validatePromoCode = async (code, userId, orderAmount, orderType) => {
 
         return {
             valid: true,
+            code: promo.code,
             discount,
             type: promo.type,
             description: promo.description,
@@ -134,6 +137,21 @@ const validatePromoCode = async (code, userId, orderAmount, orderType) => {
             error: 'Failed to validate promo code'
         };
     }
+};
+
+const resolvePromoStatusReason = ({
+    promo,
+    now,
+    userUsageCount,
+    userLimitReached,
+}) => {
+    if (!promo.isActive) return 'inactive';
+    if (promo.startDate && now < promo.startDate) return 'not_started';
+    if (promo.endDate && now > promo.endDate) return 'expired';
+    if (promo.maxUses !== null && promo.currentUses >= promo.maxUses) return 'global_limit_reached';
+    if (userLimitReached) return 'user_limit_reached';
+    if (userUsageCount > 0) return 'used';
+    return null;
 };
 
 /**
@@ -209,18 +227,23 @@ const applyPromoCode = async (code, userId, orderId, discountAmount) => {
         }
 
         // Atomic update for usage count
-        const updated = await prisma.promoCode.update({
-            where: {
+        const promoUsageWhere = promo.maxUses === null
+            ? {
                 id: promo.id,
                 isActive: true,
-                AND: [
-                    { OR: [{ maxUses: null }, { currentUses: { lt: promo.maxUses } }] }
-                ]
-            },
-            data: { currentUses: { increment: 1 } }
-        }).catch(() => null);
+            }
+            : {
+                id: promo.id,
+                isActive: true,
+                currentUses: { lt: promo.maxUses },
+            };
 
-        if (!updated) {
+        const updated = await prisma.promoCode.updateMany({
+            where: promoUsageWhere,
+            data: { currentUses: { increment: 1 } }
+        }).catch(() => ({ count: 0 }));
+
+        if (!updated || Number(updated.count || 0) === 0) {
             throw new Error('Promo code usage limit reached');
         }
 
@@ -313,6 +336,144 @@ const getAvailablePromoCodes = async (userId) => {
 };
 
 /**
+ * Get promo codes grouped for customer profile view
+ * @param {string} userId - User ID
+ * @returns {Promise<{available: Array, used: Array, expired: Array}>}
+ */
+const getMyPromoCodes = async (userId) => {
+    try {
+        const now = new Date();
+
+        const usedOrders = await prisma.order.findMany({
+            where: {
+                customerId: userId,
+                promoCode: { not: null },
+                status: { not: 'cancelled' },
+            },
+            select: {
+                promoCode: true,
+                promoDiscount: true,
+                orderDate: true,
+            },
+            orderBy: { orderDate: 'desc' },
+        });
+
+        const usageByCode = new Map();
+        for (const order of usedOrders) {
+            const promoCode = String(order.promoCode || '').toUpperCase();
+            if (!promoCode) continue;
+            const current = usageByCode.get(promoCode) || {
+                usedCount: 0,
+                totalSaved: 0,
+                lastUsedAt: null,
+            };
+            current.usedCount += 1;
+            current.totalSaved = roundCurrency(current.totalSaved + Number(order.promoDiscount || 0));
+            if (!current.lastUsedAt && order.orderDate) {
+                current.lastUsedAt = order.orderDate;
+            }
+            usageByCode.set(promoCode, current);
+        }
+
+        const usedCodes = Array.from(usageByCode.keys());
+        const visibilityWhere = {
+            OR: [
+                { targetedUsers: { none: {} } },
+                { targetedUsers: { some: { userId } } },
+                ...(usedCodes.length > 0 ? [{ code: { in: usedCodes } }] : []),
+            ],
+        };
+
+        const promos = await prisma.promoCode.findMany({
+            where: visibilityWhere,
+            select: {
+                code: true,
+                description: true,
+                type: true,
+                value: true,
+                isActive: true,
+                startDate: true,
+                endDate: true,
+                maxUses: true,
+                currentUses: true,
+                maxUsesPerUser: true,
+                minOrderAmount: true,
+                maxDiscountAmount: true,
+                applicableOrderTypes: true,
+                firstOrderOnly: true,
+                createdAt: true,
+            },
+            orderBy: [{ endDate: 'asc' }, { createdAt: 'desc' }],
+        });
+
+        const available = [];
+        const used = [];
+        const expired = [];
+
+        for (const promo of promos) {
+            const usage = usageByCode.get(promo.code) || {
+                usedCount: 0,
+                totalSaved: 0,
+                lastUsedAt: null,
+            };
+
+            const userLimit = Number(promo.maxUsesPerUser || 1);
+            const userLimitReached = usage.usedCount >= userLimit;
+            const isStarted = !promo.startDate || now >= promo.startDate;
+            const isNotExpired = !promo.endDate || now <= promo.endDate;
+            const hasGlobalCapacity = promo.maxUses === null || promo.currentUses < promo.maxUses;
+            const isEligibleNow =
+                promo.isActive &&
+                isStarted &&
+                isNotExpired &&
+                hasGlobalCapacity &&
+                !userLimitReached;
+
+            const statusReason = resolvePromoStatusReason({
+                promo,
+                now,
+                userUsageCount: usage.usedCount,
+                userLimitReached,
+            });
+
+            const dto = {
+                code: promo.code,
+                description: promo.description,
+                type: promo.type,
+                value: promo.value,
+                minOrderAmount: promo.minOrderAmount,
+                maxDiscountAmount: promo.maxDiscountAmount,
+                applicableOrderTypes: promo.applicableOrderTypes,
+                firstOrderOnly: promo.firstOrderOnly,
+                endDate: promo.endDate,
+                usedCount: usage.usedCount,
+                maxUsesPerUser: userLimit,
+                totalSaved: roundCurrency(usage.totalSaved),
+                lastUsedAt: usage.lastUsedAt,
+                statusReason,
+            };
+
+            if (isEligibleNow) {
+                available.push(dto);
+                continue;
+            }
+
+            if (usage.usedCount > 0) {
+                used.push(dto);
+                continue;
+            }
+
+            expired.push(dto);
+        }
+
+        return { available, used, expired };
+    } catch (error) {
+        console.error('Error fetching my promo codes:', error.message);
+        return { available: [], used: [], expired: [] };
+    }
+};
+
+/**
  * Get all promo codes (admin function)
  * @returns {Promise<Array>} All promo codes
  */
@@ -351,6 +512,7 @@ module.exports = {
     applyPromoCode,
     createPromoCode,
     getAvailablePromoCodes,
+    getMyPromoCodes,
     getAllPromoCodes,
     deactivatePromoCode,
     calculateDiscount

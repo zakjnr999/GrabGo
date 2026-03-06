@@ -76,6 +76,71 @@ const normalizeFulfillmentMode = (mode) => {
   return String(mode).trim().toLowerCase() === "pickup" ? "pickup" : "delivery";
 };
 
+const normalizePromoCode = (value) => {
+  if (!value) return null;
+  const normalized = String(value).trim().toUpperCase();
+  return normalized.length > 0 ? normalized : null;
+};
+
+const decrementPromoUsageIfNeeded = async ({ tx = prisma, promoCode }) => {
+  const normalizedCode = normalizePromoCode(promoCode);
+  if (!normalizedCode) return;
+
+  await tx.promoCode.updateMany({
+    where: {
+      code: normalizedCode,
+      currentUses: { gt: 0 },
+    },
+    data: {
+      currentUses: { decrement: 1 },
+    },
+  }).catch(() => null);
+};
+
+const reservePromoUsage = async (tx, promoCode) => {
+  const normalizedCode = normalizePromoCode(promoCode);
+  if (!normalizedCode) {
+    return { success: true };
+  }
+
+  const promo = await tx.promoCode.findUnique({
+    where: { code: normalizedCode },
+    select: {
+      id: true,
+      isActive: true,
+      maxUses: true,
+    },
+  });
+
+  if (!promo || !promo.isActive) {
+    return {
+      success: false,
+      message: "This promo code is no longer active",
+    };
+  }
+
+  const promoUsageWhere =
+    promo.maxUses === null
+      ? { id: promo.id, isActive: true }
+      : { id: promo.id, isActive: true, currentUses: { lt: promo.maxUses } };
+
+  const updated = await tx.promoCode.updateMany({
+    where: promoUsageWhere,
+    data: {
+      currentUses: { increment: 1 },
+    },
+  }).catch(() => ({ count: 0 }));
+
+  if (!updated || Number(updated.count || 0) === 0) {
+    return {
+      success: false,
+      message: "This promo code has reached its usage limit",
+    };
+  }
+
+  return { success: true };
+};
+
 const PICKUP_OTP_SECRET = process.env.PICKUP_OTP_SECRET || process.env.JWT_SECRET || "grabgo-pickup-otp-secret";
 const PICKUP_OTP_MAX_ATTEMPTS = Number(process.env.PICKUP_OTP_MAX_ATTEMPTS || 5);
 const PICKUP_OTP_LOCK_SECONDS = Number(process.env.PICKUP_OTP_LOCK_SECONDS || 300);
@@ -461,6 +526,7 @@ router.post(
       .isIn(["card", "cash"])
       .withMessage("Invalid payment method"),
     body("useCredits").optional({ nullable: true }).isBoolean().withMessage("useCredits must be a boolean"),
+    body("promoCode").optional({ nullable: true }).isString().withMessage("promoCode must be a string"),
   ],
   async (req, res) => {
     try {
@@ -496,6 +562,7 @@ router.post(
         giftNote,
         paymentMethod,
         useCredits,
+        promoCode,
         notes,
         noShowPolicyVersion,
         orderNumber: bodyOrderNumber
@@ -505,6 +572,7 @@ router.post(
       const isPickupMode = fulfillmentMode === "pickup";
       const isDeliveryMode = !isPickupMode;
       const normalizedPaymentMethod = String(paymentMethod || "").trim().toLowerCase();
+      const normalizedPromoCode = normalizePromoCode(promoCode);
       const isCashOnDelivery = normalizedPaymentMethod === "cash";
       const isGiftOrderRequested = isGiftOrder === true;
       const normalizedGiftRecipientName = giftRecipientName ? String(giftRecipientName).trim() : null;
@@ -556,6 +624,14 @@ router.post(
             code: "COD_DELIVERY_ONLY",
           });
         }
+      }
+
+      if (normalizedPromoCode && !featureFlags.isPromoCheckoutEnabled) {
+        return res.status(403).json({
+          success: false,
+          message: "Promo codes are temporarily unavailable",
+          code: "PROMO_DISABLED",
+        });
       }
 
       if (isGiftOrderRequested) {
@@ -1020,7 +1096,18 @@ router.post(
         vendorPrepTime: maxItemPrepMinutes > 0 ? maxItemPrepMinutes : (vendorDoc.averagePreparationTime || 15),
         vendorDeliveryTime: vendorDoc.averageDeliveryTime || 30,
         fulfillmentMode,
+        orderType: resolvedOrderType,
+        promoCode: normalizedPromoCode,
       });
+
+      if (normalizedPromoCode && pricing.promoValidationMessage) {
+        return res.status(400).json({
+          success: false,
+          message: pricing.promoValidationMessage,
+          code: "PROMO_VALIDATION_FAILED",
+        });
+      }
+
       const tax = pricing.tax;
       let totalAmount = pricing.total;
       let codUpfrontAmount = null;
@@ -1096,6 +1183,7 @@ router.post(
             accountAgeMinutes: null,
             newPaymentMethod: Boolean(req.body?.newPaymentMethod),
             deliveryCity: isDeliveryMode ? (deliveryAddress?.city || null) : null,
+            promoCode: pricing.promoCode || null,
           },
         },
       });
@@ -1126,6 +1214,9 @@ router.post(
         tax,
         totalAmount,
         creditsApplied: creditApplied,
+        promoCode: pricing.promoCode || null,
+        promoDiscount: Number(pricing.promoDiscount || 0),
+        promoType: pricing.promoType || null,
         deliveryStreet: isDeliveryMode ? (deliveryAddress?.street || deliveryAddress) : null,
         deliveryCity: isDeliveryMode ? (deliveryAddress?.city || 'Unknown') : null,
         deliveryState: isDeliveryMode ? deliveryAddress?.state : null,
@@ -1170,69 +1261,80 @@ router.post(
         orderData.paymentStatus = "paid";
       }
 
-      // Create order with Prisma transaction to handle nested items
-      const order = await prisma.order.create({
-        data: orderData,
-        include: {
-          items: {
-            include: { food: true, groceryItem: true, pharmacyItem: true, grabMartItem: true }
-          },
-          restaurant: {
-            select: {
-              restaurantName: true,
-              logo: true,
-              phone: true,
-              address: true,
-              city: true,
-              area: true,
-              latitude: true,
-              longitude: true
-            }
-          },
-          groceryStore: {
-            select: {
-              storeName: true,
-              logo: true,
-              phone: true,
-              address: true,
-              city: true,
-              area: true,
-              latitude: true,
-              longitude: true
-            }
-          },
-          pharmacyStore: {
-            select: {
-              storeName: true,
-              logo: true,
-              phone: true,
-              address: true,
-              city: true,
-              area: true,
-              latitude: true,
-              longitude: true
-            }
-          },
-          grabMartStore: {
-            select: {
-              storeName: true,
-              logo: true,
-              phone: true,
-              address: true,
-              city: true,
-              area: true,
-              latitude: true,
-              longitude: true
-            }
-          },
-          customer: {
-            select: {
-              username: true,
-              email: true,
-              phone: true
-            }
+      // Create order and consume promo usage atomically
+      const order = await prisma.$transaction(async (tx) => {
+        if (pricing.promoCode) {
+          const promoUsageResult = await reservePromoUsage(tx, pricing.promoCode);
+          if (!promoUsageResult.success) {
+            const promoUsageError = new Error(promoUsageResult.message || "Promo code validation failed");
+            promoUsageError.isPromoValidationError = true;
+            throw promoUsageError;
           }
         }
+
+        return tx.order.create({
+          data: orderData,
+          include: {
+            items: {
+              include: { food: true, groceryItem: true, pharmacyItem: true, grabMartItem: true }
+            },
+            restaurant: {
+              select: {
+                restaurantName: true,
+                logo: true,
+                phone: true,
+                address: true,
+                city: true,
+                area: true,
+                latitude: true,
+                longitude: true
+              }
+            },
+            groceryStore: {
+              select: {
+                storeName: true,
+                logo: true,
+                phone: true,
+                address: true,
+                city: true,
+                area: true,
+                latitude: true,
+                longitude: true
+              }
+            },
+            pharmacyStore: {
+              select: {
+                storeName: true,
+                logo: true,
+                phone: true,
+                address: true,
+                city: true,
+                area: true,
+                latitude: true,
+                longitude: true
+              }
+            },
+            grabMartStore: {
+              select: {
+                storeName: true,
+                logo: true,
+                phone: true,
+                address: true,
+                city: true,
+                area: true,
+                latitude: true,
+                longitude: true
+              }
+            },
+            customer: {
+              select: {
+                username: true,
+                email: true,
+                phone: true
+              }
+            }
+          }
+        });
       });
 
       let giftDeliveryCode = null;
@@ -1276,6 +1378,7 @@ router.post(
               updatedAt: new Date(),
             },
           });
+          await decrementPromoUsageIfNeeded({ promoCode: order.promoCode });
 
           return res.status(400).json({
             success: false,
@@ -1434,6 +1537,13 @@ router.post(
           message: error.message,
           code: error.code || "COD_POLICY_ERROR",
           ...(error.meta || {}),
+        });
+      }
+      if (error?.isPromoValidationError) {
+        return res.status(400).json({
+          success: false,
+          message: error.message || "Promo code validation failed",
+          code: "PROMO_VALIDATION_FAILED",
         });
       }
 
@@ -1857,6 +1967,7 @@ router.post(
           paymentReferenceId: true,
           isGiftOrder: true,
           deliveryCodeEncrypted: true,
+          promoCode: true,
         },
       });
 
@@ -2159,6 +2270,7 @@ router.post(
               updatedAt: new Date(),
             },
           });
+          await decrementPromoUsageIfNeeded({ promoCode: order.promoCode });
 
           if (order.creditsApplied > 0) {
             await creditService.releaseHold(req.user.id, order.id).catch(() => null);
@@ -2764,6 +2876,7 @@ router.post(
           status: true,
           fulfillmentMode: true,
           paymentStatus: true,
+          promoCode: true,
         },
       });
 
@@ -2783,24 +2896,48 @@ router.post(
           metadata: { previousStatus: order.status },
         });
       } else {
-        updatedOrder = await prisma.order.update({
-          where: { id: orderId },
-          data: {
-            status: "cancelled",
-            cancelledDate: new Date(),
-            cancellationReason: reason,
-            paymentStatus: refund && ["paid", "successful"].includes(order.paymentStatus) ? "refunded" : order.paymentStatus,
-            updatedAt: new Date(),
-          },
-        });
+        updatedOrder = await prisma.$transaction(async (tx) => {
+          const currentOrder = await tx.order.findUnique({
+            where: { id: orderId },
+            select: {
+              status: true,
+              paymentStatus: true,
+              promoCode: true,
+            },
+          });
 
-        await createOrderAudit({
-          orderId,
-          actorId: req.user.id,
-          actorRole: req.user.role,
-          action: "support_cancel",
-          reason,
-          metadata: { previousStatus: order.status, refund },
+          if (!currentOrder) {
+            throw new Error("Order not found");
+          }
+
+          const cancelledOrder = await tx.order.update({
+            where: { id: orderId },
+            data: {
+              status: "cancelled",
+              cancelledDate: new Date(),
+              cancellationReason: reason,
+              paymentStatus: refund && ["paid", "successful"].includes(currentOrder.paymentStatus)
+                ? "refunded"
+                : currentOrder.paymentStatus,
+              updatedAt: new Date(),
+            },
+          });
+
+          if (currentOrder.status !== "cancelled") {
+            await decrementPromoUsageIfNeeded({ tx, promoCode: currentOrder.promoCode });
+          }
+
+          await createOrderAudit({
+            tx,
+            orderId,
+            actorId: req.user.id,
+            actorRole: req.user.role,
+            action: "support_cancel",
+            reason,
+            metadata: { previousStatus: currentOrder.status, refund },
+          });
+
+          return cancelledOrder;
         });
       }
 
@@ -3881,6 +4018,7 @@ router.put(
           if (normalizedCancellationReason) {
             updateData.cancellationReason = normalizedCancellationReason;
           }
+          await decrementPromoUsageIfNeeded({ tx, promoCode: order.promoCode });
         }
 
         return await tx.order.update({

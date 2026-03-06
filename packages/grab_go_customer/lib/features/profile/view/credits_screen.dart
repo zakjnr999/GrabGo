@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:grab_go_customer/shared/services/user_service.dart' as customer_user;
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:shimmer/shimmer.dart';
@@ -16,6 +19,8 @@ class CreditsScreen extends StatefulWidget {
 
 class _CreditsScreenState extends State<CreditsScreen> {
   final CreditService _creditService = CreditService();
+  static const Duration _creditsCacheMaxAge = Duration(minutes: 30);
+  static const String _creditsPromoAsset = 'lib/assets/icons/grabgo_credit_icon.svg';
 
   CreditBalance? _balance;
   List<CreditTransaction> _transactions = [];
@@ -30,13 +35,40 @@ class _CreditsScreenState extends State<CreditsScreen> {
     _loadData();
   }
 
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+  String _creditsCacheKey(String userId) => 'credits_page_cache_v1_$userId';
 
-    final balance = await _creditService.getBalance();
-    final transactions = await _creditService.getTransactionHistory(page: 1);
+  Future<void> _loadData({bool forceRefresh = false}) async {
+    bool hydratedFromCache = false;
 
-    if (mounted) {
+    if (!forceRefresh) {
+      final cached = _readCachedCreditsData();
+      if (cached != null) {
+        if (mounted) {
+          setState(() {
+            _balance = cached.balance;
+            _transactions = cached.transactions;
+            _isLoading = false;
+            _currentPage = 1;
+            _hasMore = cached.transactions.length >= 20;
+          });
+        }
+        hydratedFromCache = true;
+        if (!cached.isStale) {
+          return;
+        }
+      }
+    }
+
+    try {
+      final balance = await _creditService.getBalance();
+      final transactions = await _creditService.getTransactionHistory(page: 1);
+
+      if (hydratedFromCache && balance == null && transactions.isEmpty) {
+        debugPrint('CreditsScreen: using cached data due to refresh error.');
+        return;
+      }
+
+      if (!mounted) return;
       setState(() {
         _balance = balance;
         _transactions = transactions;
@@ -44,7 +76,96 @@ class _CreditsScreenState extends State<CreditsScreen> {
         _currentPage = 1;
         _hasMore = transactions.length >= 20;
       });
+      await _saveCreditsDataToCache(balance: balance, transactions: transactions);
+    } catch (e) {
+      if (!mounted) return;
+      if (hydratedFromCache) {
+        debugPrint('CreditsScreen: using cached data due to refresh error: $e');
+      } else {
+        setState(() => _isLoading = false);
+      }
     }
+  }
+
+  _CachedCreditsData? _readCachedCreditsData() {
+    try {
+      final userId = customer_user.UserService().getUserId();
+      if (userId == null || userId.isEmpty) return null;
+
+      final cachedJson = CacheService.getData(_creditsCacheKey(userId));
+      if (cachedJson == null || cachedJson.isEmpty) return null;
+
+      final decoded = jsonDecode(cachedJson);
+      if (decoded is! Map<String, dynamic>) return null;
+
+      final cachedAtRaw = decoded['cachedAt'];
+      final transactionsRaw = decoded['transactions'];
+      if (cachedAtRaw is! String || transactionsRaw is! List) return null;
+
+      final cachedAt = DateTime.tryParse(cachedAtRaw);
+      if (cachedAt == null) return null;
+
+      final balanceRaw = decoded['balance'];
+      CreditBalance? balance;
+      if (balanceRaw is Map<String, dynamic>) {
+        balance = CreditBalance.fromJson(balanceRaw);
+      } else if (balanceRaw is Map) {
+        balance = CreditBalance.fromJson(Map<String, dynamic>.from(balanceRaw));
+      }
+
+      final transactions = <CreditTransaction>[];
+      for (final entry in transactionsRaw) {
+        if (entry is Map<String, dynamic>) {
+          transactions.add(CreditTransaction.fromJson(entry));
+        } else if (entry is Map) {
+          transactions.add(CreditTransaction.fromJson(Map<String, dynamic>.from(entry)));
+        }
+      }
+
+      final isStale = DateTime.now().difference(cachedAt) > _creditsCacheMaxAge;
+      return _CachedCreditsData(balance: balance, transactions: transactions, isStale: isStale);
+    } catch (e) {
+      debugPrint('CreditsScreen: failed to read credits cache: $e');
+      return null;
+    }
+  }
+
+  Future<void> _saveCreditsDataToCache({
+    required CreditBalance? balance,
+    required List<CreditTransaction> transactions,
+  }) async {
+    try {
+      final userId = customer_user.UserService().getUserId();
+      if (userId == null || userId.isEmpty) return;
+
+      final payload = {
+        'cachedAt': DateTime.now().toIso8601String(),
+        'balance': balance == null ? null : _mapBalanceToJson(balance),
+        'transactions': transactions.map(_mapTransactionToJson).toList(),
+      };
+
+      await CacheService.saveData(_creditsCacheKey(userId), jsonEncode(payload));
+    } catch (e) {
+      debugPrint('CreditsScreen: failed to save credits cache: $e');
+    }
+  }
+
+  Map<String, dynamic> _mapBalanceToJson(CreditBalance balance) {
+    return {'balance': balance.balance, 'currency': balance.currency, 'formatted': balance.formatted};
+  }
+
+  Map<String, dynamic> _mapTransactionToJson(CreditTransaction transaction) {
+    return {
+      'id': transaction.id,
+      'amount': transaction.amount,
+      'formattedAmount': transaction.formattedAmount,
+      'type': transaction.type,
+      'typeLabel': transaction.typeLabel,
+      'description': transaction.description,
+      'orderId': transaction.orderId,
+      'createdAt': transaction.createdAt.toIso8601String(),
+      'isCredit': transaction.isCredit,
+    };
   }
 
   Future<void> _loadMore() async {
@@ -69,163 +190,208 @@ class _CreditsScreenState extends State<CreditsScreen> {
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final padding = MediaQuery.of(context).padding;
 
     final systemUiOverlayStyle = SystemUiOverlayStyle(
-      statusBarColor: colors.backgroundSecondary,
-      statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-      systemNavigationBarColor: colors.backgroundSecondary,
+      statusBarColor: colors.accentOrange,
+      statusBarIconBrightness: Brightness.light,
+      systemNavigationBarColor: colors.backgroundPrimary,
       systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
     );
 
     SystemChrome.setSystemUIOverlayStyle(systemUiOverlayStyle);
 
-    return AnnotatedRegion(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
       value: systemUiOverlayStyle,
       child: Scaffold(
         backgroundColor: colors.backgroundPrimary,
-        body: Column(
-          children: [
-            Padding(
-              padding: EdgeInsets.only(top: padding.top, left: 20.w, right: 20.w, bottom: 16.h),
-              child: Row(
-                children: [
-                  Container(
-                    height: 44,
-                    width: 44,
-                    decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () => context.pop(),
-                        customBorder: const CircleBorder(),
-                        child: Padding(
-                          padding: EdgeInsets.all(10.r),
-                          child: SvgPicture.asset(
-                            Assets.icons.navArrowLeft,
-                            package: 'grab_go_shared',
-                            colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                          ),
-                        ),
-                      ),
-                    ),
+        body: AppRefreshIndicator(
+          bgColor: colors.accentOrange,
+          iconPath: Assets.icons.wallet,
+          onRefresh: () => _loadData(forceRefresh: true),
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              _buildHeaderSliver(colors),
+              SliverToBoxAdapter(child: SizedBox(height: 16.h)),
+              SliverToBoxAdapter(child: _buildInfoSection(colors)),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(20.w, 24.h, 20.w, 0.h),
+                  child: Text(
+                    'Transaction History',
+                    style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w600),
                   ),
-                  SizedBox(width: 16.w),
-                  Text(
-                    "GrabGo Credits",
-                    style: TextStyle(
-                      fontFamily: "Lato",
-                      package: 'grab_go_shared',
-                      color: colors.textPrimary,
-                      fontSize: 20.sp,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Divider(color: colors.backgroundSecondary, height: 1.h, thickness: 1),
-            Expanded(
-              child: AppRefreshIndicator(
-                bgColor: colors.accentOrange,
-                iconPath: Assets.icons.wallet,
-                onRefresh: _loadData,
-                child: CustomScrollView(
-                  slivers: [
-                    SliverToBoxAdapter(child: _buildBalanceCard(colors)),
-
-                    SliverToBoxAdapter(child: _buildInfoSection(colors)),
-
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(20.w, 24.h, 20.w, 0.h),
-                        child: Text(
-                          'Transaction History',
-                          style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ),
-
-                    if (_isLoading)
-                      SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) => _buildTransactionTileSkeleton(colors, isDark),
-                          childCount: 5,
-                        ),
-                      )
-                    else if (_transactions.isEmpty)
-                      SliverToBoxAdapter(child: _buildEmptyState(colors))
-                    else
-                      SliverList(
-                        delegate: SliverChildBuilderDelegate((context, index) {
-                          if (index == _transactions.length) {
-                            if (_hasMore) {
-                              _loadMore();
-                              return LoadingMore(
-                                colors: colors,
-                                spinnerColor: colors.accentOrange,
-                                borderColor: colors.accentOrange,
-                              );
-                            }
-                            return null;
-                          }
-                          return _buildTransactionTile(_transactions[index], colors);
-                        }, childCount: _transactions.length + (_hasMore ? 1 : 0)),
-                      ),
-
-                    SliverToBoxAdapter(child: SizedBox(height: 32.h)),
-                  ],
                 ),
               ),
-            ),
-          ],
+              if (_isLoading)
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => _buildTransactionTileSkeleton(colors, isDark),
+                    childCount: 5,
+                  ),
+                )
+              else if (_transactions.isEmpty)
+                SliverToBoxAdapter(child: _buildEmptyState(colors))
+              else
+                SliverList(
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    if (index == _transactions.length) {
+                      if (_hasMore) {
+                        _loadMore();
+                        return LoadingMore(
+                          colors: colors,
+                          spinnerColor: colors.accentOrange,
+                          borderColor: colors.accentOrange,
+                        );
+                      }
+                      return null;
+                    }
+                    return _buildTransactionTile(_transactions[index], colors);
+                  }, childCount: _transactions.length + (_hasMore ? 1 : 0)),
+                ),
+              SliverToBoxAdapter(child: SizedBox(height: 32.h)),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildBalanceCard(AppColorsExtension colors) {
-    return Container(
-      margin: EdgeInsets.all(20.w),
-      padding: EdgeInsets.all(24.w),
-      decoration: BoxDecoration(
-        color: colors.accentOrange,
-        borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              SvgPicture.asset(
-                Assets.icons.wallet,
-                package: 'grab_go_shared',
-                colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                width: 24.sp,
-                height: 24.sp,
+  Widget _buildHeaderSliver(AppColorsExtension colors) {
+    final expandedHeight = (MediaQuery.sizeOf(context).height * 0.32).clamp(250.0, 320.0).toDouble();
+
+    return SliverAppBar(
+      pinned: true,
+      elevation: 0,
+      surfaceTintColor: Colors.transparent,
+      backgroundColor: colors.accentOrange,
+      automaticallyImplyLeading: false,
+      expandedHeight: expandedHeight,
+      leadingWidth: 72.w,
+      leading: Align(
+        alignment: Alignment.centerLeft,
+        child: Padding(
+          padding: EdgeInsets.only(left: 12.w),
+          child: SizedBox(
+            height: 44,
+            width: 44,
+            child: Container(
+              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => context.pop(),
+                  customBorder: const CircleBorder(),
+                  child: Center(
+                    child: SvgPicture.asset(
+                      Assets.icons.navArrowLeft,
+                      package: 'grab_go_shared',
+                      colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                      width: 24.w,
+                      height: 24.h,
+                    ),
+                  ),
+                ),
               ),
-              SizedBox(width: 8.w),
-              Text(
-                'Available Balance',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ),
+      titleSpacing: 0,
+      title: Text(
+        'GrabGo Credits',
+        style: TextStyle(
+          fontFamily: 'Lato',
+          package: 'grab_go_shared',
+          color: Colors.white,
+          fontSize: 20.sp,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+      flexibleSpace: LayoutBuilder(
+        builder: (context, constraints) {
+          final topPadding = MediaQuery.paddingOf(context).top;
+          final minHeight = kToolbarHeight + topPadding;
+          final rawProgress = (constraints.maxHeight - minHeight) / (expandedHeight - minHeight);
+          final expandedProgress = rawProgress.clamp(0.0, 1.0);
+          final artworkOpacity = (Curves.easeOut.transform(expandedProgress) * 0.36).clamp(0.0, 0.36);
+          final artworkScale = 0.88 + (expandedProgress * 0.12);
+
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              Container(color: colors.accentOrange),
+              Positioned(
+                right: -16.w,
+                top: 62.h,
+                child: IgnorePointer(
+                  child: Opacity(
+                    opacity: artworkOpacity,
+                    child: Transform.scale(
+                      scale: artworkScale,
+                      alignment: Alignment.topRight,
+                      child: SvgPicture.asset(
+                        _creditsPromoAsset,
+                        package: 'grab_go_shared',
+                        width: 172.w,
+                        height: 172.w,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(20.w, 76.h, 20.w, 20.h),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Text(
+                        'Available Balance',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.92),
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(height: 10.h),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 220),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        child: Text(
+                          _isLoading ? '...' : _balance?.formatted ?? '₵0.00',
+                          key: ValueKey<String>(_isLoading ? 'loading-balance' : (_balance?.formatted ?? '0')),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 42.sp,
+                            fontWeight: FontWeight.w900,
+                            height: 1,
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 8.h),
+                      Text(
+                        'Use credits at checkout to save on orders',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.92),
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w500,
+                          height: 1.45,
+                        ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
-          ),
-          SizedBox(height: 16.h),
-          Text(
-            _isLoading ? '...' : _balance?.formatted ?? '₵0.00',
-            style: TextStyle(color: Colors.white, fontSize: 36.sp, fontWeight: FontWeight.w700),
-          ),
-          SizedBox(height: 8.h),
-          Text(
-            'Use credits at checkout to save on orders',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 12.sp),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -409,4 +575,12 @@ class _CreditsScreenState extends State<CreditsScreen> {
       return '${date.day}/${date.month}/${date.year}';
     }
   }
+}
+
+class _CachedCreditsData {
+  final CreditBalance? balance;
+  final List<CreditTransaction> transactions;
+  final bool isStale;
+
+  const _CachedCreditsData({required this.balance, required this.transactions, required this.isStale});
 }

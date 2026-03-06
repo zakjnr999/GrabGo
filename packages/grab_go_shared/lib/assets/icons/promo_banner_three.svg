@@ -1,0 +1,43 @@
+<svg viewBox="0 0 160 160" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+  <!-- Soft Drop Shadow -->
+  <ellipse cx="80" cy="140" rx="55" ry="8" fill="rgba(0,0,0,0.15)" />
+
+  <!-- === THE FLASH / LIGHTNING BOLT === -->
+  <!-- Bright yellow to create maximum contrast against your #F44336 red background -->
+  <g transform="translate(0, 0)">
+    <!-- Lightning Drop Shadow -->
+    <path d="M 85,15 L 45,75 L 75,75 L 55,135 L 115,65 L 85,65 Z" fill="rgba(0,0,0,0.1)" transform="translate(4, 6)" />
+    <!-- Lightning Base -->
+    <path d="M 85,15 L 45,75 L 75,75 L 55,135 L 115,65 L 85,65 Z" fill="#FFD166" stroke="#FFD166" stroke-width="4" stroke-linejoin="round" />
+    <!-- Lightning Highlight -->
+    <path d="M 80,25 L 50,70 L 75,70" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.6" />
+  </g>
+
+  <!-- === SPEED LINES === -->
+  <!-- White motion lines to give the "Flash/Fast" effect -->
+  <line x1="15" y1="80" x2="40" y2="80" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" opacity="0.9" />
+  <line x1="25" y1="110" x2="45" y2="110" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" opacity="0.7" />
+  <line x1="120" y1="35" x2="140" y2="35" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" opacity="0.5" />
+
+  <!-- === THE DISCOUNT BADGE (-20%) === -->
+  <!-- Pure white so it leaps off the red background -->
+  <g transform="translate(110, 105)">
+    <!-- Badge Shadow -->
+    <circle cx="0" cy="6" r="28" fill="rgba(0,0,0,0.15)" />
+    
+    <!-- White Badge Base -->
+    <circle cx="0" cy="0" r="28" fill="#FFFFFF" />
+    
+    <!-- Inner Dashed Border (Using the banner's red color) -->
+    <circle cx="0" cy="0" r="23" fill="none" stroke="#F44336" stroke-width="2" stroke-dasharray="4 4" opacity="0.8" />
+    
+    <!-- Text (Colored Red #F44336 to tie seamlessly into your banner background) -->
+    <text x="0" y="6" fill="#F44336" font-family="sans-serif" font-weight="900" font-size="18" text-anchor="middle" letter-spacing="-0.5">-20%</text>
+  </g>
+
+  <!-- Floating Sparkle (White) -->
+  <g transform="translate(30, 30) scale(0.6)">
+    <path d="M 0,-15 Q 0,0 15,0 Q 0,0 0,15 Q 0,0 -15,0 Q 0,0 0,-15 Z" fill="#FFFFFF" />
+  </g>
+
+</svg>

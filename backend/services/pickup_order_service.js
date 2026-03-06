@@ -8,6 +8,27 @@ const STOCK_MODELS = {
 
 const canRefundPaymentStatus = (paymentStatus) => ["paid", "successful"].includes(paymentStatus);
 
+const normalizePromoCode = (value) => {
+  if (!value) return null;
+  const normalized = String(value).trim().toUpperCase();
+  return normalized.length > 0 ? normalized : null;
+};
+
+const decrementPromoUsageIfNeeded = async ({ tx = prisma, promoCode }) => {
+  const normalizedCode = normalizePromoCode(promoCode);
+  if (!normalizedCode) return;
+
+  await tx.promoCode.updateMany({
+    where: {
+      code: normalizedCode,
+      currentUses: { gt: 0 },
+    },
+    data: {
+      currentUses: { decrement: 1 },
+    },
+  }).catch(() => null);
+};
+
 const createOrderAudit = async ({
   tx = prisma,
   orderId,
@@ -159,6 +180,7 @@ const cancelPickupOrder = async ({
         status: true,
         fulfillmentMode: true,
         paymentStatus: true,
+        promoCode: true,
       },
     });
 
@@ -188,6 +210,8 @@ const cancelPickupOrder = async ({
         updatedAt: new Date(),
       },
     });
+
+    await decrementPromoUsageIfNeeded({ tx, promoCode: order.promoCode });
 
     await releaseInventoryHolds({ orderId, tx });
 

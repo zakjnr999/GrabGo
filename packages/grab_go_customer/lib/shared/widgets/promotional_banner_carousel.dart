@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:grab_go_customer/features/home/model/promotional_banner.dart';
 import 'package:grab_go_customer/shared/widgets/wavy_banner_clipper.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -90,6 +91,10 @@ class _PromotionalBannerCarouselState extends State<PromotionalBannerCarousel> w
   }
 
   Widget _buildBannerCard(PromotionalBanner banner, AppColorsExtension colors, double baseHeight) {
+    final hasArtwork = (banner.artworkAsset ?? '').trim().isNotEmpty;
+    final artworkSize = (baseHeight * 0.86).clamp(118.0, 170.0);
+    final contentRightInset = hasArtwork ? (artworkSize * 0.9) : 24.w;
+
     return GestureDetector(
       onTap: banner.onTap,
       child: Stack(
@@ -111,16 +116,18 @@ class _PromotionalBannerCarouselState extends State<PromotionalBannerCarousel> w
                 child: Stack(
                   children: [
                     Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 18.h),
+                      padding: EdgeInsets.fromLTRB(24.w, 18.h, contentRightInset, 18.h),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
                             banner.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 22.sp,
+                              fontSize: 19.sp,
                               fontWeight: FontWeight.w800,
                               height: 1.2,
                             ),
@@ -128,6 +135,9 @@ class _PromotionalBannerCarouselState extends State<PromotionalBannerCarousel> w
                           SizedBox(height: 6.h),
                           Text(
                             banner.subtitle,
+                            maxLines: 2,
+                            softWrap: true,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.95),
                               fontSize: 13.sp,
@@ -161,24 +171,39 @@ class _PromotionalBannerCarouselState extends State<PromotionalBannerCarousel> w
               ),
             ),
           ),
-          // Decorative background emoji
-          Positioned(
-            right: 14.w,
-            bottom: 8.h,
-            child: Opacity(
-              opacity: 0.65,
-              child: Text(
-                banner.emoji,
-                maxLines: 1,
-                softWrap: false,
-                style: TextStyle(
-                  fontSize: (baseHeight * 0.55).clamp(56.0, 90.0),
-                  height: 1,
-                  fontFamilyFallback: const ['Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji'],
+          if (hasArtwork)
+            Positioned(
+              right: 20.w,
+              bottom: 5.h,
+              child: Opacity(
+                opacity: 0.92,
+                child: SvgPicture.asset(
+                  banner.artworkAsset!,
+                  package: 'grab_go_shared',
+                  width: artworkSize,
+                  height: artworkSize,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            )
+          else if ((banner.emoji ?? '').isNotEmpty)
+            Positioned(
+              right: 14.w,
+              bottom: 8.h,
+              child: Opacity(
+                opacity: 0.65,
+                child: Text(
+                  banner.emoji!,
+                  maxLines: 1,
+                  softWrap: false,
+                  style: TextStyle(
+                    fontSize: (baseHeight * 0.55).clamp(56.0, 90.0),
+                    height: 1,
+                    fontFamilyFallback: const ['Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji'],
+                  ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );

@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
-/// Model for promotional banners
 class PromotionalBanner {
   final String id;
   final String title;
   final String subtitle;
   final String actionText;
   final List<Color> gradientColors;
-  final String emoji;
+  final String? artworkAsset;
+  final String? emoji;
   final VoidCallback? onTap;
   final bool isDismissible;
 
@@ -18,13 +18,13 @@ class PromotionalBanner {
     required this.subtitle,
     required this.actionText,
     required this.gradientColors,
-    required this.emoji,
+    this.artworkAsset,
+    this.emoji,
     this.onTap,
     this.isDismissible = true,
   });
 }
 
-/// Predefined promotional banners
 class AppPromotionalBanners {
   static PromotionalBanner welcomeOffer({VoidCallback? onTap}) => PromotionalBanner(
     id: 'welcome_offer',
@@ -32,7 +32,7 @@ class AppPromotionalBanners {
     subtitle: 'New here? Get half off your first meal!',
     actionText: 'Claim Offer',
     gradientColors: [AppColors.serviceFood, AppColors.serviceFood],
-    emoji: '🎉',
+    artworkAsset: 'lib/assets/icons/promo_banner_one.svg',
     onTap: onTap,
   );
 
@@ -42,7 +42,7 @@ class AppPromotionalBanners {
     subtitle: 'Share with friends and get rewarded',
     actionText: 'Invite Now',
     gradientColors: [const Color(0xFF0B6E4F), const Color(0xFF0B6E4F)],
-    emoji: '🎁',
+    artworkAsset: 'lib/assets/icons/promo_banner_two.svg',
     onTap: onTap,
   );
 
@@ -52,7 +52,7 @@ class AppPromotionalBanners {
     subtitle: 'Limited time! Ends in 2 hours',
     actionText: 'Order Now',
     gradientColors: [const Color(0xFFF44336), const Color(0xFFF44336)],
-    emoji: '⚡',
+    artworkAsset: 'lib/assets/icons/promo_banner_three.svg',
     onTap: onTap,
   );
 
@@ -62,17 +62,17 @@ class AppPromotionalBanners {
     subtitle: 'Groceries delivered in 20 minutes',
     actionText: 'Shop Now',
     gradientColors: [AppColors.serviceGrabMart, AppColors.serviceGrabMart],
-    emoji: '🏪',
+    artworkAsset: 'lib/assets/icons/promo_banner_four.svg',
     onTap: onTap,
   );
 
   static PromotionalBanner grabGoPro({VoidCallback? onTap}) => PromotionalBanner(
     id: 'grabgo_pro',
     title: 'GrabGo Pro is Here',
-    subtitle: 'From GH₵30/mo • Free delivery perks + fee savings',
+    subtitle: 'From GH₵30/mo enjoy free delivery perks + fee savings',
     actionText: 'View Plans',
     gradientColors: [const Color(0xFF6A1B9A), const Color(0xFF8E24AA)],
-    emoji: '💎',
+    artworkAsset: 'lib/assets/icons/promo_banner_five.svg',
     onTap: onTap,
     isDismissible: false,
   );

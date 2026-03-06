@@ -76,6 +76,7 @@ module.exports = {
 
   // ── GrabGo Pro Subscriptions ──
   isSubscriptionEnabled: parseFlag('SUBSCRIPTION_ENABLED', true),
+  isPromoCheckoutEnabled: parseFlag('PROMO_CHECKOUT_ENABLED', true),
 
   // ── Rider Partner & Incentive System ──
   isRiderPartnerSystemEnabled: parseFlag('RIDER_PARTNER_SYSTEM_ENABLED', false),
