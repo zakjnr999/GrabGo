@@ -469,6 +469,56 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
     return 'Enjoy premium GrabGo delivery perks and subscriber-only value on every order.';
   }
 
+  String _buildHeaderTitle(SubscriptionPlan? selectedPlan) {
+    final current = _current;
+    if (current == null) {
+      return 'Choose Your Subscription Plan';
+    }
+
+    switch (current.status.trim().toLowerCase()) {
+      case 'pending':
+        return 'We\'re Confirming Your Subscription';
+      case 'past_due':
+        return 'Your Subscription Needs Attention';
+      case 'cancelled':
+        return 'Your ${current.tierName} Is Ending Soon';
+      default:
+        return 'Your ${current.tierName} Is Active';
+    }
+  }
+
+  String _buildHeaderDescription(SubscriptionPlan? selectedPlan) {
+    final current = _current;
+    if (current == null) {
+      return _buildPlanDescription(selectedPlan);
+    }
+
+    final currentPlan = _findPlanByTier(current.tier);
+    final planSummary = _buildPlanDescription(currentPlan);
+
+    switch (current.status.trim().toLowerCase()) {
+      case 'pending':
+        return 'Your payment is being verified for ${current.tierName}. We will activate your benefits as soon as confirmation comes through.';
+      case 'past_due':
+        return 'Your last renewal payment failed for ${current.tierName}. Retry payment to keep ${planSummary.toLowerCase()}.';
+      case 'cancelled':
+        return '$planSummary. Your plan has been cancelled and will not renew.';
+      default:
+        return planSummary;
+    }
+  }
+
+  String _buildPlansSectionTitle() {
+    final current = _current;
+    if (current == null) return 'Choose a plan';
+
+    if (current.status.trim().toLowerCase() == 'pending') {
+      return 'Available plans';
+    }
+
+    return 'Switch plan';
+  }
+
   String _formatRenewalDate(DateTime date) {
     final day = date.day.toString().padLeft(2, '0');
     final month = date.month.toString().padLeft(2, '0');
@@ -595,7 +645,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                           children: [
                             if (_current != null) _buildCurrentPlanCard(colors),
                             Text(
-                              'Choose a plan',
+                              _buildPlansSectionTitle(),
                               style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w800),
                             ),
                             SizedBox(height: 12.h),
@@ -627,7 +677,8 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
 
   Widget _buildHeaderSliver(AppColorsExtension colors, SubscriptionPlan? selectedPlan) {
     final expandedHeight = (MediaQuery.sizeOf(context).height * 0.34).clamp(260.0, 330.0).toDouble();
-    final headerDescription = _buildPlanDescription(selectedPlan);
+    final headerTitle = _buildHeaderTitle(selectedPlan);
+    final headerDescription = _buildHeaderDescription(selectedPlan);
 
     return SliverAppBar(
       pinned: true,
@@ -718,15 +769,23 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      Text(
-                        'Choose Your Subscription Plan',
-                        style: TextStyle(
-                          fontFamily: 'Lato',
-                          package: 'grab_go_shared',
-                          color: Colors.white,
-                          fontSize: 29.sp,
-                          fontWeight: FontWeight.w900,
-                          height: 1.05,
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 220),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        child: Text(
+                          headerTitle,
+                          key: ValueKey<String>(
+                            'header_title_${_current?.status}_${_current?.tier}_${selectedPlan?.tier}',
+                          ),
+                          style: TextStyle(
+                            fontFamily: 'Lato',
+                            package: 'grab_go_shared',
+                            color: Colors.white,
+                            fontSize: 29.sp,
+                            fontWeight: FontWeight.w900,
+                            height: 1.05,
+                          ),
                         ),
                       ),
                       SizedBox(height: 12.h),
@@ -736,7 +795,9 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                         switchOutCurve: Curves.easeInCubic,
                         child: Text(
                           headerDescription,
-                          key: ValueKey<String>(selectedPlan?.tier ?? 'none'),
+                          key: ValueKey<String>(
+                            'header_description_${_current?.status}_${_current?.tier}_${selectedPlan?.tier}_${_current?.currentPeriodEnd?.millisecondsSinceEpoch}',
+                          ),
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.92),
                             fontSize: 13.sp,

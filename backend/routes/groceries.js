@@ -1,4 +1,5 @@
 const express = require('express');
+const { Prisma } = require('@prisma/client');
 const router = express.Router();
 const prisma = require('../config/prisma');
 const { protect } = require('../middleware/auth');
@@ -6,6 +7,10 @@ const { cacheMiddleware } = require('../middleware/cache');
 const cache = require('../utils/cache');
 const mlClient = require('../utils/ml_client');
 const { normalizeRatingResponse } = require("../utils/rating_calculator");
+const {
+    isGrabGoExclusiveActive,
+    applyActiveExclusiveWhere,
+} = require('../utils/grabgo_exclusive');
 
 /**
  * Helper to format grocery store for frontend compatibility
@@ -51,6 +56,7 @@ const formatStore = (store) => {
         totalReviews: ratingMeta.totalReviews,
         reviewCount: ratingMeta.reviewCount,
         openingHours: formatOpeningHours(store.openingHours),
+        isGrabGoExclusiveActive: isGrabGoExclusiveActive(store),
         // Legacy support mapping
         store_name: store.storeName,
         is_open: store.isOpen,
@@ -112,15 +118,33 @@ const optionalAuth = (req, res, next) => {
  */
 router.get("/stores", cacheMiddleware(cache.CACHE_KEYS.GROCERY + ':stores', 300), async (req, res) => {
     try {
+        const { isOpen, minRating, limit = 20, exclusive } = req.query;
+        const exclusiveOnly = exclusive === 'true';
+        let where = {
+            isOpen: true,
+            status: 'approved'
+        };
+
+        if (isOpen !== undefined) {
+            where.isOpen = isOpen === 'true';
+        }
+
+        if (minRating) {
+            const rating = parseFloat(minRating);
+            if (!Number.isNaN(rating)) {
+                where.rating = { gte: rating };
+            }
+        }
+
+        where = applyActiveExclusiveWhere(where, exclusiveOnly);
+        const limitValue = Math.min(parseInt(limit, 10) || 20, 100);
+
         const stores = await prisma.groceryStore.findMany({
-            where: {
-                isOpen: true,
-                status: 'approved'
-            },
+            where,
             orderBy: {
                 rating: 'desc'
             },
-            take: 20
+            take: limitValue
         });
 
         res.json({
@@ -146,7 +170,7 @@ router.get("/stores", cacheMiddleware(cache.CACHE_KEYS.GROCERY + ':stores', 300)
  */
 router.get("/nearby", cacheMiddleware(cache.CACHE_KEYS.GROCERY + ':nearby', 180), async (req, res) => {
     try {
-        const { lat, lng, radius = 5 } = req.query;
+        const { lat, lng, radius = 5, exclusive } = req.query;
 
         if (!lat || !lng) {
             return res.status(400).json({
@@ -158,6 +182,10 @@ router.get("/nearby", cacheMiddleware(cache.CACHE_KEYS.GROCERY + ':nearby', 180)
         const latitude = parseFloat(lat);
         const longitude = parseFloat(lng);
         const radiusInKm = parseFloat(radius);
+        const exclusiveOnly = exclusive === 'true';
+        const exclusiveClause = exclusiveOnly
+            ? Prisma.sql`AND "isGrabGoExclusive" = true AND ("isGrabGoExclusiveUntil" IS NULL OR "isGrabGoExclusiveUntil" > NOW())`
+            : Prisma.empty;
 
         // Raw query for PostGIS distance calculation and filtering
         const nearbyStores = await prisma.$queryRaw`
@@ -168,6 +196,7 @@ router.get("/nearby", cacheMiddleware(cache.CACHE_KEYS.GROCERY + ':nearby', 180)
             ) AS distance
             FROM grocery_stores
             WHERE status = 'approved' AND "isOpen" = true
+            ${exclusiveClause}
             AND ST_DWithin(
                 ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography,
                 ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography,

@@ -1,4 +1,5 @@
 const express = require("express");
+const { Prisma } = require("@prisma/client");
 const { body, validationResult } = require("express-validator");
 const prisma = require("../config/prisma");
 const { protect, verifyApiKey, admin } = require("../middleware/auth");
@@ -9,6 +10,10 @@ const {
 } = require("../middleware/upload");
 const { isRestaurantOpen } = require("../utils/restaurant");
 const { normalizeRatingResponse } = require("../utils/rating_calculator");
+const {
+  isGrabGoExclusiveActive,
+  applyActiveExclusiveWhere,
+} = require("../utils/grabgo_exclusive");
 
 const router = express.Router();
 
@@ -73,6 +78,7 @@ const formatRestaurant = (restaurant) => {
     totalReviews: ratingMeta.totalReviews,
     reviewCount: ratingMeta.reviewCount,
     openingHours: formatOpeningHours(openingHours),
+    isGrabGoExclusiveActive: isGrabGoExclusiveActive(rest),
   };
 };
 
@@ -101,8 +107,25 @@ async function checkIsAdmin(req) {
 // Get all restaurants
 router.get("/", async (req, res, next) => {
   try {
+    const { isOpen, minRating, limit = 20, exclusive } = req.query;
     const isAdmin = await checkIsAdmin(req);
-    const where = isAdmin ? {} : { status: "approved" };
+    const exclusiveOnly = exclusive === "true";
+    let where = isAdmin ? {} : { status: "approved" };
+
+    if (isOpen !== undefined) {
+      where.isOpen = isOpen === "true";
+    }
+
+    if (minRating) {
+      const rating = parseFloat(minRating);
+      if (!Number.isNaN(rating)) {
+        where.rating = { gte: rating };
+      }
+    }
+
+    where = applyActiveExclusiveWhere(where, exclusiveOnly);
+
+    const limitValue = Math.min(parseInt(limit, 10) || 20, 100);
 
     const restaurants = await prisma.restaurant.findMany({
       where,
@@ -161,7 +184,8 @@ router.get("/", async (req, res, next) => {
         createdAt: true,
         updatedAt: true,
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: [{ rating: "desc" }, { ratingCount: "desc" }],
+      take: limitValue,
     });
 
     res.json({
@@ -333,8 +357,25 @@ router.post(
 // Get all restaurants (alias for /)
 router.get("/stores", async (req, res) => {
   try {
+    const { isOpen, minRating, limit = 20, exclusive } = req.query;
     const isAdmin = await checkIsAdmin(req);
-    const where = isAdmin ? {} : { status: "approved", isOpen: true };
+    const exclusiveOnly = exclusive === "true";
+    let where = isAdmin ? {} : { status: "approved", isOpen: true };
+
+    if (isOpen !== undefined) {
+      where.isOpen = isOpen === "true";
+    }
+
+    if (minRating) {
+      const rating = parseFloat(minRating);
+      if (!Number.isNaN(rating)) {
+        where.rating = { gte: rating };
+      }
+    }
+
+    where = applyActiveExclusiveWhere(where, exclusiveOnly);
+
+    const limitValue = Math.min(parseInt(limit, 10) || 20, 100);
 
     const restaurants = await prisma.restaurant.findMany({
       where,
@@ -347,8 +388,22 @@ router.get("/stores", async (req, res) => {
         foodType: true,
         description: true,
         averageDeliveryTime: true,
+        averagePreparationTime: true,
         deliveryFee: true,
         minOrder: true,
+        paymentMethods: true,
+        bannerImages: true,
+        isVerified: true,
+        verifiedAt: true,
+        featured: true,
+        featuredUntil: true,
+        features: true,
+        tags: true,
+        totalReviews: true,
+        isAcceptingOrders: true,
+        isGrabGoExclusive: true,
+        isGrabGoExclusiveUntil: true,
+        lastOnlineAt: true,
         status: true,
         rating: true,
         ratingCount: true,
@@ -366,9 +421,11 @@ router.get("/stores", async (req, res) => {
             isClosed: true,
           },
         },
+        createdAt: true,
+        updatedAt: true,
       },
-      orderBy: { rating: 'desc' },
-      take: 20
+      orderBy: [{ rating: "desc" }, { ratingCount: "desc" }],
+      take: limitValue,
     });
 
     // Format restaurants to include location object
@@ -607,7 +664,7 @@ router.get("/search", async (req, res) => {
 // Get nearby restaurants
 router.get("/nearby", async (req, res) => {
   try {
-    const { lat, lng, radius = 5 } = req.query;
+    const { lat, lng, radius = 5, exclusive } = req.query;
 
     if (!lat || !lng) {
       return res.status(400).json({
@@ -619,19 +676,27 @@ router.get("/nearby", async (req, res) => {
     const latitude = parseFloat(lat);
     const longitude = parseFloat(lng);
     const radiusInMeters = parseFloat(radius) * 1000;
+    const exclusiveOnly = exclusive === "true";
+    const exclusiveClause = exclusiveOnly
+      ? Prisma.sql`AND "isGrabGoExclusive" = true AND ("isGrabGoExclusiveUntil" IS NULL OR "isGrabGoExclusiveUntil" > NOW())`
+      : Prisma.empty;
 
     // Use raw SQL for PostGIS geospatial query
     let restaurants = await prisma.$queryRaw`
       SELECT 
         id, "restaurantName", email, phone, logo, "foodType", description,
-        "averageDeliveryTime", "deliveryFee", "minOrder", status, rating,
-        "ratingCount", "isOpen", longitude, latitude, address, city, area,
+        "averageDeliveryTime", "averagePreparationTime", "deliveryFee", "minOrder",
+        "paymentMethods", "bannerImages", "isVerified", "verifiedAt", featured,
+        "featuredUntil", features, tags, "totalReviews", "isAcceptingOrders",
+        "isGrabGoExclusive", "isGrabGoExclusiveUntil", "lastOnlineAt",
+        status, rating, "ratingCount", "isOpen", longitude, latitude, address, city, area,
         ST_Distance(
           ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography,
           ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography
         ) / 1000 as distance
       FROM restaurants
       WHERE status = 'approved'
+      ${exclusiveClause}
       AND ST_DWithin(
         ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography,
         ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography,

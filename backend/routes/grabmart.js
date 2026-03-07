@@ -1,4 +1,5 @@
 const express = require('express');
+const { Prisma } = require('@prisma/client');
 const router = express.Router();
 const prisma = require('../config/prisma');
 const { protect } = require('../middleware/auth');
@@ -6,6 +7,10 @@ const { cacheMiddleware } = require('../middleware/cache');
 const cache = require('../utils/cache');
 const mlClient = require('../utils/ml_client');
 const { normalizeRatingResponse } = require("../utils/rating_calculator");
+const {
+    isGrabGoExclusiveActive,
+    applyActiveExclusiveWhere,
+} = require('../utils/grabgo_exclusive');
 
 /**
  * Helper to format GrabMart store for frontend compatibility
@@ -25,6 +30,7 @@ const formatStore = (store) => {
         ratingCount: ratingMeta.ratingCount,
         totalReviews: ratingMeta.totalReviews,
         reviewCount: ratingMeta.reviewCount,
+        isGrabGoExclusiveActive: isGrabGoExclusiveActive(store),
         // Legacy support mapping
         store_name: store.storeName,
         is_open: store.isOpen,
@@ -86,9 +92,10 @@ const optionalAuth = (req, res, next) => {
  */
 router.get("/stores", cacheMiddleware(cache.CACHE_KEYS.GRABMART + ':stores', 300), async (req, res) => {
     try {
-        const { isOpen, is24Hours, minRating, limit = 20 } = req.query;
+        const { isOpen, is24Hours, minRating, limit = 20, exclusive } = req.query;
 
         const where = { status: 'approved' };
+        const exclusiveOnly = exclusive === 'true';
 
         if (isOpen !== undefined) {
             where.isOpen = isOpen === 'true';
@@ -105,10 +112,12 @@ router.get("/stores", cacheMiddleware(cache.CACHE_KEYS.GRABMART + ':stores', 300
             }
         }
 
+        const filteredWhere = applyActiveExclusiveWhere(where, exclusiveOnly);
+
         let limitValue = Math.min(parseInt(limit) || 20, 100);
 
         const stores = await prisma.grabMartStore.findMany({
-            where,
+            where: filteredWhere,
             orderBy: [
                 { rating: 'desc' },
                 { ratingCount: 'desc' }
@@ -751,7 +760,7 @@ router.get("/with-services", async (req, res) => {
  */
 router.get("/nearby", cacheMiddleware(cache.CACHE_KEYS.GRABMART + ':nearby', 180), async (req, res) => {
     try {
-        const { lat, lng, radius = 5 } = req.query;
+        const { lat, lng, radius = 5, exclusive } = req.query;
 
         if (!lat || !lng) {
             return res.status(400).json({
@@ -763,6 +772,10 @@ router.get("/nearby", cacheMiddleware(cache.CACHE_KEYS.GRABMART + ':nearby', 180
         const latitude = parseFloat(lat);
         const longitude = parseFloat(lng);
         const radiusInKm = parseFloat(radius);
+        const exclusiveOnly = exclusive === 'true';
+        const exclusiveClause = exclusiveOnly
+            ? Prisma.sql`AND "isGrabGoExclusive" = true AND ("isGrabGoExclusiveUntil" IS NULL OR "isGrabGoExclusiveUntil" > NOW())`
+            : Prisma.empty;
 
         const nearbyStores = await prisma.$queryRaw`
             SELECT *, 
@@ -772,6 +785,7 @@ router.get("/nearby", cacheMiddleware(cache.CACHE_KEYS.GRABMART + ':nearby', 180
             ) AS distance
             FROM grabmart_stores
             WHERE status = 'approved' AND "isOpen" = true
+            ${exclusiveClause}
             AND ST_DWithin(
                 ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography,
                 ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography,

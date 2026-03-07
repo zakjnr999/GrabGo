@@ -63,6 +63,8 @@ class Cart extends StatelessWidget {
                 provider.subscriptionDeliveryDiscount;
             final double subscriptionServiceFeeDiscount =
                 provider.subscriptionServiceFeeDiscount;
+            final double subscriptionSavings =
+                provider.subscriptionTotalDiscount;
             final String? subscriptionTier = provider.subscriptionTier;
             final double creditsApplied = provider.creditsApplied;
             final double promoDiscount = provider.promoDiscount;
@@ -352,6 +354,24 @@ class Cart extends StatelessWidget {
                                         infoType: _FeeInfoType.rain,
                                       ),
                                     ],
+                                    if (!isPickupMode &&
+                                        subscriptionSavings > 0) ...[
+                                      SizedBox(height: 6.h),
+                                      _buildPriceRow(
+                                        context,
+                                        "GrabGo Pro Savings",
+                                        -subscriptionSavings,
+                                        colors,
+                                        Assets.icons.cash,
+                                        false,
+                                        false,
+                                        labelWidget:
+                                            _buildSubscriptionSavingsLabel(
+                                              colors: colors,
+                                              tier: subscriptionTier,
+                                            ),
+                                      ),
+                                    ],
                                     if (promoDiscount > 0) ...[
                                       SizedBox(height: 6.h),
                                       _buildPriceRow(
@@ -556,18 +576,20 @@ class Cart extends StatelessWidget {
     bool info, {
     _FeeInfoType? infoType,
     bool isLoading = false,
+    Widget? labelWidget,
     Widget? amountWidget,
   }) {
     return Row(
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: colors.textSecondary,
-            fontSize: 13.sp,
-            fontWeight: isTotal ? FontWeight.w600 : FontWeight.w400,
-          ),
-        ),
+        labelWidget ??
+            Text(
+              label,
+              style: TextStyle(
+                color: colors.textSecondary,
+                fontSize: 13.sp,
+                fontWeight: isTotal ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
         info
             ? Material(
                 color: Colors.transparent,
@@ -717,6 +739,37 @@ class Cart extends StatelessWidget {
       ),
     );
     return withBadge(text);
+  }
+
+  Widget _buildSubscriptionSavingsLabel({
+    required AppColorsExtension colors,
+    required String? tier,
+  }) {
+    final badgeAsset = _subscriptionBadgeAssetForTier(tier);
+    final baseTextStyle = TextStyle(
+      color: colors.textSecondary,
+      fontSize: 13.sp,
+      fontWeight: FontWeight.w400,
+    );
+
+    if (badgeAsset == null) {
+      return Text('GrabGo Pro Savings', style: baseTextStyle);
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('GrabGo Pro Savings', style: baseTextStyle),
+        SizedBox(width: 6.w),
+        SvgPicture.asset(
+          badgeAsset,
+          package: 'grab_go_shared',
+          height: 15.h,
+          width: 15.w,
+          fit: BoxFit.contain,
+        ),
+      ],
+    );
   }
 
   Widget _buildHeaderMenuButton(

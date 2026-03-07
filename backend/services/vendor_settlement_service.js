@@ -1,4 +1,5 @@
 const prisma = require('../config/prisma');
+const { isGrabGoExclusiveActive } = require('../utils/grabgo_exclusive');
 
 /**
  * Default vendor commission rate.
@@ -8,6 +9,21 @@ const prisma = require('../config/prisma');
  * Set to 0 for launch (no commission). Raise to 0.10–0.15 after Month 3.
  */
 const DEFAULT_VENDOR_COMMISSION_RATE = parseFloat(process.env.VENDOR_COMMISSION_RATE || '0');
+const DEFAULT_EXCLUSIVE_VENDOR_COMMISSION_RATE = parseFloat(
+  process.env.EXCLUSIVE_VENDOR_COMMISSION_RATE || process.env.VENDOR_COMMISSION_RATE || '0'
+);
+
+const resolveCommissionRate = (vendor) => {
+  if (vendor.commissionRate != null) {
+    return vendor.commissionRate;
+  }
+
+  if (isGrabGoExclusiveActive(vendor)) {
+    return DEFAULT_EXCLUSIVE_VENDOR_COMMISSION_RATE;
+  }
+
+  return DEFAULT_VENDOR_COMMISSION_RATE;
+};
 
 /**
  * Resolve the vendor entity and commission rate for an order.
@@ -21,56 +37,80 @@ const resolveVendor = async ({ tx, order }) => {
   if (order.restaurantId) {
     const vendor = await tx.restaurant.findUnique({
       where: { id: order.restaurantId },
-      select: { id: true, restaurantName: true, commissionRate: true, isGrabGoExclusive: true },
+      select: {
+        id: true,
+        restaurantName: true,
+        commissionRate: true,
+        isGrabGoExclusive: true,
+        isGrabGoExclusiveUntil: true,
+      },
     });
     if (!vendor) return null;
     return {
       vendorId: vendor.id,
       vendorType: 'restaurant',
       vendorName: vendor.restaurantName,
-      commissionRate: vendor.commissionRate ?? DEFAULT_VENDOR_COMMISSION_RATE,
+      commissionRate: resolveCommissionRate(vendor),
     };
   }
 
   if (order.groceryStoreId) {
     const vendor = await tx.groceryStore.findUnique({
       where: { id: order.groceryStoreId },
-      select: { id: true, storeName: true, commissionRate: true, isGrabGoExclusive: true },
+      select: {
+        id: true,
+        storeName: true,
+        commissionRate: true,
+        isGrabGoExclusive: true,
+        isGrabGoExclusiveUntil: true,
+      },
     });
     if (!vendor) return null;
     return {
       vendorId: vendor.id,
       vendorType: 'grocery',
       vendorName: vendor.storeName,
-      commissionRate: vendor.commissionRate ?? DEFAULT_VENDOR_COMMISSION_RATE,
+      commissionRate: resolveCommissionRate(vendor),
     };
   }
 
   if (order.pharmacyStoreId) {
     const vendor = await tx.pharmacyStore.findUnique({
       where: { id: order.pharmacyStoreId },
-      select: { id: true, storeName: true, commissionRate: true, isGrabGoExclusive: true },
+      select: {
+        id: true,
+        storeName: true,
+        commissionRate: true,
+        isGrabGoExclusive: true,
+        isGrabGoExclusiveUntil: true,
+      },
     });
     if (!vendor) return null;
     return {
       vendorId: vendor.id,
       vendorType: 'pharmacy',
       vendorName: vendor.storeName,
-      commissionRate: vendor.commissionRate ?? DEFAULT_VENDOR_COMMISSION_RATE,
+      commissionRate: resolveCommissionRate(vendor),
     };
   }
 
   if (order.grabMartStoreId) {
     const vendor = await tx.grabMartStore.findUnique({
       where: { id: order.grabMartStoreId },
-      select: { id: true, storeName: true, commissionRate: true, isGrabGoExclusive: true },
+      select: {
+        id: true,
+        storeName: true,
+        commissionRate: true,
+        isGrabGoExclusive: true,
+        isGrabGoExclusiveUntil: true,
+      },
     });
     if (!vendor) return null;
     return {
       vendorId: vendor.id,
       vendorType: 'grabmart',
       vendorName: vendor.storeName,
-      commissionRate: vendor.commissionRate ?? DEFAULT_VENDOR_COMMISSION_RATE,
+      commissionRate: resolveCommissionRate(vendor),
     };
   }
 
@@ -228,4 +268,5 @@ module.exports = {
   resolveVendor,
   settleVendorInTransaction,
   DEFAULT_VENDOR_COMMISSION_RATE,
+  DEFAULT_EXCLUSIVE_VENDOR_COMMISSION_RATE,
 };
