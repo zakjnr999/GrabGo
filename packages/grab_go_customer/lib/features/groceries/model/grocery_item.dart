@@ -187,7 +187,7 @@ class GroceryItem implements CartItem {
           [],
       rating: rawRating is num
           ? rawRating.toDouble()
-          : double.tryParse(rawRating.toString()) ?? 0,
+          : double.tryParse(rawRating.toString()) ?? 4.0,
       reviewCount: rawReviewCount is num
           ? rawReviewCount.toInt()
           : int.tryParse(rawReviewCount.toString()) ?? 0,

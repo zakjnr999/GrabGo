@@ -64,6 +64,11 @@ const {
   decorateOrdersWithVendorRatingMeta,
   submitVendorRating,
 } = require("../services/vendor_rating_service");
+const {
+  ItemReviewError,
+  decorateOrdersWithItemReviewMeta,
+  submitItemReviews,
+} = require("../services/item_review_service");
 
 const router = express.Router();
 
@@ -1650,7 +1655,18 @@ router.get("/", protect, async (req, res) => {
           },
         },
         items: {
-          include: { food: true, groceryItem: true, pharmacyItem: true, grabMartItem: true }
+          include: {
+            food: true,
+            groceryItem: true,
+            pharmacyItem: true,
+            grabMartItem: true,
+            itemReview: {
+              select: {
+                rating: true,
+                createdAt: true,
+              },
+            },
+          }
         }
       },
       orderBy: { createdAt: 'desc' }
@@ -1660,11 +1676,17 @@ router.get("/", protect, async (req, res) => {
     const ordersWithVendorRatingMeta = decorateOrdersWithVendorRatingMeta(ordersWithGroupMeta, {
       viewerRole: req.user.role,
     });
+    const ordersWithItemReviewMeta = decorateOrdersWithItemReviewMeta(
+      ordersWithVendorRatingMeta,
+      {
+        viewerRole: req.user.role,
+      }
+    );
 
     res.json({
       success: true,
       message: "Orders retrieved successfully",
-      data: sanitizeOrderPayload(ordersWithVendorRatingMeta),
+      data: sanitizeOrderPayload(ordersWithItemReviewMeta),
     });
   } catch (error) {
     console.error("Get orders error:", error);
@@ -1883,7 +1905,18 @@ router.get("/:orderId", protect, async (req, res) => {
           },
         },
         items: {
-          include: { food: true, groceryItem: true, pharmacyItem: true, grabMartItem: true }
+          include: {
+            food: true,
+            groceryItem: true,
+            pharmacyItem: true,
+            grabMartItem: true,
+            itemReview: {
+              select: {
+                rating: true,
+                createdAt: true,
+              },
+            },
+          }
         }
       }
     });
@@ -1929,11 +1962,17 @@ router.get("/:orderId", protect, async (req, res) => {
     const orderWithVendorRatingMeta = decorateOrdersWithVendorRatingMeta(orderWithGroupMeta || order, {
       viewerRole: req.user.role,
     });
+    const orderWithItemReviewMeta = decorateOrdersWithItemReviewMeta(
+      orderWithVendorRatingMeta,
+      {
+        viewerRole: req.user.role,
+      }
+    );
 
     res.json({
       success: true,
       message: "Order retrieved successfully",
-      data: sanitizeOrderPayload(orderWithVendorRatingMeta),
+      data: sanitizeOrderPayload(orderWithItemReviewMeta),
     });
   } catch (error) {
     console.error("Get order error:", error);
@@ -2008,6 +2047,83 @@ router.post(
       }
 
       console.error("Submit vendor rating error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: error.message,
+      });
+    }
+  }
+);
+
+router.post(
+  "/:orderId/item-reviews",
+  protect,
+  [
+    body("reviews")
+      .isArray({ min: 1, max: 25 })
+      .withMessage("reviews must be a non-empty array with at most 25 items"),
+    body("reviews.*.orderItemId")
+      .isString()
+      .notEmpty()
+      .withMessage("orderItemId is required for each item review"),
+    body("reviews.*.rating")
+      .isInt({ min: 1, max: 5 })
+      .withMessage("rating must be an integer between 1 and 5"),
+    body("reviews.*.feedbackTags")
+      .optional()
+      .isArray({ max: 10 })
+      .withMessage("feedbackTags must be an array with at most 10 items"),
+    body("reviews.*.feedbackTags.*")
+      .optional()
+      .isString()
+      .withMessage("feedbackTags entries must be strings"),
+    body("reviews.*.comment")
+      .optional()
+      .isString()
+      .isLength({ max: 500 })
+      .withMessage("comment must be at most 500 characters"),
+  ],
+  async (req, res) => {
+    try {
+      if (req.user.role !== "customer") {
+        return res.status(403).json({
+          success: false,
+          message: "Only customers can submit item reviews",
+          code: "ITEM_REVIEW_CUSTOMER_ONLY",
+        });
+      }
+
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: "Validation failed",
+          errors: errors.array(),
+        });
+      }
+
+      const result = await submitItemReviews({
+        orderId: req.params.orderId,
+        customerId: req.user.id,
+        reviews: req.body.reviews,
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: "Item reviews submitted successfully",
+        data: result,
+      });
+    } catch (error) {
+      if (error instanceof ItemReviewError) {
+        return res.status(error.statusCode || 400).json({
+          success: false,
+          message: error.message,
+          code: error.code,
+        });
+      }
+
+      console.error("Submit item reviews error:", error);
       return res.status(500).json({
         success: false,
         message: "Server error",

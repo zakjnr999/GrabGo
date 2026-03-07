@@ -392,6 +392,70 @@ class OrderProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> markItemReviewsSubmitted({
+    required String orderId,
+    required List<Map<String, dynamic>> submittedReviews,
+  }) async {
+    try {
+      if (submittedReviews.isEmpty) return;
+
+      final orderIndex = _orders.indexWhere((order) => order['id'] == orderId);
+      if (orderIndex == -1) return;
+
+      final updatedOrder = Map<String, dynamic>.from(_orders[orderIndex]);
+      final rawItems = (updatedOrder['items'] as List? ?? const [])
+          .whereType<Map>()
+          .map((entry) => Map<String, dynamic>.from(entry))
+          .toList(growable: true);
+
+      final submittedByOrderItemId = <String, Map<String, dynamic>>{
+        for (final review in submittedReviews)
+          if ((review['orderItemId']?.toString().trim().isNotEmpty ?? false))
+            review['orderItemId'].toString(): Map<String, dynamic>.from(review),
+      };
+
+      for (final item in rawItems) {
+        final orderItemId = item['id']?.toString();
+        if (orderItemId == null) continue;
+        final submitted = submittedByOrderItemId[orderItemId];
+        if (submitted == null) continue;
+
+        item['canRateItem'] = false;
+        item['itemRatingSubmitted'] = true;
+        item['itemRatingValue'] = submitted['rating'];
+        item['itemRatedAt'] =
+            submitted['submittedAt']?.toString() ??
+            DateTime.now().toIso8601String();
+      }
+
+      final pendingCount = rawItems
+          .where((item) => item['canRateItem'] == true)
+          .length;
+      final submittedCount = rawItems
+          .where((item) => item['itemRatingSubmitted'] == true)
+          .length;
+      final reviewableCount = rawItems
+          .where(
+            (item) => item['reviewableItemId']?.toString().isNotEmpty == true,
+          )
+          .length;
+
+      updatedOrder['items'] = rawItems;
+      updatedOrder['pendingItemReviewCount'] = pendingCount;
+      updatedOrder['submittedItemReviewCount'] = submittedCount;
+      updatedOrder['itemReviewableCount'] = reviewableCount;
+      updatedOrder['canRateItems'] = pendingCount > 0;
+
+      _orders[orderIndex] = updatedOrder;
+      notifyListeners();
+      await CacheService.saveOrderHistory(_orders);
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error marking item reviews as submitted: $e');
+      }
+    }
+  }
+
   /// Get order statistics
   Map<String, dynamic> getOrderStatistics() {
     final totalOrders = _orders.length;

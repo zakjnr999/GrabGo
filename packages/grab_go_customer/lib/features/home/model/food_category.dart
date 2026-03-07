@@ -82,7 +82,7 @@ class FoodItem implements CartItem {
     this.categoryId = '',
     this.categoryName,
     required this.price,
-    this.rating = 4.5,
+    this.rating = 4.0,
     this.reviewCount = 0,
     this.prepTimeMinutes = 15,
     this.calories = 300,
@@ -267,6 +267,7 @@ class FoodItem implements CartItem {
       price: parseDouble(json['price']),
       rating: parseDouble(
         json['weightedRating'] ?? json['displayRating'] ?? json['rating'],
+        defaultValue: 4.0,
       ),
       reviewCount: parseInt(
         json['reviewCount'] ?? json['totalReviews'] ?? json['ratingCount'],

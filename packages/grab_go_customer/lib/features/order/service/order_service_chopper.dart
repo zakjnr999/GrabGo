@@ -69,6 +69,12 @@ abstract class OrderServiceChopper extends ChopperService {
     @Body() Map<String, dynamic> body,
   );
 
+  @POST(path: '/orders/{orderId}/item-reviews')
+  Future<Response<Map<String, dynamic>>> submitItemReviews(
+    @Path() String orderId,
+    @Body() Map<String, dynamic> body,
+  );
+
   static OrderServiceChopper create([ChopperClient? client]) =>
       _$OrderServiceChopper(client);
 }

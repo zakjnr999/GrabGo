@@ -110,7 +110,7 @@ class GrabMartItem implements CartItem {
       tags: json['tags'] != null ? List<String>.from(json['tags']) : [],
       rating: rawRating is num
           ? rawRating.toDouble()
-          : double.tryParse(rawRating.toString()) ?? 0,
+          : double.tryParse(rawRating.toString()) ?? 4.0,
       reviewCount: rawReviewCount is num
           ? rawReviewCount.toInt()
           : int.tryParse(rawReviewCount.toString()) ?? 0,

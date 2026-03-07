@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:chopper/chopper.dart';
 import 'package:flutter/foundation.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
+import 'package:grab_go_customer/features/order/model/item_review_models.dart';
 import 'package:grab_go_customer/features/order/model/vendor_rating_models.dart';
 import 'package:grab_go_customer/features/order/service/order_service_chopper.dart';
 import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
@@ -661,6 +662,36 @@ class OrderServiceWrapper {
       return VendorRatingResult.fromJson(data);
     } catch (e) {
       throw Exception('Failed to submit vendor rating: $e');
+    }
+  }
+
+  Future<ItemReviewSubmissionResult> submitItemReviews({
+    required String orderId,
+    required ItemReviewSubmissionRequest request,
+  }) async {
+    try {
+      final response = await _orderService.submitItemReviews(
+        orderId,
+        request.toJson(),
+      );
+      final body = _resolveResponseMap(response);
+
+      if (body == null) {
+        throw Exception('Unable to submit item reviews right now.');
+      }
+
+      if (body['success'] != true) {
+        throw Exception(body['message']?.toString() ?? 'Item reviews failed');
+      }
+
+      final data = body['data'] as Map<String, dynamic>?;
+      if (data == null) {
+        throw Exception('Item review response was empty');
+      }
+
+      return ItemReviewSubmissionResult.fromJson(data);
+    } catch (e) {
+      throw Exception('Failed to submit item reviews: $e');
     }
   }
 

@@ -5,8 +5,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:grab_go_customer/features/order/model/item_review_models.dart';
 import 'package:grab_go_customer/features/order/service/order_service_wrapper.dart';
-import 'package:grab_go_customer/features/order/view/vendor_rating.dart';
+import 'package:grab_go_customer/features/order/view/rating_onboarding.dart';
 import 'package:grab_go_customer/shared/services/paystack_service.dart'
     as paystack;
 import 'package:grab_go_customer/shared/services/user_service.dart';
@@ -42,6 +43,10 @@ class OrderModel {
   final bool vendorRatingSubmitted;
   final int? vendorRatingValue;
   final DateTime? vendorRatedAt;
+  final bool canRateItems;
+  final int pendingItemReviewCount;
+  final int submittedItemReviewCount;
+  final int itemReviewableCount;
   final Map<String, dynamic> rawOrder;
 
   OrderModel({
@@ -67,26 +72,49 @@ class OrderModel {
     this.vendorRatingSubmitted = false,
     this.vendorRatingValue,
     this.vendorRatedAt,
+    this.canRateItems = false,
+    this.pendingItemReviewCount = 0,
+    this.submittedItemReviewCount = 0,
+    this.itemReviewableCount = 0,
     required this.rawOrder,
   });
 
   int get itemCount => items.fold(0, (sum, item) => sum + item.quantity);
+  bool get hasPendingReviews => canRateVendor || canRateItems;
+  bool get hasSubmittedReviews =>
+      vendorRatingSubmitted || submittedItemReviewCount > 0;
 }
 
 class OrderItem {
+  final String id;
   final String name;
   final int quantity;
   final double price;
   final String? image;
+  final String itemType;
+  final String? itemReviewType;
+  final String? reviewableItemId;
+  final bool canRateItem;
+  final bool itemRatingSubmitted;
+  final int? itemRatingValue;
+  final DateTime? itemRatedAt;
   final Map<String, dynamic>? selectedPortion;
   final List<Map<String, dynamic>> selectedPreferences;
   final String? itemNote;
 
   OrderItem({
+    required this.id,
     required this.name,
     required this.quantity,
     required this.price,
     this.image,
+    this.itemType = '',
+    this.itemReviewType,
+    this.reviewableItemId,
+    this.canRateItem = false,
+    this.itemRatingSubmitted = false,
+    this.itemRatingValue,
+    this.itemRatedAt,
     this.selectedPortion,
     this.selectedPreferences = const [],
     this.itemNote,
@@ -163,6 +191,17 @@ class _OrdersState extends State<Orders> {
   }
 
   OrderModel _convertAPIOrderToOrderModel(Map<String, dynamic> apiOrder) {
+    DateTime? parseDate(dynamic dateValue) {
+      if (dateValue == null) return null;
+      if (dateValue is String) {
+        return DateTime.tryParse(dateValue);
+      }
+      if (dateValue is int) {
+        return DateTime.fromMillisecondsSinceEpoch(dateValue);
+      }
+      return null;
+    }
+
     final items = (apiOrder['items'] as List? ?? []).map((item) {
       final itemName = item['name'] ?? item['food']?['name'] ?? 'Unknown Item';
       final itemPrice = _toDouble(item['price'] ?? item['food']?['price']);
@@ -177,12 +216,23 @@ class _OrdersState extends State<Orders> {
                 .toList(growable: false)
           : const <Map<String, dynamic>>[];
       final itemNote = item['itemNote']?.toString();
+      final itemRatedAt = parseDate(item['itemRatedAt']);
 
       return OrderItem(
+        id: item['id']?.toString() ?? '',
         name: itemName,
         quantity: _toInt(item['quantity'], fallback: 1),
         price: itemPrice,
         image: itemImage,
+        itemType: item['itemType']?.toString() ?? '',
+        itemReviewType: item['itemReviewType']?.toString(),
+        reviewableItemId: item['reviewableItemId']?.toString(),
+        canRateItem: item['canRateItem'] == true,
+        itemRatingSubmitted: item['itemRatingSubmitted'] == true,
+        itemRatingValue: item['itemRatingValue'] is num
+            ? (item['itemRatingValue'] as num).toInt()
+            : int.tryParse(item['itemRatingValue']?.toString() ?? ''),
+        itemRatedAt: itemRatedAt,
         selectedPortion: selectedPortion,
         selectedPreferences: selectedPreferences,
         itemNote: itemNote,
@@ -238,17 +288,6 @@ class _OrdersState extends State<Orders> {
           'Restaurant ${apiOrder['restaurant'].substring(0, 8)}...';
     }
 
-    DateTime? parseDate(dynamic dateValue) {
-      if (dateValue == null) return null;
-      if (dateValue is String) {
-        return DateTime.tryParse(dateValue);
-      }
-      if (dateValue is int) {
-        return DateTime.fromMillisecondsSinceEpoch(dateValue);
-      }
-      return null;
-    }
-
     final orderDate =
         parseDate(apiOrder['orderDate'] ?? apiOrder['createdAt']) ??
         DateTime.now();
@@ -264,6 +303,12 @@ class _OrdersState extends State<Orders> {
         ? vendorRatingValueRaw.toInt()
         : int.tryParse(vendorRatingValueRaw?.toString() ?? '');
     final vendorRatedAt = parseDate(apiOrder['vendorRatedAt']);
+    final canRateItems = apiOrder['canRateItems'] == true;
+    final pendingItemReviewCount = _toInt(apiOrder['pendingItemReviewCount']);
+    final submittedItemReviewCount = _toInt(
+      apiOrder['submittedItemReviewCount'],
+    );
+    final itemReviewableCount = _toInt(apiOrder['itemReviewableCount']);
     final groupMeta = apiOrder['groupMeta'] is Map
         ? Map<String, dynamic>.from(apiOrder['groupMeta'])
         : null;
@@ -295,6 +340,10 @@ class _OrdersState extends State<Orders> {
       vendorRatingSubmitted: vendorRatingSubmitted,
       vendorRatingValue: vendorRatingValue,
       vendorRatedAt: vendorRatedAt,
+      canRateItems: canRateItems,
+      pendingItemReviewCount: pendingItemReviewCount,
+      submittedItemReviewCount: submittedItemReviewCount,
+      itemReviewableCount: itemReviewableCount,
       rawOrder: apiOrder,
     );
   }
@@ -624,16 +673,64 @@ class _OrdersState extends State<Orders> {
     }
   }
 
-  Future<void> _openVendorRatingFlow(
-    BuildContext context,
-    OrderModel order,
-  ) async {
-    await Navigator.of(context).push<int?>(
+  List<ReviewableOrderItem> _buildReviewableItems(OrderModel order) {
+    return order.items
+        .where(
+          (item) =>
+              item.canRateItem &&
+              (item.reviewableItemId?.isNotEmpty ?? false) &&
+              (item.itemReviewType?.isNotEmpty ?? false),
+        )
+        .map(
+          (item) => ReviewableOrderItem(
+            orderItemId: item.id,
+            itemId: item.reviewableItemId!,
+            itemType: item.itemReviewType!,
+            name: item.name,
+            image: item.image,
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  String _completedReviewActionLabel(OrderModel order) {
+    if (order.canRateVendor && order.canRateItems) return 'Rate Order';
+    if (order.canRateItems) return 'Rate Items';
+    return 'Rate Vendor';
+  }
+
+  String _completedReviewStatusLabel(OrderModel order) {
+    if (order.vendorRatingSubmitted && order.submittedItemReviewCount > 0) {
+      return 'Reviews submitted';
+    }
+    if (order.vendorRatingSubmitted) {
+      return order.vendorRatingValue != null
+          ? 'Rated ${order.vendorRatingValue}\u2605'
+          : 'Vendor rated';
+    }
+    if (order.submittedItemReviewCount > 0) {
+      return order.submittedItemReviewCount == 1
+          ? '1 item rated'
+          : '${order.submittedItemReviewCount} items rated';
+    }
+    return 'Rated';
+  }
+
+  Future<void> _openReviewFlow(BuildContext context, OrderModel order) async {
+    await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => VendorRating(
+        builder: (context) => RatingOnboarding(
           orderId: order.id,
+          showRiderStep: false,
+          includeVendorStep: order.canRateVendor,
+          reviewableItems: _buildReviewableItems(order),
           vendorName: order.restaurantName,
-          vendorImage: order.restaurantLogo,
+          vendorLogo: order.restaurantLogo,
+          onFinished: () {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            }
+          },
         ),
       ),
     );
@@ -1672,10 +1769,11 @@ class _OrdersState extends State<Orders> {
                 fontWeight: FontWeight.w700,
               ),
             )
-          else if (order.status == OrderStatus.completed && order.canRateVendor)
+          else if (order.status == OrderStatus.completed &&
+              order.hasPendingReviews)
             AppButton(
-              onPressed: () => _openVendorRatingFlow(context, order),
-              buttonText: "Rate Vendor",
+              onPressed: () => _openReviewFlow(context, order),
+              buttonText: _completedReviewActionLabel(order),
               backgroundColor: colors.accentOrange,
               width: double.infinity,
               height: KWidgetSize.buttonHeight.h,
@@ -1687,7 +1785,7 @@ class _OrdersState extends State<Orders> {
               ),
             )
           else if (order.status == OrderStatus.completed &&
-              order.vendorRatingSubmitted)
+              order.hasSubmittedReviews)
             Container(
               width: double.infinity,
               height: KWidgetSize.buttonHeight.h,
@@ -1712,9 +1810,7 @@ class _OrdersState extends State<Orders> {
                   ),
                   SizedBox(width: 8.w),
                   Text(
-                    order.vendorRatingValue != null
-                        ? 'Rated ${order.vendorRatingValue}\u2605'
-                        : 'Rated',
+                    _completedReviewStatusLabel(order),
                     style: TextStyle(
                       color: colors.textPrimary,
                       fontSize: 14.sp,

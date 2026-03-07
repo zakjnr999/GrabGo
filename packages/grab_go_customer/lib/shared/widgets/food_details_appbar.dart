@@ -4,8 +4,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:grab_go_customer/features/grabmart/model/grabmart_item.dart';
+import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/features/home/view/item_reviews_page.dart';
+import 'package:grab_go_customer/features/pharmacy/model/pharmacy_item.dart';
 import 'package:grab_go_customer/shared/services/auth_guard.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -18,6 +21,27 @@ import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
 class FoodDetailsAppBar extends StatelessWidget {
   const FoodDetailsAppBar({super.key, required this.foodItem});
   final CartItem foodItem;
+
+  String get _reviewRouteItemType {
+    switch (foodItem.itemType) {
+      case 'GroceryItem':
+        return 'grocery';
+      case 'PharmacyItem':
+        return 'pharmacy';
+      case 'GrabMartItem':
+        return 'grabmart';
+      default:
+        return 'food';
+    }
+  }
+
+  int get _reviewCount {
+    if (foodItem is FoodItem) return (foodItem as FoodItem).reviewCount;
+    if (foodItem is GroceryItem) return (foodItem as GroceryItem).reviewCount;
+    if (foodItem is PharmacyItem) return (foodItem as PharmacyItem).reviewCount;
+    if (foodItem is GrabMartItem) return (foodItem as GrabMartItem).reviewCount;
+    return 0;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -273,7 +297,15 @@ class FoodDetailsAppBar extends StatelessWidget {
           context: context,
           onTap: () => Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const ItemReviewsPage()),
+            MaterialPageRoute(
+              builder: (context) => ItemReviewsPage(
+                itemId: foodItem.id,
+                itemType: _reviewRouteItemType,
+                itemName: foodItem.name,
+                initialRating: foodItem.rating,
+                initialReviewCount: _reviewCount,
+              ),
+            ),
           ),
           icon: SvgPicture.asset(
             Assets.icons.moreVertical,

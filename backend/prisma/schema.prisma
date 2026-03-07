@@ -471,6 +471,7 @@ model User {
   referralCode           ReferralCode?
   userCredits            UserCredit[]
   vendorReviews          VendorReview[]
+  itemReviews            ItemReview[]
   promoCodesCreated      PromoCode[]                 @relation("PromoCodeCreator")
   targetedPromoCodes     PromoCodeTargetedUser[]
   scheduledNotifications ScheduledNotification[]
@@ -825,7 +826,8 @@ model Food {
   ingredients        String[]  @default([])
   portionOptions     Json?
   preferenceGroups   Json?
-  rating             Float     @default(0)
+  rating             Float     @default(4.0)
+  ratingSum          Float     @default(0)
   totalReviews       Int       @default(0)
   discountPercentage Int       @default(0)
   discountEndDate    DateTime?
@@ -839,6 +841,7 @@ model Food {
   orderItems  OrderItem[]
   cartItems   CartItem[]
   favoritedBy UserFavoriteFood[]
+  itemReviews ItemReview[] @relation("FoodItemReviews")
 
   @@index([restaurantId])
   @@index([categoryId])
@@ -990,7 +993,8 @@ model GroceryItem {
   discountPercentage Int       @default(0)
   discountEndDate    DateTime?
   tags               String[]  @default([])
-  rating             Float     @default(0)
+  rating             Float     @default(4.0)
+  ratingSum          Float     @default(0)
   reviewCount        Int       @default(0)
   orderCount         Int       @default(0)
 
@@ -1008,6 +1012,7 @@ model GroceryItem {
   orderItems  OrderItem[]
   cartItems   CartItem[]
   favoritedBy UserFavoriteGroceryItem[]
+  itemReviews ItemReview[] @relation("GroceryItemReviews")
 
   @@index([storeId])
   @@index([categoryId])
@@ -1165,7 +1170,8 @@ model PharmacyItem {
   discountEndDate      DateTime?
   expiryDate           DateTime?
   tags                 String[]  @default([])
-  rating               Float     @default(0)
+  rating               Float     @default(4.0)
+  ratingSum            Float     @default(0)
   reviewCount          Int       @default(0)
   orderCount           Int       @default(0)
 
@@ -1177,6 +1183,7 @@ model PharmacyItem {
   orderItems  OrderItem[]
   cartItems   CartItem[]
   favoritedBy UserFavoritePharmacyItem[]
+  itemReviews ItemReview[] @relation("PharmacyItemReviews")
 
   @@index([storeId])
   @@index([categoryId])
@@ -1355,6 +1362,7 @@ model Order {
   payments        Payment[]
   creditHold      UserCreditHold?
   vendorReview    VendorReview?
+  itemReviews     ItemReview[]
 
   @@index([customerId])
   @@index([checkoutSessionId])
@@ -1403,6 +1411,40 @@ model VendorReview {
   @@map("vendor_reviews")
 }
 
+model ItemReview {
+  id             String   @id @default(cuid())
+  orderId        String
+  orderItemId    String   @unique
+  customerId     String
+  itemType       String
+  foodId         String?
+  groceryItemId  String?
+  pharmacyItemId String?
+  grabMartItemId String?
+  rating         Int
+  feedbackTags   String[] @default([])
+  comment        String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  order        Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem    OrderItem     @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  customer     User          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  food         Food?         @relation("FoodItemReviews", fields: [foodId], references: [id], onDelete: Cascade)
+  groceryItem  GroceryItem?  @relation("GroceryItemReviews", fields: [groceryItemId], references: [id], onDelete: Cascade)
+  pharmacyItem PharmacyItem? @relation("PharmacyItemReviews", fields: [pharmacyItemId], references: [id], onDelete: Cascade)
+  grabMartItem GrabMartItem? @relation("GrabMartItemReviews", fields: [grabMartItemId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([customerId])
+  @@index([itemType])
+  @@index([foodId])
+  @@index([groceryItemId])
+  @@index([pharmacyItemId])
+  @@index([grabMartItemId])
+  @@map("item_reviews")
+}
+
 model OrderItem {
   id                  String   @id @default(cuid())
   orderId             String
@@ -1426,6 +1468,7 @@ model OrderItem {
   groceryItem    GroceryItem?         @relation(fields: [groceryItemId], references: [id])
   pharmacyItem   PharmacyItem?        @relation(fields: [pharmacyItemId], references: [id])
   grabMartItem   GrabMartItem?        @relation(fields: [grabMartItemId], references: [id])
+  itemReview     ItemReview?
   inventoryHolds OrderInventoryHold[]
 
   @@index([orderId])
@@ -2367,7 +2410,8 @@ model GrabMartItem {
   discountPercentage Int       @default(0)
   discountEndDate    DateTime?
   tags               String[]  @default([])
-  rating             Float     @default(0)
+  rating             Float     @default(4.0)
+  ratingSum          Float     @default(0)
   reviewCount        Int       @default(0)
   orderCount         Int       @default(0)
 
@@ -2379,6 +2423,7 @@ model GrabMartItem {
   orderItems  OrderItem[]
   cartItems   CartItem[]
   favoritedBy UserFavoriteGrabMartItem[]
+  itemReviews ItemReview[] @relation("GrabMartItemReviews")
 
   @@index([storeId])
   @@index([categoryId])

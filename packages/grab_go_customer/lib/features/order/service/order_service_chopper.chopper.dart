@@ -140,4 +140,15 @@ final class _$OrderServiceChopper extends OrderServiceChopper {
     final Request $request = Request('POST', $url, client.baseUrl, body: $body);
     return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
   }
+
+  @override
+  Future<Response<Map<String, dynamic>>> submitItemReviews(
+    String orderId,
+    Map<String, dynamic> body,
+  ) {
+    final Uri $url = Uri.parse('/orders/${orderId}/item-reviews');
+    final $body = body;
+    final Request $request = Request('POST', $url, client.baseUrl, body: $body);
+    return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
+  }
 }

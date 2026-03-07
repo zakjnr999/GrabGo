@@ -1,12 +1,15 @@
 import 'package:chopper/chopper.dart';
-import 'package:grab_go_shared/grub_go_shared.dart' hide FoodService, AuthService;
+import 'package:grab_go_shared/grub_go_shared.dart'
+    hide FoodService, AuthService;
 import 'package:http/http.dart' as http;
-import 'package:grab_go_customer/core/api/json_serializable_converter.dart' as local;
+import 'package:grab_go_customer/core/api/json_serializable_converter.dart'
+    as local;
 import 'package:grab_go_customer/core/api/auth_interceptor.dart';
 import 'package:grab_go_customer/core/api/restaurant_service.dart';
 import 'package:grab_go_customer/core/api/auth_service.dart';
 import 'package:grab_go_customer/features/home/service/food_service.dart';
 import 'package:grab_go_customer/features/order/service/order_service_chopper.dart';
+import 'package:grab_go_customer/features/order/service/item_review_service_chopper.dart';
 import 'package:grab_go_customer/features/status/service/status_service.dart';
 import 'package:grab_go_customer/shared/services/notification_service_chopper.dart';
 import 'package:grab_go_customer/shared/api/cart_api_service.dart';
@@ -20,6 +23,7 @@ final chopperClient = ChopperClient(
     AuthService.create(),
     RestaurantService.create(),
     OrderServiceChopper.create(),
+    ItemReviewServiceChopper.create(),
     StatusService.create(),
     NotificationServiceChopper.create(),
     CartApiService.create(),
@@ -33,10 +37,16 @@ final chopperClient = ChopperClient(
 
 FoodService get foodService => chopperClient.getService<FoodService>();
 AuthService get authService => chopperClient.getService<AuthService>();
-RestaurantService get restaurantService => chopperClient.getService<RestaurantService>();
-OrderServiceChopper get orderServiceChopper => chopperClient.getService<OrderServiceChopper>();
+RestaurantService get restaurantService =>
+    chopperClient.getService<RestaurantService>();
+OrderServiceChopper get orderServiceChopper =>
+    chopperClient.getService<OrderServiceChopper>();
+ItemReviewServiceChopper get itemReviewServiceChopper =>
+    chopperClient.getService<ItemReviewServiceChopper>();
 StatusService get statusService => chopperClient.getService<StatusService>();
-NotificationServiceChopper get notificationServiceChopper => chopperClient.getService<NotificationServiceChopper>();
+NotificationServiceChopper get notificationServiceChopper =>
+    chopperClient.getService<NotificationServiceChopper>();
 CartApiService get cartApiService => chopperClient.getService<CartApiService>();
 VendorService get vendorService => chopperClient.getService<VendorService>();
-AddressApiService get addressApiService => chopperClient.getService<AddressApiService>();
+AddressApiService get addressApiService =>
+    chopperClient.getService<AddressApiService>();

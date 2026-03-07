@@ -7,6 +7,7 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:grab_go_customer/features/order/model/item_review_models.dart';
 import 'package:grab_go_customer/features/order/service/order_service_wrapper.dart';
 import 'package:grab_go_customer/features/order/view/rating_onboarding.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
@@ -34,12 +35,13 @@ class MapTracking extends StatefulWidget {
 class _MapTrackingState extends State<MapTracking> {
   bool _hasShownSuccessScreen = false;
   bool _hasSeenTrackingStatus = false;
-  bool _vendorRatingSubmitted = false;
+  bool _canRateVendor = false;
   String? _previousStatus;
   bool _isSheetCollapsed = true;
   TrackingProvider? _trackingProvider;
   Future<TrackingProvider>? _initFuture;
   List<_TrackedOrderItem> _orderItems = const [];
+  List<ReviewableOrderItem> _reviewableItems = const [];
   String? _vendorName;
   String? _vendorLogo;
 
@@ -89,7 +91,8 @@ class _MapTrackingState extends State<MapTracking> {
         _orderItems = _parseTrackedOrderItems(orderData['items']);
         _vendorName = vendorMeta.name;
         _vendorLogo = vendorMeta.logo;
-        _vendorRatingSubmitted = orderData['vendorRatingSubmitted'] == true;
+        _canRateVendor = orderData['canRateVendor'] == true;
+        _reviewableItems = _parseReviewableItems(orderData['items']);
       });
     } catch (_) {
       // Keep tracking available even if order-details fetch fails.
@@ -162,6 +165,33 @@ class _MapTrackingState extends State<MapTracking> {
     return parsed;
   }
 
+  List<ReviewableOrderItem> _parseReviewableItems(dynamic rawItems) {
+    if (rawItems is! List) return const [];
+
+    return rawItems
+        .whereType<Map>()
+        .map((entry) => Map<String, dynamic>.from(entry))
+        .where(
+          (item) =>
+              item['canRateItem'] == true &&
+              item['id']?.toString().isNotEmpty == true &&
+              item['reviewableItemId']?.toString().isNotEmpty == true &&
+              item['itemReviewType']?.toString().isNotEmpty == true,
+        )
+        .map(
+          (item) => ReviewableOrderItem(
+            orderItemId: item['id'].toString(),
+            itemId: item['reviewableItemId'].toString(),
+            itemType: item['itemReviewType'].toString(),
+            name: item['name']?.toString().trim().isNotEmpty == true
+                ? item['name'].toString().trim()
+                : 'Item',
+            image: item['image']?.toString(),
+          ),
+        )
+        .toList(growable: false);
+  }
+
   String? _buildCustomizationSummary(Map<String, dynamic> item) {
     final parts = <String>[];
 
@@ -221,19 +251,18 @@ class _MapTrackingState extends State<MapTracking> {
   String _formatCurrency(double value) => 'GHS ${value.toStringAsFixed(2)}';
 
   void _openPostDeliveryFlow(TrackingProvider provider) {
-    if (_vendorRatingSubmitted) {
-      AppToastMessage.show(
-        context: context,
-        message: 'Vendor rating already submitted for this order.',
-      );
-      return;
-    }
+    final hasPendingReviewFlow = _canRateVendor || _reviewableItems.isNotEmpty;
 
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => DeliverySuccessScreen(
           orderId: widget.orderId,
           onComplete: () {
+            if (!hasPendingReviewFlow) {
+              context.go('/homepage');
+              return;
+            }
+
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(
                 builder: (context) => RatingOnboarding(
@@ -242,6 +271,8 @@ class _MapTrackingState extends State<MapTracking> {
                   riderImage: provider.trackingData?.rider?.profileImage,
                   vendorName: _vendorName,
                   vendorLogo: _vendorLogo,
+                  includeVendorStep: _canRateVendor,
+                  reviewableItems: _reviewableItems,
                 ),
               ),
             );
