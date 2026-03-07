@@ -1,5 +1,12 @@
 const mockPrisma = {
   $transaction: jest.fn(),
+  restaurant: {
+    findUnique: jest.fn(),
+  },
+  vendorReview: {
+    findMany: jest.fn(),
+    groupBy: jest.fn(),
+  },
 };
 
 jest.mock("../config/prisma", () => mockPrisma);
@@ -8,6 +15,7 @@ const {
   VendorRatingError,
   buildOrderVendorRatingMeta,
   decorateOrderWithVendorRatingMeta,
+  getVendorReviews,
   resolveVendorReviewTarget,
   submitVendorRating,
 } = require("../services/vendor_rating_service");
@@ -401,6 +409,61 @@ describe("vendor_rating_service", () => {
         statusCode: 403,
         code: "ORDER_ACCESS_DENIED",
       });
+    });
+  });
+
+  describe("getVendorReviews", () => {
+    test("returns public vendor comments with normalized aggregate fields", async () => {
+      mockPrisma.restaurant.findUnique.mockResolvedValue({
+        id: "rest_1",
+        restaurantName: "Sushi Zen",
+        logo: "logo.jpg",
+        rating: 4.55,
+        ratingCount: 11,
+        totalReviews: 11,
+      });
+      mockPrisma.vendorReview.findMany.mockResolvedValue([
+        {
+          id: "review_1",
+          rating: 5,
+          feedbackTags: ["Well packaged"],
+          comment: "Packaging was excellent.",
+          createdAt: new Date("2026-03-07T18:00:00.000Z"),
+          customer: {
+            id: "user_1",
+            username: "Boss Zack",
+            email: "boss@example.com",
+            profilePicture: "avatar.jpg",
+          },
+        },
+      ]);
+      mockPrisma.vendorReview.groupBy.mockResolvedValue([
+        { rating: 5, _count: { _all: 8 } },
+        { rating: 4, _count: { _all: 3 } },
+      ]);
+
+      const result = await getVendorReviews({
+        prismaClient: mockPrisma,
+        vendorType: "restaurant",
+        vendorId: "rest_1",
+        sort: "latest",
+      });
+
+      expect(result.vendor).toEqual({
+        id: "rest_1",
+        type: "restaurant",
+        name: "Sushi Zen",
+        image: "logo.jpg",
+        rawRating: 4.55,
+        weightedRating: 4.3,
+        rating: 4.3,
+        ratingCount: 11,
+        totalReviews: 11,
+      });
+      expect(result.sort).toBe("latest");
+      expect(result.breakdown).toEqual({ 5: 8, 4: 3, 3: 0, 2: 0, 1: 0 });
+      expect(result.reviews).toHaveLength(1);
+      expect(result.reviews[0].reviewer.name).toBe("Boss Zack");
     });
   });
 });

@@ -21,6 +21,7 @@ import 'package:grab_go_customer/features/pharmacy/repository/pharmacy_repositor
 import 'package:grab_go_customer/features/pharmacy/viewmodel/pharmacy_provider.dart';
 import 'package:grab_go_customer/features/vendors/model/vendor_model.dart';
 import 'package:grab_go_customer/features/vendors/model/vendor_type.dart';
+import 'package:grab_go_customer/features/vendors/view/vendor_reviews_page.dart';
 import 'package:grab_go_customer/features/vendors/widgets/exclusive_stamp_badge.dart';
 import 'package:grab_go_customer/shared/services/auth_guard.dart';
 import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
@@ -58,6 +59,19 @@ class _VendorDetailsPageState extends State<VendorDetailsPage> {
   bool _isLoadingVendorDetails = true;
   bool _isLoadingItems = true;
   String? _itemsError;
+
+  String get _publicVendorType {
+    switch (_vendor.vendorTypeEnum) {
+      case VendorType.food:
+        return 'restaurant';
+      case VendorType.grocery:
+        return 'grocery';
+      case VendorType.pharmacy:
+        return 'pharmacy';
+      case VendorType.grabmart:
+        return 'grabmart';
+    }
+  }
 
   @override
   void initState() {
@@ -1228,43 +1242,58 @@ class _VendorDetailsPageState extends State<VendorDetailsPage> {
                       ),
                     ),
                     SizedBox(height: 6.h),
-                    Row(
-                      children: [
-                        SvgPicture.asset(
-                          Assets.icons.starSolid,
-                          package: 'grab_go_shared',
-                          width: 14.w,
-                          height: 14.w,
-                          colorFilter: ColorFilter.mode(
-                            accentColor,
-                            BlendMode.srcIn,
-                          ),
-                        ),
-                        SizedBox(width: 4.w),
-                        Text(
-                          displayVendor.rating.toStringAsFixed(1),
-                          style: TextStyle(
-                            color: colors.textPrimary,
-                            fontSize: 12.sp,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        if (displayVendor.totalReviews > 0) ...[
-                          SizedBox(width: 4.w),
-                          Flexible(
-                            child: Text(
-                              '(${displayVendor.totalReviews} reviews)',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: colors.textSecondary,
-                                fontSize: 11.sp,
-                                fontWeight: FontWeight.w500,
-                              ),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => VendorReviewsPage(
+                              vendorId: displayVendor.id,
+                              vendorType: _publicVendorType,
+                              vendorName: displayVendor.displayName,
+                              initialRating: displayVendor.rating,
+                              initialReviewCount: displayVendor.totalReviews,
                             ),
                           ),
+                        );
+                      },
+                      child: Row(
+                        children: [
+                          SvgPicture.asset(
+                            Assets.icons.starSolid,
+                            package: 'grab_go_shared',
+                            width: 14.w,
+                            height: 14.w,
+                            colorFilter: ColorFilter.mode(
+                              accentColor,
+                              BlendMode.srcIn,
+                            ),
+                          ),
+                          SizedBox(width: 4.w),
+                          Text(
+                            displayVendor.rating.toStringAsFixed(1),
+                            style: TextStyle(
+                              color: colors.textPrimary,
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          if (displayVendor.totalReviews > 0) ...[
+                            SizedBox(width: 4.w),
+                            Flexible(
+                              child: Text(
+                                '(${displayVendor.totalReviews} reviews)',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: colors.textSecondary,
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                     if (locationText.isNotEmpty) ...[
                       SizedBox(height: 6.h),

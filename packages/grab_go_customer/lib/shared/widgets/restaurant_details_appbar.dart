@@ -5,10 +5,10 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/restaurant/model/restaurants_model.dart';
+import 'package:grab_go_customer/features/vendors/view/vendor_reviews_page.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:grab_go_shared/shared/utils/image_optimizer.dart';
 
 class RestaurantDetailsAppBar extends StatelessWidget {
   const RestaurantDetailsAppBar({super.key, required this.restaurant});
@@ -38,7 +38,10 @@ class RestaurantDetailsAppBar extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             CachedNetworkImage(
-              imageUrl: ImageOptimizer.getFullUrl(restaurant.imageUrl, width: 1200),
+              imageUrl: ImageOptimizer.getFullUrl(
+                restaurant.imageUrl,
+                width: 1200,
+              ),
               fit: BoxFit.cover,
               memCacheWidth: 800,
               maxHeightDiskCache: 600,
@@ -50,7 +53,10 @@ class RestaurantDetailsAppBar extends StatelessWidget {
                 child: SvgPicture.asset(
                   Assets.icons.chefHat,
                   package: 'grab_go_shared',
-                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                  colorFilter: ColorFilter.mode(
+                    colors.textSecondary,
+                    BlendMode.srcIn,
+                  ),
                 ),
               ),
               errorWidget: (context, url, error) => Container(
@@ -61,7 +67,10 @@ class RestaurantDetailsAppBar extends StatelessWidget {
                 child: SvgPicture.asset(
                   Assets.icons.chefHat,
                   package: 'grab_go_shared',
-                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                  colorFilter: ColorFilter.mode(
+                    colors.textSecondary,
+                    BlendMode.srcIn,
+                  ),
                 ),
               ),
             ),
@@ -91,7 +100,10 @@ class RestaurantDetailsAppBar extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, Colors.black.withValues(alpha: 0.6)],
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.6),
+                    ],
                   ),
                 ),
                 child: Column(
@@ -100,56 +112,97 @@ class RestaurantDetailsAppBar extends StatelessWidget {
                   children: [
                     Text(
                       restaurant.name,
-                      style: TextStyle(color: Colors.white, fontSize: 30.sp, fontWeight: FontWeight.w800, height: 1.2),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 30.sp,
+                        fontWeight: FontWeight.w800,
+                        height: 1.2,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                     SizedBox(height: 10.h),
                     Row(
                       children: [
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(10.r),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SvgPicture.asset(
-                                Assets.icons.starSolid,
-                                package: 'grab_go_shared',
-                                height: 14.h,
-                                width: 14.w,
-                                colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => VendorReviewsPage(
+                                  vendorId: restaurant.backendId,
+                                  vendorType: 'restaurant',
+                                  vendorName: restaurant.name,
+                                  initialRating: restaurant.rating,
+                                  initialReviewCount: restaurant.totalReviews,
+                                ),
                               ),
-                              SizedBox(width: 4.w),
-                              Text(
-                                restaurant.rating.toStringAsFixed(1),
-                                style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.w700),
+                            );
+                          },
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 10.w,
+                              vertical: 6.h,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(10.r),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                width: 1,
                               ),
-                              if (restaurant.totalReviews > 0) ...[
-                                SizedBox(width: 4.w),
-                                Text(
-                                  "(${restaurant.totalReviews})",
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.8),
-                                    fontSize: 12.sp,
-                                    fontWeight: FontWeight.w500,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SvgPicture.asset(
+                                  Assets.icons.starSolid,
+                                  package: 'grab_go_shared',
+                                  height: 14.h,
+                                  width: 14.w,
+                                  colorFilter: ColorFilter.mode(
+                                    colors.accentOrange,
+                                    BlendMode.srcIn,
                                   ),
                                 ),
+                                SizedBox(width: 4.w),
+                                Text(
+                                  restaurant.rating.toStringAsFixed(1),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                if (restaurant.totalReviews > 0) ...[
+                                  SizedBox(width: 4.w),
+                                  Text(
+                                    "(${restaurant.totalReviews})",
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.8,
+                                      ),
+                                      fontSize: 12.sp,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
                         ),
                         SizedBox(width: 10.w),
                         Container(
-                          padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 10.w,
+                            vertical: 6.h,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.grey.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(10.r),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              width: 1,
+                            ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -159,13 +212,20 @@ class RestaurantDetailsAppBar extends StatelessWidget {
                                 package: 'grab_go_shared',
                                 height: 14.h,
                                 width: 14.w,
-                                colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                colorFilter: const ColorFilter.mode(
+                                  Colors.white,
+                                  BlendMode.srcIn,
+                                ),
                               ),
                               SizedBox(width: 4.w),
                               Flexible(
                                 child: Text(
                                   restaurant.city,
-                                  style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.w600),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -176,11 +236,19 @@ class RestaurantDetailsAppBar extends StatelessWidget {
                         if (restaurant.isOpen) ...[
                           SizedBox(width: 10.w),
                           Container(
-                            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 10.w,
+                              vertical: 6.h,
+                            ),
                             decoration: BoxDecoration(
                               color: colors.accentGreen.withValues(alpha: 0.3),
                               borderRadius: BorderRadius.circular(10.r),
-                              border: Border.all(color: colors.accentGreen.withValues(alpha: 0.5), width: 1),
+                              border: Border.all(
+                                color: colors.accentGreen.withValues(
+                                  alpha: 0.5,
+                                ),
+                                width: 1,
+                              ),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -188,12 +256,19 @@ class RestaurantDetailsAppBar extends StatelessWidget {
                                 Container(
                                   width: 6.w,
                                   height: 6.h,
-                                  decoration: BoxDecoration(color: colors.accentGreen, shape: BoxShape.circle),
+                                  decoration: BoxDecoration(
+                                    color: colors.accentGreen,
+                                    shape: BoxShape.circle,
+                                  ),
                                 ),
                                 SizedBox(width: 6.w),
                                 Text(
                                   "Open",
-                                  style: TextStyle(color: Colors.white, fontSize: 13.sp, fontWeight: FontWeight.w600),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ],
                             ),
@@ -208,7 +283,10 @@ class RestaurantDetailsAppBar extends StatelessWidget {
             ),
           ],
         ),
-        stretchModes: const [StretchMode.blurBackground, StretchMode.zoomBackground],
+        stretchModes: const [
+          StretchMode.blurBackground,
+          StretchMode.zoomBackground,
+        ],
       ),
       bottom: PreferredSize(
         preferredSize: Size.fromHeight(24.h),
@@ -217,10 +295,15 @@ class RestaurantDetailsAppBar extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: colors.backgroundSecondary,
-            borderRadius: BorderRadius.only(topLeft: Radius.circular(20.r), topRight: Radius.circular(20.r)),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20.r),
+              topRight: Radius.circular(20.r),
+            ),
             boxShadow: [
               BoxShadow(
-                color: isDark ? Colors.black.withAlpha(50) : Colors.black.withAlpha(10),
+                color: isDark
+                    ? Colors.black.withAlpha(50)
+                    : Colors.black.withAlpha(10),
                 blurRadius: 10,
                 spreadRadius: 0,
                 offset: const Offset(0, -2),
@@ -296,10 +379,14 @@ class RestaurantDetailsAppBar extends StatelessWidget {
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: Container(
               decoration: BoxDecoration(
-                color: isFavorite ? Colors.red.withValues(alpha: 0.3) : Colors.grey.withValues(alpha: 0.2),
+                color: isFavorite
+                    ? Colors.red.withValues(alpha: 0.3)
+                    : Colors.grey.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: isFavorite ? Colors.red.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.2),
+                  color: isFavorite
+                      ? Colors.red.withValues(alpha: 0.5)
+                      : Colors.white.withValues(alpha: 0.2),
                   width: 1.5,
                 ),
               ),

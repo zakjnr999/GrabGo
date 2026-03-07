@@ -58,31 +58,11 @@ class _ItemRatingState extends State<ItemRating> {
 
   List<String> _getItemFeedbackChips(int rating) {
     if (rating >= 4) {
-      return const [
-        'Great taste',
-        'Fresh',
-        'Good portion',
-        'Well packaged',
-        'Worth the price',
-        'Exactly as expected',
-      ];
+      return const ['Great taste', 'Fresh', 'Good portion', 'Well packaged', 'Worth the price', 'Exactly as expected'];
     } else if (rating == 3) {
-      return const [
-        'Average taste',
-        'Could be fresher',
-        'Small portion',
-        'Packaging could improve',
-        'Just okay',
-      ];
+      return const ['Average taste', 'Could be fresher', 'Small portion', 'Packaging could improve', 'Just okay'];
     } else if (rating >= 1) {
-      return const [
-        'Bad taste',
-        'Not fresh',
-        'Poor quality',
-        'Small portion',
-        'Wrong item',
-        'Not worth the price',
-      ];
+      return const ['Bad taste', 'Not fresh', 'Poor quality', 'Small portion', 'Wrong item', 'Not worth the price'];
     }
     return const [];
   }
@@ -124,9 +104,7 @@ class _ItemRatingState extends State<ItemRating> {
             ItemReviewSubmissionEntryRequest(
               orderItemId: widget.orderItemId,
               rating: _itemRating,
-              feedbackTags: _selectedComment
-                  .where((entry) => !entry.startsWith('Custom: '))
-                  .toList(growable: false),
+              feedbackTags: _selectedComment.where((entry) => !entry.startsWith('Custom: ')).toList(growable: false),
               comment: _customComment,
             ),
           ],
@@ -159,16 +137,8 @@ class _ItemRatingState extends State<ItemRating> {
       await _finish(_itemRating);
     } catch (e) {
       if (!mounted) return;
-      final message = e
-          .toString()
-          .replaceFirst('Exception: ', '')
-          .replaceFirst('Failed to submit item reviews: ', '');
-      AppToastMessage.show(
-        context: context,
-        message: message,
-        backgroundColor: colors.error,
-        maxLines: 3,
-      );
+      final message = e.toString().replaceFirst('Exception: ', '').replaceFirst('Failed to submit item reviews: ', '');
+      AppToastMessage.show(context: context, message: message, backgroundColor: colors.error, maxLines: 3);
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);
@@ -194,12 +164,9 @@ class _ItemRatingState extends State<ItemRating> {
                 child: Row(
                   children: [
                     Container(
-                      height: 42.h,
-                      width: 42.w,
-                      decoration: BoxDecoration(
-                        color: colors.backgroundSecondary,
-                        shape: BoxShape.circle,
-                      ),
+                      height: 42,
+                      width: 42,
+                      decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
                       child: Material(
                         color: Colors.transparent,
                         child: InkWell(
@@ -210,10 +177,7 @@ class _ItemRatingState extends State<ItemRating> {
                             child: SvgPicture.asset(
                               Assets.icons.xmark,
                               package: 'grab_go_shared',
-                              colorFilter: ColorFilter.mode(
-                                colors.textPrimary,
-                                BlendMode.srcIn,
-                              ),
+                              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                             ),
                           ),
                         ),
@@ -224,12 +188,7 @@ class _ItemRatingState extends State<ItemRating> {
               ),
             Expanded(
               child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(
-                  20.w,
-                  widget.embedded ? 12.h : 20.h,
-                  20.w,
-                  20.h,
-                ),
+                padding: EdgeInsets.fromLTRB(20.w, widget.embedded ? 12.h : 20.h, 20.w, 20.h),
                 child: Column(
                   children: [
                     _buildItemRatingSection(
@@ -259,36 +218,26 @@ class _ItemRatingState extends State<ItemRating> {
                               final index = entry.key;
                               final chip = entry.value;
                               return TweenAnimationBuilder<double>(
-                                duration: Duration(
-                                  milliseconds: 200 + (index * 50),
-                                ),
+                                duration: Duration(milliseconds: 200 + (index * 50)),
                                 tween: Tween(begin: 0.0, end: 1.0),
                                 curve: Curves.easeOut,
                                 builder: (context, value, child) {
                                   return Opacity(
                                     opacity: value,
-                                    child: Transform.translate(
-                                      offset: Offset(0, 10 * (1 - value)),
-                                      child: child,
-                                    ),
+                                    child: Transform.translate(offset: Offset(0, 10 * (1 - value)), child: child),
                                   );
                                 },
                                 child: _buildCommentChip(chip, colors),
                               );
                             }),
                             TweenAnimationBuilder<double>(
-                              duration: Duration(
-                                milliseconds: 200 + (feedbackChips.length * 50),
-                              ),
+                              duration: Duration(milliseconds: 200 + (feedbackChips.length * 50)),
                               tween: Tween(begin: 0.0, end: 1.0),
                               curve: Curves.easeOut,
                               builder: (context, value, child) {
                                 return Opacity(
                                   opacity: value,
-                                  child: Transform.translate(
-                                    offset: Offset(0, 10 * (1 - value)),
-                                    child: child,
-                                  ),
+                                  child: Transform.translate(offset: Offset(0, 10 * (1 - value)), child: child),
                                 );
                               },
                               child: _buildCustomCommentChip(colors),
@@ -303,21 +252,13 @@ class _ItemRatingState extends State<ItemRating> {
             Padding(
               padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 20.h),
               child: AppButton(
-                buttonText: _isSubmitting
-                    ? 'Submitting...'
-                    : (_itemRating > 0 ? 'Submit rating' : 'Rate later'),
+                buttonText: _isSubmitting ? 'Submitting...' : (_itemRating > 0 ? 'Submit rating' : 'Rate later'),
                 onPressed: _handlePrimaryAction,
-                backgroundColor: _isSubmitting
-                    ? colors.accentOrange.withValues(alpha: 0.65)
-                    : colors.accentOrange,
+                backgroundColor: _isSubmitting ? colors.accentOrange.withValues(alpha: 0.65) : colors.accentOrange,
                 borderRadius: KBorderSize.borderMedium,
                 width: double.infinity,
                 height: KWidgetSize.buttonHeight.h,
-                textStyle: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w700,
-                ),
+                textStyle: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
               ),
             ),
           ],
@@ -356,13 +297,9 @@ class _ItemRatingState extends State<ItemRating> {
         child: Text(
           'Custom',
           style: TextStyle(
-            color: _selectedComment.any((c) => c.startsWith('Custom: '))
-                ? Colors.white
-                : colors.textPrimary,
+            color: _selectedComment.any((c) => c.startsWith('Custom: ')) ? Colors.white : colors.textPrimary,
             fontSize: 13.sp,
-            fontWeight: _selectedComment.any((c) => c.startsWith('Custom: '))
-                ? FontWeight.w700
-                : FontWeight.w500,
+            fontWeight: _selectedComment.any((c) => c.startsWith('Custom: ')) ? FontWeight.w700 : FontWeight.w500,
           ),
         ),
       ),
@@ -427,10 +364,7 @@ Widget _buildItemRatingSection({
                 placeholder: (context, url) => Container(
                   height: size.width * 0.15,
                   width: size.width * 0.15,
-                  decoration: BoxDecoration(
-                    color: colors.backgroundPrimary,
-                    shape: BoxShape.circle,
-                  ),
+                  decoration: BoxDecoration(color: colors.backgroundPrimary, shape: BoxShape.circle),
                 ),
                 errorWidget: (context, url, error) => Container(
                   height: size.width * 0.15,
@@ -439,10 +373,7 @@ Widget _buildItemRatingSection({
                   child: SvgPicture.asset(
                     Assets.icons.package,
                     package: 'grab_go_shared',
-                    colorFilter: ColorFilter.mode(
-                      colors.textPrimary,
-                      BlendMode.srcIn,
-                    ),
+                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                   ),
                 ),
               )
@@ -450,17 +381,11 @@ Widget _buildItemRatingSection({
                 height: size.width * 0.15,
                 width: size.width * 0.15,
                 padding: EdgeInsets.all(12.r),
-                decoration: BoxDecoration(
-                  color: colors.backgroundSecondary,
-                  shape: BoxShape.circle,
-                ),
+                decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
                 child: SvgPicture.asset(
                   Assets.icons.package,
                   package: 'grab_go_shared',
-                  colorFilter: ColorFilter.mode(
-                    colors.textPrimary,
-                    BlendMode.srcIn,
-                  ),
+                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                 ),
               ),
       ),
@@ -468,21 +393,13 @@ Widget _buildItemRatingSection({
       Text(
         title,
         textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: 14.sp,
-          fontWeight: FontWeight.w400,
-          color: colors.textPrimary,
-        ),
+        style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w400, color: colors.textPrimary),
       ),
       SizedBox(height: 5.h),
       Text(
         starDescription,
         textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: 22.sp,
-          fontWeight: FontWeight.w800,
-          color: colors.accentOrange,
-        ),
+        style: TextStyle(fontSize: 22.sp, fontWeight: FontWeight.w800, color: colors.accentOrange),
       ),
       SizedBox(height: KSpacing.lg.h),
       Row(
@@ -494,9 +411,7 @@ Widget _buildItemRatingSection({
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 8.w),
               child: SvgPicture.asset(
-                starIndex <= rating
-                    ? Assets.icons.starSolid
-                    : Assets.icons.star,
+                starIndex <= rating ? Assets.icons.starSolid : Assets.icons.star,
                 package: 'grab_go_shared',
                 colorFilter: ColorFilter.mode(
                   starIndex <= rating ? colors.accentOrange : colors.divider,

@@ -6,21 +6,29 @@ const VENDOR_TYPE_CONFIG = {
     orderField: "restaurantId",
     relationField: "restaurant",
     prismaModel: "restaurant",
+    nameField: "restaurantName",
+    imageField: "logo",
   },
   grocery: {
     orderField: "groceryStoreId",
     relationField: "groceryStore",
     prismaModel: "groceryStore",
+    nameField: "storeName",
+    imageField: "logo",
   },
   pharmacy: {
     orderField: "pharmacyStoreId",
     relationField: "pharmacyStore",
     prismaModel: "pharmacyStore",
+    nameField: "storeName",
+    imageField: "logo",
   },
   grabmart: {
     orderField: "grabMartStoreId",
     relationField: "grabMartStore",
     prismaModel: "grabMartStore",
+    nameField: "storeName",
+    imageField: "logo",
   },
 };
 
@@ -102,6 +110,11 @@ const normalizeComment = (comment) => {
   if (typeof comment !== "string") return null;
   const normalized = comment.trim();
   return normalized.length > 0 ? normalized.slice(0, 500) : null;
+};
+
+const resolvePublicVendorType = (vendorType) => {
+  const normalized = String(vendorType || "").trim().toLowerCase();
+  return VENDOR_TYPE_CONFIG[normalized] || null;
 };
 
 const resolveVendorReviewTarget = (order) => {
@@ -327,12 +340,154 @@ const submitVendorRating = async ({
   }
 };
 
+const buildReviewerDisplay = (customer) => {
+  const username = String(customer?.username || "").trim();
+  if (username) return username;
+
+  const email = String(customer?.email || "").trim();
+  if (email.includes("@")) {
+    return email.split("@")[0];
+  }
+
+  return "GrabGo customer";
+};
+
+const buildReviewBreakdown = (groupedRatings) => {
+  const breakdown = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+  for (const row of groupedRatings || []) {
+    const rating = Number(row?.rating || 0);
+    if (breakdown[rating] !== undefined) {
+      breakdown[rating] = Number(row?._count?._all || 0);
+    }
+  }
+  return breakdown;
+};
+
+const getVendorReviews = async ({
+  prismaClient = prisma,
+  vendorType,
+  vendorId,
+  sort = "popular",
+  page = 1,
+  limit = 20,
+}) => {
+  const target = resolvePublicVendorType(vendorType);
+  if (!target) {
+    throw new VendorRatingError("Unsupported vendor type", {
+      statusCode: 400,
+      code: "VENDOR_REVIEW_UNSUPPORTED_TYPE",
+    });
+  }
+
+  const pageValue = Math.max(1, Number.parseInt(page, 10) || 1);
+  const limitValue = Math.min(50, Math.max(1, Number.parseInt(limit, 10) || 20));
+  const normalizedSort = String(sort || "popular").toLowerCase() === "latest" ? "latest" : "popular";
+
+  const vendor = await prismaClient[target.prismaModel].findUnique({
+    where: { id: vendorId },
+    select: {
+      id: true,
+      [target.nameField]: true,
+      [target.imageField]: true,
+      rating: true,
+      ratingCount: true,
+      totalReviews: true,
+    },
+  });
+
+  if (!vendor) {
+    throw new VendorRatingError("Vendor not found", {
+      statusCode: 404,
+      code: "VENDOR_REVIEW_VENDOR_NOT_FOUND",
+    });
+  }
+
+  const where = { [target.orderField]: vendorId };
+  const orderBy =
+    normalizedSort === "latest"
+      ? [{ createdAt: "desc" }]
+      : [{ rating: "desc" }, { createdAt: "desc" }];
+
+  const [reviews, groupedRatings] = await Promise.all([
+    prismaClient.vendorReview.findMany({
+      where,
+      orderBy,
+      skip: (pageValue - 1) * limitValue,
+      take: limitValue,
+      select: {
+        id: true,
+        rating: true,
+        feedbackTags: true,
+        comment: true,
+        createdAt: true,
+        customer: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            profilePicture: true,
+          },
+        },
+      },
+    }),
+    prismaClient.vendorReview.groupBy({
+      by: ["rating"],
+      where,
+      _count: {
+        _all: true,
+      },
+    }),
+  ]);
+
+  const reviewCount = Math.max(
+    0,
+    Number(vendor.totalReviews || 0),
+    Number(vendor.ratingCount || 0)
+  );
+  const ratingMeta = normalizeRatingResponse({
+    rating: vendor.rating,
+    ratingCount: vendor.ratingCount,
+    totalReviews: reviewCount,
+  });
+
+  return {
+    vendor: {
+      id: vendor.id,
+      type: String(vendorType || "").trim().toLowerCase(),
+      name: vendor[target.nameField] || "",
+      image: vendor[target.imageField] || null,
+      rawRating: ratingMeta.rawRating,
+      weightedRating: ratingMeta.weightedRating,
+      rating: ratingMeta.rating,
+      ratingCount: ratingMeta.ratingCount,
+      totalReviews: ratingMeta.totalReviews,
+    },
+    sort: normalizedSort,
+    page: pageValue,
+    limit: limitValue,
+    breakdown: buildReviewBreakdown(groupedRatings),
+    reviews: reviews.map((review) => ({
+      id: review.id,
+      rating: review.rating,
+      feedbackTags: review.feedbackTags || [],
+      comment: review.comment,
+      createdAt: review.createdAt,
+      reviewer: {
+        id: review.customer?.id || "",
+        name: buildReviewerDisplay(review.customer),
+        profilePicture: review.customer?.profilePicture || null,
+      },
+    })),
+  };
+};
+
 module.exports = {
   VendorRatingError,
   VENDOR_REVIEW_ORDER_SELECT,
   buildOrderVendorRatingMeta,
   decorateOrderWithVendorRatingMeta,
   decorateOrdersWithVendorRatingMeta,
+  getVendorReviews,
   resolveVendorReviewTarget,
   submitVendorRating,
 };

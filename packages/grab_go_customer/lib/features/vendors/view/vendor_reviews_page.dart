@@ -4,37 +4,39 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:grab_go_customer/features/order/model/item_review_models.dart';
-import 'package:grab_go_customer/features/order/service/item_review_service_wrapper.dart';
+import 'package:grab_go_customer/features/order/model/vendor_review_models.dart';
+import 'package:grab_go_customer/features/order/service/vendor_review_service_wrapper.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
 import 'package:intl/intl.dart';
 
-class ItemReviewsPage extends StatefulWidget {
-  const ItemReviewsPage({
+class VendorReviewsPage extends StatefulWidget {
+  const VendorReviewsPage({
     super.key,
-    required this.itemId,
-    required this.itemType,
-    required this.itemName,
+    required this.vendorId,
+    required this.vendorType,
+    required this.vendorName,
     this.initialRating = 4.0,
     this.initialReviewCount = 0,
   });
 
-  final String itemId;
-  final String itemType;
-  final String itemName;
+  final String vendorId;
+  final String vendorType;
+  final String vendorName;
   final double initialRating;
   final int initialReviewCount;
 
   @override
-  State<ItemReviewsPage> createState() => _ItemReviewsPageState();
+  State<VendorReviewsPage> createState() => _VendorReviewsPageState();
 }
 
-class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProviderStateMixin {
+class _VendorReviewsPageState extends State<VendorReviewsPage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final ItemReviewServiceWrapper _reviewService = ItemReviewServiceWrapper();
+  final VendorReviewServiceWrapper _reviewService =
+      VendorReviewServiceWrapper();
 
-  ItemReviewFeed? _feed;
+  VendorReviewFeed? _feed;
   bool _isLoading = false;
   String? _error;
   String _activeSort = 'popular';
@@ -61,7 +63,10 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
     _loadReviews(sort: nextSort, showLoader: _feed == null);
   }
 
-  Future<void> _loadReviews({String sort = 'popular', bool showLoader = true}) async {
+  Future<void> _loadReviews({
+    String sort = 'popular',
+    bool showLoader = true,
+  }) async {
     if (_isLoading) return;
 
     setState(() {
@@ -73,7 +78,11 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
     });
 
     try {
-      final feed = await _reviewService.getItemReviews(itemType: widget.itemType, itemId: widget.itemId, sort: sort);
+      final feed = await _reviewService.getVendorReviews(
+        vendorType: widget.vendorType,
+        vendorId: widget.vendorId,
+        sort: sort,
+      );
       if (!mounted) return;
       setState(() {
         _feed = feed;
@@ -82,7 +91,10 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '').replaceFirst('Failed to load item reviews: ', '');
+        _error = e
+            .toString()
+            .replaceFirst('Exception: ', '')
+            .replaceFirst('Failed to load vendor reviews: ', '');
       });
     } finally {
       if (mounted) {
@@ -97,16 +109,19 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
     final padding = MediaQuery.of(context).padding;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final feed = _feed;
-    final itemSnapshot = feed?.item;
-    final displayRating = itemSnapshot?.rating ?? widget.initialRating;
-    final displayReviewCount = itemSnapshot?.totalReviews ?? widget.initialReviewCount;
+    final vendorSnapshot = feed?.vendor;
+    final displayRating = vendorSnapshot?.rating ?? widget.initialRating;
+    final displayReviewCount =
+        vendorSnapshot?.totalReviews ?? widget.initialReviewCount;
 
     final systemUiOverlayStyle = SystemUiOverlayStyle(
       statusBarColor: colors.backgroundPrimary,
       statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       systemNavigationBarColor: colors.backgroundPrimary,
       systemNavigationBarDividerColor: Colors.transparent,
-      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      systemNavigationBarIconBrightness: isDark
+          ? Brightness.light
+          : Brightness.dark,
     );
 
     SystemChrome.setSystemUIOverlayStyle(systemUiOverlayStyle);
@@ -118,13 +133,25 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: EdgeInsets.only(top: padding.top + 10, left: 20.w, right: 20.w, bottom: 16.h),
+              padding: EdgeInsets.only(
+                top: padding.top + 10,
+                left: 20.w,
+                right: 20.w,
+                bottom: 16.h,
+              ),
               child: Row(
                 children: [
                   Container(
                     height: 44,
                     width: 44,
-                    decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
+                    decoration: BoxDecoration(
+                      color: colors.backgroundSecondary,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: colors.inputBorder.withValues(alpha: 0.3),
+                        width: 0.5,
+                      ),
+                    ),
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
@@ -135,7 +162,10 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
                           child: SvgPicture.asset(
                             Assets.icons.navArrowLeft,
                             package: 'grab_go_shared',
-                            colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                            colorFilter: ColorFilter.mode(
+                              colors.textPrimary,
+                              BlendMode.srcIn,
+                            ),
                           ),
                         ),
                       ),
@@ -147,7 +177,7 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Reviews",
+                          "Vendor Reviews",
                           style: TextStyle(
                             fontFamily: "Lato",
                             package: 'grab_go_shared',
@@ -158,10 +188,14 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
                         ),
                         SizedBox(height: 2.h),
                         Text(
-                          widget.itemName,
+                          widget.vendorName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                            color: colors.textSecondary,
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ],
                     ),
@@ -183,7 +217,10 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
                           package: 'grab_go_shared',
                           height: 24.h,
                           width: 24.w,
-                          colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                          colorFilter: ColorFilter.mode(
+                            colors.accentOrange,
+                            BlendMode.srcIn,
+                          ),
                         ),
                       ),
                     ),
@@ -191,7 +228,11 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
                   SizedBox(width: 10.w),
                   Text(
                     displayRating.toStringAsFixed(1),
-                    style: TextStyle(color: colors.textPrimary, fontSize: 24.sp, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: colors.textPrimary,
+                      fontSize: 24.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
@@ -202,7 +243,11 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
                 displayReviewCount > 0
                     ? 'Based on $displayReviewCount ${displayReviewCount == 1 ? 'review' : 'reviews'}'
                     : 'No reviews yet',
-                style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w400),
+                style: TextStyle(
+                  color: colors.textSecondary,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w400,
+                ),
               ),
             ),
             if (feed != null && feed.breakdown.isNotEmpty) ...[
@@ -213,7 +258,9 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
                   children: List.generate(5, (index) {
                     final rating = 5 - index;
                     final count = feed.breakdown[rating] ?? 0;
-                    final total = feed.item.totalReviews <= 0 ? 1 : feed.item.totalReviews;
+                    final total = feed.vendor.totalReviews <= 0
+                        ? 1
+                        : feed.vendor.totalReviews;
                     final fraction = count / total;
 
                     return Padding(
@@ -239,7 +286,9 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
                                 value: fraction.clamp(0.0, 1.0),
                                 minHeight: 6.h,
                                 backgroundColor: colors.backgroundSecondary,
-                                valueColor: AlwaysStoppedAnimation<Color>(colors.accentOrange),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  colors.accentOrange,
+                                ),
                               ),
                             ),
                           ),
@@ -266,7 +315,12 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
             SizedBox(height: 16.h),
             Container(
               decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: colors.inputBorder.withValues(alpha: 0.5), width: 1)),
+                border: Border(
+                  bottom: BorderSide(
+                    color: colors.inputBorder.withValues(alpha: 0.5),
+                    width: 1,
+                  ),
+                ),
               ),
               child: TabBar(
                 controller: _tabController,
@@ -308,8 +362,13 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
       return ListView.separated(
         padding: EdgeInsets.symmetric(vertical: 16.h),
         itemCount: 6,
-        separatorBuilder: (context, index) =>
-            Divider(color: colors.backgroundSecondary, height: 1, thickness: 1, indent: 20, endIndent: 20),
+        separatorBuilder: (context, index) => Divider(
+          color: colors.backgroundSecondary,
+          height: 1,
+          thickness: 1,
+          indent: 20,
+          endIndent: 20,
+        ),
         itemBuilder: (context, index) => Padding(
           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
           child: Column(
@@ -357,14 +416,22 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
               Text(
                 _error!,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  color: colors.textSecondary,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               SizedBox(height: 16.h),
               TextButton(
                 onPressed: () => _loadReviews(sort: _activeSort),
                 child: Text(
                   'Retry',
-                  style: TextStyle(color: colors.accentOrange, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    color: colors.accentOrange,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
@@ -377,8 +444,12 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
     if (feed == null || feed.reviews.isEmpty) {
       return Center(
         child: Text(
-          'No comments yet for this item.',
-          style: TextStyle(color: colors.textSecondary, fontSize: 15.sp, fontWeight: FontWeight.w500),
+          'No comments yet for this vendor.',
+          style: TextStyle(
+            color: colors.textSecondary,
+            fontSize: 15.sp,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       );
     }
@@ -388,8 +459,13 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
       child: ListView.separated(
         padding: EdgeInsets.symmetric(vertical: 10.h),
         itemCount: feed.reviews.length,
-        separatorBuilder: (context, index) =>
-            Divider(color: colors.backgroundSecondary, height: 1, thickness: 1, indent: 20, endIndent: 20),
+        separatorBuilder: (context, index) => Divider(
+          color: colors.backgroundSecondary,
+          height: 1,
+          thickness: 1,
+          indent: 20,
+          endIndent: 20,
+        ),
         itemBuilder: (context, index) {
           final review = feed.reviews[index];
           return _buildReviewCard(colors, review);
@@ -398,7 +474,7 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
     );
   }
 
-  Widget _buildReviewCard(AppColorsExtension colors, ItemReviewEntry review) {
+  Widget _buildReviewCard(AppColorsExtension colors, VendorReviewEntry review) {
     final createdAt = review.createdAt;
     final subtitle = createdAt == null
         ? review.reviewer.name
@@ -420,7 +496,11 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
                   children: [
                     Text(
                       subtitle,
-                      style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     SizedBox(height: 6.h),
                     Row(
@@ -429,12 +509,16 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
                         (index) => Padding(
                           padding: EdgeInsets.only(right: 2.w),
                           child: SvgPicture.asset(
-                            index < review.rating ? Assets.icons.starSolid : Assets.icons.star,
+                            index < review.rating
+                                ? Assets.icons.starSolid
+                                : Assets.icons.star,
                             package: 'grab_go_shared',
                             height: 14.h,
                             width: 14.w,
                             colorFilter: ColorFilter.mode(
-                              index < review.rating ? colors.accentOrange : colors.divider,
+                              index < review.rating
+                                  ? colors.accentOrange
+                                  : colors.divider,
                               BlendMode.srcIn,
                             ),
                           ),
@@ -450,7 +534,12 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
             SizedBox(height: 12.h),
             Text(
               review.comment!.trim(),
-              style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w400, height: 1.45),
+              style: TextStyle(
+                color: colors.textPrimary,
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w400,
+                height: 1.45,
+              ),
             ),
           ],
           if (review.feedbackTags.isNotEmpty) ...[
@@ -461,14 +550,21 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
               children: review.feedbackTags
                   .map((tag) {
                     return Container(
-                      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 10.w,
+                        vertical: 6.h,
+                      ),
                       decoration: BoxDecoration(
                         color: colors.backgroundSecondary,
                         borderRadius: BorderRadius.circular(999.r),
                       ),
                       child: Text(
                         tag,
-                        style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          color: colors.textSecondary,
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     );
                   })
@@ -480,7 +576,10 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
     );
   }
 
-  Widget _buildAvatar(AppColorsExtension colors, ItemReviewReviewer reviewer) {
+  Widget _buildAvatar(
+    AppColorsExtension colors,
+    VendorReviewReviewer reviewer,
+  ) {
     final imageUrl = reviewer.profilePicture?.trim();
     if (imageUrl != null && imageUrl.isNotEmpty) {
       return ClipOval(
@@ -500,8 +599,15 @@ class _ItemReviewsPageState extends State<ItemReviewsPage> with SingleTickerProv
     return Container(
       width: 40.w,
       height: 40.w,
-      decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
-      child: Icon(Icons.person_outline, size: 20.sp, color: colors.textSecondary),
+      decoration: BoxDecoration(
+        color: colors.backgroundSecondary,
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        Icons.person_outline,
+        size: 20.sp,
+        color: colors.textSecondary,
+      ),
     );
   }
 }

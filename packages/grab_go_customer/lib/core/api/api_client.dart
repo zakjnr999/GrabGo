@@ -10,6 +10,7 @@ import 'package:grab_go_customer/core/api/auth_service.dart';
 import 'package:grab_go_customer/features/home/service/food_service.dart';
 import 'package:grab_go_customer/features/order/service/order_service_chopper.dart';
 import 'package:grab_go_customer/features/order/service/item_review_service_chopper.dart';
+import 'package:grab_go_customer/features/order/service/vendor_review_service_chopper.dart';
 import 'package:grab_go_customer/features/status/service/status_service.dart';
 import 'package:grab_go_customer/shared/services/notification_service_chopper.dart';
 import 'package:grab_go_customer/shared/api/cart_api_service.dart';
@@ -24,6 +25,7 @@ final chopperClient = ChopperClient(
     RestaurantService.create(),
     OrderServiceChopper.create(),
     ItemReviewServiceChopper.create(),
+    VendorReviewServiceChopper.create(),
     StatusService.create(),
     NotificationServiceChopper.create(),
     CartApiService.create(),
@@ -43,6 +45,8 @@ OrderServiceChopper get orderServiceChopper =>
     chopperClient.getService<OrderServiceChopper>();
 ItemReviewServiceChopper get itemReviewServiceChopper =>
     chopperClient.getService<ItemReviewServiceChopper>();
+VendorReviewServiceChopper get vendorReviewServiceChopper =>
+    chopperClient.getService<VendorReviewServiceChopper>();
 StatusService get statusService => chopperClient.getService<StatusService>();
 NotificationServiceChopper get notificationServiceChopper =>
     chopperClient.getService<NotificationServiceChopper>();
