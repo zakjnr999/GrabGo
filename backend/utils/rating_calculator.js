@@ -1,4 +1,4 @@
-const DEFAULT_GLOBAL_MEAN = 4.2;
+const DEFAULT_GLOBAL_MEAN = 4.0;
 const DEFAULT_PRIOR_WEIGHT = 12;
 const MIN_RATING = 0;
 const MAX_RATING = 5;

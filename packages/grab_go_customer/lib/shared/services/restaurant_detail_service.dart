@@ -75,17 +75,23 @@ class RestaurantDetailService {
                 restaurant['reviewCount'] ??
                 restaurant['ratingCount'];
 
+            final parsedRating = rawRating is num
+                ? rawRating.toDouble()
+                : double.tryParse(rawRating.toString()) ?? 0.0;
+            final parsedReviewCount = rawReviewCount is num
+                ? rawReviewCount.toInt()
+                : int.tryParse(rawReviewCount.toString()) ?? 0;
+            final displayRating = parsedReviewCount <= 0 && parsedRating <= 0
+                ? 4.0
+                : parsedRating;
+
             _cache[restaurantId] = {
               '_id': restaurantId,
               'restaurant_name':
                   restaurant['restaurant_name'] ?? restaurant['name'] ?? '',
               'logo': restaurant['logo'] ?? restaurant['image'] ?? '',
-              'rating': rawRating is num
-                  ? rawRating.toDouble()
-                  : double.tryParse(rawRating.toString()) ?? 0.0,
-              'totalReviews': rawReviewCount is num
-                  ? rawReviewCount.toInt()
-                  : int.tryParse(rawReviewCount.toString()) ?? 0,
+              'rating': displayRating,
+              'totalReviews': parsedReviewCount,
               'address': restaurant['address'] ?? 'Address not available',
               'phone': restaurant['phone'] ?? '',
               'description': restaurant['description'] ?? '',

@@ -572,6 +572,14 @@ class VendorModel {
         ? totalReviewsValue.toInt()
         : int.tryParse(totalReviewsValue.toString()) ?? 0;
     final vendorTypeId = json['vendorType']?.toString();
+    final dynamic rawRatingValue =
+        json['weightedRating'] ?? json['displayRating'] ?? json['rating'];
+    final double parsedRating = rawRatingValue is num
+        ? rawRatingValue.toDouble()
+        : double.tryParse(rawRatingValue?.toString() ?? '') ?? 0.0;
+    final double displayRating = parsedTotalReviews <= 0 && parsedRating <= 0
+        ? 4.0
+        : parsedRating;
 
     return VendorModel(
       id: (json['_id'] ?? json['id'] ?? '').toString(),
@@ -590,12 +598,7 @@ class VendorModel {
       deliveryFee: (json['deliveryFee'] ?? json['delivery_fee'] ?? 0.0)
           .toDouble(),
       minOrder: (json['minOrder'] ?? json['min_order'] ?? 0.0).toDouble(),
-      rating:
-          (json['weightedRating'] ??
-                  json['displayRating'] ??
-                  json['rating'] ??
-                  0.0)
-              .toDouble(),
+      rating: displayRating,
       totalReviews: parsedTotalReviews,
       categories: parseStringList(json['categories']),
       foodType: json['foodType']?.toString() ?? json['food_type']?.toString(),

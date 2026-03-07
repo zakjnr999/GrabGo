@@ -700,7 +700,7 @@ model Restaurant {
   paymentMethods         String[]     @default([])
   bannerImages           String[]     @default([])
   status                 EntityStatus @default(pending)
-  rating                 Float        @default(0)
+  rating                 Float        @default(4.0)
   ratingCount            Int          @default(0)
   isOpen                 Boolean      @default(true)
 
@@ -857,7 +857,7 @@ model GroceryStore {
   email                  String       @unique
   password               String
   status                 EntityStatus @default(pending)
-  rating                 Float        @default(0)
+  rating                 Float        @default(4.0)
   ratingCount            Int          @default(0)
   isOpen                 Boolean      @default(true)
   deliveryFee            Float        @default(0)
@@ -1026,7 +1026,7 @@ model PharmacyStore {
   email                  String       @unique
   password               String
   status                 EntityStatus @default(pending)
-  rating                 Float        @default(0)
+  rating                 Float        @default(4.0)
   ratingCount            Int          @default(0)
   isOpen                 Boolean      @default(true)
   deliveryFee            Float        @default(0)
@@ -2245,7 +2245,7 @@ model GrabMartStore {
   email       String       @unique
   password    String?
   status      EntityStatus @default(pending)
-  rating      Float        @default(0)
+  rating      Float        @default(4.0)
   ratingCount Int          @default(0)
   isOpen      Boolean      @default(true)
   deliveryFee Float        @default(0)
