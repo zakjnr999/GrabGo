@@ -33,7 +33,9 @@ class ItemReviewServiceWrapper {
       }
 
       if (body['success'] != true) {
-        throw Exception(body['message']?.toString() ?? 'Failed to load item reviews');
+        throw Exception(
+          body['message']?.toString() ?? 'Failed to load item reviews',
+        );
       }
 
       final data = body['data'] as Map<String, dynamic>?;
@@ -44,6 +46,33 @@ class ItemReviewServiceWrapper {
       return ItemReviewFeed.fromJson(data);
     } catch (e) {
       throw Exception('Failed to load item reviews: $e');
+    }
+  }
+
+  Future<void> reportItemReview({
+    required String reviewId,
+    required String reason,
+    String? details,
+  }) async {
+    try {
+      final response = await _itemReviewService.reportItemReview(reviewId, {
+        'reason': reason,
+        if (details != null && details.trim().isNotEmpty)
+          'details': details.trim(),
+      });
+      final body = _resolveResponseMap(response);
+
+      if (body == null) {
+        throw Exception('Unable to report this review right now.');
+      }
+
+      if (body['success'] != true) {
+        throw Exception(
+          body['message']?.toString() ?? 'Failed to report this review',
+        );
+      }
+    } catch (e) {
+      throw Exception('Failed to report item review: $e');
     }
   }
 

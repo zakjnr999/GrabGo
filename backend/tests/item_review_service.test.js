@@ -2,10 +2,16 @@ const mockPrisma = {
   $transaction: jest.fn(),
   food: {
     findUnique: jest.fn(),
+    update: jest.fn(),
   },
   itemReview: {
     findMany: jest.fn(),
     groupBy: jest.fn(),
+    findUnique: jest.fn(),
+    update: jest.fn(),
+  },
+  itemReviewReport: {
+    create: jest.fn(),
   },
 };
 
@@ -17,6 +23,8 @@ const {
   resolveOrderItemReviewTarget,
   submitItemReviews,
   getItemReviews,
+  moderateItemReview,
+  reportItemReview,
 } = require("../services/item_review_service");
 
 describe("item_review_service", () => {
@@ -302,6 +310,180 @@ describe("item_review_service", () => {
       expect(result.breakdown).toEqual({ 5: 8, 4: 3, 3: 0, 2: 0, 1: 0 });
       expect(result.reviews).toHaveLength(1);
       expect(result.reviews[0].reviewer.name).toBe("Boss Zack");
+    });
+
+    test("filters hidden item reviews from public feeds", async () => {
+      mockPrisma.food.findUnique.mockResolvedValue({
+        id: "food_1",
+        name: "Jollof Rice",
+        foodImage: "jollof.jpg",
+        rating: 4.3,
+        ratingSum: 43,
+        totalReviews: 10,
+      });
+      mockPrisma.itemReview.findMany.mockResolvedValue([]);
+      mockPrisma.itemReview.groupBy.mockResolvedValue([]);
+
+      await getItemReviews({
+        prismaClient: mockPrisma,
+        itemType: "food",
+        itemId: "food_1",
+      });
+
+      expect(mockPrisma.itemReview.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            foodId: "food_1",
+            isHidden: false,
+          },
+        })
+      );
+    });
+  });
+
+  describe("reportItemReview", () => {
+    test("creates a report and increments report metadata", async () => {
+      const tx = {
+        itemReview: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: "review_1",
+            isHidden: false,
+            reportedCount: 0,
+          }),
+          update: jest.fn().mockResolvedValue({
+            id: "review_1",
+            isHidden: false,
+            reportedCount: 1,
+            lastReportedAt: new Date("2026-03-07T20:10:00.000Z"),
+          }),
+        },
+        itemReviewReport: {
+          create: jest.fn().mockResolvedValue({
+            id: "report_1",
+            createdAt: new Date("2026-03-07T20:10:00.000Z"),
+          }),
+        },
+      };
+
+      mockPrisma.$transaction.mockImplementation(async (callback) => callback(tx));
+
+      const result = await reportItemReview({
+        prismaClient: mockPrisma,
+        reviewId: "review_1",
+        reporterId: "user_9",
+        reason: "personal_info",
+        details: "This comment contains contact details",
+      });
+
+      expect(tx.itemReviewReport.create).toHaveBeenCalledWith({
+        data: {
+          itemReviewId: "review_1",
+          reporterId: "user_9",
+          reason: "personal_info",
+          details: "This comment contains contact details",
+        },
+        select: {
+          id: true,
+          createdAt: true,
+        },
+      });
+      expect(result.reportedCount).toBe(1);
+    });
+  });
+
+  describe("moderateItemReview", () => {
+    test("hides a review and removes it from item aggregates", async () => {
+      const tx = {
+        itemReview: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: "review_1",
+            rating: 5,
+            isHidden: false,
+            hiddenReason: null,
+            hiddenAt: null,
+            reportedCount: 1,
+            itemType: "food",
+            foodId: "food_1",
+            groceryItemId: null,
+            pharmacyItemId: null,
+            grabMartItemId: null,
+          }),
+          update: jest.fn().mockResolvedValue({
+            id: "review_1",
+            isHidden: true,
+            hiddenReason: "Abusive language",
+            hiddenAt: new Date("2026-03-07T20:15:00.000Z"),
+            reportedCount: 1,
+          }),
+        },
+        food: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: "food_1",
+            name: "Jollof Rice",
+            foodImage: "jollof.jpg",
+            rating: 4.55,
+            ratingSum: 50,
+            totalReviews: 11,
+          }),
+          update: jest.fn().mockResolvedValue({
+            id: "food_1",
+            name: "Jollof Rice",
+            foodImage: "jollof.jpg",
+            rating: 4.5,
+            ratingSum: 45,
+            totalReviews: 10,
+          }),
+        },
+      };
+
+      mockPrisma.$transaction.mockImplementation(async (callback) => callback(tx));
+
+      const result = await moderateItemReview({
+        prismaClient: mockPrisma,
+        reviewId: "review_1",
+        isHidden: true,
+        hiddenReason: "Abusive language",
+      });
+
+      expect(tx.food.update).toHaveBeenCalledWith({
+        where: { id: "food_1" },
+        data: {
+          rating: 4.5,
+          ratingSum: 45,
+          totalReviews: 10,
+        },
+        select: {
+          id: true,
+          name: true,
+          foodImage: true,
+          rating: true,
+          ratingSum: true,
+          totalReviews: true,
+        },
+      });
+      expect(result.review.isHidden).toBe(true);
+      expect(result.item.ratingCount).toBe(10);
+    });
+  });
+
+  describe("comment moderation", () => {
+    test("rejects blocked item review comments", async () => {
+      await expect(
+        submitItemReviews({
+          prismaClient: mockPrisma,
+          orderId: "order_1",
+          customerId: "user_1",
+          reviews: [
+            {
+              orderItemId: "order_item_1",
+              rating: 5,
+              comment: "Reach me on boss@example.com",
+            },
+          ],
+        })
+      ).rejects.toMatchObject({
+        code: "ITEM_REVIEW_COMMENT_NOT_ALLOWED",
+      });
     });
   });
 });

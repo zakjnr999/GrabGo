@@ -1,5 +1,13 @@
 const prisma = require("../config/prisma");
-const { normalizeRatingResponse } = require("../utils/rating_calculator");
+const {
+  DEFAULT_GLOBAL_MEAN,
+  normalizeRatingResponse,
+} = require("../utils/rating_calculator");
+const {
+  assertReviewCommentAllowed,
+  normalizeReportDetails,
+  normalizeReportReason,
+} = require("../utils/review_moderation");
 
 const VENDOR_TYPE_CONFIG = {
   restaurant: {
@@ -112,6 +120,12 @@ const normalizeComment = (comment) => {
   return normalized.length > 0 ? normalized.slice(0, 500) : null;
 };
 
+const normalizeHiddenReason = (hiddenReason) => {
+  if (typeof hiddenReason !== "string") return null;
+  const normalized = hiddenReason.trim();
+  return normalized.length > 0 ? normalized.slice(0, 200) : null;
+};
+
 const resolvePublicVendorType = (vendorType) => {
   const normalized = String(vendorType || "").trim().toLowerCase();
   return VENDOR_TYPE_CONFIG[normalized] || null;
@@ -194,6 +208,29 @@ const deriveCurrentAggregate = (vendor) => {
   };
 };
 
+const buildAggregateAfterVisibilityChange = ({
+  currentCount,
+  currentSum,
+  reviewRating,
+  hide,
+}) => {
+  const nextRatingCount = hide
+    ? Math.max(0, currentCount - 1)
+    : currentCount + 1;
+  const nextRatingSum = hide
+    ? Math.max(0, roundToTwo(currentSum - reviewRating))
+    : roundToTwo(currentSum + reviewRating);
+  const nextRawRating = nextRatingCount > 0
+    ? roundToTwo(nextRatingSum / nextRatingCount)
+    : DEFAULT_GLOBAL_MEAN;
+
+  return {
+    nextRatingCount,
+    nextRatingSum,
+    nextRawRating,
+  };
+};
+
 const validateRatingRequest = ({ rating }) => {
   const numericRating = Number(rating);
   if (!Number.isInteger(numericRating) || numericRating < 1 || numericRating > 5) {
@@ -216,6 +253,9 @@ const submitVendorRating = async ({
   const normalizedRating = validateRatingRequest({ rating });
   const normalizedTags = normalizeFeedbackTags(feedbackTags);
   const normalizedComment = normalizeComment(comment);
+  assertReviewCommentAllowed(normalizedComment, VendorRatingError, {
+    code: "VENDOR_REVIEW_COMMENT_NOT_ALLOWED",
+  });
 
   try {
     return await prismaClient.$transaction(async (tx) => {
@@ -402,7 +442,7 @@ const getVendorReviews = async ({
     });
   }
 
-  const where = { [target.orderField]: vendorId };
+  const where = { [target.orderField]: vendorId, isHidden: false };
   const orderBy =
     normalizedSort === "latest"
       ? [{ createdAt: "desc" }]
@@ -481,6 +521,240 @@ const getVendorReviews = async ({
   };
 };
 
+const reportVendorReview = async ({
+  prismaClient = prisma,
+  reviewId,
+  reporterId,
+  reason,
+  details,
+}) => {
+  const normalizedReason = normalizeReportReason(reason);
+  if (!normalizedReason) {
+    throw new VendorRatingError("Invalid review report reason", {
+      statusCode: 400,
+      code: "VENDOR_REVIEW_REPORT_REASON_INVALID",
+    });
+  }
+
+  const normalizedDetails = normalizeReportDetails(details);
+
+  try {
+    return await prismaClient.$transaction(async (tx) => {
+      const review = await tx.vendorReview.findUnique({
+        where: { id: reviewId },
+        select: {
+          id: true,
+          isHidden: true,
+          reportedCount: true,
+        },
+      });
+
+      if (!review) {
+        throw new VendorRatingError("Vendor review not found", {
+          statusCode: 404,
+          code: "VENDOR_REVIEW_NOT_FOUND",
+        });
+      }
+
+      const report = await tx.vendorReviewReport.create({
+        data: {
+          vendorReviewId: reviewId,
+          reporterId,
+          reason: normalizedReason,
+          details: normalizedDetails,
+        },
+        select: {
+          id: true,
+          createdAt: true,
+        },
+      });
+
+      const updatedReview = await tx.vendorReview.update({
+        where: { id: reviewId },
+        data: {
+          reportedCount: { increment: 1 },
+          lastReportedAt: new Date(),
+        },
+        select: {
+          id: true,
+          isHidden: true,
+          reportedCount: true,
+          lastReportedAt: true,
+        },
+      });
+
+      return {
+        reviewId: updatedReview.id,
+        reportId: report.id,
+        isHidden: updatedReview.isHidden,
+        reportedCount: updatedReview.reportedCount,
+        reportedAt: report.createdAt,
+      };
+    });
+  } catch (error) {
+    if (error instanceof VendorRatingError) {
+      throw error;
+    }
+
+    const isDuplicateReport =
+      error?.code === "P2002" ||
+      String(error?.message || "").includes("Unique constraint");
+
+    if (isDuplicateReport) {
+      throw new VendorRatingError(
+        "You have already reported this vendor review",
+        {
+          statusCode: 409,
+          code: "VENDOR_REVIEW_ALREADY_REPORTED",
+        }
+      );
+    }
+
+    throw error;
+  }
+};
+
+const moderateVendorReview = async ({
+  prismaClient = prisma,
+  reviewId,
+  isHidden,
+  hiddenReason,
+}) => {
+  const shouldHide = Boolean(isHidden);
+  const normalizedHiddenReason = shouldHide
+    ? normalizeHiddenReason(hiddenReason)
+    : null;
+
+  return prismaClient.$transaction(async (tx) => {
+    const review = await tx.vendorReview.findUnique({
+      where: { id: reviewId },
+      select: {
+        id: true,
+        rating: true,
+        isHidden: true,
+        hiddenReason: true,
+        hiddenAt: true,
+        reportedCount: true,
+        restaurantId: true,
+        groceryStoreId: true,
+        pharmacyStoreId: true,
+        grabMartStoreId: true,
+      },
+    });
+
+    if (!review) {
+      throw new VendorRatingError("Vendor review not found", {
+        statusCode: 404,
+        code: "VENDOR_REVIEW_NOT_FOUND",
+      });
+    }
+
+    if (review.isHidden === shouldHide) {
+      return {
+        review: {
+          id: review.id,
+          isHidden: review.isHidden,
+          hiddenReason: review.hiddenReason,
+          hiddenAt: review.hiddenAt,
+          reportedCount: review.reportedCount,
+        },
+        vendor: null,
+      };
+    }
+
+    const target = resolveVendorReviewTarget(review);
+    if (!target) {
+      throw new VendorRatingError("Vendor review target is invalid", {
+        statusCode: 400,
+        code: "VENDOR_REVIEW_TARGET_INVALID",
+      });
+    }
+
+    const vendor = await tx[target.prismaModel].findUnique({
+      where: { id: target.vendorId },
+      select: {
+        id: true,
+        rating: true,
+        ratingCount: true,
+        ratingSum: true,
+        totalReviews: true,
+      },
+    });
+
+    if (!vendor) {
+      throw new VendorRatingError("Vendor not found", {
+        statusCode: 404,
+        code: "VENDOR_REVIEW_VENDOR_NOT_FOUND",
+      });
+    }
+
+    const { ratingCount: currentCount, ratingSum: currentSum } =
+      deriveCurrentAggregate(vendor);
+    const {
+      nextRatingCount,
+      nextRatingSum,
+      nextRawRating,
+    } = buildAggregateAfterVisibilityChange({
+      currentCount,
+      currentSum,
+      reviewRating: Number(review.rating || 0),
+      hide: shouldHide,
+    });
+
+    const [updatedReview, updatedVendor] = await Promise.all([
+      tx.vendorReview.update({
+        where: { id: reviewId },
+        data: {
+          isHidden: shouldHide,
+          hiddenReason: normalizedHiddenReason,
+          hiddenAt: shouldHide ? new Date() : null,
+        },
+        select: {
+          id: true,
+          isHidden: true,
+          hiddenReason: true,
+          hiddenAt: true,
+          reportedCount: true,
+        },
+      }),
+      tx[target.prismaModel].update({
+        where: { id: target.vendorId },
+        data: {
+          rating: nextRawRating,
+          ratingCount: nextRatingCount,
+          ratingSum: nextRatingSum,
+          totalReviews: nextRatingCount,
+        },
+        select: {
+          id: true,
+          rating: true,
+          ratingCount: true,
+          totalReviews: true,
+        },
+      }),
+    ]);
+
+    const ratingMeta = normalizeRatingResponse({
+      rating: updatedVendor.rating,
+      ratingCount: updatedVendor.ratingCount,
+      totalReviews: updatedVendor.totalReviews,
+    });
+
+    return {
+      review: updatedReview,
+      vendor: {
+        id: updatedVendor.id,
+        type: target.vendorType,
+        rawRating: ratingMeta.rawRating,
+        weightedRating: ratingMeta.weightedRating,
+        rating: ratingMeta.rating,
+        ratingCount: ratingMeta.ratingCount,
+        totalReviews: ratingMeta.totalReviews,
+      },
+    };
+  });
+};
+
 module.exports = {
   VendorRatingError,
   VENDOR_REVIEW_ORDER_SELECT,
@@ -488,6 +762,8 @@ module.exports = {
   decorateOrderWithVendorRatingMeta,
   decorateOrdersWithVendorRatingMeta,
   getVendorReviews,
+  moderateVendorReview,
+  reportVendorReview,
   resolveVendorReviewTarget,
   submitVendorRating,
 };

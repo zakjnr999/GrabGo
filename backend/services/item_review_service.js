@@ -1,5 +1,13 @@
 const prisma = require("../config/prisma");
-const { normalizeRatingResponse } = require("../utils/rating_calculator");
+const {
+  DEFAULT_GLOBAL_MEAN,
+  normalizeRatingResponse,
+} = require("../utils/rating_calculator");
+const {
+  assertReviewCommentAllowed,
+  normalizeReportDetails,
+  normalizeReportReason,
+} = require("../utils/review_moderation");
 
 const ITEM_TYPE_CONFIG = {
   food: {
@@ -141,6 +149,12 @@ const normalizeComment = (comment) => {
   return normalized.length > 0 ? normalized.slice(0, 500) : null;
 };
 
+const normalizeHiddenReason = (hiddenReason) => {
+  if (typeof hiddenReason !== "string") return null;
+  const normalized = hiddenReason.trim();
+  return normalized.length > 0 ? normalized.slice(0, 200) : null;
+};
+
 const resolvePublicItemType = (itemType) => {
   const normalized = String(itemType || "").trim().toLowerCase();
   return ITEM_TYPE_CONFIG[normalized] || null;
@@ -266,11 +280,16 @@ const normalizeReviewDrafts = (reviews) => {
       });
     }
 
+    const normalizedComment = normalizeComment(entry?.comment);
+    assertReviewCommentAllowed(normalizedComment, ItemReviewError, {
+      code: "ITEM_REVIEW_COMMENT_NOT_ALLOWED",
+    });
+
     return {
       orderItemId,
       rating: validateRating(entry?.rating),
       feedbackTags: normalizeFeedbackTags(entry?.feedbackTags),
-      comment: normalizeComment(entry?.comment),
+      comment: normalizedComment,
     };
   });
 };
@@ -287,6 +306,29 @@ const deriveCurrentAggregate = (item, countField) => {
       : roundToTwo(rawRating * ratingCount);
 
   return { ratingCount, ratingSum };
+};
+
+const buildAggregateAfterVisibilityChange = ({
+  currentCount,
+  currentSum,
+  reviewRating,
+  hide,
+}) => {
+  const nextRatingCount = hide
+    ? Math.max(0, currentCount - 1)
+    : currentCount + 1;
+  const nextRatingSum = hide
+    ? Math.max(0, roundToTwo(currentSum - reviewRating))
+    : roundToTwo(currentSum + reviewRating);
+  const nextRawRating = nextRatingCount > 0
+    ? roundToTwo(nextRatingSum / nextRatingCount)
+    : DEFAULT_GLOBAL_MEAN;
+
+  return {
+    nextRatingCount,
+    nextRatingSum,
+    nextRawRating,
+  };
 };
 
 const buildSubmittedItemSnapshot = ({ target, updatedItem }) => {
@@ -539,7 +581,7 @@ const getItemReviews = async ({
     });
   }
 
-  const where = { [target.orderField]: itemId };
+  const where = { [target.orderField]: itemId, isHidden: false };
   const orderBy =
     normalizedSort === "latest"
       ? [{ createdAt: "desc" }]
@@ -614,6 +656,226 @@ const getItemReviews = async ({
   };
 };
 
+const reportItemReview = async ({
+  prismaClient = prisma,
+  reviewId,
+  reporterId,
+  reason,
+  details,
+}) => {
+  const normalizedReason = normalizeReportReason(reason);
+  if (!normalizedReason) {
+    throw new ItemReviewError("Invalid review report reason", {
+      statusCode: 400,
+      code: "ITEM_REVIEW_REPORT_REASON_INVALID",
+    });
+  }
+
+  const normalizedDetails = normalizeReportDetails(details);
+
+  try {
+    return await prismaClient.$transaction(async (tx) => {
+      const review = await tx.itemReview.findUnique({
+        where: { id: reviewId },
+        select: {
+          id: true,
+          isHidden: true,
+          reportedCount: true,
+        },
+      });
+
+      if (!review) {
+        throw new ItemReviewError("Item review not found", {
+          statusCode: 404,
+          code: "ITEM_REVIEW_NOT_FOUND",
+        });
+      }
+
+      const report = await tx.itemReviewReport.create({
+        data: {
+          itemReviewId: reviewId,
+          reporterId,
+          reason: normalizedReason,
+          details: normalizedDetails,
+        },
+        select: {
+          id: true,
+          createdAt: true,
+        },
+      });
+
+      const updatedReview = await tx.itemReview.update({
+        where: { id: reviewId },
+        data: {
+          reportedCount: { increment: 1 },
+          lastReportedAt: new Date(),
+        },
+        select: {
+          id: true,
+          isHidden: true,
+          reportedCount: true,
+          lastReportedAt: true,
+        },
+      });
+
+      return {
+        reviewId: updatedReview.id,
+        reportId: report.id,
+        isHidden: updatedReview.isHidden,
+        reportedCount: updatedReview.reportedCount,
+        reportedAt: report.createdAt,
+      };
+    });
+  } catch (error) {
+    if (error instanceof ItemReviewError) {
+      throw error;
+    }
+
+    const isDuplicateReport =
+      error?.code === "P2002" ||
+      String(error?.message || "").includes("Unique constraint");
+
+    if (isDuplicateReport) {
+      throw new ItemReviewError("You have already reported this item review", {
+        statusCode: 409,
+        code: "ITEM_REVIEW_ALREADY_REPORTED",
+      });
+    }
+
+    throw error;
+  }
+};
+
+const moderateItemReview = async ({
+  prismaClient = prisma,
+  reviewId,
+  isHidden,
+  hiddenReason,
+}) => {
+  const shouldHide = Boolean(isHidden);
+  const normalizedHiddenReason = shouldHide
+    ? normalizeHiddenReason(hiddenReason)
+    : null;
+
+  return prismaClient.$transaction(async (tx) => {
+    const review = await tx.itemReview.findUnique({
+      where: { id: reviewId },
+      select: {
+        id: true,
+        rating: true,
+        isHidden: true,
+        hiddenReason: true,
+        hiddenAt: true,
+        reportedCount: true,
+        itemType: true,
+        foodId: true,
+        groceryItemId: true,
+        pharmacyItemId: true,
+        grabMartItemId: true,
+      },
+    });
+
+    if (!review) {
+      throw new ItemReviewError("Item review not found", {
+        statusCode: 404,
+        code: "ITEM_REVIEW_NOT_FOUND",
+      });
+    }
+
+    if (review.isHidden === shouldHide) {
+      return {
+        review: {
+          id: review.id,
+          isHidden: review.isHidden,
+          hiddenReason: review.hiddenReason,
+          hiddenAt: review.hiddenAt,
+          reportedCount: review.reportedCount,
+        },
+        item: null,
+      };
+    }
+
+    const target = resolveOrderItemReviewTarget(review);
+    if (!target) {
+      throw new ItemReviewError("Item review target is invalid", {
+        statusCode: 400,
+        code: "ITEM_REVIEW_TARGET_INVALID",
+      });
+    }
+
+    const item = await tx[target.prismaModel].findUnique({
+      where: { id: target.itemId },
+      select: {
+        id: true,
+        [target.nameField]: true,
+        [target.imageField]: true,
+        rating: true,
+        ratingSum: true,
+        [target.countField]: true,
+      },
+    });
+
+    if (!item) {
+      throw new ItemReviewError("Item not found", {
+        statusCode: 404,
+        code: "ITEM_REVIEW_ITEM_NOT_FOUND",
+      });
+    }
+
+    const { ratingCount: currentCount, ratingSum: currentSum } =
+      deriveCurrentAggregate(item, target.countField);
+    const {
+      nextRatingCount,
+      nextRatingSum,
+      nextRawRating,
+    } = buildAggregateAfterVisibilityChange({
+      currentCount,
+      currentSum,
+      reviewRating: Number(review.rating || 0),
+      hide: shouldHide,
+    });
+
+    const [updatedReview, updatedItem] = await Promise.all([
+      tx.itemReview.update({
+        where: { id: reviewId },
+        data: {
+          isHidden: shouldHide,
+          hiddenReason: normalizedHiddenReason,
+          hiddenAt: shouldHide ? new Date() : null,
+        },
+        select: {
+          id: true,
+          isHidden: true,
+          hiddenReason: true,
+          hiddenAt: true,
+          reportedCount: true,
+        },
+      }),
+      tx[target.prismaModel].update({
+        where: { id: target.itemId },
+        data: {
+          rating: nextRawRating,
+          ratingSum: nextRatingSum,
+          [target.countField]: nextRatingCount,
+        },
+        select: {
+          id: true,
+          [target.nameField]: true,
+          [target.imageField]: true,
+          rating: true,
+          ratingSum: true,
+          [target.countField]: true,
+        },
+      }),
+    ]);
+
+    return {
+      review: updatedReview,
+      item: buildSubmittedItemSnapshot({ target, updatedItem }),
+    };
+  });
+};
+
 module.exports = {
   ItemReviewError,
   ITEM_REVIEW_ORDER_SELECT,
@@ -623,4 +885,6 @@ module.exports = {
   decorateOrdersWithItemReviewMeta,
   submitItemReviews,
   getItemReviews,
+  reportItemReview,
+  moderateItemReview,
 };

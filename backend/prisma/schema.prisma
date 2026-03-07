@@ -472,6 +472,8 @@ model User {
   userCredits            UserCredit[]
   vendorReviews          VendorReview[]
   itemReviews            ItemReview[]
+  vendorReviewReports    VendorReviewReport[]       @relation("VendorReviewReports")
+  itemReviewReports      ItemReviewReport[]         @relation("ItemReviewReports")
   promoCodesCreated      PromoCode[]                 @relation("PromoCodeCreator")
   targetedPromoCodes     PromoCodeTargetedUser[]
   scheduledNotifications ScheduledNotification[]
@@ -1392,6 +1394,11 @@ model VendorReview {
   rating          Int
   feedbackTags    String[] @default([])
   comment         String?
+  isHidden        Boolean  @default(false)
+  hiddenReason    String?
+  hiddenAt        DateTime?
+  reportedCount   Int      @default(0)
+  lastReportedAt  DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -1401,6 +1408,7 @@ model VendorReview {
   groceryStore  GroceryStore?  @relation("GroceryStoreVendorReviews", fields: [groceryStoreId], references: [id], onDelete: Cascade)
   pharmacyStore PharmacyStore? @relation("PharmacyStoreVendorReviews", fields: [pharmacyStoreId], references: [id], onDelete: Cascade)
   grabMartStore GrabMartStore? @relation("GrabMartStoreVendorReviews", fields: [grabMartStoreId], references: [id], onDelete: Cascade)
+  reports        VendorReviewReport[]
 
   @@index([customerId])
   @@index([vendorType])
@@ -1408,6 +1416,7 @@ model VendorReview {
   @@index([groceryStoreId])
   @@index([pharmacyStoreId])
   @@index([grabMartStoreId])
+  @@index([isHidden, createdAt])
   @@map("vendor_reviews")
 }
 
@@ -1424,6 +1433,11 @@ model ItemReview {
   rating         Int
   feedbackTags   String[] @default([])
   comment        String?
+  isHidden       Boolean  @default(false)
+  hiddenReason   String?
+  hiddenAt       DateTime?
+  reportedCount  Int      @default(0)
+  lastReportedAt DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -1434,6 +1448,7 @@ model ItemReview {
   groceryItem  GroceryItem?  @relation("GroceryItemReviews", fields: [groceryItemId], references: [id], onDelete: Cascade)
   pharmacyItem PharmacyItem? @relation("PharmacyItemReviews", fields: [pharmacyItemId], references: [id], onDelete: Cascade)
   grabMartItem GrabMartItem? @relation("GrabMartItemReviews", fields: [grabMartItemId], references: [id], onDelete: Cascade)
+  reports      ItemReviewReport[]
 
   @@index([orderId])
   @@index([customerId])
@@ -1442,7 +1457,42 @@ model ItemReview {
   @@index([groceryItemId])
   @@index([pharmacyItemId])
   @@index([grabMartItemId])
+  @@index([isHidden, createdAt])
   @@map("item_reviews")
+}
+
+model VendorReviewReport {
+  id             String   @id @default(cuid())
+  vendorReviewId String
+  reporterId     String
+  reason         String
+  details        String?
+  createdAt      DateTime @default(now())
+
+  vendorReview VendorReview @relation(fields: [vendorReviewId], references: [id], onDelete: Cascade)
+  reporter     User         @relation("VendorReviewReports", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@unique([vendorReviewId, reporterId])
+  @@index([reporterId])
+  @@index([createdAt])
+  @@map("vendor_review_reports")
+}
+
+model ItemReviewReport {
+  id           String   @id @default(cuid())
+  itemReviewId String
+  reporterId   String
+  reason       String
+  details      String?
+  createdAt    DateTime @default(now())
+
+  itemReview ItemReview @relation(fields: [itemReviewId], references: [id], onDelete: Cascade)
+  reporter   User       @relation("ItemReviewReports", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@unique([itemReviewId, reporterId])
+  @@index([reporterId])
+  @@index([createdAt])
+  @@map("item_review_reports")
 }
 
 model OrderItem {

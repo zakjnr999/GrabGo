@@ -13,6 +13,12 @@ abstract class VendorReviewServiceChopper extends ChopperService {
     @Query('limit') int? limit,
   });
 
+  @POST(path: '/vendor-reviews/{reviewId}/report')
+  Future<Response<Map<String, dynamic>>> reportVendorReview(
+    @Path() String reviewId,
+    @Body() Map<String, dynamic> body,
+  );
+
   static VendorReviewServiceChopper create([ChopperClient? client]) =>
       _$VendorReviewServiceChopper(client);
 }

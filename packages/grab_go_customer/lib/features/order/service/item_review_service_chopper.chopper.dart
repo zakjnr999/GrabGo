@@ -40,4 +40,14 @@ final class _$ItemReviewServiceChopper extends ItemReviewServiceChopper {
     );
     return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
   }
+
+  @override
+  Future<Response<Map<String, dynamic>>> reportItemReview(
+    String reviewId,
+    Map<String, dynamic> body,
+  ) {
+    final Uri $url = Uri.parse('/item-reviews/${reviewId}/report');
+    final Request $request = Request('POST', $url, client.baseUrl, body: body);
+    return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
+  }
 }

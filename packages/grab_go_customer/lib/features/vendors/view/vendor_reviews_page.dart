@@ -6,9 +6,18 @@ import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/order/model/vendor_review_models.dart';
 import 'package:grab_go_customer/features/order/service/vendor_review_service_wrapper.dart';
+import 'package:grab_go_customer/shared/services/auth_guard.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
+import 'package:grab_go_shared/shared/widgets/app_toast_message.dart';
 import 'package:intl/intl.dart';
+
+class _ReviewReportOption {
+  const _ReviewReportOption({required this.value, required this.label});
+
+  final String value;
+  final String label;
+}
 
 class VendorReviewsPage extends StatefulWidget {
   const VendorReviewsPage({
@@ -32,12 +41,27 @@ class VendorReviewsPage extends StatefulWidget {
 
 class _VendorReviewsPageState extends State<VendorReviewsPage>
     with SingleTickerProviderStateMixin {
+  static const List<_ReviewReportOption> _reportOptions = [
+    _ReviewReportOption(
+      value: 'abusive_offensive',
+      label: 'Abusive or offensive',
+    ),
+    _ReviewReportOption(value: 'spam', label: 'Spam'),
+    _ReviewReportOption(value: 'personal_info', label: 'Personal information'),
+    _ReviewReportOption(value: 'unrelated', label: 'Unrelated to the vendor'),
+    _ReviewReportOption(
+      value: 'false_misleading',
+      label: 'False or misleading',
+    ),
+  ];
+
   late TabController _tabController;
   final VendorReviewServiceWrapper _reviewService =
       VendorReviewServiceWrapper();
 
   VendorReviewFeed? _feed;
   bool _isLoading = false;
+  bool _isReportingReview = false;
   String? _error;
   String _activeSort = 'popular';
 
@@ -103,6 +127,109 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
     }
   }
 
+  Future<void> _reportReview(VendorReviewEntry review) async {
+    if (_isReportingReview) return;
+
+    final isAuthenticated = await AuthGuard.ensureAuthenticated(context);
+    if (!mounted || !isAuthenticated) return;
+
+    final reason = await _showReportReasonSheet();
+    if (!mounted || reason == null) return;
+
+    final colors = context.appColors;
+
+    setState(() => _isReportingReview = true);
+
+    try {
+      await _reviewService.reportVendorReview(
+        reviewId: review.id,
+        reason: reason,
+      );
+      if (!mounted) return;
+      AppToastMessage.show(
+        context: context,
+        message: 'Review reported. We will take a look.',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final message = e
+          .toString()
+          .replaceFirst('Exception: ', '')
+          .replaceFirst('Failed to report vendor review: ', '');
+      AppToastMessage.show(
+        context: context,
+        message: message,
+        backgroundColor: colors.error,
+        maxLines: 3,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isReportingReview = false);
+      }
+    }
+  }
+
+  Future<String?> _showReportReasonSheet() {
+    final colors = context.appColors;
+    return showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: colors.backgroundPrimary,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 20.h),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Report review',
+                  style: TextStyle(
+                    color: colors.textPrimary,
+                    fontSize: 18.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                SizedBox(height: 8.h),
+                Text(
+                  'Choose the reason that best matches this review.',
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                SizedBox(height: 16.h),
+                ..._reportOptions.map((option) {
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      option.label,
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 15.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    trailing: Icon(
+                      Icons.chevron_right_rounded,
+                      color: colors.textSecondary,
+                    ),
+                    onTap: () => Navigator.of(context).pop(option.value),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
@@ -147,10 +274,6 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
                     decoration: BoxDecoration(
                       color: colors.backgroundSecondary,
                       shape: BoxShape.circle,
-                      border: Border.all(
-                        color: colors.inputBorder.withValues(alpha: 0.3),
-                        width: 0.5,
-                      ),
                     ),
                     child: Material(
                       color: Colors.transparent,
@@ -526,6 +649,17 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
                       ),
                     ),
                   ],
+                ),
+              ),
+              IconButton(
+                onPressed: _isReportingReview
+                    ? null
+                    : () => _reportReview(review),
+                splashRadius: 18.r,
+                icon: Icon(
+                  Icons.more_horiz_rounded,
+                  color: colors.textSecondary,
+                  size: 20.sp,
                 ),
               ),
             ],

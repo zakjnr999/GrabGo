@@ -2,10 +2,16 @@ const mockPrisma = {
   $transaction: jest.fn(),
   restaurant: {
     findUnique: jest.fn(),
+    update: jest.fn(),
   },
   vendorReview: {
     findMany: jest.fn(),
     groupBy: jest.fn(),
+    findUnique: jest.fn(),
+    update: jest.fn(),
+  },
+  vendorReviewReport: {
+    create: jest.fn(),
   },
 };
 
@@ -16,6 +22,8 @@ const {
   buildOrderVendorRatingMeta,
   decorateOrderWithVendorRatingMeta,
   getVendorReviews,
+  moderateVendorReview,
+  reportVendorReview,
   resolveVendorReviewTarget,
   submitVendorRating,
 } = require("../services/vendor_rating_service");
@@ -464,6 +472,170 @@ describe("vendor_rating_service", () => {
       expect(result.breakdown).toEqual({ 5: 8, 4: 3, 3: 0, 2: 0, 1: 0 });
       expect(result.reviews).toHaveLength(1);
       expect(result.reviews[0].reviewer.name).toBe("Boss Zack");
+    });
+
+    test("filters hidden vendor reviews from public feeds", async () => {
+      mockPrisma.restaurant.findUnique.mockResolvedValue({
+        id: "rest_1",
+        restaurantName: "Sushi Zen",
+        logo: "logo.jpg",
+        rating: 4.4,
+        ratingCount: 10,
+        totalReviews: 10,
+      });
+      mockPrisma.vendorReview.findMany.mockResolvedValue([]);
+      mockPrisma.vendorReview.groupBy.mockResolvedValue([]);
+
+      await getVendorReviews({
+        prismaClient: mockPrisma,
+        vendorType: "restaurant",
+        vendorId: "rest_1",
+      });
+
+      expect(mockPrisma.vendorReview.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            restaurantId: "rest_1",
+            isHidden: false,
+          },
+        })
+      );
+    });
+  });
+
+  describe("reportVendorReview", () => {
+    test("creates a report and increments report metadata", async () => {
+      const tx = {
+        vendorReview: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: "review_1",
+            isHidden: false,
+            reportedCount: 0,
+          }),
+          update: jest.fn().mockResolvedValue({
+            id: "review_1",
+            isHidden: false,
+            reportedCount: 1,
+            lastReportedAt: new Date("2026-03-07T20:00:00.000Z"),
+          }),
+        },
+        vendorReviewReport: {
+          create: jest.fn().mockResolvedValue({
+            id: "report_1",
+            createdAt: new Date("2026-03-07T20:00:00.000Z"),
+          }),
+        },
+      };
+
+      mockPrisma.$transaction.mockImplementation(async (callback) => callback(tx));
+
+      const result = await reportVendorReview({
+        prismaClient: mockPrisma,
+        reviewId: "review_1",
+        reporterId: "user_9",
+        reason: "spam",
+        details: "This comment is unrelated to the order",
+      });
+
+      expect(tx.vendorReviewReport.create).toHaveBeenCalledWith({
+        data: {
+          vendorReviewId: "review_1",
+          reporterId: "user_9",
+          reason: "spam",
+          details: "This comment is unrelated to the order",
+        },
+        select: {
+          id: true,
+          createdAt: true,
+        },
+      });
+      expect(result.reportedCount).toBe(1);
+    });
+  });
+
+  describe("moderateVendorReview", () => {
+    test("hides a review and removes it from vendor aggregates", async () => {
+      const tx = {
+        vendorReview: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: "review_1",
+            rating: 5,
+            isHidden: false,
+            hiddenReason: null,
+            hiddenAt: null,
+            reportedCount: 2,
+            restaurantId: "rest_1",
+            groceryStoreId: null,
+            pharmacyStoreId: null,
+            grabMartStoreId: null,
+          }),
+          update: jest.fn().mockResolvedValue({
+            id: "review_1",
+            isHidden: true,
+            hiddenReason: "Off-topic comment",
+            hiddenAt: new Date("2026-03-07T20:05:00.000Z"),
+            reportedCount: 2,
+          }),
+        },
+        restaurant: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: "rest_1",
+            rating: 4.55,
+            ratingCount: 11,
+            ratingSum: 50,
+            totalReviews: 11,
+          }),
+          update: jest.fn().mockResolvedValue({
+            id: "rest_1",
+            rating: 4.5,
+            ratingCount: 10,
+            totalReviews: 10,
+          }),
+        },
+      };
+
+      mockPrisma.$transaction.mockImplementation(async (callback) => callback(tx));
+
+      const result = await moderateVendorReview({
+        prismaClient: mockPrisma,
+        reviewId: "review_1",
+        isHidden: true,
+        hiddenReason: "Off-topic comment",
+      });
+
+      expect(tx.restaurant.update).toHaveBeenCalledWith({
+        where: { id: "rest_1" },
+        data: {
+          rating: 4.5,
+          ratingCount: 10,
+          ratingSum: 45,
+          totalReviews: 10,
+        },
+        select: {
+          id: true,
+          rating: true,
+          ratingCount: true,
+          totalReviews: true,
+        },
+      });
+      expect(result.review.isHidden).toBe(true);
+      expect(result.vendor.ratingCount).toBe(10);
+    });
+  });
+
+  describe("comment moderation", () => {
+    test("rejects blocked vendor review comments", async () => {
+      await expect(
+        submitVendorRating({
+          prismaClient: mockPrisma,
+          orderId: "order_1",
+          customerId: "user_1",
+          rating: 5,
+          comment: "Call me on +233 555 000 111",
+        })
+      ).rejects.toMatchObject({
+        code: "VENDOR_REVIEW_COMMENT_NOT_ALLOWED",
+      });
     });
   });
 });

@@ -50,6 +50,33 @@ class VendorReviewServiceWrapper {
     }
   }
 
+  Future<void> reportVendorReview({
+    required String reviewId,
+    required String reason,
+    String? details,
+  }) async {
+    try {
+      final response = await _vendorReviewService.reportVendorReview(reviewId, {
+        'reason': reason,
+        if (details != null && details.trim().isNotEmpty)
+          'details': details.trim(),
+      });
+      final body = _resolveResponseMap(response);
+
+      if (body == null) {
+        throw Exception('Unable to report this review right now.');
+      }
+
+      if (body['success'] != true) {
+        throw Exception(
+          body['message']?.toString() ?? 'Failed to report this review',
+        );
+      }
+    } catch (e) {
+      throw Exception('Failed to report vendor review: $e');
+    }
+  }
+
   Map<String, dynamic>? _resolveResponseMap(
     Response<Map<String, dynamic>> response,
   ) {
