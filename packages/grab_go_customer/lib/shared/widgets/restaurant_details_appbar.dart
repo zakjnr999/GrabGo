@@ -126,15 +126,13 @@ class RestaurantDetailsAppBar extends StatelessWidget {
                       children: [
                         GestureDetector(
                           onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => VendorReviewsPage(
-                                  vendorId: restaurant.backendId,
-                                  vendorType: 'restaurant',
-                                  vendorName: restaurant.name,
-                                  initialRating: restaurant.rating,
-                                  initialReviewCount: restaurant.totalReviews,
-                                ),
+                            context.push(
+                              VendorReviewsPage.location(
+                                vendorId: restaurant.backendId,
+                                vendorType: 'restaurant',
+                                vendorName: restaurant.name,
+                                initialRating: restaurant.rating,
+                                initialReviewCount: restaurant.totalReviews,
                               ),
                             );
                           },

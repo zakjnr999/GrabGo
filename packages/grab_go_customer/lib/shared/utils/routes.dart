@@ -13,6 +13,7 @@ import 'package:grab_go_customer/features/vendors/model/vendor_model.dart';
 import 'package:grab_go_customer/features/vendors/view/vendor_details_page.dart';
 import 'package:grab_go_customer/features/vendors/view/exclusive_vendors_page.dart';
 import 'package:grab_go_customer/features/vendors/view/vendor_info_page.dart';
+import 'package:grab_go_customer/features/vendors/view/vendor_reviews_page.dart';
 import 'package:grab_go_customer/features/status/view/all_statuses_page.dart';
 import 'package:grab_go_customer/features/status/model/status_model.dart';
 import 'package:grab_go_customer/shared/services/auth_guard.dart';
@@ -34,6 +35,7 @@ import 'package:grab_go_customer/features/auth/view/restaurant_registration.dart
 import 'package:grab_go_customer/features/auth/view/verify_phone.dart';
 import 'package:grab_go_customer/features/cart/view/checkout.dart';
 import 'package:grab_go_customer/features/home/view/food_details.dart';
+import 'package:grab_go_customer/features/home/view/item_reviews_page.dart';
 import 'package:grab_go_customer/features/home/view/search_page.dart';
 import 'package:grab_go_customer/features/home/view/notification.dart'
     as notification_page;
@@ -66,6 +68,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
+
+double _parseRouteDouble(String? value, {double fallback = 0.0}) {
+  return double.tryParse(value ?? '') ?? fallback;
+}
+
+int _parseRouteInt(String? value, {int fallback = 0}) {
+  return int.tryParse(value ?? '') ?? fallback;
+}
 
 final GoRouter appRouter = GoRouter(
   navigatorKey: rootNavigatorKey,
@@ -117,6 +127,28 @@ final GoRouter appRouter = GoRouter(
           uri.queryParameters['categoryId']?.isNotEmpty == true;
 
       if (!hasExtraCategory && !hasQueryCategory) {
+        return '/homepage';
+      }
+    }
+
+    if (uri.path == ItemReviewsPage.routePath) {
+      final hasRequiredParams =
+          uri.queryParameters['itemId']?.isNotEmpty == true &&
+          uri.queryParameters['itemType']?.isNotEmpty == true &&
+          uri.queryParameters['itemName']?.isNotEmpty == true;
+
+      if (!hasRequiredParams) {
+        return '/homepage';
+      }
+    }
+
+    if (uri.path == VendorReviewsPage.routePath) {
+      final hasRequiredParams =
+          uri.queryParameters['vendorId']?.isNotEmpty == true &&
+          uri.queryParameters['vendorType']?.isNotEmpty == true &&
+          uri.queryParameters['vendorName']?.isNotEmpty == true;
+
+      if (!hasRequiredParams) {
         return '/homepage';
       }
     }
@@ -1035,6 +1067,60 @@ final GoRouter appRouter = GoRouter(
               animation: animation,
               secondaryAnimation: secondaryAnimation,
               transitionType: SharedAxisTransitionType.scaled,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: ItemReviewsPage.routePath,
+      pageBuilder: (context, state) {
+        final query = state.uri.queryParameters;
+
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: ItemReviewsPage(
+            itemId: query['itemId'] ?? '',
+            itemType: query['itemType'] ?? '',
+            itemName: query['itemName'] ?? '',
+            initialRating: _parseRouteDouble(query['rating'], fallback: 4.0),
+            initialReviewCount: _parseRouteInt(query['reviewCount']),
+          ),
+          transitionDuration: const Duration(milliseconds: 400),
+          reverseTransitionDuration: const Duration(milliseconds: 400),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.vertical,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: VendorReviewsPage.routePath,
+      pageBuilder: (context, state) {
+        final query = state.uri.queryParameters;
+
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: VendorReviewsPage(
+            vendorId: query['vendorId'] ?? '',
+            vendorType: query['vendorType'] ?? '',
+            vendorName: query['vendorName'] ?? '',
+            initialRating: _parseRouteDouble(query['rating'], fallback: 4.0),
+            initialReviewCount: _parseRouteInt(query['reviewCount']),
+          ),
+          transitionDuration: const Duration(milliseconds: 400),
+          reverseTransitionDuration: const Duration(milliseconds: 400),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.vertical,
               child: child,
             );
           },

@@ -357,6 +357,7 @@ const submitItemReviews = async ({
   orderId,
   customerId,
   reviews,
+  transactionOptions,
 }) => {
   const normalizedReviews = normalizeReviewDrafts(reviews);
   const seenOrderItemIds = new Set();
@@ -498,7 +499,7 @@ const submitItemReviews = async ({
         ),
         reviews: submittedReviews,
       };
-    });
+    }, transactionOptions);
   } catch (error) {
     if (error instanceof ItemReviewError) {
       throw error;

@@ -20,6 +20,8 @@ class _ReviewReportOption {
 }
 
 class VendorReviewsPage extends StatefulWidget {
+  static const routePath = '/vendor-reviews';
+
   const VendorReviewsPage({
     super.key,
     required this.vendorId,
@@ -35,29 +37,40 @@ class VendorReviewsPage extends StatefulWidget {
   final double initialRating;
   final int initialReviewCount;
 
+  static String location({
+    required String vendorId,
+    required String vendorType,
+    required String vendorName,
+    double initialRating = 4.0,
+    int initialReviewCount = 0,
+  }) {
+    return Uri(
+      path: routePath,
+      queryParameters: {
+        'vendorId': vendorId,
+        'vendorType': vendorType,
+        'vendorName': vendorName,
+        'rating': initialRating.toString(),
+        'reviewCount': initialReviewCount.toString(),
+      },
+    ).toString();
+  }
+
   @override
   State<VendorReviewsPage> createState() => _VendorReviewsPageState();
 }
 
-class _VendorReviewsPageState extends State<VendorReviewsPage>
-    with SingleTickerProviderStateMixin {
+class _VendorReviewsPageState extends State<VendorReviewsPage> with SingleTickerProviderStateMixin {
   static const List<_ReviewReportOption> _reportOptions = [
-    _ReviewReportOption(
-      value: 'abusive_offensive',
-      label: 'Abusive or offensive',
-    ),
+    _ReviewReportOption(value: 'abusive_offensive', label: 'Abusive or offensive'),
     _ReviewReportOption(value: 'spam', label: 'Spam'),
     _ReviewReportOption(value: 'personal_info', label: 'Personal information'),
     _ReviewReportOption(value: 'unrelated', label: 'Unrelated to the vendor'),
-    _ReviewReportOption(
-      value: 'false_misleading',
-      label: 'False or misleading',
-    ),
+    _ReviewReportOption(value: 'false_misleading', label: 'False or misleading'),
   ];
 
   late TabController _tabController;
-  final VendorReviewServiceWrapper _reviewService =
-      VendorReviewServiceWrapper();
+  final VendorReviewServiceWrapper _reviewService = VendorReviewServiceWrapper();
 
   VendorReviewFeed? _feed;
   bool _isLoading = false;
@@ -87,10 +100,7 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
     _loadReviews(sort: nextSort, showLoader: _feed == null);
   }
 
-  Future<void> _loadReviews({
-    String sort = 'popular',
-    bool showLoader = true,
-  }) async {
+  Future<void> _loadReviews({String sort = 'popular', bool showLoader = true}) async {
     if (_isLoading) return;
 
     setState(() {
@@ -115,10 +125,7 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e
-            .toString()
-            .replaceFirst('Exception: ', '')
-            .replaceFirst('Failed to load vendor reviews: ', '');
+        _error = e.toString().replaceFirst('Exception: ', '').replaceFirst('Failed to load vendor reviews: ', '');
       });
     } finally {
       if (mounted) {
@@ -130,7 +137,16 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
   Future<void> _reportReview(VendorReviewEntry review) async {
     if (_isReportingReview) return;
 
-    final isAuthenticated = await AuthGuard.ensureAuthenticated(context);
+    final isAuthenticated = await AuthGuard.ensureAuthenticated(
+      context,
+      returnTo: VendorReviewsPage.location(
+        vendorId: widget.vendorId,
+        vendorType: widget.vendorType,
+        vendorName: widget.vendorName,
+        initialRating: widget.initialRating,
+        initialReviewCount: widget.initialReviewCount,
+      ),
+    );
     if (!mounted || !isAuthenticated) return;
 
     final reason = await _showReportReasonSheet();
@@ -141,27 +157,13 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
     setState(() => _isReportingReview = true);
 
     try {
-      await _reviewService.reportVendorReview(
-        reviewId: review.id,
-        reason: reason,
-      );
+      await _reviewService.reportVendorReview(reviewId: review.id, reason: reason);
       if (!mounted) return;
-      AppToastMessage.show(
-        context: context,
-        message: 'Review reported. We will take a look.',
-      );
+      AppToastMessage.show(context: context, message: 'Review reported. We will take a look.');
     } catch (e) {
       if (!mounted) return;
-      final message = e
-          .toString()
-          .replaceFirst('Exception: ', '')
-          .replaceFirst('Failed to report vendor review: ', '');
-      AppToastMessage.show(
-        context: context,
-        message: message,
-        backgroundColor: colors.error,
-        maxLines: 3,
-      );
+      final message = e.toString().replaceFirst('Exception: ', '').replaceFirst('Failed to report vendor review: ', '');
+      AppToastMessage.show(context: context, message: message, backgroundColor: colors.error, maxLines: 3);
     } finally {
       if (mounted) {
         setState(() => _isReportingReview = false);
@@ -174,9 +176,7 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
     return showModalBottomSheet<String>(
       context: context,
       backgroundColor: colors.backgroundPrimary,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24.r))),
       builder: (context) {
         return SafeArea(
           top: false,
@@ -188,20 +188,12 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
               children: [
                 Text(
                   'Report review',
-                  style: TextStyle(
-                    color: colors.textPrimary,
-                    fontSize: 18.sp,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w700),
                 ),
                 SizedBox(height: 8.h),
                 Text(
                   'Choose the reason that best matches this review.',
-                  style: TextStyle(
-                    color: colors.textSecondary,
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w500),
                 ),
                 SizedBox(height: 16.h),
                 ..._reportOptions.map((option) {
@@ -209,16 +201,9 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
                     contentPadding: EdgeInsets.zero,
                     title: Text(
                       option.label,
-                      style: TextStyle(
-                        color: colors.textPrimary,
-                        fontSize: 15.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: TextStyle(color: colors.textPrimary, fontSize: 15.sp, fontWeight: FontWeight.w600),
                     ),
-                    trailing: Icon(
-                      Icons.chevron_right_rounded,
-                      color: colors.textSecondary,
-                    ),
+                    trailing: Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
                     onTap: () => Navigator.of(context).pop(option.value),
                   );
                 }),
@@ -238,17 +223,14 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
     final feed = _feed;
     final vendorSnapshot = feed?.vendor;
     final displayRating = vendorSnapshot?.rating ?? widget.initialRating;
-    final displayReviewCount =
-        vendorSnapshot?.totalReviews ?? widget.initialReviewCount;
+    final displayReviewCount = vendorSnapshot?.totalReviews ?? widget.initialReviewCount;
 
     final systemUiOverlayStyle = SystemUiOverlayStyle(
       statusBarColor: colors.backgroundPrimary,
       statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       systemNavigationBarColor: colors.backgroundPrimary,
       systemNavigationBarDividerColor: Colors.transparent,
-      systemNavigationBarIconBrightness: isDark
-          ? Brightness.light
-          : Brightness.dark,
+      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
     );
 
     SystemChrome.setSystemUIOverlayStyle(systemUiOverlayStyle);
@@ -260,21 +242,13 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: EdgeInsets.only(
-                top: padding.top + 10,
-                left: 20.w,
-                right: 20.w,
-                bottom: 16.h,
-              ),
+              padding: EdgeInsets.only(top: padding.top + 10, left: 20.w, right: 20.w, bottom: 16.h),
               child: Row(
                 children: [
                   Container(
                     height: 44,
                     width: 44,
-                    decoration: BoxDecoration(
-                      color: colors.backgroundSecondary,
-                      shape: BoxShape.circle,
-                    ),
+                    decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
@@ -285,10 +259,7 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
                           child: SvgPicture.asset(
                             Assets.icons.navArrowLeft,
                             package: 'grab_go_shared',
-                            colorFilter: ColorFilter.mode(
-                              colors.textPrimary,
-                              BlendMode.srcIn,
-                            ),
+                            colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                           ),
                         ),
                       ),
@@ -314,11 +285,7 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
                           widget.vendorName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: colors.textSecondary,
-                            fontSize: 13.sp,
-                            fontWeight: FontWeight.w500,
-                          ),
+                          style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w500),
                         ),
                       ],
                     ),
@@ -340,10 +307,7 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
                           package: 'grab_go_shared',
                           height: 24.h,
                           width: 24.w,
-                          colorFilter: ColorFilter.mode(
-                            colors.accentOrange,
-                            BlendMode.srcIn,
-                          ),
+                          colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                         ),
                       ),
                     ),
@@ -351,11 +315,7 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
                   SizedBox(width: 10.w),
                   Text(
                     displayRating.toStringAsFixed(1),
-                    style: TextStyle(
-                      color: colors.textPrimary,
-                      fontSize: 24.sp,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(color: colors.textPrimary, fontSize: 24.sp, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
@@ -366,11 +326,7 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
                 displayReviewCount > 0
                     ? 'Based on $displayReviewCount ${displayReviewCount == 1 ? 'review' : 'reviews'}'
                     : 'No reviews yet',
-                style: TextStyle(
-                  color: colors.textSecondary,
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w400,
-                ),
+                style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w400),
               ),
             ),
             if (feed != null && feed.breakdown.isNotEmpty) ...[
@@ -381,9 +337,7 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
                   children: List.generate(5, (index) {
                     final rating = 5 - index;
                     final count = feed.breakdown[rating] ?? 0;
-                    final total = feed.vendor.totalReviews <= 0
-                        ? 1
-                        : feed.vendor.totalReviews;
+                    final total = feed.vendor.totalReviews <= 0 ? 1 : feed.vendor.totalReviews;
                     final fraction = count / total;
 
                     return Padding(
@@ -409,9 +363,7 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
                                 value: fraction.clamp(0.0, 1.0),
                                 minHeight: 6.h,
                                 backgroundColor: colors.backgroundSecondary,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  colors.accentOrange,
-                                ),
+                                valueColor: AlwaysStoppedAnimation<Color>(colors.accentOrange),
                               ),
                             ),
                           ),
@@ -438,12 +390,7 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
             SizedBox(height: 16.h),
             Container(
               decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: colors.inputBorder.withValues(alpha: 0.5),
-                    width: 1,
-                  ),
-                ),
+                border: Border(bottom: BorderSide(color: colors.inputBorder.withValues(alpha: 0.5), width: 1)),
               ),
               child: TabBar(
                 controller: _tabController,
@@ -485,13 +432,8 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
       return ListView.separated(
         padding: EdgeInsets.symmetric(vertical: 16.h),
         itemCount: 6,
-        separatorBuilder: (context, index) => Divider(
-          color: colors.backgroundSecondary,
-          height: 1,
-          thickness: 1,
-          indent: 20,
-          endIndent: 20,
-        ),
+        separatorBuilder: (context, index) =>
+            Divider(color: colors.backgroundSecondary, height: 1, thickness: 1, indent: 20, endIndent: 20),
         itemBuilder: (context, index) => Padding(
           padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
           child: Column(
@@ -539,22 +481,14 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
               Text(
                 _error!,
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: colors.textSecondary,
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w500),
               ),
               SizedBox(height: 16.h),
               TextButton(
                 onPressed: () => _loadReviews(sort: _activeSort),
                 child: Text(
                   'Retry',
-                  style: TextStyle(
-                    color: colors.accentOrange,
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: TextStyle(color: colors.accentOrange, fontSize: 14.sp, fontWeight: FontWeight.w700),
                 ),
               ),
             ],
@@ -568,11 +502,7 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
       return Center(
         child: Text(
           'No comments yet for this vendor.',
-          style: TextStyle(
-            color: colors.textSecondary,
-            fontSize: 15.sp,
-            fontWeight: FontWeight.w500,
-          ),
+          style: TextStyle(color: colors.textSecondary, fontSize: 15.sp, fontWeight: FontWeight.w500),
         ),
       );
     }
@@ -582,13 +512,8 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
       child: ListView.separated(
         padding: EdgeInsets.symmetric(vertical: 10.h),
         itemCount: feed.reviews.length,
-        separatorBuilder: (context, index) => Divider(
-          color: colors.backgroundSecondary,
-          height: 1,
-          thickness: 1,
-          indent: 20,
-          endIndent: 20,
-        ),
+        separatorBuilder: (context, index) =>
+            Divider(color: colors.backgroundSecondary, height: 1, thickness: 1, indent: 20, endIndent: 20),
         itemBuilder: (context, index) {
           final review = feed.reviews[index];
           return _buildReviewCard(colors, review);
@@ -619,11 +544,7 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
                   children: [
                     Text(
                       subtitle,
-                      style: TextStyle(
-                        color: colors.textPrimary,
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w700),
                     ),
                     SizedBox(height: 6.h),
                     Row(
@@ -632,16 +553,12 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
                         (index) => Padding(
                           padding: EdgeInsets.only(right: 2.w),
                           child: SvgPicture.asset(
-                            index < review.rating
-                                ? Assets.icons.starSolid
-                                : Assets.icons.star,
+                            index < review.rating ? Assets.icons.starSolid : Assets.icons.star,
                             package: 'grab_go_shared',
                             height: 14.h,
                             width: 14.w,
                             colorFilter: ColorFilter.mode(
-                              index < review.rating
-                                  ? colors.accentOrange
-                                  : colors.divider,
+                              index < review.rating ? colors.accentOrange : colors.divider,
                               BlendMode.srcIn,
                             ),
                           ),
@@ -652,15 +569,9 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
                 ),
               ),
               IconButton(
-                onPressed: _isReportingReview
-                    ? null
-                    : () => _reportReview(review),
+                onPressed: _isReportingReview ? null : () => _reportReview(review),
                 splashRadius: 18.r,
-                icon: Icon(
-                  Icons.more_horiz_rounded,
-                  color: colors.textSecondary,
-                  size: 20.sp,
-                ),
+                icon: Icon(Icons.more_horiz_rounded, color: colors.textSecondary, size: 20.sp),
               ),
             ],
           ),
@@ -668,12 +579,7 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
             SizedBox(height: 12.h),
             Text(
               review.comment!.trim(),
-              style: TextStyle(
-                color: colors.textPrimary,
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w400,
-                height: 1.45,
-              ),
+              style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w400, height: 1.45),
             ),
           ],
           if (review.feedbackTags.isNotEmpty) ...[
@@ -684,21 +590,14 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
               children: review.feedbackTags
                   .map((tag) {
                     return Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 10.w,
-                        vertical: 6.h,
-                      ),
+                      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
                       decoration: BoxDecoration(
                         color: colors.backgroundSecondary,
                         borderRadius: BorderRadius.circular(999.r),
                       ),
                       child: Text(
                         tag,
-                        style: TextStyle(
-                          color: colors.textSecondary,
-                          fontSize: 12.sp,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w600),
                       ),
                     );
                   })
@@ -710,10 +609,7 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
     );
   }
 
-  Widget _buildAvatar(
-    AppColorsExtension colors,
-    VendorReviewReviewer reviewer,
-  ) {
+  Widget _buildAvatar(AppColorsExtension colors, VendorReviewReviewer reviewer) {
     final imageUrl = reviewer.profilePicture?.trim();
     if (imageUrl != null && imageUrl.isNotEmpty) {
       return ClipOval(
@@ -733,15 +629,8 @@ class _VendorReviewsPageState extends State<VendorReviewsPage>
     return Container(
       width: 40.w,
       height: 40.w,
-      decoration: BoxDecoration(
-        color: colors.backgroundSecondary,
-        shape: BoxShape.circle,
-      ),
-      child: Icon(
-        Icons.person_outline,
-        size: 20.sp,
-        color: colors.textSecondary,
-      ),
+      decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
+      child: Icon(Icons.person_outline, size: 20.sp, color: colors.textSecondary),
     );
   }
 }

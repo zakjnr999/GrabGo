@@ -295,16 +295,13 @@ class FoodDetailsAppBar extends StatelessWidget {
         SizedBox(width: 10.w),
         _buildActionButton(
           context: context,
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ItemReviewsPage(
-                itemId: foodItem.id,
-                itemType: _reviewRouteItemType,
-                itemName: foodItem.name,
-                initialRating: foodItem.rating,
-                initialReviewCount: _reviewCount,
-              ),
+          onTap: () => context.push(
+            ItemReviewsPage.location(
+              itemId: foodItem.id,
+              itemType: _reviewRouteItemType,
+              itemName: foodItem.name,
+              initialRating: foodItem.rating,
+              initialReviewCount: _reviewCount,
             ),
           ),
           icon: SvgPicture.asset(

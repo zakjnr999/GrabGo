@@ -249,6 +249,7 @@ const submitVendorRating = async ({
   rating,
   feedbackTags = [],
   comment,
+  transactionOptions,
 }) => {
   const normalizedRating = validateRatingRequest({ rating });
   const normalizedTags = normalizeFeedbackTags(feedbackTags);
@@ -359,7 +360,7 @@ const submitVendorRating = async ({
           totalReviews: ratingMeta.totalReviews,
         },
       };
-    });
+    }, transactionOptions);
   } catch (error) {
     if (error instanceof VendorRatingError) {
       throw error;

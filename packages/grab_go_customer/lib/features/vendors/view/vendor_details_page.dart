@@ -1244,15 +1244,13 @@ class _VendorDetailsPageState extends State<VendorDetailsPage> {
                     SizedBox(height: 6.h),
                     GestureDetector(
                       onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => VendorReviewsPage(
-                              vendorId: displayVendor.id,
-                              vendorType: _publicVendorType,
-                              vendorName: displayVendor.displayName,
-                              initialRating: displayVendor.rating,
-                              initialReviewCount: displayVendor.totalReviews,
-                            ),
+                        context.push(
+                          VendorReviewsPage.location(
+                            vendorId: displayVendor.id,
+                            vendorType: _publicVendorType,
+                            vendorName: displayVendor.displayName,
+                            initialRating: displayVendor.rating,
+                            initialReviewCount: displayVendor.totalReviews,
                           ),
                         );
                       },

@@ -1574,26 +1574,20 @@ class _FoodDetailsState extends State<FoodDetails>
                                               ),
                                               SizedBox(width: 4.w),
                                               GestureDetector(
-                                                onTap: () => Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (context) =>
-                                                        ItemReviewsPage(
-                                                          itemId: cartItem.id,
-                                                          itemType:
-                                                              widget.isGrocery
-                                                              ? 'grocery'
-                                                              : isPharmacy
-                                                              ? 'pharmacy'
-                                                              : isGrabMart
-                                                              ? 'grabmart'
-                                                              : 'food',
-                                                          itemName: itemName,
-                                                          initialRating:
-                                                              itemRating,
-                                                          initialReviewCount:
-                                                              itemReviewCount,
-                                                        ),
+                                                onTap: () => context.push(
+                                                  ItemReviewsPage.location(
+                                                    itemId: cartItem.id,
+                                                    itemType: widget.isGrocery
+                                                        ? 'grocery'
+                                                        : isPharmacy
+                                                        ? 'pharmacy'
+                                                        : isGrabMart
+                                                        ? 'grabmart'
+                                                        : 'food',
+                                                    itemName: itemName,
+                                                    initialRating: itemRating,
+                                                    initialReviewCount:
+                                                        itemReviewCount,
                                                   ),
                                                 ),
                                                 child: SvgPicture.asset(

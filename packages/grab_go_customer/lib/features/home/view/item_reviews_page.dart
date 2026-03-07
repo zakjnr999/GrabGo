@@ -20,6 +20,8 @@ class _ReviewReportOption {
 }
 
 class ItemReviewsPage extends StatefulWidget {
+  static const routePath = '/item-reviews';
+
   const ItemReviewsPage({
     super.key,
     required this.itemId,
@@ -34,6 +36,25 @@ class ItemReviewsPage extends StatefulWidget {
   final String itemName;
   final double initialRating;
   final int initialReviewCount;
+
+  static String location({
+    required String itemId,
+    required String itemType,
+    required String itemName,
+    double initialRating = 4.0,
+    int initialReviewCount = 0,
+  }) {
+    return Uri(
+      path: routePath,
+      queryParameters: {
+        'itemId': itemId,
+        'itemType': itemType,
+        'itemName': itemName,
+        'rating': initialRating.toString(),
+        'reviewCount': initialReviewCount.toString(),
+      },
+    ).toString();
+  }
 
   @override
   State<ItemReviewsPage> createState() => _ItemReviewsPageState();
@@ -129,7 +150,16 @@ class _ItemReviewsPageState extends State<ItemReviewsPage>
   Future<void> _reportReview(ItemReviewEntry review) async {
     if (_isReportingReview) return;
 
-    final isAuthenticated = await AuthGuard.ensureAuthenticated(context);
+    final isAuthenticated = await AuthGuard.ensureAuthenticated(
+      context,
+      returnTo: ItemReviewsPage.location(
+        itemId: widget.itemId,
+        itemType: widget.itemType,
+        itemName: widget.itemName,
+        initialRating: widget.initialRating,
+        initialReviewCount: widget.initialReviewCount,
+      ),
+    );
     if (!mounted || !isAuthenticated) return;
 
     final reason = await _showReportReasonSheet();
