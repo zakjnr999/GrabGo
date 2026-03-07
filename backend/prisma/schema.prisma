@@ -470,6 +470,7 @@ model User {
   referralsReceived      Referral[]                  @relation("RefereeReferrals")
   referralCode           ReferralCode?
   userCredits            UserCredit[]
+  vendorReviews          VendorReview[]
   promoCodesCreated      PromoCode[]                 @relation("PromoCodeCreator")
   targetedPromoCodes     PromoCodeTargetedUser[]
   scheduledNotifications ScheduledNotification[]
@@ -766,6 +767,7 @@ model Restaurant {
   foods        Food[]
   categories   Category[]
   orders       Order[]
+  vendorReviews VendorReview[]          @relation("RestaurantVendorReviews")
   favoritedBy  UserFavoriteRestaurant[]
 
   @@index([status])
@@ -928,6 +930,7 @@ model GroceryStore {
   categories   GroceryCategory[]
   items        GroceryItem[]
   orders       Order[]             @relation("GroceryStoreOrders")
+  vendorReviews VendorReview[]     @relation("GroceryStoreVendorReviews")
   favoritedBy  UserFavoriteStore[]
 
   @@index([status])
@@ -1100,6 +1103,7 @@ model PharmacyStore {
   categories   PharmacyCategory[]
   items        PharmacyItem[]
   orders       Order[]                @relation("PharmacyStoreOrders")
+  vendorReviews VendorReview[]        @relation("PharmacyStoreVendorReviews")
   favoritedBy  UserFavoritePharmacy[]
 
   @@index([status])
@@ -1350,6 +1354,7 @@ model Order {
   actionAudits    OrderActionAudit[]
   payments        Payment[]
   creditHold      UserCreditHold?
+  vendorReview    VendorReview?
 
   @@index([customerId])
   @@index([checkoutSessionId])
@@ -1365,6 +1370,37 @@ model Order {
   @@index([orderDate])
   @@index([fulfillmentMode])
   @@map("orders")
+}
+
+model VendorReview {
+  id              String   @id @default(cuid())
+  orderId         String   @unique
+  customerId      String
+  vendorType      String
+  restaurantId    String?
+  groceryStoreId  String?
+  pharmacyStoreId String?
+  grabMartStoreId String?
+  rating          Int
+  feedbackTags    String[] @default([])
+  comment         String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  order         Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  customer      User           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  restaurant    Restaurant?    @relation("RestaurantVendorReviews", fields: [restaurantId], references: [id], onDelete: Cascade)
+  groceryStore  GroceryStore?  @relation("GroceryStoreVendorReviews", fields: [groceryStoreId], references: [id], onDelete: Cascade)
+  pharmacyStore PharmacyStore? @relation("PharmacyStoreVendorReviews", fields: [pharmacyStoreId], references: [id], onDelete: Cascade)
+  grabMartStore GrabMartStore? @relation("GrabMartStoreVendorReviews", fields: [grabMartStoreId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([vendorType])
+  @@index([restaurantId])
+  @@index([groceryStoreId])
+  @@index([pharmacyStoreId])
+  @@index([grabMartStoreId])
+  @@map("vendor_reviews")
 }
 
 model OrderItem {
@@ -2287,6 +2323,7 @@ model GrabMartStore {
   categories  GrabMartCategory[]
   items       GrabMartItem[]
   orders      Order[]                     @relation("GrabMartStoreOrders")
+  vendorReviews VendorReview[]            @relation("GrabMartStoreVendorReviews")
   favoritedBy UserFavoriteGrabMartStore[]
 
   @@index([status])

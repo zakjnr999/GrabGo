@@ -366,6 +366,32 @@ class OrderProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> markVendorRatingSubmitted({
+    required String orderId,
+    required int rating,
+    DateTime? ratedAt,
+  }) async {
+    try {
+      final orderIndex = _orders.indexWhere((order) => order['id'] == orderId);
+      if (orderIndex == -1) return;
+
+      final updatedOrder = Map<String, dynamic>.from(_orders[orderIndex]);
+      updatedOrder['canRateVendor'] = false;
+      updatedOrder['vendorRatingSubmitted'] = true;
+      updatedOrder['vendorRatingValue'] = rating;
+      updatedOrder['vendorRatedAt'] = (ratedAt ?? DateTime.now())
+          .toIso8601String();
+
+      _orders[orderIndex] = updatedOrder;
+      notifyListeners();
+      await CacheService.saveOrderHistory(_orders);
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error marking vendor rating as submitted: $e');
+      }
+    }
+  }
+
   /// Get order statistics
   Map<String, dynamic> getOrderStatistics() {
     final totalOrders = _orders.length;

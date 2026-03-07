@@ -5,7 +5,6 @@ import 'package:grab_go_customer/features/auth/view/location_permission.dart';
 import 'package:grab_go_customer/features/auth/view/notification_permission.dart';
 import 'package:grab_go_customer/features/grabmart/model/grabmart_item.dart';
 import 'package:grab_go_customer/features/home/navigation/bottom_navigator.dart';
-import 'package:grab_go_customer/features/order/view/vendor_rating.dart';
 import 'package:grab_go_customer/features/parcel/view/parcel_orders_page.dart';
 import 'package:grab_go_customer/features/pharmacy/model/pharmacy_item.dart';
 import 'package:grab_go_customer/features/profile/view/settings_page.dart';
@@ -585,25 +584,6 @@ final GoRouter appRouter = GoRouter(
         return CustomTransitionPage(
           key: state.pageKey,
           child: MapTracking(orderId: orderId, testTrigger: testTrigger),
-          transitionDuration: const Duration(milliseconds: 800),
-          reverseTransitionDuration: const Duration(milliseconds: 800),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return SharedAxisTransition(
-              animation: animation,
-              secondaryAnimation: secondaryAnimation,
-              transitionType: SharedAxisTransitionType.vertical,
-              child: child,
-            );
-          },
-        );
-      },
-    ),
-    GoRoute(
-      path: "/vendorRatings",
-      pageBuilder: (context, state) {
-        return CustomTransitionPage(
-          key: state.pageKey,
-          child: const VendorRating(),
           transitionDuration: const Duration(milliseconds: 800),
           reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {

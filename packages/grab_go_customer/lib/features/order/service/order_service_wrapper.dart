@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:chopper/chopper.dart';
 import 'package:flutter/foundation.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
+import 'package:grab_go_customer/features/order/model/vendor_rating_models.dart';
 import 'package:grab_go_customer/features/order/service/order_service_chopper.dart';
 import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
@@ -630,6 +631,36 @@ class OrderServiceWrapper {
         code: 'COD_CHECK_FAILED',
         message: 'Unable to check cash on delivery eligibility right now.',
       );
+    }
+  }
+
+  Future<VendorRatingResult> submitVendorRating({
+    required String orderId,
+    required VendorRatingRequest request,
+  }) async {
+    try {
+      final response = await _orderService.submitVendorRating(
+        orderId,
+        request.toJson(),
+      );
+      final body = _resolveResponseMap(response);
+
+      if (body == null) {
+        throw Exception('Unable to submit vendor rating right now.');
+      }
+
+      if (body['success'] != true) {
+        throw Exception(body['message']?.toString() ?? 'Vendor rating failed');
+      }
+
+      final data = body['data'] as Map<String, dynamic>?;
+      if (data == null) {
+        throw Exception('Vendor rating response was empty');
+      }
+
+      return VendorRatingResult.fromJson(data);
+    } catch (e) {
+      throw Exception('Failed to submit vendor rating: $e');
     }
   }
 

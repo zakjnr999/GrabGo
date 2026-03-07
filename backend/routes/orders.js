@@ -59,6 +59,11 @@ const {
   fraudDecisionService,
   applyFraudDecision,
 } = require("../services/fraud");
+const {
+  VendorRatingError,
+  decorateOrdersWithVendorRatingMeta,
+  submitVendorRating,
+} = require("../services/vendor_rating_service");
 
 const router = express.Router();
 
@@ -1638,6 +1643,12 @@ router.get("/", protect, async (req, res) => {
           }
         },
         rider: { select: { username: true, email: true, phone: true } },
+        vendorReview: {
+          select: {
+            rating: true,
+            createdAt: true,
+          },
+        },
         items: {
           include: { food: true, groceryItem: true, pharmacyItem: true, grabMartItem: true }
         }
@@ -1646,11 +1657,14 @@ router.get("/", protect, async (req, res) => {
     });
 
     const ordersWithGroupMeta = await computeGroupMetaForOrders(orders);
+    const ordersWithVendorRatingMeta = decorateOrdersWithVendorRatingMeta(ordersWithGroupMeta, {
+      viewerRole: req.user.role,
+    });
 
     res.json({
       success: true,
       message: "Orders retrieved successfully",
-      data: sanitizeOrderPayload(ordersWithGroupMeta),
+      data: sanitizeOrderPayload(ordersWithVendorRatingMeta),
     });
   } catch (error) {
     console.error("Get orders error:", error);
@@ -1862,6 +1876,12 @@ router.get("/:orderId", protect, async (req, res) => {
         pharmacyStore: { select: { storeName: true, logo: true, phone: true, address: true, city: true, area: true, latitude: true, longitude: true } },
         grabMartStore: { select: { storeName: true, logo: true, phone: true, address: true, city: true, area: true, latitude: true, longitude: true } },
         rider: { select: { username: true, email: true, phone: true } },
+        vendorReview: {
+          select: {
+            rating: true,
+            createdAt: true,
+          },
+        },
         items: {
           include: { food: true, groceryItem: true, pharmacyItem: true, grabMartItem: true }
         }
@@ -1906,11 +1926,14 @@ router.get("/:orderId", protect, async (req, res) => {
     }
 
     const [orderWithGroupMeta] = await computeGroupMetaForOrders([order]);
+    const orderWithVendorRatingMeta = decorateOrdersWithVendorRatingMeta(orderWithGroupMeta || order, {
+      viewerRole: req.user.role,
+    });
 
     res.json({
       success: true,
       message: "Order retrieved successfully",
-      data: sanitizeOrderPayload(orderWithGroupMeta || order),
+      data: sanitizeOrderPayload(orderWithVendorRatingMeta),
     });
   } catch (error) {
     console.error("Get order error:", error);
@@ -1921,6 +1944,78 @@ router.get("/:orderId", protect, async (req, res) => {
     });
   }
 });
+
+router.post(
+  "/:orderId/vendor-rating",
+  protect,
+  [
+    body("rating")
+      .isInt({ min: 1, max: 5 })
+      .withMessage("rating must be an integer between 1 and 5"),
+    body("feedbackTags")
+      .optional()
+      .isArray({ max: 10 })
+      .withMessage("feedbackTags must be an array with at most 10 items"),
+    body("feedbackTags.*")
+      .optional()
+      .isString()
+      .withMessage("feedbackTags entries must be strings"),
+    body("comment")
+      .optional()
+      .isString()
+      .isLength({ max: 500 })
+      .withMessage("comment must be at most 500 characters"),
+  ],
+  async (req, res) => {
+    try {
+      if (req.user.role !== "customer") {
+        return res.status(403).json({
+          success: false,
+          message: "Only customers can submit vendor ratings",
+          code: "VENDOR_RATING_CUSTOMER_ONLY",
+        });
+      }
+
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: "Validation failed",
+          errors: errors.array(),
+        });
+      }
+
+      const result = await submitVendorRating({
+        orderId: req.params.orderId,
+        customerId: req.user.id,
+        rating: req.body.rating,
+        feedbackTags: req.body.feedbackTags,
+        comment: req.body.comment,
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: "Vendor rating submitted successfully",
+        data: result,
+      });
+    } catch (error) {
+      if (error instanceof VendorRatingError) {
+        return res.status(error.statusCode || 400).json({
+          success: false,
+          message: error.message,
+          code: error.code,
+        });
+      }
+
+      console.error("Submit vendor rating error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: error.message,
+      });
+    }
+  }
+);
 
 router.post(
   "/:orderId/confirm-payment",

@@ -1264,24 +1264,6 @@ class _VendorDetailsPageState extends State<VendorDetailsPage> {
                             ),
                           ),
                         ],
-                        SizedBox(width: 4.w),
-                        GestureDetector(
-                          onTap: () => context.push('/vendorRatings'),
-                          behavior: HitTestBehavior.opaque,
-                          child: Padding(
-                            padding: EdgeInsets.all(2.r),
-                            child: SvgPicture.asset(
-                              Assets.icons.navArrowRight,
-                              package: 'grab_go_shared',
-                              width: 12.w,
-                              height: 12.w,
-                              colorFilter: ColorFilter.mode(
-                                colors.textPrimary,
-                                BlendMode.srcIn,
-                              ),
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                     if (locationText.isNotEmpty) ...[

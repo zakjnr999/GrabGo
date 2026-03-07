@@ -90,7 +90,9 @@ final class _$OrderServiceChopper extends OrderServiceChopper {
     String sessionId,
     Map<String, dynamic> body,
   ) {
-    final Uri $url = Uri.parse('/checkout-sessions/${sessionId}/confirm-payment');
+    final Uri $url = Uri.parse(
+      '/checkout-sessions/${sessionId}/confirm-payment',
+    );
     final $body = body;
     final Request $request = Request('POST', $url, client.baseUrl, body: $body);
     return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
@@ -125,6 +127,17 @@ final class _$OrderServiceChopper extends OrderServiceChopper {
   Future<Response<Map<String, dynamic>>> getCodEligibility() {
     final Uri $url = Uri.parse('/orders/cod/eligibility');
     final Request $request = Request('GET', $url, client.baseUrl);
+    return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
+  }
+
+  @override
+  Future<Response<Map<String, dynamic>>> submitVendorRating(
+    String orderId,
+    Map<String, dynamic> body,
+  ) {
+    final Uri $url = Uri.parse('/orders/${orderId}/vendor-rating');
+    final $body = body;
+    final Request $request = Request('POST', $url, client.baseUrl, body: $body);
     return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
   }
 }

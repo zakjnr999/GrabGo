@@ -27,7 +27,8 @@ class RatingOnboarding extends StatefulWidget {
   State<RatingOnboarding> createState() => RatingOnboardingState();
 }
 
-class RatingOnboardingState extends State<RatingOnboarding> with SingleTickerProviderStateMixin {
+class RatingOnboardingState extends State<RatingOnboarding>
+    with SingleTickerProviderStateMixin {
   final PageController controller = PageController();
   int _index = 0;
 
@@ -42,11 +43,12 @@ class RatingOnboardingState extends State<RatingOnboarding> with SingleTickerPro
     super.dispose();
   }
 
-  void skip() => controller.jumpToPage(2);
-
   void next() async {
-    if (_index < 2) {
-      controller.nextPage(duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
+    if (_index < 1) {
+      controller.nextPage(
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+      );
     } else {
       if (mounted) {
         context.go('/homepage');
@@ -83,8 +85,21 @@ class RatingOnboardingState extends State<RatingOnboarding> with SingleTickerPro
                     setState(() => _index = i);
                   },
                   children: [
-                    RiderRating(orderId: widget.orderId, riderName: widget.riderName, riderImage: widget.riderImage),
-                    VendorRating(vendorName: widget.vendorName, vendorImage: widget.vendorLogo),
+                    RiderRating(
+                      orderId: widget.orderId,
+                      riderName: widget.riderName,
+                      riderImage: widget.riderImage,
+                    ),
+                    VendorRating(
+                      orderId: widget.orderId,
+                      vendorName: widget.vendorName,
+                      vendorImage: widget.vendorLogo,
+                      embedded: true,
+                      onCompleted: (submittedRating) async {
+                        if (!mounted) return;
+                        context.go('/homepage');
+                      },
+                    ),
                   ],
                 ),
 
@@ -106,7 +121,10 @@ class RatingOnboardingState extends State<RatingOnboarding> with SingleTickerPro
                   child: Container(
                     height: 44.h,
                     width: 44.w,
-                    decoration: BoxDecoration(color: colors.backgroundPrimary, shape: BoxShape.circle),
+                    decoration: BoxDecoration(
+                      color: colors.backgroundPrimary,
+                      shape: BoxShape.circle,
+                    ),
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
@@ -117,7 +135,10 @@ class RatingOnboardingState extends State<RatingOnboarding> with SingleTickerPro
                           child: SvgPicture.asset(
                             Assets.icons.xmark,
                             package: 'grab_go_shared',
-                            colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                            colorFilter: ColorFilter.mode(
+                              colors.textPrimary,
+                              BlendMode.srcIn,
+                            ),
                           ),
                         ),
                       ),
@@ -139,7 +160,11 @@ class RatingOnboardingState extends State<RatingOnboarding> with SingleTickerPro
                           padding: EdgeInsets.all(10.r),
                           child: Text(
                             'Skip',
-                            style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              color: colors.textPrimary,
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
@@ -147,18 +172,23 @@ class RatingOnboardingState extends State<RatingOnboarding> with SingleTickerPro
                   ),
                 ),
 
-                Positioned(
-                  left: 20.w,
-                  right: 20.w,
-                  bottom: padding.bottom + 20.h,
-                  child: AppButton(
-                    buttonText: _index == 0 ? "Continue" : "Done",
-                    onPressed: next,
-                    backgroundColor: colors.accentOrange,
-                    borderRadius: KBorderSize.borderRadius15,
-                    textStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: Colors.white),
+                if (_index == 0)
+                  Positioned(
+                    left: 20.w,
+                    right: 20.w,
+                    bottom: padding.bottom + 20.h,
+                    child: AppButton(
+                      buttonText: "Continue",
+                      onPressed: next,
+                      backgroundColor: colors.accentOrange,
+                      borderRadius: KBorderSize.borderRadius15,
+                      textStyle: TextStyle(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
-                ),
               ],
             );
           },
