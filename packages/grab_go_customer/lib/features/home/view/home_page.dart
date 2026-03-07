@@ -35,7 +35,9 @@ import 'package:grab_go_customer/shared/widgets/home_page_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/location_accuracy_popup.dart';
 import 'package:grab_go_customer/shared/widgets/no_internet_screen.dart';
 import 'package:grab_go_customer/shared/services/connectivity_service.dart';
+import 'package:grab_go_customer/shared/services/auth_guard.dart';
 import 'package:grab_go_customer/shared/services/notification_service.dart';
+import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_customer/features/vendors/viewmodel/vendor_provider.dart';
 import 'package:grab_go_customer/features/vendors/model/vendor_type.dart';
 import 'package:grab_go_customer/features/vendors/widgets/exclusive_vendors_preview_section.dart';
@@ -287,15 +289,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     try {
       await _refreshData(refreshAllServices: true);
 
-      if (showSuccessMessage && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Location updated - showing nearby items'),
-            duration: Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      if (showSuccessMessage && mounted) {}
     } finally {
       if (mounted) {
         setState(() {
@@ -344,6 +338,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Future<void> _refreshUnreadNotificationCount() async {
+    if (!UserService().isLoggedIn) {
+      if (!mounted) return;
+      if (_unreadNotificationCount != 0) {
+        setState(() {
+          _unreadNotificationCount = 0;
+        });
+      }
+      return;
+    }
+
     try {
       final count = await NotificationService().getUnreadCount();
       if (!mounted) return;
@@ -357,6 +361,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         print('[HOME] Failed to fetch unread notification count: $e');
       }
     }
+  }
+
+  void _openProtectedBannerRoute(String route) {
+    if (UserService().isLoggedIn) {
+      context.push(route);
+      return;
+    }
+    context.push(AuthGuard.loginRoute(returnTo: route));
   }
 
   @override
@@ -473,20 +485,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                                 _buildServiceSelector(),
                                                 SizedBox(height: KSpacing.lg.h),
                                                 PromotionalBannerCarousel(
-                                                  banners:
-                                                      AppPromotionalBanners.getDefaultBanners(
-                                                        onReferralTap: () =>
-                                                            context.push(
-                                                              '/referral',
-                                                            ),
-                                                        onGrabGoProTap: () =>
-                                                            context.push(
-                                                              '/subscription',
-                                                            ),
-                                                        onWelcomeTap: () {},
-                                                        onFlashDealTap: () {},
-                                                        onGrabMartTap: () {},
-                                                      ),
+                                                  banners: AppPromotionalBanners.getDefaultBanners(
+                                                    onReferralTap: () =>
+                                                        _openProtectedBannerRoute(
+                                                          '/referral',
+                                                        ),
+                                                    onGrabGoProTap: () =>
+                                                        _openProtectedBannerRoute(
+                                                          '/subscription',
+                                                        ),
+                                                    onWelcomeTap: () {},
+                                                    onFlashDealTap: () {},
+                                                    onGrabMartTap: () {},
+                                                  ),
                                                 ),
                                                 SizedBox(height: KSpacing.lg.h),
                                               ],
@@ -784,6 +795,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         if (_isOpeningServiceHub) return;
 
         if (service.id == 'parcel') {
+          if (!UserService().isLoggedIn) {
+            context.push(AuthGuard.loginRoute(returnTo: '/parcel'));
+            return;
+          }
           _isOpeningServiceHub = true;
           context.push('/parcel').whenComplete(() {
             if (mounted) {

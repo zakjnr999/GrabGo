@@ -9,7 +9,9 @@ import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
 import 'package:grab_go_customer/features/grabmart/model/grabmart_item.dart';
 import 'package:grab_go_customer/features/pharmacy/model/pharmacy_item.dart';
+import 'package:grab_go_customer/shared/services/auth_guard.dart';
 import 'package:grab_go_customer/shared/services/promo_service.dart';
+import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
 class CartProvider extends ChangeNotifier {
@@ -1903,6 +1905,13 @@ class CartProvider extends ChangeNotifier {
   }
 
   Future<void> addToCart(CartItem item, {BuildContext? context}) async {
+    if (!UserService().isLoggedIn) {
+      if (context != null && context.mounted) {
+        await AuthGuard.ensureAuthenticated(context);
+      }
+      return;
+    }
+
     final key = _itemKey(item);
     if (_pendingItemOps.contains(key)) return;
     _pendingItemOps.add(key);

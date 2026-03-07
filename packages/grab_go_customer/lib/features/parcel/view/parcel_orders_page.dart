@@ -7,7 +7,10 @@ import 'package:grab_go_customer/features/parcel/viewmodel/parcel_provider.dart'
 import 'package:grab_go_customer/features/parcel/widgets/order_actions.dart';
 import 'package:grab_go_customer/features/parcel/widgets/order_card.dart';
 import 'package:grab_go_customer/features/parcel/widgets/order_detail_sheet.dart';
-import 'package:grab_go_customer/shared/services/paystack_service.dart' as paystack;
+import 'package:grab_go_customer/shared/services/auth_guard.dart';
+import 'package:grab_go_customer/shared/services/user_service.dart';
+import 'package:grab_go_customer/shared/services/paystack_service.dart'
+    as paystack;
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/shared/models/parcel_models.dart';
 import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
@@ -23,13 +26,32 @@ class ParcelOrdersPage extends StatefulWidget {
 }
 
 class _ParcelOrdersPageState extends State<ParcelOrdersPage> {
+  bool _redirectingToLogin = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      if (!_ensureAuthenticated()) return;
       context.read<ParcelProvider>().loadOrders();
     });
+  }
+
+  bool _ensureAuthenticated() {
+    if (UserService().isLoggedIn) {
+      _redirectingToLogin = false;
+      return true;
+    }
+
+    if (!_redirectingToLogin) {
+      _redirectingToLogin = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        context.go(AuthGuard.loginRoute(returnTo: '/parcel/orders'));
+      });
+    }
+    return false;
   }
 
   bool _canRetryPayment(ParcelOrderSummary order) {
@@ -38,7 +60,12 @@ class _ParcelOrdersPageState extends State<ParcelOrdersPage> {
   }
 
   bool _canCancelOrder(ParcelOrderSummary order) {
-    const cancellableStatuses = {'pending_payment', 'payment_processing', 'paid', 'awaiting_dispatch'};
+    const cancellableStatuses = {
+      'pending_payment',
+      'payment_processing',
+      'paid',
+      'awaiting_dispatch',
+    };
     return cancellableStatuses.contains(order.status.toLowerCase());
   }
 
@@ -57,7 +84,9 @@ class _ParcelOrdersPageState extends State<ParcelOrdersPage> {
   }
 
   void _showToast(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), behavior: SnackBarBehavior.floating));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    );
   }
 
   Future<void> _viewOrder(ParcelProvider provider, String parcelId) async {
@@ -78,7 +107,10 @@ class _ParcelOrdersPageState extends State<ParcelOrdersPage> {
     );
   }
 
-  Future<void> _payForOrder(ParcelProvider provider, ParcelOrderSummary order) async {
+  Future<void> _payForOrder(
+    ParcelProvider provider,
+    ParcelOrderSummary order,
+  ) async {
     final init = await provider.initializePaystack(order.id);
     if (!mounted) return;
     if (init == null) {
@@ -103,7 +135,10 @@ class _ParcelOrdersPageState extends State<ParcelOrdersPage> {
       return;
     }
 
-    final confirmation = await provider.confirmPayment(order.id, reference: result.reference ?? init.reference);
+    final confirmation = await provider.confirmPayment(
+      order.id,
+      reference: result.reference ?? init.reference,
+    );
     if (!mounted) return;
     if (confirmation == null) {
       _showToast(provider.errorMessage ?? 'Payment confirmation failed.');
@@ -111,11 +146,16 @@ class _ParcelOrdersPageState extends State<ParcelOrdersPage> {
     }
 
     _showToast(
-      confirmation.alreadyPaid ? 'Payment was already confirmed for this parcel.' : 'Payment confirmed successfully.',
+      confirmation.alreadyPaid
+          ? 'Payment was already confirmed for this parcel.'
+          : 'Payment confirmed successfully.',
     );
   }
 
-  Future<void> _cancelOrder(ParcelProvider provider, ParcelOrderSummary order) async {
+  Future<void> _cancelOrder(
+    ParcelProvider provider,
+    ParcelOrderSummary order,
+  ) async {
     final cancelled = await provider.cancelOrder(order.id);
     if (!mounted) return;
     if (cancelled == null) {
@@ -127,6 +167,10 @@ class _ParcelOrdersPageState extends State<ParcelOrdersPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_ensureAuthenticated()) {
+      return const SizedBox.shrink();
+    }
+
     final colors = context.appColors;
     final padding = MediaQuery.of(context).padding;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -135,7 +179,9 @@ class _ParcelOrdersPageState extends State<ParcelOrdersPage> {
       statusBarColor: colors.backgroundPrimary,
       statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       systemNavigationBarColor: colors.backgroundPrimary,
-      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      systemNavigationBarIconBrightness: isDark
+          ? Brightness.light
+          : Brightness.dark,
     );
 
     SystemChrome.setSystemUIOverlayStyle(systemUiOverlayStyle);
@@ -146,20 +192,30 @@ class _ParcelOrdersPageState extends State<ParcelOrdersPage> {
         backgroundColor: colors.backgroundPrimary,
         body: Consumer<ParcelProvider>(
           builder: (context, provider, _) {
-            final isPaymentBusy = provider.isInitializingPayment || provider.isConfirmingPayment;
-            final isAnyOrderActionBusy = isPaymentBusy || provider.isCancellingOrder;
+            final isPaymentBusy =
+                provider.isInitializingPayment || provider.isConfirmingPayment;
+            final isAnyOrderActionBusy =
+                isPaymentBusy || provider.isCancellingOrder;
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: EdgeInsets.only(top: padding.top + 10, left: 20.w, right: 20.w, bottom: 16.h),
+                  padding: EdgeInsets.only(
+                    top: padding.top + 10,
+                    left: 20.w,
+                    right: 20.w,
+                    bottom: 16.h,
+                  ),
                   child: Row(
                     children: [
                       Container(
                         height: 44,
                         width: 44,
-                        decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
+                        decoration: BoxDecoration(
+                          color: colors.backgroundSecondary,
+                          shape: BoxShape.circle,
+                        ),
                         child: Material(
                           color: Colors.transparent,
                           child: InkWell(
@@ -170,7 +226,10 @@ class _ParcelOrdersPageState extends State<ParcelOrdersPage> {
                               child: SvgPicture.asset(
                                 Assets.icons.navArrowLeft,
                                 package: 'grab_go_shared',
-                                colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                                colorFilter: ColorFilter.mode(
+                                  colors.textPrimary,
+                                  BlendMode.srcIn,
+                                ),
                               ),
                             ),
                           ),
@@ -191,7 +250,10 @@ class _ParcelOrdersPageState extends State<ParcelOrdersPage> {
                       Container(
                         height: 44,
                         width: 44,
-                        decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
+                        decoration: BoxDecoration(
+                          color: colors.backgroundSecondary,
+                          shape: BoxShape.circle,
+                        ),
                         child: Material(
                           color: Colors.transparent,
                           child: InkWell(
@@ -202,7 +264,10 @@ class _ParcelOrdersPageState extends State<ParcelOrdersPage> {
                               child: SvgPicture.asset(
                                 Assets.icons.refresh,
                                 package: 'grab_go_shared',
-                                colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                                colorFilter: ColorFilter.mode(
+                                  colors.textPrimary,
+                                  BlendMode.srcIn,
+                                ),
                               ),
                             ),
                           ),
@@ -211,7 +276,11 @@ class _ParcelOrdersPageState extends State<ParcelOrdersPage> {
                     ],
                   ),
                 ),
-                Divider(color: colors.backgroundSecondary, height: 1.h, thickness: 1),
+                Divider(
+                  color: colors.backgroundSecondary,
+                  height: 1.h,
+                  thickness: 1,
+                ),
                 Expanded(
                   child: AppRefreshIndicator(
                     onRefresh: _refreshOrders,
@@ -233,7 +302,11 @@ class _ParcelOrdersPageState extends State<ParcelOrdersPage> {
                               ),
                               child: Text(
                                 provider.errorMessage!,
-                                style: TextStyle(color: colors.error, fontSize: 13.sp, fontWeight: FontWeight.w600),
+                                style: TextStyle(
+                                  color: colors.error,
+                                  fontSize: 13.sp,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                             SizedBox(height: 12.h),
@@ -255,18 +328,23 @@ class _ParcelOrdersPageState extends State<ParcelOrdersPage> {
                                 SizedBox(
                                   width: 14.w,
                                   height: 14.w,
-                                  child: const CircularProgressIndicator(strokeWidth: 2),
+                                  child: const CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
                                 ),
                             ],
                           ),
                           SizedBox(height: 10.h),
-                          if (!provider.isLoadingOrders && provider.orders.isEmpty)
+                          if (!provider.isLoadingOrders &&
+                              provider.orders.isEmpty)
                             Container(
                               width: double.infinity,
                               padding: EdgeInsets.all(12.w),
                               decoration: BoxDecoration(
                                 color: colors.backgroundSecondary,
-                                borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                                borderRadius: BorderRadius.circular(
+                                  KBorderSize.borderMedium,
+                                ),
                               ),
                               child: Text(
                                 'No parcel orders yet.',
@@ -287,16 +365,21 @@ class _ParcelOrdersPageState extends State<ParcelOrdersPage> {
                                     OrderCard(
                                       title: 'Parcel ${order.parcelNumber}',
                                       order: order,
-                                      createdAtLabel: _formatDate(order.createdAt),
+                                      createdAtLabel: _formatDate(
+                                        order.createdAt,
+                                      ),
                                     ),
                                     SizedBox(height: 8.h),
                                     OrderActions(
                                       isBusy: isAnyOrderActionBusy,
                                       canPay: _canRetryPayment(order),
                                       canCancel: _canCancelOrder(order),
-                                      onViewDetails: () => _viewOrder(provider, order.id),
-                                      onPay: () => _payForOrder(provider, order),
-                                      onCancel: () => _cancelOrder(provider, order),
+                                      onViewDetails: () =>
+                                          _viewOrder(provider, order.id),
+                                      onPay: () =>
+                                          _payForOrder(provider, order),
+                                      onCancel: () =>
+                                          _cancelOrder(provider, order),
                                     ),
                                   ],
                                 ),

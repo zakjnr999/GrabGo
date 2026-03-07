@@ -8,6 +8,7 @@ import 'package:grab_go_customer/features/parcel/widgets/order_actions.dart';
 import 'package:grab_go_customer/features/parcel/widgets/order_card.dart';
 import 'package:grab_go_customer/features/parcel/widgets/order_detail_sheet.dart';
 import 'package:grab_go_customer/shared/models/address_model.dart';
+import 'package:grab_go_customer/shared/services/auth_guard.dart';
 import 'package:grab_go_customer/shared/services/paystack_service.dart'
     as paystack;
 import 'package:grab_go_customer/shared/services/user_service.dart';
@@ -25,6 +26,7 @@ class ParcelDeliveryPage extends StatefulWidget {
 }
 
 class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
+  bool _redirectingToLogin = false;
   bool _defaultsApplied = false;
   bool _isQuoteReadyForOrder = false;
   Map<String, String?> _fieldErrors = {};
@@ -71,10 +73,27 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      if (!_ensureAuthenticated()) return;
       final provider = context.read<ParcelProvider>();
       provider.loadConfig();
       _applyDefaultsFromContext();
     });
+  }
+
+  bool _ensureAuthenticated() {
+    if (UserService().isLoggedIn) {
+      _redirectingToLogin = false;
+      return true;
+    }
+
+    if (!_redirectingToLogin) {
+      _redirectingToLogin = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        context.go(AuthGuard.loginRoute(returnTo: '/parcel'));
+      });
+    }
+    return false;
   }
 
   @override
@@ -551,6 +570,10 @@ class _ParcelDeliveryPageState extends State<ParcelDeliveryPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_ensureAuthenticated()) {
+      return const SizedBox.shrink();
+    }
+
     final colors = context.appColors;
     final padding = MediaQuery.of(context).padding;
     final isDark = Theme.of(context).brightness == Brightness.dark;

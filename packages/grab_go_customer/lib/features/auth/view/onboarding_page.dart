@@ -28,7 +28,8 @@ class OnboardingPage extends StatefulWidget {
   State<OnboardingPage> createState() => _OnboardingPageState();
 }
 
-class _OnboardingPageState extends State<OnboardingPage> with SingleTickerProviderStateMixin {
+class _OnboardingPageState extends State<OnboardingPage>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -37,16 +38,28 @@ class _OnboardingPageState extends State<OnboardingPage> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
 
-    _fadeAnimation = CurvedAnimation(parent: _animationController, curve: Curves.easeIn);
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeIn,
+    );
 
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic));
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
 
-    _scaleAnimation = CurvedAnimation(parent: _animationController, curve: Curves.elasticOut);
+    _scaleAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.elasticOut,
+    );
 
     _animationController.forward();
   }
@@ -59,12 +72,19 @@ class _OnboardingPageState extends State<OnboardingPage> with SingleTickerProvid
 
   void _handleSkip() {
     HapticFeedback.lightImpact();
-    widget.controller?.animateToPage(2, duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
+    widget.controller?.animateToPage(
+      2,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeInOut,
+    );
   }
 
   void _handleContinue() {
     HapticFeedback.lightImpact();
-    widget.controller?.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+    widget.controller?.nextPage(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
   }
 
   Future<void> _handleGetStarted() async {
@@ -72,11 +92,11 @@ class _OnboardingPageState extends State<OnboardingPage> with SingleTickerProvid
     try {
       await StorageService.setFirstLaunchComplete();
       if (mounted) {
-        context.go("/login");
+        context.go("/locationPermission");
       }
     } catch (e) {
       if (mounted) {
-        context.go("/login");
+        context.go("/locationPermission");
       }
     }
   }
@@ -101,7 +121,10 @@ class _OnboardingPageState extends State<OnboardingPage> with SingleTickerProvid
                   SizedBox(
                     width: size.width,
                     height: size.height * 0.55,
-                    child: widget.image.image(fit: BoxFit.cover, package: 'grab_go_shared'),
+                    child: widget.image.image(
+                      fit: BoxFit.cover,
+                      package: 'grab_go_shared',
+                    ),
                   ),
                   Container(
                     width: size.width,
@@ -110,7 +133,10 @@ class _OnboardingPageState extends State<OnboardingPage> with SingleTickerProvid
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [Colors.black.withValues(alpha: 0.1), Colors.black.withValues(alpha: 0.4)],
+                        colors: [
+                          Colors.black.withValues(alpha: 0.1),
+                          Colors.black.withValues(alpha: 0.4),
+                        ],
                       ),
                     ),
                   ),
@@ -125,7 +151,12 @@ class _OnboardingPageState extends State<OnboardingPage> with SingleTickerProvid
                 child: Container(
                   height: size.height * 0.50,
                   width: size.width,
-                  padding: EdgeInsets.only(left: 25.w, right: 25.w, top: 60.h, bottom: 20.h),
+                  padding: EdgeInsets.only(
+                    left: 25.w,
+                    right: 25.w,
+                    top: 60.h,
+                    bottom: 20.h,
+                  ),
                   decoration: BoxDecoration(
                     color: colors.backgroundPrimary,
                     boxShadow: [
@@ -196,7 +227,12 @@ class _OnboardingPageState extends State<OnboardingPage> with SingleTickerProvid
             backgroundColor: Colors.transparent,
             borderRadius: KBorderSize.borderRadius15,
             buttonText: AppStrings.getStarted,
-            textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16.sp, letterSpacing: 0.5),
+            textStyle: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: 16.sp,
+              letterSpacing: 0.5,
+            ),
           ),
         ),
       );
@@ -212,7 +248,11 @@ class _OnboardingPageState extends State<OnboardingPage> with SingleTickerProvid
             borderColor: colors.inputBorder,
             borderRadius: KBorderSize.borderRadius15,
             buttonText: AppStrings.skip,
-            textStyle: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w600, fontSize: 15.sp),
+            textStyle: TextStyle(
+              color: colors.textPrimary,
+              fontWeight: FontWeight.w600,
+              fontSize: 15.sp,
+            ),
           ),
         ),
         SizedBox(width: 12.w),
@@ -223,7 +263,11 @@ class _OnboardingPageState extends State<OnboardingPage> with SingleTickerProvid
             backgroundColor: colors.accentOrange,
             borderRadius: KBorderSize.borderRadius15,
             buttonText: AppStrings.cont,
-            textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15.sp),
+            textStyle: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 15.sp,
+            ),
           ),
         ),
       ],

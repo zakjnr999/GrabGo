@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/chat/view/chats_details.dart';
 import 'package:grab_go_customer/features/chat/view/waiting_for_rider_screen.dart';
 import 'package:grab_go_customer/features/order/service/order_service_wrapper.dart';
+import 'package:grab_go_customer/shared/services/auth_guard.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
@@ -81,7 +83,9 @@ class _PendingOrder {
       orderNumber: order['orderNumber']?.toString() ?? '',
       restaurantName: restaurantName,
       restaurantLogo: restaurantLogo,
-      orderDate: DateTime.tryParse(order['createdAt']?.toString() ?? '') ?? DateTime.now(),
+      orderDate:
+          DateTime.tryParse(order['createdAt']?.toString() ?? '') ??
+          DateTime.now(),
       totalAmount: (order['totalAmount'] ?? 0.0).toDouble(),
       status: (order['status'] as String? ?? '').toLowerCase(),
     );
@@ -110,6 +114,15 @@ class _ChatsState extends State<Chats> {
   @override
   void initState() {
     super.initState();
+    if (!UserService().isLoggedIn) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        context.go(AuthGuard.loginRoute());
+      });
+      _isLoading = false;
+      return;
+    }
+
     _loadCachedConversations();
     _loadConversations();
     _fetchPendingOrders();
@@ -162,7 +175,9 @@ class _ChatsState extends State<Chats> {
         final tsStr = chat['timestamp']?.toString();
         final timestamp = DateTime.tryParse(tsStr ?? '') ?? DateTime.now();
         final unreadRaw = chat['unreadCount'];
-        final unreadCount = unreadRaw is int ? unreadRaw : int.tryParse(unreadRaw?.toString() ?? '0') ?? 0;
+        final unreadCount = unreadRaw is int
+            ? unreadRaw
+            : int.tryParse(unreadRaw?.toString() ?? '0') ?? 0;
         final isOnline = chat['isOnline'] == true;
         final orderId = chat['orderId']?.toString();
         final isTyping = chat['isTyping'] == true;
@@ -192,7 +207,10 @@ class _ChatsState extends State<Chats> {
       setState(() {});
 
       // Join all chat rooms to receive presence updates
-      SocketService().updateKnownChats(loaded.map((c) => c.id).toList(), forceRejoin: true);
+      SocketService().updateKnownChats(
+        loaded.map((c) => c.id).toList(),
+        forceRejoin: true,
+      );
 
       _resortAndFilterConversations(applySearch: false);
     } catch (e) {
@@ -243,9 +261,14 @@ class _ChatsState extends State<Chats> {
           .toList();
 
       // Filter out orders that already have a chat
-      final chatOrderNumbers = _conversations.where((c) => c.orderId != null).map((c) => c.orderId).toSet();
+      final chatOrderNumbers = _conversations
+          .where((c) => c.orderId != null)
+          .map((c) => c.orderId)
+          .toSet();
 
-      final ordersWithoutChat = pendingOrders.where((order) => !chatOrderNumbers.contains(order.orderNumber)).toList();
+      final ordersWithoutChat = pendingOrders
+          .where((order) => !chatOrderNumbers.contains(order.orderNumber))
+          .toList();
 
       if (!mounted) return;
       setState(() {
@@ -275,7 +298,9 @@ class _ChatsState extends State<Chats> {
 
       final List<_ChatMessage> loaded = apiChats.map((chat) {
         final senderId = chat.otherUserId ?? 'unknown_user';
-        final senderName = chat.otherUserName ?? (chat.otherUserRole == 'rider' ? 'Your rider' : 'User');
+        final senderName =
+            chat.otherUserName ??
+            (chat.otherUserRole == 'rider' ? 'Your rider' : 'User');
         final existing = existingStatus[chat.id];
 
         return _ChatMessage(
@@ -296,7 +321,10 @@ class _ChatsState extends State<Chats> {
       _conversations = loaded;
       _filteredConversations = _conversations;
       _cacheConversations(); // Cache for offline access
-      SocketService().updateKnownChats(_conversations.map((c) => c.id).toList(), forceRejoin: true);
+      SocketService().updateKnownChats(
+        _conversations.map((c) => c.id).toList(),
+        forceRejoin: true,
+      );
     } catch (e) {
       // Silent fail - show cached data or empty state
     } finally {
@@ -321,7 +349,9 @@ class _ChatsState extends State<Chats> {
 
       final List<_ChatMessage> loaded = apiChats.map((chat) {
         final senderId = chat.otherUserId ?? 'unknown_user';
-        final senderName = chat.otherUserName ?? (chat.otherUserRole == 'rider' ? 'Your rider' : 'User');
+        final senderName =
+            chat.otherUserName ??
+            (chat.otherUserRole == 'rider' ? 'Your rider' : 'User');
         final existing = existingStatus[chat.id];
 
         return _ChatMessage(
@@ -352,13 +382,17 @@ class _ChatsState extends State<Chats> {
           _filteredConversations = loaded
               .where(
                 (chat) =>
-                    chat.senderName.toLowerCase().contains(query) || chat.lastMessage.toLowerCase().contains(query),
+                    chat.senderName.toLowerCase().contains(query) ||
+                    chat.lastMessage.toLowerCase().contains(query),
               )
               .toList();
         }
       });
       _cacheConversations(); // Cache for offline access
-      SocketService().updateKnownChats(loaded.map((c) => c.id).toList(), forceRejoin: true);
+      SocketService().updateKnownChats(
+        loaded.map((c) => c.id).toList(),
+        forceRejoin: true,
+      );
     } catch (e) {
       // Silent fail on polling; keep current cached data
     }
@@ -561,17 +595,25 @@ class _ChatsState extends State<Chats> {
       } else {
         _filteredConversations = _conversations
             .where(
-              (chat) => chat.senderName.toLowerCase().contains(query) || chat.lastMessage.toLowerCase().contains(query),
+              (chat) =>
+                  chat.senderName.toLowerCase().contains(query) ||
+                  chat.lastMessage.toLowerCase().contains(query),
             )
             .toList();
       }
     });
 
     // Update global unread badge for Chats tab (deferred to avoid build-phase conflicts)
-    final totalUnread = _conversations.fold<int>(0, (sum, c) => sum + (c.unreadCount > 0 ? c.unreadCount : 0));
+    final totalUnread = _conversations.fold<int>(
+      0,
+      (sum, c) => sum + (c.unreadCount > 0 ? c.unreadCount : 0),
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      Provider.of<NavigationProvider>(context, listen: false).setChatUnreadCount(totalUnread);
+      Provider.of<NavigationProvider>(
+        context,
+        listen: false,
+      ).setChatUnreadCount(totalUnread);
     });
 
     final serialized = _conversations
@@ -600,7 +642,9 @@ class _ChatsState extends State<Chats> {
       } else {
         _filteredConversations = _conversations
             .where(
-              (chat) => chat.senderName.toLowerCase().contains(query) || chat.lastMessage.toLowerCase().contains(query),
+              (chat) =>
+                  chat.senderName.toLowerCase().contains(query) ||
+                  chat.lastMessage.toLowerCase().contains(query),
             )
             .toList();
       }
@@ -626,6 +670,10 @@ class _ChatsState extends State<Chats> {
 
   @override
   Widget build(BuildContext context) {
+    if (!UserService().isLoggedIn) {
+      return Scaffold(backgroundColor: context.appColors.backgroundPrimary);
+    }
+
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -633,7 +681,9 @@ class _ChatsState extends State<Chats> {
       statusBarColor: Theme.of(context).scaffoldBackgroundColor,
       statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       systemNavigationBarColor: colors.backgroundPrimary,
-      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      systemNavigationBarIconBrightness: isDark
+          ? Brightness.light
+          : Brightness.dark,
     );
 
     SystemChrome.setSystemUIOverlayStyle(systemUiOverlayStyle);
@@ -675,9 +725,17 @@ class _ChatsState extends State<Chats> {
 
             if (_connectionState == SocketConnectionState.reconnecting ||
                 _connectionState == SocketConnectionState.connecting)
-              _buildConnectionBanner('Reconnecting to chat…', colors, isWarning: false)
+              _buildConnectionBanner(
+                'Reconnecting to chat…',
+                colors,
+                isWarning: false,
+              )
             else if (_connectionState == SocketConnectionState.disconnected)
-              _buildConnectionBanner('Offline. Messages may be delayed.', colors, isWarning: true),
+              _buildConnectionBanner(
+                'Offline. Messages may be delayed.',
+                colors,
+                isWarning: true,
+              ),
 
             // Conversations List
             Expanded(
@@ -690,14 +748,17 @@ class _ChatsState extends State<Chats> {
                         return ChatSkeleton(colors: colors, isDark: isDark);
                       },
                     )
-                  : (_filteredConversations.isEmpty && _pendingOrders.isEmpty && !_hasAttemptedLoad)
+                  : (_filteredConversations.isEmpty &&
+                        _pendingOrders.isEmpty &&
+                        !_hasAttemptedLoad)
                   ? const SizedBox.shrink() // Still waiting for API response
                   : (_filteredConversations.isEmpty && _pendingOrders.isEmpty)
                   ? _buildEmptyState(colors)
                   : ListView.builder(
                       padding: EdgeInsets.symmetric(horizontal: 20.w),
                       physics: const BouncingScrollPhysics(),
-                      itemCount: _pendingOrders.length + _filteredConversations.length,
+                      itemCount:
+                          _pendingOrders.length + _filteredConversations.length,
                       itemBuilder: (context, index) {
                         // Show pending orders first
                         if (index < _pendingOrders.length) {
@@ -709,7 +770,8 @@ class _ChatsState extends State<Chats> {
                         }
                         // Then show conversations
                         final conversationIndex = index - _pendingOrders.length;
-                        final conversation = _filteredConversations[conversationIndex];
+                        final conversation =
+                            _filteredConversations[conversationIndex];
                         return Padding(
                           padding: EdgeInsets.only(bottom: 8.h),
                           child: _buildConversationItem(conversation, colors),
@@ -723,7 +785,11 @@ class _ChatsState extends State<Chats> {
     );
   }
 
-  Widget _buildConnectionBanner(String text, AppColorsExtension colors, {required bool isWarning}) {
+  Widget _buildConnectionBanner(
+    String text,
+    AppColorsExtension colors, {
+    required bool isWarning,
+  }) {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
@@ -749,13 +815,20 @@ class _ChatsState extends State<Chats> {
               package: "grab_go_shared",
               height: 16.h,
               width: 16.w,
-              colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(
+                colors.textSecondary,
+                BlendMode.srcIn,
+              ),
             ),
           SizedBox(width: 8.w),
           Expanded(
             child: Text(
               text,
-              style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
+              style: TextStyle(
+                color: colors.textSecondary,
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w400,
+              ),
             ),
           ),
         ],
@@ -763,7 +836,10 @@ class _ChatsState extends State<Chats> {
     );
   }
 
-  Widget _buildConversationItem(_ChatMessage conversation, AppColorsExtension colors) {
+  Widget _buildConversationItem(
+    _ChatMessage conversation,
+    AppColorsExtension colors,
+  ) {
     final isSupport = conversation.senderId == 'support';
     final hasUnread = conversation.unreadCount > 0;
 
@@ -804,7 +880,9 @@ class _ChatsState extends State<Chats> {
                     shape: BoxShape.circle,
                   ),
                   child: ClipOval(
-                    child: conversation.profilePicture != null && conversation.profilePicture!.isNotEmpty
+                    child:
+                        conversation.profilePicture != null &&
+                            conversation.profilePicture!.isNotEmpty
                         ? CachedNetworkImage(
                             imageUrl: conversation.profilePicture!,
                             width: 56.w,
@@ -816,7 +894,10 @@ class _ChatsState extends State<Chats> {
                                 package: 'grab_go_shared',
                                 width: 28.w,
                                 height: 28.w,
-                                colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                colorFilter: ColorFilter.mode(
+                                  colors.accentOrange,
+                                  BlendMode.srcIn,
+                                ),
                               ),
                             ),
                             errorWidget: (context, url, error) => Center(
@@ -825,18 +906,25 @@ class _ChatsState extends State<Chats> {
                                 package: 'grab_go_shared',
                                 width: 28.w,
                                 height: 28.w,
-                                colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                colorFilter: ColorFilter.mode(
+                                  colors.accentOrange,
+                                  BlendMode.srcIn,
+                                ),
                               ),
                             ),
                           )
                         : Center(
                             child: SvgPicture.asset(
-                              isSupport ? Assets.icons.headsetHelp : Assets.icons.user,
+                              isSupport
+                                  ? Assets.icons.headsetHelp
+                                  : Assets.icons.user,
                               package: 'grab_go_shared',
                               width: 28.w,
                               height: 28.w,
                               colorFilter: ColorFilter.mode(
-                                isSupport ? colors.accentViolet : colors.accentOrange,
+                                isSupport
+                                    ? colors.accentViolet
+                                    : colors.accentOrange,
                                 BlendMode.srcIn,
                               ),
                             ),
@@ -853,7 +941,10 @@ class _ChatsState extends State<Chats> {
                       decoration: BoxDecoration(
                         color: colors.accentOrange,
                         shape: BoxShape.circle,
-                        border: Border.all(color: colors.backgroundPrimary, width: 2),
+                        border: Border.all(
+                          color: colors.backgroundPrimary,
+                          width: 2,
+                        ),
                       ),
                     ),
                   ),
@@ -872,7 +963,9 @@ class _ChatsState extends State<Chats> {
                           style: TextStyle(
                             color: colors.textPrimary,
                             fontSize: 16.sp,
-                            fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w600,
+                            fontWeight: hasUnread
+                                ? FontWeight.w700
+                                : FontWeight.w600,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -880,21 +973,32 @@ class _ChatsState extends State<Chats> {
                       ),
                       if (conversation.orderId != null) ...[
                         Container(
-                          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 6.w,
+                            vertical: 2.h,
+                          ),
                           decoration: BoxDecoration(
                             color: colors.accentOrange.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
                             conversation.orderId!.substring(0, 8),
-                            style: TextStyle(color: colors.accentOrange, fontSize: 10.sp, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                              color: colors.accentOrange,
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                         SizedBox(width: 8.w),
                       ],
                       Text(
                         _formatTimestamp(conversation.timestamp),
-                        style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
+                        style: TextStyle(
+                          color: colors.textSecondary,
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w400,
+                        ),
                       ),
                     ],
                   ),
@@ -903,15 +1007,21 @@ class _ChatsState extends State<Chats> {
                     children: [
                       Expanded(
                         child: Text(
-                          conversation.isTyping ? 'Typing...' : conversation.lastMessage,
+                          conversation.isTyping
+                              ? 'Typing...'
+                              : conversation.lastMessage,
                           style: TextStyle(
                             color: conversation.isTyping
                                 ? colors.accentOrange
-                                : (hasUnread ? colors.textPrimary : colors.textSecondary),
+                                : (hasUnread
+                                      ? colors.textPrimary
+                                      : colors.textSecondary),
                             fontSize: 14.sp,
                             fontWeight: conversation.isTyping
                                 ? FontWeight.w500
-                                : (hasUnread ? FontWeight.w500 : FontWeight.w400),
+                                : (hasUnread
+                                      ? FontWeight.w500
+                                      : FontWeight.w400),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -920,12 +1030,24 @@ class _ChatsState extends State<Chats> {
                       if (hasUnread) ...[
                         SizedBox(width: 8.w),
                         Container(
-                          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                          decoration: BoxDecoration(color: colors.accentOrange, shape: BoxShape.circle),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 8.w,
+                            vertical: 4.h,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colors.accentOrange,
+                            shape: BoxShape.circle,
+                          ),
                           child: Center(
                             child: Text(
-                              conversation.unreadCount > 9 ? '9+' : conversation.unreadCount.toString(),
-                              style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.w700),
+                              conversation.unreadCount > 9
+                                  ? '9+'
+                                  : conversation.unreadCount.toString(),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ),
@@ -941,7 +1063,10 @@ class _ChatsState extends State<Chats> {
     );
   }
 
-  Widget _buildPendingOrderItem(_PendingOrder order, AppColorsExtension colors) {
+  Widget _buildPendingOrderItem(
+    _PendingOrder order,
+    AppColorsExtension colors,
+  ) {
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -976,14 +1101,20 @@ class _ChatsState extends State<Chats> {
                 Container(
                   width: 56.w,
                   height: 56.w,
-                  decoration: BoxDecoration(color: colors.accentViolet.withValues(alpha: 0.1), shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                    color: colors.accentViolet.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
                   child: Center(
                     child: SvgPicture.asset(
                       Assets.icons.deliveryTruck,
                       package: 'grab_go_shared',
                       width: 28.w,
                       height: 28.w,
-                      colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                      colorFilter: ColorFilter.mode(
+                        colors.accentViolet,
+                        BlendMode.srcIn,
+                      ),
                     ),
                   ),
                 ),
@@ -997,7 +1128,10 @@ class _ChatsState extends State<Chats> {
                     decoration: BoxDecoration(
                       color: colors.accentViolet,
                       shape: BoxShape.circle,
-                      border: Border.all(color: colors.backgroundPrimary, width: 2),
+                      border: Border.all(
+                        color: colors.backgroundPrimary,
+                        width: 2,
+                      ),
                     ),
                     child: Center(
                       child: SvgPicture.asset(
@@ -1005,7 +1139,10 @@ class _ChatsState extends State<Chats> {
                         package: 'grab_go_shared',
                         width: 8.w,
                         height: 8.w,
-                        colorFilter: ColorFilter.mode(colors.backgroundPrimary, BlendMode.srcIn),
+                        colorFilter: ColorFilter.mode(
+                          colors.backgroundPrimary,
+                          BlendMode.srcIn,
+                        ),
                       ),
                     ),
                   ),
@@ -1022,20 +1159,31 @@ class _ChatsState extends State<Chats> {
                       Expanded(
                         child: Text(
                           order.restaurantName,
-                          style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            color: colors.textPrimary,
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8.w,
+                          vertical: 4.h,
+                        ),
                         decoration: BoxDecoration(
                           color: colors.accentViolet.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           '#${order.orderNumber.substring(0, 8)}',
-                          style: TextStyle(color: colors.accentViolet, fontSize: 10.sp, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            color: colors.accentViolet,
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ],
@@ -1046,13 +1194,20 @@ class _ChatsState extends State<Chats> {
                       Container(
                         width: 8.w,
                         height: 8.w,
-                        decoration: BoxDecoration(color: colors.accentViolet, shape: BoxShape.circle),
+                        decoration: BoxDecoration(
+                          color: colors.accentViolet,
+                          shape: BoxShape.circle,
+                        ),
                       ),
                       SizedBox(width: 6.w),
                       Expanded(
                         child: Text(
                           'Waiting for rider to accept...',
-                          style: TextStyle(color: colors.accentViolet, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                            color: colors.accentViolet,
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w500,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1060,7 +1215,10 @@ class _ChatsState extends State<Chats> {
                       SvgPicture.asset(
                         Assets.icons.navArrowRight,
                         package: "grab_go_shared",
-                        colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                        colorFilter: ColorFilter.mode(
+                          colors.textPrimary,
+                          BlendMode.srcIn,
+                        ),
                         height: 20.h,
                         width: 20.w,
                       ),
@@ -1085,27 +1243,41 @@ class _ChatsState extends State<Chats> {
             Container(
               width: 120.w,
               height: 120.w,
-              decoration: BoxDecoration(color: colors.backgroundPrimary, shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: colors.backgroundPrimary,
+                shape: BoxShape.circle,
+              ),
               child: Center(
                 child: SvgPicture.asset(
                   Assets.icons.chatBubble,
                   package: 'grab_go_shared',
                   width: 60.w,
                   height: 60.w,
-                  colorFilter: ColorFilter.mode(colors.textSecondary.withValues(alpha: 0.5), BlendMode.srcIn),
+                  colorFilter: ColorFilter.mode(
+                    colors.textSecondary.withValues(alpha: 0.5),
+                    BlendMode.srcIn,
+                  ),
                 ),
               ),
             ),
             SizedBox(height: 24.h),
             Text(
               "No conversations found",
-              style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: colors.textPrimary,
+                fontSize: 18.sp,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             SizedBox(height: 8.h),
             Text(
               "Start a conversation with riders or support",
               textAlign: TextAlign.center,
-              style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w400),
+              style: TextStyle(
+                color: colors.textSecondary,
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w400,
+              ),
             ),
           ],
         ),

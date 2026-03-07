@@ -10,20 +10,86 @@ class AuthGuard {
   static Future<void> checkAuthAndRedirect(BuildContext context) async {
     try {
       final isAuthenticated = UserService().isLoggedIn;
+      if (!context.mounted) return;
+
       if (isAuthenticated) {
-        if (context.mounted) {
-          context.go('/homepage');
-        }
+        context.go('/homepage');
       } else {
-        if (context.mounted) {
-          context.go('/login');
-        }
+        context.go('/homepage');
       }
     } catch (e) {
       if (context.mounted) {
-        context.go('/login');
+        context.go('/homepage');
       }
     }
+  }
+
+  static const Set<String> _protectedPaths = {
+    '/cart',
+    '/orders',
+    '/favorites',
+    '/credits',
+    '/subscription',
+    '/promos',
+    '/referral',
+    '/settings',
+    '/checkout',
+    '/editProfile',
+    '/parcel',
+    '/parcel/orders',
+    '/mapTracking',
+    '/orderTracking',
+    '/paymentConfirming',
+    '/paymentComplete',
+    '/paymentFailed',
+  };
+
+  static bool requiresAuthenticationForUri(Uri uri) {
+    if (_protectedPaths.contains(uri.path)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  static String loginRoute({String? returnTo}) {
+    if (returnTo == null || returnTo.trim().isEmpty) {
+      return '/login';
+    }
+
+    return '/login?returnTo=${Uri.encodeComponent(returnTo)}';
+  }
+
+  static String? redirectForState(GoRouterState state) {
+    final uri = state.uri;
+    final isAuthenticated = UserService().isLoggedIn;
+
+    if (!isAuthenticated && requiresAuthenticationForUri(uri)) {
+      return loginRoute(returnTo: uri.toString());
+    }
+
+    if (isAuthenticated && uri.path == '/login') {
+      final returnTo = uri.queryParameters['returnTo'];
+      if (returnTo != null && returnTo.trim().isNotEmpty) {
+        return Uri.decodeComponent(returnTo);
+      }
+      return '/homepage';
+    }
+
+    return null;
+  }
+
+  static Future<bool> ensureAuthenticated(BuildContext context, {String? returnTo}) async {
+    if (UserService().isLoggedIn) {
+      return true;
+    }
+
+    if (!context.mounted) {
+      return false;
+    }
+
+    await context.push(loginRoute(returnTo: returnTo));
+    return false;
   }
 
   static Future<bool> isAuthenticated() async {
@@ -48,13 +114,7 @@ class AuthGuard {
         'role': user?.role,
       };
     } catch (e) {
-      return {
-        'isAuthenticated': false,
-        'hasUser': false,
-        'error': e.toString(),
-      };
+      return {'isAuthenticated': false, 'hasUser': false, 'error': e.toString()};
     }
   }
 }
-
-

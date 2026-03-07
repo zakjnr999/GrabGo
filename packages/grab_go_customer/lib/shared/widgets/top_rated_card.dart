@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
+import 'package:grab_go_customer/shared/services/auth_guard.dart';
 import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
 import 'package:grab_go_customer/shared/widgets/vertical_zigzag_tag.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
@@ -135,7 +136,11 @@ class TopRatedCard extends StatelessWidget {
                       right: 6.r,
                       top: 6.r,
                       child: GestureDetector(
-                        onTap: () {
+                        onTap: () async {
+                          final isAuthenticated =
+                              await AuthGuard.ensureAuthenticated(context);
+                          if (!isAuthenticated) return;
+
                           if (isFavorite) {
                             favoriteProvider.removeFromFavorites(item);
                           } else {

@@ -36,6 +36,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
   User? _user;
   bool _isLoading = true;
   bool _isEmailHidden = true;
+  bool? _wasLoggedIn;
   late AnimationController _animationController;
 
   final CreditService _creditService = CreditService();
@@ -53,6 +54,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
     super.initState();
     _scrollController.addListener(_onScroll);
     _animationController = AnimationController(duration: const Duration(milliseconds: 600), vsync: this);
+    _wasLoggedIn = UserService().isLoggedIn;
     _loadUserData();
   }
 
@@ -62,6 +64,17 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
   }
 
   Future<void> _loadUserData() async {
+    if (!UserService().isLoggedIn) {
+      _applyGuestState();
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
+
     try {
       await Future.delayed(const Duration(milliseconds: 100));
 
@@ -96,6 +109,14 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
   }
 
   Future<void> _loadCreditBalance() async {
+    if (!UserService().isLoggedIn) {
+      if (!mounted) return;
+      setState(() {
+        _creditBalance = null;
+      });
+      return;
+    }
+
     try {
       final balance = await _creditService.getBalance();
       if (mounted) {
@@ -109,6 +130,14 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
   }
 
   Future<void> _loadSubscriptionData() async {
+    if (!UserService().isLoggedIn) {
+      if (!mounted) return;
+      setState(() {
+        _currentSubscription = null;
+      });
+      return;
+    }
+
     try {
       final subscription = await _subscriptionService.getMySubscription();
       if (!mounted) return;
@@ -118,6 +147,32 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
     } catch (_) {
       // Keep current UI state if subscription fetch fails.
     }
+  }
+
+  void _applyGuestState() {
+    if (!mounted) return;
+    setState(() {
+      _user = null;
+      _creditBalance = null;
+      _currentSubscription = null;
+      _isLoading = false;
+      _isEmailHidden = true;
+    });
+  }
+
+  void _syncAuthState() {
+    final isLoggedIn = UserService().isLoggedIn;
+    if (_wasLoggedIn == isLoggedIn) return;
+
+    _wasLoggedIn = isLoggedIn;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (isLoggedIn) {
+        _loadUserData();
+      } else {
+        _applyGuestState();
+      }
+    });
   }
 
   @override
@@ -242,10 +297,13 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    _syncAuthState();
+
     return Consumer<ThemeProvider>(
       builder: (context, themeProvider, child) {
         final colors = context.appColors;
         final Size size = MediaQuery.sizeOf(context);
+        final isGuest = !UserService().isLoggedIn;
 
         final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -289,7 +347,9 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            _isLoading ? "..." : (_user?.username ?? "Guest User"),
+                                            _isLoading
+                                                ? "..."
+                                                : (isGuest ? "Guest User" : (_user?.username ?? "Guest User")),
                                             style: TextStyle(
                                               color: colors.textPrimary,
                                               fontSize: 18.sp,
@@ -304,6 +364,8 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                                               Text(
                                                 _isLoading
                                                     ? "..."
+                                                    : isGuest
+                                                    ? "Sign in to save favorites and track orders"
                                                     : (_user == null
                                                           ? "Please log in to continue"
                                                           : (_user?.email == null || _user!.email!.isEmpty)
@@ -321,6 +383,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                                               ),
                                               SizedBox(width: 10.w),
                                               if (!_isLoading &&
+                                                  !isGuest &&
                                                   _user != null &&
                                                   _user?.email != null &&
                                                   _user!.email!.isNotEmpty) ...[
@@ -353,7 +416,8 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                               ),
                             ),
                             SizedBox(height: 12.h),
-                            if (_user != null &&
+                            if (!isGuest &&
+                                _user != null &&
                                 ((_user?.email == null || _user!.email!.isEmpty) || _user?.isEmailVerified == false))
                               GestureDetector(
                                 onTap: () => context.push("/emailVerification"),
@@ -390,113 +454,17 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                                   ),
                                 ),
                               ),
-                            SizedBox(height: 24.h),
-                            _buildCreditBalanceCard(colors),
-                            SizedBox(height: 24.h),
-
-                            Container(
-                              width: double.infinity,
-                              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
-                              color: colors.backgroundSecondary,
-                              child: Text(
-                                "General",
-                                style: TextStyle(
-                                  color: colors.textPrimary,
-                                  fontSize: 16.sp,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: 12.h),
-
-                            Column(
-                              children: [
-                                itemTile("Saved Addresses", Assets.icons.mapPin, context, () {
-                                  // context.push("/mapTracking");
-                                }),
-                                _favoritesTile(context),
-
-                                itemTile("Refer & Earn", Assets.icons.gift, context, () {
-                                  context.push("/referral");
-                                }),
-                                itemTile("Subscription", Assets.icons.star, context, () {
-                                  if (_ensureEmailVerified()) {
-                                    context.push("/subscription");
-                                  }
-                                }, trailing: _buildSubscriptionTileTrailing(colors)),
-                                itemTile("Promo Codes", Assets.icons.badgePercent, context, () {
-                                  context.push("/promos");
-                                }),
-                                itemTile("Change Password", Assets.icons.lock, context, () {
-                                  if (_ensureEmailVerified()) {
-                                    // context.push("/orderTracking");
-                                  }
-                                }),
-                              ],
-                            ),
-                            SizedBox(height: 24.h),
-
-                            Container(
-                              width: double.infinity,
-                              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
-                              color: colors.backgroundSecondary,
-                              child: Text(
-                                "Other Information",
-                                style: TextStyle(
-                                  color: colors.textPrimary,
-                                  fontSize: 16.sp,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: 12.h),
-
-                            Column(
-                              children: [
-                                itemTile("Settings", Assets.icons.settings, context, () {
-                                  context.push("/settings");
-                                }),
-                                itemTile("Notifications", Assets.icons.bell, context, () {
-                                  context.push("/notification");
-                                }),
-                                itemTile("Help & Support", Assets.icons.headsetHelp, context, () {
-                                  //Do nothing for now
-                                }),
-                                itemTile("About App", Assets.icons.infoCircle, context, () {
-                                  //Do nothing for now
-                                }),
-                                itemTile("Logout", Assets.icons.logOut, context, () {
-                                  _handleLogout();
-                                }),
-                              ],
-                            ),
-                            SizedBox(height: 24.h),
-
-                            Container(
-                              width: double.infinity,
-                              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
-                              color: colors.backgroundSecondary,
-                              child: Text(
-                                "Grow with GrabGo",
-                                style: TextStyle(
-                                  color: colors.textPrimary,
-                                  fontSize: 16.sp,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: 12.h),
-
-                            Column(
-                              children: [
-                                itemTile("Earn with us (Become a rider)", Assets.icons.deliveryTruck, context, () {
-                                  context.push("/mapTracking?orderId=DEMO-CUSTOMER-TRACK-001&testTrigger=true");
-                                }),
-                                itemTile("Partner with us (Become a vendor)", Assets.icons.store, context, () {
-                                  _openExternalBrowserLink(_vendorSignupUrl);
-                                }),
-                              ],
-                            ),
+                            if (!isGuest) ...[
+                              SizedBox(height: 24.h),
+                              _buildCreditBalanceCard(colors),
+                              SizedBox(height: 24.h),
+                              _buildAuthenticatedSections(colors),
+                            ] else ...[
+                              SizedBox(height: 24.h),
+                              _buildGuestAccountCard(colors),
+                              SizedBox(height: 24.h),
+                              _buildGrowWithGrabGoSection(colors),
+                            ],
                             SizedBox(height: 24.h),
                           ],
                         ),
@@ -545,6 +513,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
 
   Widget _buildAccountHeader(AppColorsExtension colors) {
     final statusBarHeight = MediaQuery.of(context).padding.top;
+    final isGuest = !UserService().isLoggedIn;
 
     return SizedBox.expand(
       child: Padding(
@@ -564,7 +533,7 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
             ),
             SizedBox(height: 4.h),
             Text(
-              "Manage your profile, orders, and settings",
+              isGuest ? "Sign in to manage your account" : "Manage your profile, orders, and settings",
               style: TextStyle(
                 fontFamily: "Lato",
                 package: 'grab_go_shared',
@@ -575,6 +544,137 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildGuestAccountCard(AppColorsExtension colors) {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 20.w),
+
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Sign in to unlock your account",
+            style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w800),
+          ),
+          SizedBox(height: 8.h),
+          Text(
+            "Track orders, save favorites, manage credits, and access GrabGo Pro perks from one place.",
+            style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w500, height: 1.5),
+          ),
+          SizedBox(height: 18.h),
+          AppButton(
+            width: double.infinity,
+            height: 50.h,
+            buttonText: "Sign in",
+            onPressed: () => context.push('/login'),
+            backgroundColor: colors.accentOrange,
+            borderRadius: KBorderSize.borderMedium,
+            textStyle: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
+          ),
+          SizedBox(height: 12.h),
+          AppButton(
+            width: double.infinity,
+            height: 50.h,
+            buttonText: "Create account",
+            onPressed: () => context.push('/register'),
+            backgroundColor: colors.backgroundPrimary,
+            borderColor: colors.inputBorder,
+            textColor: colors.textPrimary,
+            borderRadius: KBorderSize.borderMedium,
+            textStyle: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAuthenticatedSections(AppColorsExtension colors) {
+    return Column(
+      children: [
+        _buildSectionHeader("General", colors),
+        SizedBox(height: 12.h),
+        Column(
+          children: [
+            itemTile("Saved Addresses", Assets.icons.mapPin, context, () {
+              // context.push("/mapTracking");
+            }),
+            _favoritesTile(context),
+            itemTile("Refer & Earn", Assets.icons.gift, context, () {
+              context.push("/referral");
+            }),
+            itemTile("Subscription", Assets.icons.star, context, () {
+              if (_ensureEmailVerified()) {
+                context.push("/subscription");
+              }
+            }, trailing: _buildSubscriptionTileTrailing(colors)),
+            itemTile("Promo Codes", Assets.icons.badgePercent, context, () {
+              context.push("/promos");
+            }),
+            itemTile("Change Password", Assets.icons.lock, context, () {
+              if (_ensureEmailVerified()) {
+                // context.push("/orderTracking");
+              }
+            }),
+          ],
+        ),
+        SizedBox(height: 24.h),
+        _buildSectionHeader("Other Information", colors),
+        SizedBox(height: 12.h),
+        Column(
+          children: [
+            itemTile("Settings", Assets.icons.settings, context, () {
+              context.push("/settings");
+            }),
+            itemTile("Notifications", Assets.icons.bell, context, () {
+              context.push("/notification");
+            }),
+            itemTile("Help & Support", Assets.icons.headsetHelp, context, () {
+              // Do nothing for now
+            }),
+            itemTile("About App", Assets.icons.infoCircle, context, () {
+              // Do nothing for now
+            }),
+            itemTile("Logout", Assets.icons.logOut, context, () {
+              _handleLogout();
+            }),
+          ],
+        ),
+        SizedBox(height: 24.h),
+        _buildGrowWithGrabGoSection(colors),
+      ],
+    );
+  }
+
+  Widget _buildGrowWithGrabGoSection(AppColorsExtension colors) {
+    return Column(
+      children: [
+        _buildSectionHeader("Grow with GrabGo", colors),
+        SizedBox(height: 12.h),
+        Column(
+          children: [
+            itemTile("Earn with us (Become a rider)", Assets.icons.deliveryTruck, context, () {
+              context.push("/mapTracking?orderId=DEMO-CUSTOMER-TRACK-001&testTrigger=true");
+            }),
+            itemTile("Partner with us (Become a vendor)", Assets.icons.store, context, () {
+              _openExternalBrowserLink(_vendorSignupUrl);
+            }),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader(String title, AppColorsExtension colors) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+      color: colors.backgroundSecondary,
+      child: Text(
+        title,
+        style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w800),
       ),
     );
   }
@@ -664,20 +764,22 @@ class _AccountState extends State<Account> with SingleTickerProviderStateMixin {
                 height: avatarSize,
                 width: avatarSize,
                 padding: EdgeInsets.all(12.r),
+                color: colors.accentOrange.withValues(alpha: 0.1),
                 child: SvgPicture.asset(
                   Assets.icons.user,
                   package: "grab_go_shared",
-                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                 ),
               ),
               errorWidget: (context, url, error) => Container(
                 height: avatarSize,
                 width: avatarSize,
                 padding: EdgeInsets.all(12.r),
+                color: colors.accentOrange.withValues(alpha: 0.1),
                 child: SvgPicture.asset(
                   Assets.icons.user,
                   package: "grab_go_shared",
-                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                 ),
               ),
             ),

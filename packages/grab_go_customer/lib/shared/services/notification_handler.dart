@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/chat/view/chats_details.dart';
+import 'package:grab_go_customer/shared/services/auth_guard.dart';
+import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_customer/features/status/view/story_viewer.dart';
 import 'package:grab_go_customer/shared/utils/routes.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -28,9 +31,9 @@ bool _validateDeepLinkData(
 }
 
 /// Navigate to a route with error handling
-void _navigateToRoute(BuildContext context, String route) {
+Future<void> _navigateToRoute(BuildContext context, String route) async {
   try {
-    Navigator.of(context).pushNamed(route);
+    await context.push(route);
   } catch (e) {
     debugPrint('❌ Navigation failed for route $route: $e');
     ScaffoldMessenger.of(context).showSnackBar(
@@ -41,6 +44,9 @@ void _navigateToRoute(BuildContext context, String route) {
     );
   }
 }
+
+String _orderTrackingRoute(String orderId) =>
+    '/mapTracking?orderId=${Uri.encodeComponent(orderId)}';
 
 void handleNotificationTap(Map<String, dynamic> data) {
   final type = data['type'];
@@ -57,6 +63,20 @@ void handleNotificationTap(Map<String, dynamic> data) {
       final context = rootNavigatorKey.currentContext;
       if (context == null) {
         debugPrint('⚠️ Navigation context is null');
+        return;
+      }
+
+      final requiresAuthenticatedSession =
+          type == 'chat_message' ||
+          type == 'order_update' ||
+          type == 'payment_confirmed' ||
+          type == 'delivery_arriving' ||
+          type == 'promo' ||
+          type == 'referral_completed' ||
+          type == 'milestone_bonus';
+
+      if (requiresAuthenticatedSession && !UserService().isLoggedIn) {
+        await context.push(AuthGuard.loginRoute());
         return;
       }
 
@@ -77,7 +97,7 @@ void handleNotificationTap(Map<String, dynamic> data) {
         if (!_validateDeepLinkData(data, ['orderId'])) return;
 
         debugPrint('Navigate to order: $orderId');
-        _navigateToRoute(context, '/orders/$orderId');
+        await _navigateToRoute(context, _orderTrackingRoute(orderId));
       } else if ((type == 'comment_reply' || type == 'comment_reaction') &&
           statusId != null &&
           restaurantId != null) {
@@ -109,19 +129,19 @@ void handleNotificationTap(Map<String, dynamic> data) {
         );
       } else if (type == 'referral_completed' || type == 'milestone_bonus') {
         debugPrint('Navigate to referral page');
-        _navigateToRoute(context, '/referral');
+        await _navigateToRoute(context, '/referral');
       } else if (type == 'payment_confirmed' && orderId != null) {
         debugPrint('Navigate to order: $orderId');
-        _navigateToRoute(context, '/orders/$orderId');
+        await _navigateToRoute(context, _orderTrackingRoute(orderId));
       } else if (type == 'delivery_arriving' && orderId != null) {
         debugPrint('Navigate to order tracking: $orderId');
-        _navigateToRoute(context, '/orders/$orderId');
+        await _navigateToRoute(context, _orderTrackingRoute(orderId));
       } else if (type == 'promo') {
         debugPrint('Navigate to promos');
-        _navigateToRoute(context, '/promos');
+        await _navigateToRoute(context, '/promos');
       } else if (type == 'system' || type == 'update') {
         debugPrint('Navigate to notifications');
-        _navigateToRoute(context, '/notifications');
+        await _navigateToRoute(context, '/notification');
       } else if (type == 'incoming_call') {
         final callId = data['callId']?.toString() ?? '';
         if (callId.isEmpty) return;

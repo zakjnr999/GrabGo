@@ -4,7 +4,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/status/view/story_viewer.dart';
+import 'package:grab_go_customer/shared/services/auth_guard.dart';
 import 'package:grab_go_customer/shared/services/notification_service.dart';
+import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:intl/intl.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -174,15 +176,22 @@ class _NotificationState extends State<Notification> {
   final ScrollController _scrollController = ScrollController();
   bool isSocketConnected = false;
   late final void Function(dynamic) _notificationListener;
+  late final void Function(SocketConnectionState) _connectionListener;
   int _selectedTabIndex = 0;
   final List<String> _notificationTabs = ["All", "Orders", "Promos", "Updates"];
+  bool? _wasLoggedIn;
+
+  bool get _isGuest => !UserService().isLoggedIn;
 
   @override
   void initState() {
     super.initState();
+    _wasLoggedIn = UserService().isLoggedIn;
     _notificationListener = _handleNewNotification;
-    _loadInitialData();
+    _connectionListener = _handleConnectionStateChanged;
     _scrollController.addListener(_onScroll);
+    if (_isGuest) return;
+    _loadInitialData();
     _setupSocketListener();
   }
 
@@ -204,6 +213,7 @@ class _NotificationState extends State<Notification> {
   void dispose() {
     _scrollController.dispose();
     SocketService().removeNotificationListener(_notificationListener);
+    SocketService().removeConnectionListener(_connectionListener);
     super.dispose();
   }
 
@@ -218,13 +228,16 @@ class _NotificationState extends State<Notification> {
   void _setupSocketListener() {
     final socketService = SocketService();
 
+    socketService.removeNotificationListener(_notificationListener);
+    socketService.removeConnectionListener(_connectionListener);
     socketService.addNotificationListener(_notificationListener);
+    socketService.addConnectionListener(_connectionListener);
+  }
 
-    socketService.addConnectionListener((state) {
-      if (!mounted) return;
-      setState(() {
-        isSocketConnected = state == SocketConnectionState.connected;
-      });
+  void _handleConnectionStateChanged(SocketConnectionState state) {
+    if (!mounted) return;
+    setState(() {
+      isSocketConnected = state == SocketConnectionState.connected;
     });
   }
 
@@ -247,7 +260,36 @@ class _NotificationState extends State<Notification> {
     }
   }
 
+  void _syncAuthState() {
+    final isLoggedIn = UserService().isLoggedIn;
+    if (_wasLoggedIn == isLoggedIn) return;
+
+    _wasLoggedIn = isLoggedIn;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      if (isLoggedIn) {
+        _loadInitialData();
+        _setupSocketListener();
+        return;
+      }
+
+      SocketService().removeNotificationListener(_notificationListener);
+      SocketService().removeConnectionListener(_connectionListener);
+      setState(() {
+        _notifications = [];
+        _isLoading = false;
+        _isLoadingMore = false;
+        _hasMore = true;
+        _currentPage = 1;
+        _error = null;
+      });
+    });
+  }
+
   Future<void> _loadNotifications() async {
+    if (_isGuest) return;
+
     setState(() {
       _isLoading = true;
       _error = null;
@@ -275,6 +317,7 @@ class _NotificationState extends State<Notification> {
   }
 
   Future<void> _loadMoreNotifications() async {
+    if (_isGuest) return;
     if (_isLoadingMore || !_hasMore) return;
 
     setState(() {
@@ -310,24 +353,6 @@ class _NotificationState extends State<Notification> {
         if (index != -1) {
           _notifications[index] = _notifications[index].copyWith(isRead: true);
         }
-      });
-    }
-  }
-
-  Future<void> _markAllAsRead() async {
-    final success = await NotificationService().markAllAsRead();
-    if (success) {
-      setState(() {
-        _notifications = _notifications.map((notification) => notification.copyWith(isRead: true)).toList();
-      });
-    }
-  }
-
-  Future<void> _clearAll() async {
-    final success = await NotificationService().clearAll();
-    if (success) {
-      setState(() {
-        _notifications.clear();
       });
     }
   }
@@ -373,6 +398,8 @@ class _NotificationState extends State<Notification> {
 
   @override
   Widget build(BuildContext context) {
+    _syncAuthState();
+
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final padding = MediaQuery.paddingOf(context);
@@ -436,16 +463,20 @@ class _NotificationState extends State<Notification> {
                       ],
                     ),
                   ),
-                  SizedBox(height: 16.h),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20.w),
-                    child: _buildTabSelector(colors),
-                  ),
+                  if (!_isGuest) ...[
+                    SizedBox(height: 16.h),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20.w),
+                      child: _buildTabSelector(colors),
+                    ),
+                  ],
                 ],
               ),
             ),
             Expanded(
-              child: _isLoading && _notifications.isEmpty
+              child: _isGuest
+                  ? _buildGuestState(colors)
+                  : _isLoading && _notifications.isEmpty
                   ? ListView.separated(
                       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
                       itemCount: 8,
@@ -493,11 +524,60 @@ class _NotificationState extends State<Notification> {
     );
   }
 
+  Widget _buildGuestState(AppColorsExtension colors) {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 20.w),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SvgPicture.asset(Assets.icons.emptyNotification, package: 'grab_go_shared', width: 180.w, height: 180.h),
+            SizedBox(height: 12.h),
+            Text(
+              "Sign in to view notifications",
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+            ),
+            SizedBox(height: 8.h),
+            Text(
+              "Order updates, promos, and account alerts will appear here once you sign in.",
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500, color: colors.textSecondary, height: 1.5),
+            ),
+            SizedBox(height: 24.h),
+            AppButton(
+              width: double.infinity,
+              height: 50.h,
+              buttonText: "Sign in",
+              onPressed: () => context.push(AuthGuard.loginRoute(returnTo: '/notification')),
+              backgroundColor: colors.accentOrange,
+              borderRadius: KBorderSize.borderMedium,
+              textStyle: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
+            ),
+            SizedBox(height: 12.h),
+            AppButton(
+              width: double.infinity,
+              height: 50.h,
+              buttonText: "Create account",
+              onPressed: () => context.push('/register'),
+              backgroundColor: colors.backgroundPrimary,
+              textColor: colors.textPrimary,
+              borderRadius: KBorderSize.borderMedium,
+              textStyle: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildEmptyState(AppColorsExtension colors) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          SvgPicture.asset(Assets.icons.emptyOrdersScreen, package: 'grab_go_shared', width: 180.w, height: 180.h),
+          SizedBox(height: 12.h),
           Text(
             AppStrings.notificationsEmpty,
             style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
@@ -648,7 +728,7 @@ class _NotificationState extends State<Notification> {
             if (data != null && data['orderId'] != null) {
               final orderId = data['orderId']?.toString();
               if (orderId != null && orderId.isNotEmpty) {
-                context.push('/order-tracking/$orderId');
+                context.push('/mapTracking?orderId=${Uri.encodeComponent(orderId)}');
               }
             }
           }

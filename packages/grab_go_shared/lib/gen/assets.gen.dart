@@ -230,6 +230,9 @@ class $LibAssetsIconsGen {
   /// File path: lib/assets/icons/empty_favorites.svg
   String get emptyFavorites => 'lib/assets/icons/empty_favorites.svg';
 
+  /// File path: lib/assets/icons/empty_notification.svg
+  String get emptyNotification => 'lib/assets/icons/empty_notification.svg';
+
   /// File path: lib/assets/icons/empty_orders_screen.svg
   String get emptyOrdersScreen => 'lib/assets/icons/empty_orders_screen.svg';
 
@@ -703,6 +706,7 @@ class $LibAssetsIconsGen {
     emoji,
     emptyCart,
     emptyFavorites,
+    emptyNotification,
     emptyOrdersScreen,
     emptySearchIcon,
     expand,

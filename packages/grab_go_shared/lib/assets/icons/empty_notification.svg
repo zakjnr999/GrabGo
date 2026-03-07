@@ -1,0 +1,69 @@
+<svg viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg">
+  
+  <!-- === FLOOR DROP SHADOW === -->
+  <ellipse cx="120" cy="205" rx="75" ry="12" fill="rgba(42,157,143,0.15)" />
+
+  <!-- === SLEEPING "Zzz" MARKS (Paths used instead of fonts for perfect rendering anywhere) === -->
+  <g transform="translate(45, 45) rotate(-10)">
+    <!-- White outlines for maximum pop against any background -->
+    <g stroke="#FFFFFF" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <!-- Big Z -->
+      <path d="M 30,50 L 54,50 L 34,78 L 58,78" stroke-width="12" />
+      <!-- Medium z -->
+      <path d="M 10,25 L 26,25 L 12,43 L 28,43" stroke-width="10" />
+      <!-- Small z -->
+      <path d="M 0,0 L 12,0 L 2,14 L 14,14" stroke-width="8" />
+    </g>
+    
+    <!-- Teal (Brand Color) Zs -->
+    <g stroke="#2A9D8F" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <!-- Big Z -->
+      <path d="M 30,50 L 54,50 L 34,78 L 58,78" stroke-width="6" />
+      <!-- Medium z -->
+      <path d="M 10,25 L 26,25 L 12,43 L 28,43" stroke-width="5" opacity="0.8" />
+      <!-- Small z -->
+      <path d="M 0,0 L 12,0 L 2,14 L 14,14" stroke-width="4" opacity="0.6" />
+    </g>
+  </g>
+
+  <!-- === THE RESTING NOTIFICATION BELL === -->
+  <!-- Tilted to the right to look "relaxed" -->
+  <g transform="translate(130, 115) rotate(15) translate(-120, -120)">
+    
+    <!-- Top Loop -->
+    <circle cx="120" cy="55" r="12" fill="none" stroke="#F4A261" stroke-width="6" />
+    
+    <!-- Clapper (Teal to match brand, resting inside the bell) -->
+    <circle cx="120" cy="166" r="14" fill="#2A9D8F" />
+    
+    <!-- Bell Body Left (Brighter Gold) -->
+    <path d="M 120,64 C 95,64 85,90 85,115 C 85,135 65,145 65,150 L 120,150 Z" fill="#FFD166" />
+    
+    <!-- Bell Body Right (Deeper Golden Orange for 3D depth) -->
+    <path d="M 120,64 C 145,64 155,90 155,115 C 155,135 175,145 175,150 L 120,150 Z" fill="#FFB703" />
+    
+    <!-- Base Rim Left -->
+    <path d="M 69,148 L 120,148 L 120,162 L 69,162 C 65.1,162 62,158.9 62,155 C 62,151.1 65.1,148 69,148 Z" fill="#FFB703" />
+    
+    <!-- Base Rim Right -->
+    <path d="M 120,148 L 171,148 C 174.9,148 178,151.1 178,155 C 178,158.9 174.9,162 171,162 L 120,162 Z" fill="#F4A261" />
+
+    <!-- Premium Edge Highlight (Creates the shiny metallic effect) -->
+    <path d="M 105,72 C 90,75 90,95 90,110" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" opacity="0.6" />
+    
+    <!-- Sparkle Glint on the Bell -->
+    <path d="M 80,85 Q 80,91 74,91 Q 80,91 80,97 Q 80,91 86,91 Q 80,91 80,85 Z" fill="#FFFFFF" opacity="0.9" />
+  </g>
+
+  <!-- === FLOATING ACCENTS === -->
+  <!-- Sparkle 1 (Orange) -->
+  <g transform="translate(185, 75) rotate(15) scale(0.6)">
+    <path d="M 0,-15 Q 0,0 15,0 Q 0,0 0,15 Q 0,0 -15,0 Q 0,0 0,-15 Z" fill="#F4A261" />
+  </g>
+  
+  <!-- Sparkle 2 (Teal) -->
+  <g transform="translate(45, 145) rotate(-10) scale(0.5)">
+    <path d="M 0,-15 Q 0,0 15,0 Q 0,0 0,15 Q 0,0 -15,0 Q 0,0 0,-15 Z" fill="#2A9D8F" opacity="0.6" />
+  </g>
+
+</svg>

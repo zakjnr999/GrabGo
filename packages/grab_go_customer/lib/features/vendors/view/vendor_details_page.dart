@@ -22,6 +22,7 @@ import 'package:grab_go_customer/features/pharmacy/viewmodel/pharmacy_provider.d
 import 'package:grab_go_customer/features/vendors/model/vendor_model.dart';
 import 'package:grab_go_customer/features/vendors/model/vendor_type.dart';
 import 'package:grab_go_customer/features/vendors/widgets/exclusive_stamp_badge.dart';
+import 'package:grab_go_customer/shared/services/auth_guard.dart';
 import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
 import 'package:grab_go_customer/shared/widgets/deal_card.dart';
 import 'package:grab_go_customer/shared/widgets/food_item_card.dart';
@@ -651,6 +652,10 @@ class _VendorDetailsPageState extends State<VendorDetailsPage> {
                               );
                           return _buildSliverActionButton(
                             onTap: () async {
+                              final isAuthenticated =
+                                  await AuthGuard.ensureAuthenticated(context);
+                              if (!isAuthenticated) return;
+
                               try {
                                 await favoritesProvider.toggleVendorFavorite(
                                   _asFavoriteVendor(),

@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:grab_go_customer/features/order/service/order_service_wrapper.dart';
 import 'package:grab_go_customer/shared/services/paystack_service.dart' as paystack;
+import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_customer/shared/widgets/order_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
@@ -94,6 +95,7 @@ class Orders extends StatefulWidget {
 class _OrdersState extends State<Orders> {
   int selectedTabIndex = 0;
   final List<String> _orderTabs = [AppStrings.ordersOngoing, AppStrings.ordersCompleted];
+  bool? _wasLoggedIn;
 
   final ScrollController _scrollController = ScrollController();
   final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0.0);
@@ -104,8 +106,15 @@ class _OrdersState extends State<Orders> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _wasLoggedIn = UserService().isLoggedIn;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<OrderProvider>(context, listen: false).fetchOrders();
+      if (!mounted) return;
+      final orderProvider = Provider.of<OrderProvider>(context, listen: false);
+      if (UserService().isLoggedIn) {
+        orderProvider.fetchOrders();
+      } else {
+        orderProvider.clearOrders();
+      }
     });
   }
 
@@ -120,6 +129,22 @@ class _OrdersState extends State<Orders> {
   void _onScroll() {
     if (!_scrollController.hasClients) return;
     _scrollOffsetNotifier.value = _scrollController.offset;
+  }
+
+  void _syncAuthState() {
+    final isLoggedIn = UserService().isLoggedIn;
+    if (_wasLoggedIn == isLoggedIn) return;
+
+    _wasLoggedIn = isLoggedIn;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final orderProvider = context.read<OrderProvider>();
+      if (isLoggedIn) {
+        orderProvider.fetchOrders();
+      } else {
+        orderProvider.clearOrders();
+      }
+    });
   }
 
   OrderModel _convertAPIOrderToOrderModel(Map<String, dynamic> apiOrder) {
@@ -541,10 +566,13 @@ class _OrdersState extends State<Orders> {
 
   @override
   Widget build(BuildContext context) {
+    _syncAuthState();
+
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final padding = MediaQuery.paddingOf(context);
     final size = MediaQuery.sizeOf(context);
+    final isGuest = !UserService().isLoggedIn;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
@@ -570,70 +598,81 @@ class _OrdersState extends State<Orders> {
                       },
                     ),
                     Expanded(
-                      child: Consumer<OrderProvider>(
-                        builder: (context, orderProvider, _) {
-                          final hasAnyOrders = orderProvider.orders.isNotEmpty;
-
-                          if (orderProvider.isLoading && orderProvider.orders.isEmpty) {
-                            return OrderSkeleton(colors: colors, isDark: isDark);
-                          }
-
-                          final convertedOrders = orderProvider.orders
-                              .map((orderData) => _convertAPIOrderToOrderModel(orderData))
-                              .toList(growable: false);
-                          final hasOngoingOrders = convertedOrders.any(
-                            (order) => order.status == OrderStatus.pending || order.status == OrderStatus.ongoing,
-                          );
-                          final hasCompletedOrders = convertedOrders.any(
-                            (order) => order.status == OrderStatus.completed || order.status == OrderStatus.cancelled,
-                          );
-                          final filteredOrders = _filterOrdersByTab(convertedOrders);
-
-                          return Column(
-                            children: [
-                              if (hasAnyOrders) _buildTabs(colors),
-                              Expanded(
-                                child: filteredOrders.isEmpty
-                                    ? _buildEmptyState(
-                                        colors,
-                                        hasAnyOrders: hasAnyOrders,
-                                        hasOngoingOrders: hasOngoingOrders,
-                                        hasCompletedOrders: hasCompletedOrders,
-                                      )
-                                    : AppRefreshIndicator(
-                                        iconPath: Assets.icons.boxIso,
-                                        bgColor: colors.accentOrange,
-                                        onRefresh: () => orderProvider.refreshOrders(),
-                                        child: ListView.separated(
-                                          controller: _scrollController,
-                                          physics: const AlwaysScrollableScrollPhysics(),
-                                          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-                                          itemCount: filteredOrders.length,
-                                          separatorBuilder: (context, index) {
-                                            return Column(
-                                              children: [
-                                                SizedBox(height: 16.h),
-                                                DottedLine(
-                                                  dashLength: 6,
-                                                  dashGapLength: 4,
-                                                  lineThickness: 1,
-                                                  dashColor: colors.textSecondary.withAlpha(50),
-                                                ),
-                                                SizedBox(height: 16.h),
-                                              ],
-                                            );
-                                          },
-                                          itemBuilder: (context, index) {
-                                            final order = filteredOrders[index];
-                                            return _buildOrderCard(order, colors, isDark, convertedOrders);
-                                          },
-                                        ),
-                                      ),
+                      child: isGuest
+                          ? SingleChildScrollView(
+                              controller: _scrollController,
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 20.h),
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(minHeight: size.height * 0.58),
+                                child: _buildGuestOrdersState(colors),
                               ),
-                            ],
-                          );
-                        },
-                      ),
+                            )
+                          : Consumer<OrderProvider>(
+                              builder: (context, orderProvider, _) {
+                                final hasAnyOrders = orderProvider.orders.isNotEmpty;
+
+                                if (orderProvider.isLoading && orderProvider.orders.isEmpty) {
+                                  return OrderSkeleton(colors: colors, isDark: isDark);
+                                }
+
+                                final convertedOrders = orderProvider.orders
+                                    .map((orderData) => _convertAPIOrderToOrderModel(orderData))
+                                    .toList(growable: false);
+                                final hasOngoingOrders = convertedOrders.any(
+                                  (order) => order.status == OrderStatus.pending || order.status == OrderStatus.ongoing,
+                                );
+                                final hasCompletedOrders = convertedOrders.any(
+                                  (order) =>
+                                      order.status == OrderStatus.completed || order.status == OrderStatus.cancelled,
+                                );
+                                final filteredOrders = _filterOrdersByTab(convertedOrders);
+
+                                return Column(
+                                  children: [
+                                    if (hasAnyOrders) _buildTabs(colors),
+                                    Expanded(
+                                      child: filteredOrders.isEmpty
+                                          ? _buildEmptyState(
+                                              colors,
+                                              hasAnyOrders: hasAnyOrders,
+                                              hasOngoingOrders: hasOngoingOrders,
+                                              hasCompletedOrders: hasCompletedOrders,
+                                            )
+                                          : AppRefreshIndicator(
+                                              iconPath: Assets.icons.boxIso,
+                                              bgColor: colors.accentOrange,
+                                              onRefresh: () => orderProvider.refreshOrders(),
+                                              child: ListView.separated(
+                                                controller: _scrollController,
+                                                physics: const AlwaysScrollableScrollPhysics(),
+                                                padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+                                                itemCount: filteredOrders.length,
+                                                separatorBuilder: (context, index) {
+                                                  return Column(
+                                                    children: [
+                                                      SizedBox(height: 16.h),
+                                                      DottedLine(
+                                                        dashLength: 6,
+                                                        dashGapLength: 4,
+                                                        lineThickness: 1,
+                                                        dashColor: colors.textSecondary.withAlpha(50),
+                                                      ),
+                                                      SizedBox(height: 16.h),
+                                                    ],
+                                                  );
+                                                },
+                                                itemBuilder: (context, index) {
+                                                  final order = filteredOrders[index];
+                                                  return _buildOrderCard(order, colors, isDark, convertedOrders);
+                                                },
+                                              ),
+                                            ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
                     ),
                   ],
                 ),
@@ -748,6 +787,8 @@ class _OrdersState extends State<Orders> {
   }
 
   Widget _buildUmbrellaContent(AppColorsExtension colors, EdgeInsets padding) {
+    final isGuest = !UserService().isLoggedIn;
+
     return Padding(
       padding: EdgeInsets.fromLTRB(20.w, padding.top + 12.h, 10.w, 0),
       child: Column(
@@ -813,7 +854,7 @@ class _OrdersState extends State<Orders> {
           ),
           SizedBox(height: 6.h),
           Text(
-            "Track ongoing, completed, and cancelled orders",
+            isGuest ? "Sign in to view your orders" : "Track ongoing, completed, and cancelled orders",
             style: TextStyle(
               fontFamily: "Lato",
               package: 'grab_go_shared',
@@ -821,6 +862,50 @@ class _OrdersState extends State<Orders> {
               fontSize: 14.sp,
               fontWeight: FontWeight.w400,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGuestOrdersState(AppColorsExtension colors) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SvgPicture.asset(Assets.icons.emptyOrdersScreen, package: 'grab_go_shared', width: 160.w, height: 160.h),
+          SizedBox(height: 10.h),
+          Text(
+            "Sign in to view your orders",
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
+          ),
+          SizedBox(height: 8.h),
+          Text(
+            "Track current deliveries, check past receipts, and reorder your favorites once you have an account.",
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500, color: colors.textSecondary, height: 1.5),
+          ),
+          SizedBox(height: 24.h),
+          AppButton(
+            width: double.infinity,
+            height: 50.h,
+            buttonText: "Sign in",
+            onPressed: () => context.push('/login'),
+            backgroundColor: colors.accentOrange,
+            borderRadius: KBorderSize.borderMedium,
+            textStyle: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
+          ),
+          SizedBox(height: 12.h),
+          AppButton(
+            width: double.infinity,
+            height: 50.h,
+            buttonText: "Create account",
+            onPressed: () => context.push('/verifyPhone'),
+            backgroundColor: colors.backgroundPrimary,
+            textColor: colors.textPrimary,
+            borderRadius: KBorderSize.borderMedium,
+            textStyle: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w700),
           ),
         ],
       ),

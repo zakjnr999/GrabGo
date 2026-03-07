@@ -7,9 +7,11 @@ import 'package:grab_go_customer/features/Pickup/view/pickup_map.dart';
 import 'package:grab_go_customer/features/browse/view/browse_page.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/features/home/view/home_page.dart';
+import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/features/profile/view/account.dart';
 import 'package:grab_go_customer/features/order/view/orders.dart';
 import 'package:grab_go_customer/shared/services/connectivity_service.dart';
+import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_customer/shared/widgets/no_internet_screen.dart';
 import 'package:grab_go_customer/shared/viewmodels/navigation_provider.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
@@ -29,7 +31,10 @@ class _BottomNavigatorState extends State<BottomNavigator> {
 
   Future<void> _onItemSelected(int index) async {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
-    final navigationProvider = Provider.of<NavigationProvider>(context, listen: false);
+    final navigationProvider = Provider.of<NavigationProvider>(
+      context,
+      listen: false,
+    );
     final targetMode = index == 1 ? 'pickup' : 'delivery';
     navigationProvider.setIndex(index);
     if (cartProvider.fulfillmentMode != targetMode) {
@@ -68,7 +73,9 @@ class _BottomNavigatorState extends State<BottomNavigator> {
     final bool shouldShowNoInternet = _hasNoInternet && selectedIndex != 4;
     Size size = MediaQuery.sizeOf(context);
 
-    debugPrint('📍 BottomNavigator: build - index: $selectedIndex, noInternet: $_hasNoInternet');
+    debugPrint(
+      '📍 BottomNavigator: build - index: $selectedIndex, noInternet: $_hasNoInternet',
+    );
 
     if (_lastCheckedIndex != selectedIndex) {
       _lastCheckedIndex = selectedIndex;
@@ -85,12 +92,17 @@ class _BottomNavigatorState extends State<BottomNavigator> {
           statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
           systemNavigationBarColor: colors.backgroundPrimary,
           systemNavigationBarDividerColor: Colors.transparent,
-          systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+          systemNavigationBarIconBrightness: isDark
+              ? Brightness.light
+              : Brightness.dark,
         ),
         child: Stack(
           children: [
             IndexedStack(index: selectedIndex, children: _screens),
-            if (shouldShowNoInternet) Positioned.fill(child: NoInternetScreen(onRetry: _checkConnectivity)),
+            if (shouldShowNoInternet)
+              Positioned.fill(
+                child: NoInternetScreen(onRetry: _checkConnectivity),
+              ),
           ],
         ),
       ),
@@ -102,7 +114,12 @@ class _BottomNavigatorState extends State<BottomNavigator> {
             topRight: Radius.circular(KBorderSize.border),
           ),
           boxShadow: [
-            BoxShadow(color: Colors.black.withAlpha(25), spreadRadius: 1, blurRadius: 20, offset: const Offset(0, -3)),
+            BoxShadow(
+              color: Colors.black.withAlpha(25),
+              spreadRadius: 1,
+              blurRadius: 20,
+              offset: const Offset(0, -3),
+            ),
           ],
         ),
         clipBehavior: Clip.hardEdge,
@@ -110,7 +127,7 @@ class _BottomNavigatorState extends State<BottomNavigator> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildCartBar(colors),
+            _buildCartBar(colors, selectedIndex),
             SizedBox(
               height: size.height * 0.16,
               child: BottomAppBar(
@@ -118,11 +135,46 @@ class _BottomNavigatorState extends State<BottomNavigator> {
                 elevation: 0,
                 child: Row(
                   children: [
-                    Expanded(child: _buildNavItem(Assets.icons.home, "Home", 0, context)),
-                    Expanded(child: _buildNavItem(Assets.icons.running, "Pickup", 1, context)),
-                    Expanded(child: _buildNavItem(Assets.icons.search, "Browse", 2, context)),
-                    Expanded(child: _buildNavItem(Assets.icons.squareMenu, "Orders", 3, context)),
-                    Expanded(child: _buildNavItem(Assets.icons.user, "Account", 4, context)),
+                    Expanded(
+                      child: _buildNavItem(
+                        Assets.icons.home,
+                        "Home",
+                        0,
+                        context,
+                      ),
+                    ),
+                    Expanded(
+                      child: _buildNavItem(
+                        Assets.icons.running,
+                        "Pickup",
+                        1,
+                        context,
+                      ),
+                    ),
+                    Expanded(
+                      child: _buildNavItem(
+                        Assets.icons.search,
+                        "Browse",
+                        2,
+                        context,
+                      ),
+                    ),
+                    Expanded(
+                      child: _buildNavItem(
+                        Assets.icons.squareMenu,
+                        "Orders",
+                        3,
+                        context,
+                      ),
+                    ),
+                    Expanded(
+                      child: _buildNavItem(
+                        Assets.icons.user,
+                        "Account",
+                        4,
+                        context,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -133,10 +185,29 @@ class _BottomNavigatorState extends State<BottomNavigator> {
     );
   }
 
-  Widget _buildCartBar(AppColorsExtension colors) {
-    return Consumer<CartProvider>(
-      builder: (context, cartProvider, _) {
-        if (cartProvider.cartItems.isEmpty) return const SizedBox.shrink();
+  bool _shouldHideCartBarForFoodHome(
+    int selectedIndex,
+    FoodProvider foodProvider,
+  ) {
+    if (selectedIndex != 0) return false;
+
+    final isFoodUnavailable =
+        !foodProvider.isLoading &&
+        foodProvider.categories.isEmpty &&
+        foodProvider.hasAttemptedFetch &&
+        foodProvider.error == null;
+
+    return foodProvider.isLoading || isFoodUnavailable;
+  }
+
+  Widget _buildCartBar(AppColorsExtension colors, int selectedIndex) {
+    return Consumer2<CartProvider, FoodProvider>(
+      builder: (context, cartProvider, foodProvider, _) {
+        if (!UserService().isLoggedIn ||
+            cartProvider.cartItems.isEmpty ||
+            _shouldHideCartBarForFoodHome(selectedIndex, foodProvider)) {
+          return const SizedBox.shrink();
+        }
 
         final itemCount = cartProvider.totalQuantity;
         final totalAmount = cartProvider.total;
@@ -146,8 +217,13 @@ class _BottomNavigatorState extends State<BottomNavigator> {
           ignoring: isLocked,
           child: GestureDetector(
             onTap: () async {
-              final navigationProvider = Provider.of<NavigationProvider>(context, listen: false);
-              final targetMode = navigationProvider.selectedIndex == 1 ? 'pickup' : 'delivery';
+              final navigationProvider = Provider.of<NavigationProvider>(
+                context,
+                listen: false,
+              );
+              final targetMode = navigationProvider.selectedIndex == 1
+                  ? 'pickup'
+                  : 'delivery';
               await cartProvider.setFulfillmentMode(targetMode);
               if (!context.mounted) return;
               context.push("/cart");
@@ -163,13 +239,19 @@ class _BottomNavigatorState extends State<BottomNavigator> {
                   children: [
                     Container(
                       padding: EdgeInsets.all(8.r),
-                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
                       child: SvgPicture.asset(
                         Assets.icons.cart,
                         height: 18.h,
                         width: 18.w,
                         package: 'grab_go_shared',
-                        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                        colorFilter: const ColorFilter.mode(
+                          Colors.white,
+                          BlendMode.srcIn,
+                        ),
                       ),
                     ),
                     SizedBox(width: 12.w),
@@ -179,7 +261,11 @@ class _BottomNavigatorState extends State<BottomNavigator> {
                         children: [
                           Text(
                             isLocked ? "Updating cart..." : "View cart",
-                            style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                           SizedBox(height: 2.h),
                           Text(
@@ -195,7 +281,11 @@ class _BottomNavigatorState extends State<BottomNavigator> {
                     ),
                     Text(
                       "${AppStrings.currencySymbol} ${totalAmount.toStringAsFixed(2)}",
-                      style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w800),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ],
                 ),
@@ -207,7 +297,12 @@ class _BottomNavigatorState extends State<BottomNavigator> {
     );
   }
 
-  Widget _buildNavItem(String icon, String label, int index, BuildContext context) {
+  Widget _buildNavItem(
+    String icon,
+    String label,
+    int index,
+    BuildContext context,
+  ) {
     final navigationProvider = Provider.of<NavigationProvider>(context);
     final bool selected = navigationProvider.selectedIndex == index;
     final colors = context.appColors;
@@ -217,7 +312,10 @@ class _BottomNavigatorState extends State<BottomNavigator> {
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOutCubic,
       padding: EdgeInsets.all(selected ? 6.0 : 0),
-      decoration: BoxDecoration(shape: BoxShape.circle, color: selected ? colors.accentOrange : Colors.transparent),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: selected ? colors.accentOrange : Colors.transparent,
+      ),
       child: AnimatedScale(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOutCubic,
@@ -227,7 +325,10 @@ class _BottomNavigatorState extends State<BottomNavigator> {
           package: 'grab_go_shared',
           height: KIconSize.lg,
           width: KIconSize.lg,
-          colorFilter: ColorFilter.mode(selected ? colors.backgroundPrimary : colors.textPrimary, BlendMode.srcIn),
+          colorFilter: ColorFilter.mode(
+            selected ? colors.backgroundPrimary : colors.textPrimary,
+            BlendMode.srcIn,
+          ),
         ),
       ),
     );

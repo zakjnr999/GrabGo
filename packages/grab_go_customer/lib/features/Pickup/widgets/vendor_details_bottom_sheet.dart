@@ -11,6 +11,7 @@ import 'package:grab_go_customer/features/home/repository/food_repository.dart';
 import 'package:grab_go_customer/features/pharmacy/repository/pharmacy_repository.dart';
 import 'package:grab_go_customer/features/vendors/model/vendor_model.dart';
 import 'package:grab_go_customer/features/vendors/model/vendor_type.dart';
+import 'package:grab_go_customer/shared/services/auth_guard.dart';
 import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';
 import 'package:grab_go_customer/shared/widgets/vertical_zigzag_tag.dart';
@@ -736,7 +737,11 @@ class _VendorDetailBottomSheetState extends State<VendorDetailBottomSheet> {
                       right: 6.r,
                       top: 6.r,
                       child: GestureDetector(
-                        onTap: () {
+                        onTap: () async {
+                          final isAuthenticated =
+                              await AuthGuard.ensureAuthenticated(context);
+                          if (!isAuthenticated) return;
+
                           if (isFavorite) {
                             favoriteProvider.removeFromFavorites(item);
                           } else {

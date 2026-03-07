@@ -16,6 +16,7 @@ import 'package:grab_go_customer/features/vendors/view/exclusive_vendors_page.da
 import 'package:grab_go_customer/features/vendors/view/vendor_info_page.dart';
 import 'package:grab_go_customer/features/status/view/all_statuses_page.dart';
 import 'package:grab_go_customer/features/status/model/status_model.dart';
+import 'package:grab_go_customer/shared/services/auth_guard.dart';
 import 'package:grab_go_customer/shared/widgets/deep_link_error_screen.dart';
 import 'package:grab_go_customer/shared/widgets/food_from_link_handler.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -120,7 +121,7 @@ final GoRouter appRouter = GoRouter(
         return '/homepage';
       }
     }
-    return null;
+    return AuthGuard.redirectForState(state);
   },
   errorBuilder: (context, state) {
     final uri = state.uri;
@@ -179,7 +180,7 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (context, state) {
         return CustomTransitionPage(
           key: state.pageKey,
-          child: const Login(),
+          child: Login(returnTo: state.uri.queryParameters['returnTo']),
           transitionDuration: const Duration(milliseconds: 800),
           reverseTransitionDuration: const Duration(milliseconds: 800),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {

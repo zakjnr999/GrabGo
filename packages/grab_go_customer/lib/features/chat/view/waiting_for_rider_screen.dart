@@ -6,6 +6,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/order/service/order_service_wrapper.dart';
+import 'package:grab_go_customer/shared/services/auth_guard.dart';
+import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:intl/intl.dart';
@@ -32,28 +34,39 @@ class WaitingForRiderScreen extends StatefulWidget {
   State<WaitingForRiderScreen> createState() => _WaitingForRiderScreenState();
 }
 
-class _WaitingForRiderScreenState extends State<WaitingForRiderScreen> with SingleTickerProviderStateMixin {
+class _WaitingForRiderScreenState extends State<WaitingForRiderScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   Timer? _pollingTimer;
   final OrderServiceWrapper _orderService = OrderServiceWrapper();
   bool _isCheckingStatus = false;
+  bool _didInitializeAnimation = false;
 
   @override
   void initState() {
     super.initState();
+    if (!UserService().isLoggedIn) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        context.go(AuthGuard.loginRoute());
+      });
+      return;
+    }
     _setupAnimation();
     _startPolling();
   }
 
   void _setupAnimation() {
-    _pulseController = AnimationController(duration: const Duration(milliseconds: 1500), vsync: this)
-      ..repeat(reverse: true);
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat(reverse: true);
+    _didInitializeAnimation = true;
 
-    _pulseAnimation = Tween<double>(
-      begin: 0.8,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
+    _pulseAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
   }
 
   void _startPolling() {
@@ -69,7 +82,10 @@ class _WaitingForRiderScreenState extends State<WaitingForRiderScreen> with Sing
 
     try {
       final orders = await _orderService.getUserOrders();
-      final order = orders.firstWhere((o) => o['_id'] == widget.orderId, orElse: () => <String, dynamic>{});
+      final order = orders.firstWhere(
+        (o) => o['_id'] == widget.orderId,
+        orElse: () => <String, dynamic>{},
+      );
 
       if (order.isEmpty) return;
 
@@ -81,7 +97,8 @@ class _WaitingForRiderScreenState extends State<WaitingForRiderScreen> with Sing
           context.pop();
           AppToastMessage.show(
             context: context,
-            message: "A rider has accepted your order! You can now chat with them.",
+            message:
+                "A rider has accepted your order! You can now chat with them.",
             maxLines: 2,
             backgroundColor: AppColors.accentGreen,
           );
@@ -96,7 +113,9 @@ class _WaitingForRiderScreenState extends State<WaitingForRiderScreen> with Sing
 
   @override
   void dispose() {
-    _pulseController.dispose();
+    if (_didInitializeAnimation) {
+      _pulseController.dispose();
+    }
     _pollingTimer?.cancel();
     super.dispose();
   }
@@ -118,6 +137,10 @@ class _WaitingForRiderScreenState extends State<WaitingForRiderScreen> with Sing
 
   @override
   Widget build(BuildContext context) {
+    if (!UserService().isLoggedIn) {
+      return Scaffold(backgroundColor: context.appColors.backgroundPrimary);
+    }
+
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -141,7 +164,10 @@ class _WaitingForRiderScreenState extends State<WaitingForRiderScreen> with Sing
               decoration: BoxDecoration(
                 color: colors.backgroundPrimary,
                 shape: BoxShape.circle,
-                border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+                border: Border.all(
+                  color: colors.inputBorder.withValues(alpha: 0.3),
+                  width: 0.5,
+                ),
               ),
               child: Material(
                 color: Colors.transparent,
@@ -153,7 +179,10 @@ class _WaitingForRiderScreenState extends State<WaitingForRiderScreen> with Sing
                     child: SvgPicture.asset(
                       Assets.icons.navArrowLeft,
                       package: 'grab_go_shared',
-                      colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                      colorFilter: ColorFilter.mode(
+                        colors.textPrimary,
+                        BlendMode.srcIn,
+                      ),
                     ),
                   ),
                 ),
@@ -165,20 +194,29 @@ class _WaitingForRiderScreenState extends State<WaitingForRiderScreen> with Sing
             decoration: BoxDecoration(
               color: colors.backgroundPrimary,
               borderRadius: BorderRadius.circular(20.r),
-              border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
+              border: Border.all(
+                color: colors.inputBorder.withValues(alpha: 0.3),
+                width: 0.5,
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
                   padding: EdgeInsets.all(6.r),
-                  decoration: BoxDecoration(color: colors.accentViolet.withValues(alpha: 0.1), shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                    color: colors.accentViolet.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
                   child: SvgPicture.asset(
                     Assets.icons.deliveryTruck,
                     package: 'grab_go_shared',
                     height: 16.h,
                     width: 16.w,
-                    colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                    colorFilter: ColorFilter.mode(
+                      colors.accentViolet,
+                      BlendMode.srcIn,
+                    ),
                   ),
                 ),
                 SizedBox(width: 8.w),
@@ -216,7 +254,9 @@ class _WaitingForRiderScreenState extends State<WaitingForRiderScreen> with Sing
                               width: 160.w,
                               height: 160.w,
                               decoration: BoxDecoration(
-                                color: colors.accentViolet.withValues(alpha: 0.1),
+                                color: colors.accentViolet.withValues(
+                                  alpha: 0.1,
+                                ),
                                 shape: BoxShape.circle,
                               ),
                               child: Center(
@@ -224,7 +264,9 @@ class _WaitingForRiderScreenState extends State<WaitingForRiderScreen> with Sing
                                   width: 120.w,
                                   height: 120.w,
                                   decoration: BoxDecoration(
-                                    color: colors.accentViolet.withValues(alpha: 0.15),
+                                    color: colors.accentViolet.withValues(
+                                      alpha: 0.15,
+                                    ),
                                     shape: BoxShape.circle,
                                   ),
                                   child: Center(
@@ -232,7 +274,9 @@ class _WaitingForRiderScreenState extends State<WaitingForRiderScreen> with Sing
                                       width: 80.w,
                                       height: 80.w,
                                       decoration: BoxDecoration(
-                                        color: colors.accentViolet.withValues(alpha: 0.2),
+                                        color: colors.accentViolet.withValues(
+                                          alpha: 0.2,
+                                        ),
                                         shape: BoxShape.circle,
                                       ),
                                       child: Center(
@@ -241,7 +285,10 @@ class _WaitingForRiderScreenState extends State<WaitingForRiderScreen> with Sing
                                           package: 'grab_go_shared',
                                           width: 40.w,
                                           height: 40.w,
-                                          colorFilter: ColorFilter.mode(colors.accentViolet, BlendMode.srcIn),
+                                          colorFilter: ColorFilter.mode(
+                                            colors.accentViolet,
+                                            BlendMode.srcIn,
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -257,7 +304,11 @@ class _WaitingForRiderScreenState extends State<WaitingForRiderScreen> with Sing
                       // Title
                       Text(
                         'Waiting for Rider',
-                        style: TextStyle(color: colors.textPrimary, fontSize: 24.sp, fontWeight: FontWeight.w800),
+                        style: TextStyle(
+                          color: colors.textPrimary,
+                          fontSize: 24.sp,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                       SizedBox(height: 12.h),
 
@@ -280,21 +331,33 @@ class _WaitingForRiderScreenState extends State<WaitingForRiderScreen> with Sing
                         children: List.generate(3, (index) {
                           return TweenAnimationBuilder<double>(
                             tween: Tween(begin: 0.0, end: 1.0),
-                            duration: Duration(milliseconds: 600 + (index * 200)),
+                            duration: Duration(
+                              milliseconds: 600 + (index * 200),
+                            ),
                             curve: Curves.easeInOut,
                             builder: (context, value, child) {
                               return AnimatedBuilder(
                                 animation: _pulseController,
                                 builder: (context, child) {
                                   final delay = index * 0.2;
-                                  final animValue = ((_pulseController.value + delay) % 1.0);
-                                  final opacity = 0.3 + (0.7 * (animValue < 0.5 ? animValue * 2 : (1 - animValue) * 2));
+                                  final animValue =
+                                      ((_pulseController.value + delay) % 1.0);
+                                  final opacity =
+                                      0.3 +
+                                      (0.7 *
+                                          (animValue < 0.5
+                                              ? animValue * 2
+                                              : (1 - animValue) * 2));
                                   return Container(
-                                    margin: EdgeInsets.symmetric(horizontal: 4.w),
+                                    margin: EdgeInsets.symmetric(
+                                      horizontal: 4.w,
+                                    ),
                                     width: 10.w,
                                     height: 10.w,
                                     decoration: BoxDecoration(
-                                      color: colors.accentViolet.withValues(alpha: opacity),
+                                      color: colors.accentViolet.withValues(
+                                        alpha: opacity,
+                                      ),
                                       shape: BoxShape.circle,
                                     ),
                                   );
@@ -312,7 +375,9 @@ class _WaitingForRiderScreenState extends State<WaitingForRiderScreen> with Sing
                   padding: EdgeInsets.all(20.w),
                   decoration: BoxDecoration(
                     color: colors.backgroundPrimary,
-                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
+                    borderRadius: BorderRadius.circular(
+                      KBorderSize.borderRadius15,
+                    ),
                     border: Border.all(color: colors.border, width: 1),
                   ),
                   child: Column(
@@ -332,7 +397,10 @@ class _WaitingForRiderScreenState extends State<WaitingForRiderScreen> with Sing
                                 package: 'grab_go_shared',
                                 width: 24.w,
                                 height: 24.w,
-                                colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                colorFilter: ColorFilter.mode(
+                                  colors.accentOrange,
+                                  BlendMode.srcIn,
+                                ),
                               ),
                             ),
                           ),
@@ -376,9 +444,14 @@ class _WaitingForRiderScreenState extends State<WaitingForRiderScreen> with Sing
                               ),
                               SizedBox(height: 4.h),
                               Container(
-                                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 8.w,
+                                  vertical: 4.h,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: colors.accentViolet.withValues(alpha: 0.1),
+                                  color: colors.accentViolet.withValues(
+                                    alpha: 0.1,
+                                  ),
                                   borderRadius: BorderRadius.circular(8.r),
                                 ),
                                 child: Text(
@@ -400,11 +473,18 @@ class _WaitingForRiderScreenState extends State<WaitingForRiderScreen> with Sing
                         decoration: BoxDecoration(
                           color: colors.accentViolet.withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(12.r),
-                          border: Border.all(color: colors.accentViolet.withValues(alpha: 0.2), width: 1),
+                          border: Border.all(
+                            color: colors.accentViolet.withValues(alpha: 0.2),
+                            width: 1,
+                          ),
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.info_outline, size: 18.w, color: colors.accentViolet),
+                            Icon(
+                              Icons.info_outline,
+                              size: 18.w,
+                              color: colors.accentViolet,
+                            ),
                             SizedBox(width: 12.w),
                             Expanded(
                               child: Text(

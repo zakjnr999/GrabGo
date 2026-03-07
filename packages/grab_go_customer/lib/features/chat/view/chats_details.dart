@@ -9,11 +9,11 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/order/service/order_service_wrapper.dart';
+import 'package:grab_go_customer/shared/services/auth_guard.dart';
 import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_shared/shared/widgets/swipe_to_reply.dart';
-import 'package:grab_go_shared/shared/widgets/recording_lock_button.dart';
 import 'package:intl/intl.dart';
 
 class ChatMessage {
@@ -151,7 +151,14 @@ class _ChatDetailState extends State<ChatDetail> {
   bool _showEmojiPicker = false;
 
   // Quick reaction emojis
-  static const List<String> _quickReactions = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+  static const List<String> _quickReactions = [
+    '👍',
+    '❤️',
+    '😂',
+    '😮',
+    '😢',
+    '🙏',
+  ];
 
   void _loadCachedMessages() {
     final cached = CacheService.getChatMessages(widget.chatId);
@@ -185,7 +192,9 @@ class _ChatDetailState extends State<ChatDetail> {
             final reactionsMap = m['reactions'] as Map;
             for (final entry in reactionsMap.entries) {
               final emoji = entry.key.toString();
-              final users = (entry.value as List?)?.map((e) => e.toString()).toList() ?? [];
+              final users =
+                  (entry.value as List?)?.map((e) => e.toString()).toList() ??
+                  [];
               if (users.isNotEmpty) {
                 reactions[emoji] = users;
               }
@@ -193,8 +202,12 @@ class _ChatDetailState extends State<ChatDetail> {
           }
 
           // Parse imageUrls and blurHashes
-          final imageUrls = (m['imageUrls'] as List?)?.map((e) => e.toString()).toList() ?? [];
-          final blurHashes = (m['blurHashes'] as List?)?.map((e) => e.toString()).toList() ?? [];
+          final imageUrls =
+              (m['imageUrls'] as List?)?.map((e) => e.toString()).toList() ??
+              [];
+          final blurHashes =
+              (m['blurHashes'] as List?)?.map((e) => e.toString()).toList() ??
+              [];
 
           return ChatMessage(
             id: id,
@@ -225,7 +238,8 @@ class _ChatDetailState extends State<ChatDetail> {
     if (lastSeen != null) {
       for (var i = 0; i < messages.length; i++) {
         // Only show "new messages" chip for messages from others, not your own
-        if (!messages[i].isSentByMe && messages[i].timestamp.isAfter(lastSeen)) {
+        if (!messages[i].isSentByMe &&
+            messages[i].timestamp.isAfter(lastSeen)) {
           firstUnreadIndex = i;
           break;
         }
@@ -276,7 +290,8 @@ class _ChatDetailState extends State<ChatDetail> {
             'isSystem': m.isSystem,
             if (m.replyToId != null) 'replyToId': m.replyToId,
             if (m.replyToText != null) 'replyToText': m.replyToText,
-            if (m.replyToIsSentByMe != null) 'replyToIsSentByMe': m.replyToIsSentByMe,
+            if (m.replyToIsSentByMe != null)
+              'replyToIsSentByMe': m.replyToIsSentByMe,
             if (m.reactions.isNotEmpty) 'reactions': m.reactions,
             if (m.isEdited) 'isEdited': m.isEdited,
           },
@@ -289,6 +304,14 @@ class _ChatDetailState extends State<ChatDetail> {
   @override
   void initState() {
     super.initState();
+    if (!_userService.isLoggedIn) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        context.go(AuthGuard.loginRoute());
+      });
+      return;
+    }
+
     // Set current chat to suppress notifications while viewing this chat
     PushNotificationService().setCurrentChatId(widget.chatId);
     _loadCachedMessages();
@@ -340,8 +363,12 @@ class _ChatDetailState extends State<ChatDetail> {
     }
 
     _scrollController.removeListener(_handleScrollPositionChanged);
-    unawaited(CacheService.saveChatDraft(widget.chatId, _messageController.text));
-    final lastSeen = _messages.isNotEmpty ? _messages.last.timestamp : DateTime.now();
+    unawaited(
+      CacheService.saveChatDraft(widget.chatId, _messageController.text),
+    );
+    final lastSeen = _messages.isNotEmpty
+        ? _messages.last.timestamp
+        : DateTime.now();
     unawaited(CacheService.saveChatLastSeen(widget.chatId, lastSeen));
     _messageController.dispose();
     _scrollController.dispose();
@@ -393,7 +420,8 @@ class _ChatDetailState extends State<ChatDetail> {
           }
 
           final loadedMessages = chatDetail.messages.map((m) {
-            final isSentByMe = currentUserId != null && m.senderId == currentUserId;
+            final isSentByMe =
+                currentUserId != null && m.senderId == currentUserId;
 
             bool isReadByOther = false;
             if (isSentByMe && otherUserId != null) {
@@ -433,7 +461,8 @@ class _ChatDetailState extends State<ChatDetail> {
           if (lastSeen != null) {
             for (var i = 0; i < loadedMessages.length; i++) {
               // Only show "new messages" chip for messages from others, not your own
-              if (!loadedMessages[i].isSentByMe && loadedMessages[i].timestamp.isAfter(lastSeen)) {
+              if (!loadedMessages[i].isSentByMe &&
+                  loadedMessages[i].timestamp.isAfter(lastSeen)) {
                 firstUnreadIndex = i;
                 break;
               }
@@ -456,7 +485,9 @@ class _ChatDetailState extends State<ChatDetail> {
             _firstUnreadIndex = firstUnreadIndex;
             _hasMoreMessages = chatDetail.pagination?.hasMore ?? false;
             // Set initial lastSeen from peer's last message if we don't have one yet
-            if (_peerLastSeenAt == null && peerLastMessage != null && !_isPeerOnline) {
+            if (_peerLastSeenAt == null &&
+                peerLastMessage != null &&
+                !_isPeerOnline) {
               _peerLastSeenAt = peerLastMessage;
             }
           });
@@ -465,7 +496,8 @@ class _ChatDetailState extends State<ChatDetail> {
 
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
-            if (_firstUnreadIndex != null && _firstUnreadKey.currentContext != null) {
+            if (_firstUnreadIndex != null &&
+                _firstUnreadKey.currentContext != null) {
               Scrollable.ensureVisible(
                 _firstUnreadKey.currentContext!,
                 duration: const Duration(milliseconds: 300),
@@ -482,7 +514,9 @@ class _ChatDetailState extends State<ChatDetail> {
 
           if (!widget.isSupport) {
             unawaited(_syncOrderStatus());
-            _orderStatusTimer ??= Timer.periodic(const Duration(seconds: 30), (_) {
+            _orderStatusTimer ??= Timer.periodic(const Duration(seconds: 30), (
+              _,
+            ) {
               _syncOrderStatus();
             });
           }
@@ -531,7 +565,12 @@ class _ChatDetailState extends State<ChatDetail> {
     _cacheMessages();
   }
 
-  void _handleQueuedMessageRetry(String chatId, String tempId, bool success, String? newId) {
+  void _handleQueuedMessageRetry(
+    String chatId,
+    String tempId,
+    bool success,
+    String? newId,
+  ) {
     if (!mounted || chatId != widget.chatId) return;
 
     final index = _messages.indexWhere((m) => m.id == tempId);
@@ -644,13 +683,17 @@ class _ChatDetailState extends State<ChatDetail> {
 
     final msg = ChatMessage(
       id: id,
-      messageType: MessageType.fromString(messageMap['messageType']?.toString()),
+      messageType: MessageType.fromString(
+        messageMap['messageType']?.toString(),
+      ),
       text: messageMap['text']?.toString() ?? '',
       audioUrl: messageMap['audioUrl']?.toString(),
       audioDuration: (messageMap['audioDuration'] as num?)?.toDouble() ?? 0,
       imageUrls: imageUrls,
       blurHashes: blurHashes,
-      timestamp: DateTime.tryParse(messageMap['sentAt']?.toString() ?? '') ?? DateTime.now(),
+      timestamp:
+          DateTime.tryParse(messageMap['sentAt']?.toString() ?? '') ??
+          DateTime.now(),
       isSentByMe: _currentUserId != null && senderId == _currentUserId,
       isRead: _currentUserId != null && senderId == _currentUserId,
       isSystem: false,
@@ -661,7 +704,9 @@ class _ChatDetailState extends State<ChatDetail> {
 
     final isNearBottom =
         _scrollController.hasClients &&
-        (_scrollController.position.maxScrollExtent - _scrollController.position.pixels) < 100;
+        (_scrollController.position.maxScrollExtent -
+                _scrollController.position.pixels) <
+            100;
 
     setState(() {
       _messages.add(msg);
@@ -706,7 +751,9 @@ class _ChatDetailState extends State<ChatDetail> {
       lastSeenAt = DateTime.tryParse(lastSeenStr);
     }
 
-    debugPrint('Presence event: online=$online, lastSeenAt=$lastSeenAt, raw=$map');
+    debugPrint(
+      'Presence event: online=$online, lastSeenAt=$lastSeenAt, raw=$map',
+    );
 
     setState(() {
       _isPeerOnline = online;
@@ -762,7 +809,9 @@ class _ChatDetailState extends State<ChatDetail> {
 
     // Parse readAt timestamp from event, or use current time
     final readAtStr = map['readAt']?.toString();
-    final readAt = readAtStr != null ? DateTime.tryParse(readAtStr) : DateTime.now();
+    final readAt = readAtStr != null
+        ? DateTime.tryParse(readAtStr)
+        : DateTime.now();
 
     setState(() {
       _messages = _messages
@@ -843,7 +892,9 @@ class _ChatDetailState extends State<ChatDetail> {
 
     final newText = text.replaceRange(start, end, emoji.emoji);
     _messageController.text = newText;
-    _messageController.selection = TextSelection.collapsed(offset: start + emoji.emoji.length);
+    _messageController.selection = TextSelection.collapsed(
+      offset: start + emoji.emoji.length,
+    );
     _handleMessageChanged(newText);
   }
 
@@ -857,7 +908,9 @@ class _ChatDetailState extends State<ChatDetail> {
     if (text.isNotEmpty && cursorPos > 0) {
       final newText = text.replaceRange(cursorPos - 1, cursorPos, '');
       _messageController.text = newText;
-      _messageController.selection = TextSelection.collapsed(offset: cursorPos - 1);
+      _messageController.selection = TextSelection.collapsed(
+        offset: cursorPos - 1,
+      );
       _handleMessageChanged(newText);
     }
   }
@@ -958,13 +1011,16 @@ class _ChatDetailState extends State<ChatDetail> {
       isPending: true,
       isFailed: false,
       replyToId: replyTo?.id,
-      replyToText: replyTo?.isVoiceMessage == true ? '🎤 Voice message' : replyTo?.text,
+      replyToText: replyTo?.isVoiceMessage == true
+          ? '🎤 Voice message'
+          : replyTo?.text,
       replyToIsSentByMe: replyTo?.isSentByMe,
     );
 
     setState(() {
       _messages.add(optimisticMessage);
-      _firstUnreadIndex = null; // Clear "new messages" chip when user sends a reply
+      _firstUnreadIndex =
+          null; // Clear "new messages" chip when user sends a reply
     });
 
     _cacheMessages();
@@ -975,7 +1031,11 @@ class _ChatDetailState extends State<ChatDetail> {
 
     hasPendingSend = true;
     try {
-      final sent = await _chatService.sendMessage(widget.chatId, trimmed, replyToId: replyTo?.id);
+      final sent = await _chatService.sendMessage(
+        widget.chatId,
+        trimmed,
+        replyToId: replyTo?.id,
+      );
       if (!mounted || sent == null) return;
 
       final index = _messages.indexWhere((m) => m.id == tempId);
@@ -1169,7 +1229,9 @@ class _ChatDetailState extends State<ChatDetail> {
 
     _voiceRecorder.onError = (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error)));
         _cancelRecording();
       }
     };
@@ -1298,7 +1360,11 @@ class _ChatDetailState extends State<ChatDetail> {
     });
 
     try {
-      final sent = await _chatService.sendVoiceMessage(widget.chatId, audioPath, duration: duration);
+      final sent = await _chatService.sendVoiceMessage(
+        widget.chatId,
+        audioPath,
+        duration: duration,
+      );
 
       // Delete local file after upload
       _voiceRecorder.deleteRecording(audioPath);
@@ -1385,7 +1451,9 @@ class _ChatDetailState extends State<ChatDetail> {
 
     if (compressedPaths.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to process images')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to process images')),
+        );
       }
       return;
     }
@@ -1407,7 +1475,9 @@ class _ChatDetailState extends State<ChatDetail> {
       isFailed: false,
       isSystem: false,
       replyToId: replyTo?.id,
-      replyToText: replyTo?.isVoiceMessage == true ? '🎤 Voice message' : replyTo?.text,
+      replyToText: replyTo?.isVoiceMessage == true
+          ? '🎤 Voice message'
+          : replyTo?.text,
       replyToIsSentByMe: replyTo?.isSentByMe,
     );
 
@@ -1467,7 +1537,9 @@ class _ChatDetailState extends State<ChatDetail> {
               isFailed: false,
               isSystem: false,
               replyToId: replyTo?.id,
-              replyToText: replyTo?.isVoiceMessage == true ? '🎤 Voice message' : replyTo?.text,
+              replyToText: replyTo?.isVoiceMessage == true
+                  ? '🎤 Voice message'
+                  : replyTo?.text,
               replyToIsSentByMe: replyTo?.isSentByMe,
             );
           });
@@ -1525,7 +1597,11 @@ class _ChatDetailState extends State<ChatDetail> {
     }
   }
 
-  Widget _buildConnectionBanner(String text, AppColorsExtension colors, {required bool isWarning}) {
+  Widget _buildConnectionBanner(
+    String text,
+    AppColorsExtension colors, {
+    required bool isWarning,
+  }) {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
@@ -1547,13 +1623,20 @@ class _ChatDetailState extends State<ChatDetail> {
               package: 'grab_go_shared',
               width: 16.w,
               height: 16.w,
-              colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(
+                colors.textSecondary,
+                BlendMode.srcIn,
+              ),
             ),
           SizedBox(width: 8.w),
           Expanded(
             child: Text(
               text,
-              style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
+              style: TextStyle(
+                color: colors.textSecondary,
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w400,
+              ),
             ),
           ),
         ],
@@ -1635,7 +1718,11 @@ class _ChatDetailState extends State<ChatDetail> {
 
     try {
       final oldestMessageId = _messages.first.id;
-      final chatDetail = await _chatService.getChat(widget.chatId, limit: 50, beforeMessageId: oldestMessageId);
+      final chatDetail = await _chatService.getChat(
+        widget.chatId,
+        limit: 50,
+        beforeMessageId: oldestMessageId,
+      );
 
       if (!mounted || chatDetail == null) return;
 
@@ -1656,7 +1743,13 @@ class _ChatDetailState extends State<ChatDetail> {
           isReadByOther = m.readBy.contains(otherUserId);
         }
 
-        return ChatMessage(id: m.id, text: m.text!, timestamp: m.sentAt, isSentByMe: isSentByMe, isRead: isReadByOther);
+        return ChatMessage(
+          id: m.id,
+          text: m.text!,
+          timestamp: m.sentAt,
+          isSentByMe: isSentByMe,
+          isRead: isReadByOther,
+        );
       }).toList();
 
       if (olderMessages.isNotEmpty) {
@@ -1736,7 +1829,10 @@ class _ChatDetailState extends State<ChatDetail> {
     }
   }
 
-  ({String text, Color color})? _getOrderStatusInfo(String status, AppColorsExtension colors) {
+  ({String text, Color color})? _getOrderStatusInfo(
+    String status,
+    AppColorsExtension colors,
+  ) {
     switch (status) {
       case 'pending':
         return (text: 'Order placed', color: colors.textSecondary);
@@ -1776,12 +1872,19 @@ class _ChatDetailState extends State<ChatDetail> {
           Container(
             width: 8.w,
             height: 8.w,
-            decoration: BoxDecoration(color: info.color, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: info.color,
+              shape: BoxShape.circle,
+            ),
           ),
           SizedBox(width: 8.w),
           Text(
             info.text,
-            style: TextStyle(color: info.color, fontSize: 13.sp, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: info.color,
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -1790,6 +1893,10 @@ class _ChatDetailState extends State<ChatDetail> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_userService.isLoggedIn) {
+      return Scaffold(backgroundColor: context.appColors.backgroundPrimary);
+    }
+
     final colors = context.appColors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final size = MediaQuery.sizeOf(context);
@@ -1800,7 +1907,9 @@ class _ChatDetailState extends State<ChatDetail> {
         statusBarIconBrightness: isDark ? Brightness.dark : Brightness.light,
         systemNavigationBarColor: colors.backgroundPrimary,
         systemNavigationBarDividerColor: Colors.transparent,
-        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        systemNavigationBarIconBrightness: isDark
+            ? Brightness.light
+            : Brightness.dark,
       ),
       child: Scaffold(
         backgroundColor: colors.backgroundSecondary,
@@ -1813,7 +1922,10 @@ class _ChatDetailState extends State<ChatDetail> {
               package: 'grab_go_shared',
               width: 24.w,
               height: 24.w,
-              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(
+                colors.textPrimary,
+                BlendMode.srcIn,
+              ),
             ),
             onPressed: () => context.pop(),
           ),
@@ -1831,7 +1943,9 @@ class _ChatDetailState extends State<ChatDetail> {
                       shape: BoxShape.circle,
                     ),
                     child: ClipOval(
-                      child: widget.profilePicture != null && widget.profilePicture!.isNotEmpty
+                      child:
+                          widget.profilePicture != null &&
+                              widget.profilePicture!.isNotEmpty
                           ? CachedNetworkImage(
                               imageUrl: widget.profilePicture!,
                               width: 40.w,
@@ -1843,7 +1957,10 @@ class _ChatDetailState extends State<ChatDetail> {
                                   package: 'grab_go_shared',
                                   width: 20.w,
                                   height: 20.w,
-                                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                  colorFilter: ColorFilter.mode(
+                                    colors.accentOrange,
+                                    BlendMode.srcIn,
+                                  ),
                                 ),
                               ),
                               errorWidget: (context, url, error) => Center(
@@ -1852,18 +1969,25 @@ class _ChatDetailState extends State<ChatDetail> {
                                   package: 'grab_go_shared',
                                   width: 20.w,
                                   height: 20.w,
-                                  colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                  colorFilter: ColorFilter.mode(
+                                    colors.accentOrange,
+                                    BlendMode.srcIn,
+                                  ),
                                 ),
                               ),
                             )
                           : Center(
                               child: SvgPicture.asset(
-                                widget.isSupport ? Assets.icons.headsetHelp : Assets.icons.user,
+                                widget.isSupport
+                                    ? Assets.icons.headsetHelp
+                                    : Assets.icons.user,
                                 package: 'grab_go_shared',
                                 width: 20.w,
                                 height: 20.w,
                                 colorFilter: ColorFilter.mode(
-                                  widget.isSupport ? colors.accentViolet : colors.accentOrange,
+                                  widget.isSupport
+                                      ? colors.accentViolet
+                                      : colors.accentOrange,
                                   BlendMode.srcIn,
                                 ),
                               ),
@@ -1880,7 +2004,10 @@ class _ChatDetailState extends State<ChatDetail> {
                         decoration: BoxDecoration(
                           color: colors.accentOrange,
                           shape: BoxShape.circle,
-                          border: Border.all(color: colors.backgroundPrimary, width: 2),
+                          border: Border.all(
+                            color: colors.backgroundPrimary,
+                            width: 2,
+                          ),
                         ),
                       ),
                     ),
@@ -1945,7 +2072,10 @@ class _ChatDetailState extends State<ChatDetail> {
                   package: 'grab_go_shared',
                   width: 22.w,
                   height: 22.w,
-                  colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                  colorFilter: ColorFilter.mode(
+                    colors.textPrimary,
+                    BlendMode.srcIn,
+                  ),
                 ),
                 onPressed: _openOrderTracking,
               ),
@@ -1955,7 +2085,10 @@ class _ChatDetailState extends State<ChatDetail> {
                 package: 'grab_go_shared',
                 width: 22.w,
                 height: 22.w,
-                colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                colorFilter: ColorFilter.mode(
+                  colors.textPrimary,
+                  BlendMode.srcIn,
+                ),
               ),
               onPressed: () {},
             ),
@@ -1968,9 +2101,17 @@ class _ChatDetailState extends State<ChatDetail> {
             if (!widget.isSupport)
               if (_connectionState == SocketConnectionState.reconnecting ||
                   _connectionState == SocketConnectionState.connecting)
-                _buildConnectionBanner('Reconnecting to chat…', colors, isWarning: false)
+                _buildConnectionBanner(
+                  'Reconnecting to chat…',
+                  colors,
+                  isWarning: false,
+                )
               else if (_connectionState == SocketConnectionState.disconnected)
-                _buildConnectionBanner('Offline. Messages may be delayed.', colors, isWarning: true),
+                _buildConnectionBanner(
+                  'Offline. Messages may be delayed.',
+                  colors,
+                  isWarning: true,
+                ),
             Expanded(
               child: Stack(
                 children: [
@@ -1978,9 +2119,13 @@ class _ChatDetailState extends State<ChatDetail> {
                       ? _buildErrorState(colors)
                       : ListView.builder(
                           controller: _scrollController,
-                          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 20.w,
+                            vertical: 16.h,
+                          ),
                           physics: const BouncingScrollPhysics(),
-                          itemCount: _messages.length + (_isLoadingMore ? 1 : 0),
+                          itemCount:
+                              _messages.length + (_isLoadingMore ? 1 : 0),
                           itemBuilder: (context, index) {
                             if (_isLoadingMore && index == 0) {
                               return Padding(
@@ -1991,36 +2136,60 @@ class _ChatDetailState extends State<ChatDetail> {
                                     height: 24.w,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(colors.accentOrange),
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        colors.accentOrange,
+                                      ),
                                     ),
                                   ),
                                 ),
                               );
                             }
 
-                            final messageIndex = _isLoadingMore ? index - 1 : index;
+                            final messageIndex = _isLoadingMore
+                                ? index - 1
+                                : index;
                             final message = _messages[messageIndex];
-                            final previous = messageIndex > 0 ? _messages[messageIndex - 1] : null;
-                            final next = messageIndex < _messages.length - 1 ? _messages[messageIndex + 1] : null;
-                            final showDateDivider = _shouldShowDateDivider(messageIndex);
-                            final isFirstUnreadMessage = _firstUnreadIndex != null && messageIndex == _firstUnreadIndex;
+                            final previous = messageIndex > 0
+                                ? _messages[messageIndex - 1]
+                                : null;
+                            final next = messageIndex < _messages.length - 1
+                                ? _messages[messageIndex + 1]
+                                : null;
+                            final showDateDivider = _shouldShowDateDivider(
+                              messageIndex,
+                            );
+                            final isFirstUnreadMessage =
+                                _firstUnreadIndex != null &&
+                                messageIndex == _firstUnreadIndex;
 
                             if (message.isSystem) {
                               final content = Column(
                                 children: [
                                   if (showDateDivider)
                                     Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 16.h),
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: 16.h,
+                                      ),
                                       child: Center(
                                         child: Container(
-                                          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 12.w,
+                                            vertical: 6.h,
+                                          ),
                                           decoration: BoxDecoration(
                                             color: colors.backgroundPrimary,
-                                            borderRadius: BorderRadius.circular(KBorderSize.borderRadius12),
-                                            border: Border.all(color: colors.border, width: 1),
+                                            borderRadius: BorderRadius.circular(
+                                              KBorderSize.borderRadius12,
+                                            ),
+                                            border: Border.all(
+                                              color: colors.border,
+                                              width: 1,
+                                            ),
                                           ),
                                           child: Text(
-                                            DateFormat('MMM dd, yyyy').format(message.timestamp),
+                                            DateFormat(
+                                              'MMM dd, yyyy',
+                                            ).format(message.timestamp),
                                             style: TextStyle(
                                               color: colors.textSecondary,
                                               fontSize: 11.sp,
@@ -2032,13 +2201,21 @@ class _ChatDetailState extends State<ChatDetail> {
                                     ),
                                   if (isFirstUnreadMessage)
                                     Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 16.h),
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: 16.h,
+                                      ),
                                       child: Center(
                                         child: Container(
-                                          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 12.w,
+                                            vertical: 4.h,
+                                          ),
                                           decoration: BoxDecoration(
-                                            color: colors.accentOrange.withValues(alpha: 0.12),
-                                            borderRadius: BorderRadius.circular(999),
+                                            color: colors.accentOrange
+                                                .withValues(alpha: 0.12),
+                                            borderRadius: BorderRadius.circular(
+                                              999,
+                                            ),
                                           ),
                                           child: Text(
                                             'New messages',
@@ -2052,14 +2229,24 @@ class _ChatDetailState extends State<ChatDetail> {
                                       ),
                                     ),
                                   Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 8.h),
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: 8.h,
+                                    ),
                                     child: Center(
                                       child: Container(
-                                        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 12.w,
+                                          vertical: 6.h,
+                                        ),
                                         decoration: BoxDecoration(
                                           color: colors.backgroundPrimary,
-                                          borderRadius: BorderRadius.circular(999),
-                                          border: Border.all(color: colors.border, width: 1),
+                                          borderRadius: BorderRadius.circular(
+                                            999,
+                                          ),
+                                          border: Border.all(
+                                            color: colors.border,
+                                            width: 1,
+                                          ),
                                         ),
                                         child: Text(
                                           message.text,
@@ -2076,16 +2263,27 @@ class _ChatDetailState extends State<ChatDetail> {
                               );
 
                               if (isFirstUnreadMessage) {
-                                return KeyedSubtree(key: _firstUnreadKey, child: content);
+                                return KeyedSubtree(
+                                  key: _firstUnreadKey,
+                                  child: content,
+                                );
                               }
 
                               return content;
                             }
 
                             final sameDayAsPrevious =
-                                previous != null && DateUtils.isSameDay(previous.timestamp, message.timestamp);
+                                previous != null &&
+                                DateUtils.isSameDay(
+                                  previous.timestamp,
+                                  message.timestamp,
+                                );
                             final sameDayAsNext =
-                                next != null && DateUtils.isSameDay(next.timestamp, message.timestamp);
+                                next != null &&
+                                DateUtils.isSameDay(
+                                  next.timestamp,
+                                  message.timestamp,
+                                );
 
                             final isFirstInGroup =
                                 previous == null ||
@@ -2102,17 +2300,29 @@ class _ChatDetailState extends State<ChatDetail> {
                               children: [
                                 if (showDateDivider)
                                   Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 16.h),
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: 16.h,
+                                    ),
                                     child: Center(
                                       child: Container(
-                                        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 12.w,
+                                          vertical: 6.h,
+                                        ),
                                         decoration: BoxDecoration(
                                           color: colors.backgroundPrimary,
-                                          borderRadius: BorderRadius.circular(KBorderSize.borderRadius12),
-                                          border: Border.all(color: colors.border, width: 1),
+                                          borderRadius: BorderRadius.circular(
+                                            KBorderSize.borderRadius12,
+                                          ),
+                                          border: Border.all(
+                                            color: colors.border,
+                                            width: 1,
+                                          ),
                                         ),
                                         child: Text(
-                                          DateFormat('MMM dd, yyyy').format(message.timestamp),
+                                          DateFormat(
+                                            'MMM dd, yyyy',
+                                          ).format(message.timestamp),
                                           style: TextStyle(
                                             color: colors.textSecondary,
                                             fontSize: 11.sp,
@@ -2124,13 +2334,22 @@ class _ChatDetailState extends State<ChatDetail> {
                                   ),
                                 if (isFirstUnreadMessage)
                                   Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 16.h),
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: 16.h,
+                                    ),
                                     child: Center(
                                       child: Container(
-                                        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 12.w,
+                                          vertical: 4.h,
+                                        ),
                                         decoration: BoxDecoration(
-                                          color: colors.accentOrange.withValues(alpha: 0.12),
-                                          borderRadius: BorderRadius.circular(999),
+                                          color: colors.accentOrange.withValues(
+                                            alpha: 0.12,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            999,
+                                          ),
                                         ),
                                         child: Text(
                                           'New messages',
@@ -2155,19 +2374,27 @@ class _ChatDetailState extends State<ChatDetail> {
                             );
 
                             if (isFirstUnreadMessage) {
-                              return KeyedSubtree(key: _firstUnreadKey, child: content);
+                              return KeyedSubtree(
+                                key: _firstUnreadKey,
+                                child: content,
+                              );
                             }
 
                             return content;
                           },
                         ),
                   if (_showScrollToBottomButton)
-                    Positioned(right: 16.w, bottom: 16.h, child: _buildScrollToBottomButton(colors)),
+                    Positioned(
+                      right: 16.w,
+                      bottom: 16.h,
+                      child: _buildScrollToBottomButton(colors),
+                    ),
                 ],
               ),
             ),
 
-            if (!widget.isSupport && _quickIssueTemplates.isNotEmpty) _buildQuickIssueChips(colors),
+            if (!widget.isSupport && _quickIssueTemplates.isNotEmpty)
+              _buildQuickIssueChips(colors),
 
             // Reply preview
             if (_replyingTo != null) _buildReplyPreview(colors),
@@ -2193,7 +2420,9 @@ class _ChatDetailState extends State<ChatDetail> {
             left: 20.w,
             right: 20.w,
             top: 12.h,
-            bottom: _showEmojiPicker ? 12.h : MediaQuery.of(context).padding.bottom + 12.h,
+            bottom: _showEmojiPicker
+                ? 12.h
+                : MediaQuery.of(context).padding.bottom + 12.h,
           ),
           decoration: BoxDecoration(
             color: colors.backgroundPrimary,
@@ -2219,7 +2448,10 @@ class _ChatDetailState extends State<ChatDetail> {
                   emojiSizeMax: 28,
                   backgroundColor: colors.backgroundPrimary,
                   columns: 8,
-                  noRecents: const Text('No Recents', style: TextStyle(fontSize: 16, color: Colors.grey)),
+                  noRecents: const Text(
+                    'No Recents',
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                  ),
                 ),
                 categoryViewConfig: CategoryViewConfig(
                   backgroundColor: colors.backgroundPrimary,
@@ -2227,7 +2459,9 @@ class _ChatDetailState extends State<ChatDetail> {
                   iconColorSelected: colors.accentOrange,
                   iconColor: colors.textSecondary,
                 ),
-                bottomActionBarConfig: const BottomActionBarConfig(enabled: false),
+                bottomActionBarConfig: const BottomActionBarConfig(
+                  enabled: false,
+                ),
                 searchViewConfig: SearchViewConfig(
                   backgroundColor: colors.backgroundPrimary,
                   buttonIconColor: colors.textSecondary,
@@ -2257,7 +2491,10 @@ class _ChatDetailState extends State<ChatDetail> {
                   package: 'grab_go_shared',
                   width: 24.w,
                   height: 24.w,
-                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                  colorFilter: ColorFilter.mode(
+                    colors.textSecondary,
+                    BlendMode.srcIn,
+                  ),
                 ),
               ),
               SizedBox(width: 8.w),
@@ -2269,7 +2506,10 @@ class _ChatDetailState extends State<ChatDetail> {
                   package: 'grab_go_shared',
                   width: 24.w,
                   height: 24.w,
-                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                  colorFilter: ColorFilter.mode(
+                    colors.textSecondary,
+                    BlendMode.srcIn,
+                  ),
                 ),
               ),
               SizedBox(width: 10.w),
@@ -2346,7 +2586,10 @@ class _ChatDetailState extends State<ChatDetail> {
                                   package: "grab_go_shared",
                                   height: 20.h,
                                   width: 20.w,
-                                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                  colorFilter: ColorFilter.mode(
+                                    colors.textSecondary,
+                                    BlendMode.srcIn,
+                                  ),
                                 ),
                                 SizedBox(width: 4.w),
                                 Text(
@@ -2375,15 +2618,25 @@ class _ChatDetailState extends State<ChatDetail> {
                       GestureDetector(
                         onTap: _cancelRecording,
                         child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16.w,
+                            vertical: 6.h,
+                          ),
                           decoration: BoxDecoration(
                             color: colors.error.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(24),
-                            border: Border.all(color: colors.error.withValues(alpha: 0.3), width: 1.5),
+                            border: Border.all(
+                              color: colors.error.withValues(alpha: 0.3),
+                              width: 1.5,
+                            ),
                           ),
                           child: Text(
                             'Cancel',
-                            style: TextStyle(color: colors.error, fontSize: 14.sp, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                              color: colors.error,
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),
@@ -2397,7 +2650,9 @@ class _ChatDetailState extends State<ChatDetail> {
                   constraints: BoxConstraints(maxHeight: 120.h),
                   decoration: BoxDecoration(
                     color: colors.backgroundSecondary,
-                    borderRadius: BorderRadius.circular(KBorderSize.borderRadius4),
+                    borderRadius: BorderRadius.circular(
+                      KBorderSize.borderRadius4,
+                    ),
                     border: Border.all(color: colors.border, width: 1),
                   ),
                   child: TextField(
@@ -2407,11 +2662,20 @@ class _ChatDetailState extends State<ChatDetail> {
                     textCapitalization: TextCapitalization.sentences,
                     decoration: InputDecoration(
                       hintText: "Type a message...",
-                      hintStyle: TextStyle(color: colors.textSecondary.withValues(alpha: 0.6), fontSize: 14.sp),
+                      hintStyle: TextStyle(
+                        color: colors.textSecondary.withValues(alpha: 0.6),
+                        fontSize: 14.sp,
+                      ),
                       border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 16.w,
+                        vertical: 12.h,
+                      ),
                     ),
-                    style: TextStyle(color: colors.textPrimary, fontSize: 14.sp),
+                    style: TextStyle(
+                      color: colors.textPrimary,
+                      fontSize: 14.sp,
+                    ),
                     onChanged: _handleMessageChanged,
                     onSubmitted: (_) => _sendMessage(),
                     onTap: () {
@@ -2426,7 +2690,9 @@ class _ChatDetailState extends State<ChatDetail> {
             // Show send button when recording is locked OR when there's text
             if (_isRecordingLocked || hasText)
               GestureDetector(
-                onTap: _isRecordingLocked ? _stopAndSendRecording : _sendMessage,
+                onTap: _isRecordingLocked
+                    ? _stopAndSendRecording
+                    : _sendMessage,
                 child: Container(
                   width: 48.w,
                   height: 48.w,
@@ -2447,7 +2713,10 @@ class _ChatDetailState extends State<ChatDetail> {
                       package: 'grab_go_shared',
                       width: 20.w,
                       height: 20.w,
-                      colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                      colorFilter: const ColorFilter.mode(
+                        Colors.white,
+                        BlendMode.srcIn,
+                      ),
                     ),
                   ),
                 ),
@@ -2485,7 +2754,10 @@ class _ChatDetailState extends State<ChatDetail> {
                           package: 'grab_go_shared',
                           width: _isRecording ? 24.w : 20.w,
                           height: _isRecording ? 24.w : 20.w,
-                          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                          colorFilter: const ColorFilter.mode(
+                            Colors.white,
+                            BlendMode.srcIn,
+                          ),
                         ),
                       ),
                     ),
@@ -2545,7 +2817,13 @@ class _ChatDetailState extends State<ChatDetail> {
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(999),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 6, offset: const Offset(0, 2))],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
           border: Border.all(color: colors.border, width: 1),
         ),
         child: Row(
@@ -2556,13 +2834,20 @@ class _ChatDetailState extends State<ChatDetail> {
               package: "grab_go_shared",
               height: 18.h,
               width: 18.w,
-              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+              colorFilter: ColorFilter.mode(
+                colors.textPrimary,
+                BlendMode.srcIn,
+              ),
             ),
             if (hasCount) ...[
               SizedBox(width: 6.w),
               Text(
                 _pendingNewMessages.toString(),
-                style: TextStyle(color: colors.textPrimary, fontSize: 12.sp, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: colors.textPrimary,
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ],
@@ -2594,7 +2879,10 @@ class _ChatDetailState extends State<ChatDetail> {
           Container(
             width: 4.w,
             height: 40.h,
-            decoration: BoxDecoration(color: colors.accentOrange, borderRadius: BorderRadius.circular(2.w)),
+            decoration: BoxDecoration(
+              color: colors.accentOrange,
+              borderRadius: BorderRadius.circular(2.w),
+            ),
           ),
           SizedBox(width: 12.w),
           Expanded(
@@ -2604,7 +2892,11 @@ class _ChatDetailState extends State<ChatDetail> {
               children: [
                 Text(
                   replyTo.isSentByMe ? 'You' : widget.senderName,
-                  style: TextStyle(color: colors.accentOrange, fontSize: 12.sp, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color: colors.accentOrange,
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 SizedBox(height: 2.h),
                 Text(
@@ -2613,7 +2905,11 @@ class _ChatDetailState extends State<ChatDetail> {
                       : replyTo.isImageMessage
                       ? '📷 Image'
                       : replyTo.text,
-                  style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w400),
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w400,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -2630,7 +2926,10 @@ class _ChatDetailState extends State<ChatDetail> {
                 package: "grab_go_shared",
                 height: 24.h,
                 width: 24.w,
-                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                colorFilter: ColorFilter.mode(
+                  colors.textSecondary,
+                  BlendMode.srcIn,
+                ),
               ),
             ),
           ),
@@ -2655,7 +2954,10 @@ class _ChatDetailState extends State<ChatDetail> {
           Container(
             width: 4.w,
             height: 40.h,
-            decoration: BoxDecoration(color: colors.accentBlue, borderRadius: BorderRadius.circular(2.w)),
+            decoration: BoxDecoration(
+              color: colors.accentBlue,
+              borderRadius: BorderRadius.circular(2.w),
+            ),
           ),
           SizedBox(width: 12.w),
           Expanded(
@@ -2665,12 +2967,20 @@ class _ChatDetailState extends State<ChatDetail> {
               children: [
                 Text(
                   'Editing message',
-                  style: TextStyle(color: colors.accentBlue, fontSize: 12.sp, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color: colors.accentBlue,
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 SizedBox(height: 2.h),
                 Text(
                   editMsg.text,
-                  style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w400),
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w400,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -2687,7 +2997,10 @@ class _ChatDetailState extends State<ChatDetail> {
                 package: "grab_go_shared",
                 height: 24.h,
                 width: 24.w,
-                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                colorFilter: ColorFilter.mode(
+                  colors.textSecondary,
+                  BlendMode.srcIn,
+                ),
               ),
             ),
           ),
@@ -2716,11 +3029,17 @@ class _ChatDetailState extends State<ChatDetail> {
                   child: ActionChip(
                     label: Text(
                       text,
-                      style: TextStyle(color: colors.textPrimary, fontSize: 12.sp, fontWeight: FontWeight.w400),
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w400,
+                      ),
                     ),
                     backgroundColor: colors.backgroundSecondary,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(KBorderSize.borderRadius20),
+                      borderRadius: BorderRadius.circular(
+                        KBorderSize.borderRadius20,
+                      ),
                       side: BorderSide(color: colors.border, width: 1),
                     ),
                     onPressed: () {
@@ -2763,7 +3082,11 @@ class _ChatDetailState extends State<ChatDetail> {
         ];
       case 'picked_up':
       case 'on_the_way':
-        return ['Please call me when you arrive.', 'Can you come to the main gate?', 'Where is my order right now?'];
+        return [
+          'Please call me when you arrive.',
+          'Can you come to the main gate?',
+          'Where is my order right now?',
+        ];
       case 'delivered':
         return ['Thank you!', 'There is an issue with my order.'];
       case 'cancelled':
@@ -2777,7 +3100,7 @@ class _ChatDetailState extends State<ChatDetail> {
     final id = _orderId ?? widget.orderId;
     if (id == null || id.isEmpty) return;
 
-    context.push('/orderTracking', extra: {'orderId': id});
+    context.push('/mapTracking?orderId=${Uri.encodeComponent(id)}');
   }
 
   Widget _buildMessageBubble(
@@ -2826,7 +3149,9 @@ class _ChatDetailState extends State<ChatDetail> {
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: size.width * 0.75),
         child: Column(
-          crossAxisAlignment: isSent ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment: isSent
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
           children: [
             Stack(
               clipBehavior: Clip.none,
@@ -2836,13 +3161,17 @@ class _ChatDetailState extends State<ChatDetail> {
                   padding: message.isImageMessage && message.hasImages
                       ? EdgeInsets.all(4.w) // Thin padding for image messages
                       : EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-                  margin: message.hasReactions ? EdgeInsets.only(bottom: 16.h) : EdgeInsets.zero,
+                  margin: message.hasReactions
+                      ? EdgeInsets.only(bottom: 16.h)
+                      : EdgeInsets.zero,
                   decoration: BoxDecoration(
                     color: isHighlighted
                         ? (isSent
                               ? colors.accentOrange.withValues(alpha: 0.7)
                               : colors.accentOrange.withValues(alpha: 0.15))
-                        : (isSent ? colors.accentOrange : colors.backgroundPrimary),
+                        : (isSent
+                              ? colors.accentOrange
+                              : colors.backgroundPrimary),
                     borderRadius: BorderRadius.only(
                       topLeft: topLeft,
                       topRight: topRight,
@@ -2851,13 +3180,19 @@ class _ChatDetailState extends State<ChatDetail> {
                     ),
                     border: isSent
                         ? null
-                        : Border.all(color: isHighlighted ? colors.accentOrange : colors.border, width: 1),
+                        : Border.all(
+                            color: isHighlighted
+                                ? colors.accentOrange
+                                : colors.border,
+                            width: 1,
+                          ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Reply preview in bubble (tappable to scroll to original message)
-                      if (message.replyToId != null && message.replyToText != null)
+                      if (message.replyToId != null &&
+                          message.replyToText != null)
                         GestureDetector(
                           onTap: () => _scrollToMessage(message.replyToId!),
                           child: Container(
@@ -2871,7 +3206,9 @@ class _ChatDetailState extends State<ChatDetail> {
                               borderRadius: BorderRadius.circular(8.w),
                               border: Border(
                                 left: BorderSide(
-                                  color: isSent ? Colors.white.withValues(alpha: 0.5) : colors.accentOrange,
+                                  color: isSent
+                                      ? Colors.white.withValues(alpha: 0.5)
+                                      : colors.accentOrange,
                                   width: 3.w,
                                 ),
                               ),
@@ -2880,9 +3217,13 @@ class _ChatDetailState extends State<ChatDetail> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  message.replyToIsSentByMe == true ? 'You' : widget.senderName,
+                                  message.replyToIsSentByMe == true
+                                      ? 'You'
+                                      : widget.senderName,
                                   style: TextStyle(
-                                    color: isSent ? Colors.white.withValues(alpha: 0.9) : colors.accentOrange,
+                                    color: isSent
+                                        ? Colors.white.withValues(alpha: 0.9)
+                                        : colors.accentOrange,
                                     fontSize: 11.sp,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -2891,7 +3232,9 @@ class _ChatDetailState extends State<ChatDetail> {
                                 Text(
                                   message.replyToText!,
                                   style: TextStyle(
-                                    color: isSent ? Colors.white.withValues(alpha: 0.7) : colors.textSecondary,
+                                    color: isSent
+                                        ? Colors.white.withValues(alpha: 0.7)
+                                        : colors.textSecondary,
                                     fontSize: 12.sp,
                                     fontWeight: FontWeight.w400,
                                   ),
@@ -2905,31 +3248,52 @@ class _ChatDetailState extends State<ChatDetail> {
                       // Message content based on type
                       if (message.isVoiceMessage && message.audioUrl != null)
                         VoiceMessageBubble(
-                          key: ValueKey('voice_${message.id}_${message.audioUrl}'),
+                          key: ValueKey(
+                            'voice_${message.id}_${message.audioUrl}',
+                          ),
                           audioUrl: message.audioUrl!,
                           duration: message.audioDuration,
                           isSentByMe: isSent,
                           isRead: message.isRead,
                           timestamp: message.timestamp,
-                          accentColor: isSent ? Colors.white : colors.accentOrange,
-                          playButtonIconColor: isSent ? colors.accentOrange : Colors.white,
-                          textColor: isSent ? Colors.white70 : colors.textSecondary,
-                          waveActiveColor: isSent ? Colors.white : colors.accentOrange,
-                          waveInactiveColor: isSent ? Colors.white38 : colors.border,
+                          accentColor: isSent
+                              ? Colors.white
+                              : colors.accentOrange,
+                          playButtonIconColor: isSent
+                              ? colors.accentOrange
+                              : Colors.white,
+                          textColor: isSent
+                              ? Colors.white70
+                              : colors.textSecondary,
+                          waveActiveColor: isSent
+                              ? Colors.white
+                              : colors.accentOrange,
+                          waveInactiveColor: isSent
+                              ? Colors.white38
+                              : colors.border,
                         )
                       else if (message.isImageMessage && message.hasImages)
                         ImageMessageBubble(
-                          key: ValueKey('image_${message.id}_${message.imageUrls.join("_")}'),
+                          key: ValueKey(
+                            'image_${message.id}_${message.imageUrls.join("_")}',
+                          ),
                           imageUrls: message.imageUrls,
                           blurHashes: message.blurHashes,
                           isSent: isSent,
                           isPending: message.isPending,
                           isFailed: message.isFailed,
                           uploadProgress: _uploadProgress[message.id],
-                          onRetry: canRetry ? () => _retryImageMessage(message) : null,
-                          onCancelUpload: message.isPending ? () => _cancelImageUpload(message.id) : null,
-                          onImageTap: (index) =>
-                              ImageViewerScreen.show(context, message.imageUrls, initialIndex: index),
+                          onRetry: canRetry
+                              ? () => _retryImageMessage(message)
+                              : null,
+                          onCancelUpload: message.isPending
+                              ? () => _cancelImageUpload(message.id)
+                              : null,
+                          onImageTap: (index) => ImageViewerScreen.show(
+                            context,
+                            message.imageUrls,
+                            initialIndex: index,
+                          ),
                         )
                       else if (message.isImageMessage && !message.hasImages)
                         // Fallback for image messages without URLs (backend didn't return them)
@@ -2950,7 +3314,9 @@ class _ChatDetailState extends State<ChatDetail> {
                             Text(
                               'Photo',
                               style: TextStyle(
-                                color: isSent ? Colors.white70 : colors.textSecondary,
+                                color: isSent
+                                    ? Colors.white70
+                                    : colors.textSecondary,
                                 fontSize: 14.sp,
                                 fontStyle: FontStyle.italic,
                               ),
@@ -2985,13 +3351,18 @@ class _ChatDetailState extends State<ChatDetail> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Show spinner only while pending, no time (skip for image/voice messages - they have their own spinner)
-                  if (isSent && message.isPending && !message.isImageMessage && !message.isVoiceMessage)
+                  if (isSent &&
+                      message.isPending &&
+                      !message.isImageMessage &&
+                      !message.isVoiceMessage)
                     SizedBox(
                       width: 12.w,
                       height: 12.w,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(colors.textSecondary),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          colors.textSecondary,
+                        ),
                       ),
                     )
                   // Hide timestamp/status for pending image/voice messages
@@ -3000,14 +3371,22 @@ class _ChatDetailState extends State<ChatDetail> {
                     if (message.isEdited) ...[
                       Text(
                         'Edited',
-                        style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w400),
+                        style: TextStyle(
+                          color: colors.textSecondary,
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.w400,
+                        ),
                       ),
                       SizedBox(width: 4.w),
                     ],
                     // Show time after message is sent
                     Text(
                       _formatMessageTime(message.timestamp),
-                      style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w400),
+                      style: TextStyle(
+                        color: colors.textSecondary,
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w400,
+                      ),
                     ),
                     if (isSent) ...[
                       SizedBox(width: 4.w),
@@ -3017,16 +3396,23 @@ class _ChatDetailState extends State<ChatDetail> {
                           package: "grab_go_shared",
                           height: 14.h,
                           width: 14.w,
-                          colorFilter: ColorFilter.mode(colors.error, BlendMode.srcIn),
+                          colorFilter: ColorFilter.mode(
+                            colors.error,
+                            BlendMode.srcIn,
+                          ),
                         )
                       else
                         SvgPicture.asset(
-                          message.isRead ? Assets.icons.doubleCheck : Assets.icons.check,
+                          message.isRead
+                              ? Assets.icons.doubleCheck
+                              : Assets.icons.check,
                           package: "grab_go_shared",
                           height: 14.h,
                           width: 14.w,
                           colorFilter: ColorFilter.mode(
-                            message.isRead ? colors.accentOrange : colors.textSecondary,
+                            message.isRead
+                                ? colors.accentOrange
+                                : colors.textSecondary,
                             BlendMode.srcIn,
                           ),
                         ),
@@ -3034,7 +3420,11 @@ class _ChatDetailState extends State<ChatDetail> {
                         SizedBox(width: 4.w),
                         Text(
                           statusText,
-                          style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w400),
+                          style: TextStyle(
+                            color: colors.textSecondary,
+                            fontSize: 11.sp,
+                            fontWeight: FontWeight.w400,
+                          ),
                         ),
                       ],
                     ],
@@ -3047,8 +3437,10 @@ class _ChatDetailState extends State<ChatDetail> {
       ),
     );
 
-    final canSwipeToReply = !message.isSystem && !widget.isSupport && !message.isPending;
-    final canReact = !message.isSystem && !message.isPending && !message.isFailed;
+    final canSwipeToReply =
+        !message.isSystem && !widget.isSupport && !message.isPending;
+    final canReact =
+        !message.isSystem && !message.isPending && !message.isFailed;
 
     if (canSwipeToReply) {
       return SwipeToReply(
@@ -3057,7 +3449,9 @@ class _ChatDetailState extends State<ChatDetail> {
         kColor: colors.accentOrange,
         child: GestureDetector(
           onTap: canRetry ? () => _retrySendMessage(message) : null,
-          onDoubleTap: canReact ? () => _showQuickReactions(message, colors) : null,
+          onDoubleTap: canReact
+              ? () => _showQuickReactions(message, colors)
+              : null,
           onLongPress: () => _showMessageActions(message, colors),
           behavior: HitTestBehavior.translucent,
           child: bubble,
@@ -3098,7 +3492,9 @@ class _ChatDetailState extends State<ChatDetail> {
     });
     // Set the text field to the message text
     _messageController.text = message.text;
-    _messageController.selection = TextSelection.fromPosition(TextPosition(offset: message.text.length));
+    _messageController.selection = TextSelection.fromPosition(
+      TextPosition(offset: message.text.length),
+    );
     // Show keyboard
     _messageFocusNode.requestFocus();
     HapticFeedback.selectionClick();
@@ -3143,7 +3539,10 @@ class _ChatDetailState extends State<ChatDetail> {
     HapticFeedback.selectionClick();
   }
 
-  Widget _buildReactionsDisplay(ChatMessage message, AppColorsExtension colors) {
+  Widget _buildReactionsDisplay(
+    ChatMessage message,
+    AppColorsExtension colors,
+  ) {
     final reactions = message.reactions;
     if (reactions.isEmpty) return const SizedBox.shrink();
 
@@ -3153,7 +3552,13 @@ class _ChatDetailState extends State<ChatDetail> {
         color: colors.backgroundPrimary,
         borderRadius: BorderRadius.circular(12.w),
         border: Border.all(color: colors.border, width: 1),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -3170,7 +3575,11 @@ class _ChatDetailState extends State<ChatDetail> {
                   SizedBox(width: 2.w),
                   Text(
                     count.toString(),
-                    style: TextStyle(color: colors.textSecondary, fontSize: 11.sp, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      color: colors.textSecondary,
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ],
@@ -3199,13 +3608,21 @@ class _ChatDetailState extends State<ChatDetail> {
               color: colors.backgroundPrimary,
               borderRadius: BorderRadius.circular(24.w),
               boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 10, offset: const Offset(0, 4)),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.15),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
               ],
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: _quickReactions.map((emoji) {
-                final hasReacted = message.reactions[emoji]?.contains(_userService.getUserId() ?? '') ?? false;
+                final hasReacted =
+                    message.reactions[emoji]?.contains(
+                      _userService.getUserId() ?? '',
+                    ) ??
+                    false;
                 return GestureDetector(
                   onTap: () {
                     Navigator.pop(context);
@@ -3214,7 +3631,9 @@ class _ChatDetailState extends State<ChatDetail> {
                   child: Container(
                     padding: EdgeInsets.all(8.w),
                     decoration: BoxDecoration(
-                      color: hasReacted ? colors.accentOrange.withValues(alpha: 0.2) : Colors.transparent,
+                      color: hasReacted
+                          ? colors.accentOrange.withValues(alpha: 0.2)
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(12.w),
                     ),
                     child: Text(emoji, style: TextStyle(fontSize: 28.sp)),
@@ -3241,7 +3660,9 @@ class _ChatDetailState extends State<ChatDetail> {
 
       final message = _messages[messageIndex];
 
-      final currentReactions = Map<String, List<String>>.from(message.reactions);
+      final currentReactions = Map<String, List<String>>.from(
+        message.reactions,
+      );
       final emojiReactions = List<String>.from(currentReactions[emoji] ?? []);
 
       if (emojiReactions.contains(userId)) {
@@ -3307,7 +3728,8 @@ class _ChatDetailState extends State<ChatDetail> {
       final duration = Duration(seconds: message.audioDuration.toInt());
       final minutes = duration.inMinutes;
       final seconds = duration.inSeconds % 60;
-      previewText = "${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}";
+      previewText =
+          "${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}";
       canCopy = false;
     } else {
       previewLabel = "Message:";
@@ -3318,13 +3740,19 @@ class _ChatDetailState extends State<ChatDetail> {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: colors.backgroundPrimary,
-      constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.96),
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.sizeOf(context).width * 0.96,
+      ),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(KBorderSize.borderRadius12)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(KBorderSize.borderRadius12),
+        ),
       ),
       builder: (context) {
         return SafeArea(
-          minimum: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom + 20),
+          minimum: EdgeInsets.only(
+            bottom: MediaQuery.paddingOf(context).bottom + 20,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -3344,7 +3772,11 @@ class _ChatDetailState extends State<ChatDetail> {
                   children: [
                     Text(
                       previewLabel,
-                      style: TextStyle(fontSize: 12.sp, color: colors.accentOrange, fontWeight: FontWeight.w900),
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        color: colors.accentOrange,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                     Row(
                       children: [
@@ -3356,7 +3788,10 @@ class _ChatDetailState extends State<ChatDetail> {
                               package: 'grab_go_shared',
                               width: 16.w,
                               height: 16.w,
-                              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                              colorFilter: ColorFilter.mode(
+                                colors.textPrimary,
+                                BlendMode.srcIn,
+                              ),
                             ),
                           ),
                         if (message.isVoiceMessage)
@@ -3367,7 +3802,10 @@ class _ChatDetailState extends State<ChatDetail> {
                               package: 'grab_go_shared',
                               width: 16.w,
                               height: 16.w,
-                              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                              colorFilter: ColorFilter.mode(
+                                colors.textPrimary,
+                                BlendMode.srcIn,
+                              ),
                             ),
                           ),
                         Expanded(
@@ -3375,7 +3813,11 @@ class _ChatDetailState extends State<ChatDetail> {
                             previewText,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 14.sp, color: colors.textPrimary, fontWeight: FontWeight.w500),
+                            style: TextStyle(
+                              fontSize: 14.sp,
+                              color: colors.textPrimary,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ],
@@ -3388,7 +3830,11 @@ class _ChatDetailState extends State<ChatDetail> {
                   title: Center(
                     child: Text(
                       'Copy',
-                      style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                   onTap: () {
@@ -3406,7 +3852,11 @@ class _ChatDetailState extends State<ChatDetail> {
                   title: Center(
                     child: Text(
                       'Edit',
-                      style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                   onTap: () {
@@ -3414,12 +3864,18 @@ class _ChatDetailState extends State<ChatDetail> {
                     _startEditingMessage(message);
                   },
                 ),
-              if (message.isSentByMe && message.isFailed && message.isTextMessage)
+              if (message.isSentByMe &&
+                  message.isFailed &&
+                  message.isTextMessage)
                 ListTile(
                   title: Center(
                     child: Text(
                       'Resend',
-                      style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                   onTap: () {
@@ -3427,12 +3883,18 @@ class _ChatDetailState extends State<ChatDetail> {
                     _retrySendMessage(message);
                   },
                 ),
-              if (message.isSentByMe && message.isFailed && message.isImageMessage)
+              if (message.isSentByMe &&
+                  message.isFailed &&
+                  message.isImageMessage)
                 ListTile(
                   title: Center(
                     child: Text(
                       'Retry',
-                      style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                   onTap: () {
@@ -3450,7 +3912,11 @@ class _ChatDetailState extends State<ChatDetail> {
                   title: Center(
                     child: Text(
                       'Select photos to delete',
-                      style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                   onTap: () {
@@ -3463,7 +3929,11 @@ class _ChatDetailState extends State<ChatDetail> {
                   title: Center(
                     child: Text(
                       'Delete for everyone',
-                      style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                   onTap: () {
@@ -3475,7 +3945,11 @@ class _ChatDetailState extends State<ChatDetail> {
                 title: Center(
                   child: Text(
                     'Delete for me',
-                    style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      color: colors.textPrimary,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
                 onTap: () {
@@ -3520,7 +3994,6 @@ class _ChatDetailState extends State<ChatDetail> {
         _messages.insert(messageIndex.clamp(0, _messages.length), message);
       });
       _cacheMessages();
-
     }
   }
 
@@ -3558,7 +4031,11 @@ class _ChatDetailState extends State<ChatDetail> {
     _cacheMessages();
 
     // Call backend to update message
-    final success = await _chatService.editMessage(widget.chatId, message.id, newText);
+    final success = await _chatService.editMessage(
+      widget.chatId,
+      message.id,
+      newText,
+    );
 
     if (!success && mounted) {
       // Restore original message if update failed
@@ -3566,25 +4043,31 @@ class _ChatDetailState extends State<ChatDetail> {
         _messages[messageIndex] = message;
       });
       _cacheMessages();
-
     }
   }
 
   /// Show a bottom sheet to select which photos to delete from a multi-image message
-  void _showSelectPhotosToDelete(ChatMessage message, AppColorsExtension colors) {
+  void _showSelectPhotosToDelete(
+    ChatMessage message,
+    AppColorsExtension colors,
+  ) {
     final selectedIndices = <int>{};
 
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: colors.backgroundPrimary,
       isScrollControlled: true,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20.w))),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.w)),
+      ),
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return SafeArea(
               child: Container(
-                constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.7,
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -3593,7 +4076,10 @@ class _ChatDetailState extends State<ChatDetail> {
                       margin: EdgeInsets.symmetric(vertical: 12.h),
                       width: 40.w,
                       height: 4.h,
-                      decoration: BoxDecoration(color: colors.border, borderRadius: BorderRadius.circular(2.w)),
+                      decoration: BoxDecoration(
+                        color: colors.border,
+                        borderRadius: BorderRadius.circular(2.w),
+                      ),
                     ),
                     // Header
                     Padding(
@@ -3603,20 +4089,37 @@ class _ChatDetailState extends State<ChatDetail> {
                         children: [
                           Text(
                             'Select photos to delete',
-                            style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                            style: TextStyle(
+                              fontSize: 18.sp,
+                              fontWeight: FontWeight.w700,
+                              color: colors.textPrimary,
+                            ),
                           ),
                           if (selectedIndices.isNotEmpty)
                             GestureDetector(
                               onTap: () {
                                 Navigator.pop(context);
-                                _deleteSelectedPhotos(message, selectedIndices.toList());
+                                _deleteSelectedPhotos(
+                                  message,
+                                  selectedIndices.toList(),
+                                );
                               },
                               child: Container(
-                                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-                                decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(20.w)),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 16.w,
+                                  vertical: 8.h,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  borderRadius: BorderRadius.circular(20.w),
+                                ),
                                 child: Text(
                                   'Delete (${selectedIndices.length})',
-                                  style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: Colors.white),
+                                  style: TextStyle(
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ),
                             ),
@@ -3628,7 +4131,10 @@ class _ChatDetailState extends State<ChatDetail> {
                       padding: EdgeInsets.symmetric(horizontal: 16.w),
                       child: Text(
                         'Tap photos to select them for deletion',
-                        style: TextStyle(fontSize: 13.sp, color: colors.textSecondary),
+                        style: TextStyle(
+                          fontSize: 13.sp,
+                          color: colors.textSecondary,
+                        ),
                       ),
                     ),
                     SizedBox(height: 16.h),
@@ -3675,7 +4181,10 @@ class _ChatDetailState extends State<ChatDetail> {
                                           package: 'grab_go_shared',
                                           width: 16.w,
                                           height: 16.w,
-                                          colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                                          colorFilter: ColorFilter.mode(
+                                            colors.textSecondary,
+                                            BlendMode.srcIn,
+                                          ),
                                         ),
                                       );
                                     },
@@ -3697,9 +4206,14 @@ class _ChatDetailState extends State<ChatDetail> {
                                     width: 24.w,
                                     height: 24.w,
                                     decoration: BoxDecoration(
-                                      color: isSelected ? Colors.red : Colors.black.withValues(alpha: 0.5),
+                                      color: isSelected
+                                          ? Colors.red
+                                          : Colors.black.withValues(alpha: 0.5),
                                       shape: BoxShape.circle,
-                                      border: Border.all(color: Colors.white, width: 2),
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 2,
+                                      ),
                                     ),
                                     child: isSelected
                                         ? SvgPicture.asset(
@@ -3707,7 +4221,10 @@ class _ChatDetailState extends State<ChatDetail> {
                                             package: 'grab_go_shared',
                                             width: 16.w,
                                             height: 16.w,
-                                            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                            colorFilter: const ColorFilter.mode(
+                                              Colors.white,
+                                              BlendMode.srcIn,
+                                            ),
                                           )
                                         : null,
                                   ),
@@ -3730,7 +4247,10 @@ class _ChatDetailState extends State<ChatDetail> {
   }
 
   /// Delete selected photos from a multi-image message
-  Future<void> _deleteSelectedPhotos(ChatMessage message, List<int> indicesToDelete) async {
+  Future<void> _deleteSelectedPhotos(
+    ChatMessage message,
+    List<int> indicesToDelete,
+  ) async {
     if (indicesToDelete.isEmpty) return;
 
     // Sort indices in descending order to remove from end first
@@ -3786,7 +4306,11 @@ class _ChatDetailState extends State<ChatDetail> {
     _cacheMessages();
 
     // Call backend to update message images
-    final success = await _chatService.deleteMessageImages(widget.chatId, message.id, indicesToDelete);
+    final success = await _chatService.deleteMessageImages(
+      widget.chatId,
+      message.id,
+      indicesToDelete,
+    );
 
     if (!success && mounted) {
       // Restore original message if update failed
@@ -3794,7 +4318,6 @@ class _ChatDetailState extends State<ChatDetail> {
         _messages[messageIndex] = message;
       });
       _cacheMessages();
-
     }
   }
 
@@ -3807,19 +4330,30 @@ class _ChatDetailState extends State<ChatDetail> {
           children: [
             Text(
               'Unable to load messages',
-              style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: colors.textPrimary,
+                fontSize: 18.sp,
+                fontWeight: FontWeight.w600,
+              ),
               textAlign: TextAlign.center,
             ),
             SizedBox(height: 8.h),
             Text(
               _error ?? 'Please check your connection and try again.',
-              style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w400),
+              style: TextStyle(
+                color: colors.textSecondary,
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w400,
+              ),
               textAlign: TextAlign.center,
             ),
             SizedBox(height: 16.h),
             SizedBox(
               height: 46.h,
-              child: AppButton(onPressed: _initAndLoadMessages, buttonText: 'Retry'),
+              child: AppButton(
+                onPressed: _initAndLoadMessages,
+                buttonText: 'Retry',
+              ),
             ),
           ],
         ),

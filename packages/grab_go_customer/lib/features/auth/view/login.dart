@@ -16,7 +16,9 @@ import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:provider/provider.dart';
 
 class Login extends StatefulWidget {
-  const Login({super.key});
+  final String? returnTo;
+
+  const Login({super.key, this.returnTo});
 
   @override
   State<Login> createState() => _LoginState();
@@ -137,6 +139,12 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
   }
 
   Future<void> _navigateAfterLogin(BuildContext context) async {
+    final directReturnTo = widget.returnTo?.trim();
+    if (directReturnTo != null && directReturnTo.isNotEmpty) {
+      context.go(directReturnTo);
+      return;
+    }
+
     final locationProvider = Provider.of<NativeLocationProvider>(context, listen: false);
 
     bool hasChange = false;
@@ -153,6 +161,11 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
         context.go("/homepage");
       }
     }
+  }
+
+  void _continueAsGuest() {
+    FocusManager.instance.primaryFocus?.unfocus();
+    context.go("/homepage");
   }
 
   Future<void> _handleLogin() async {
@@ -315,14 +328,11 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
       final hasInternet = await checkInternetConnection();
 
       String message;
-      IconData icon;
 
       if (!hasInternet) {
         message = "No internet connection detected. Please check your network.";
-        icon = Icons.wifi_off;
       } else {
         message = "Cannot connect to server. Please try again.";
-        icon = Icons.cloud_off;
       }
 
       if (mounted) {
@@ -604,7 +614,37 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                     ),
                   ),
 
-                  SizedBox(height: KSpacing.lg.h),
+                  SizedBox(height: KSpacing.md.h),
+
+                  FadeTransition(
+                    opacity: fadeAnimation,
+                    child: TextButton.icon(
+                      onPressed: _continueAsGuest,
+                      style: TextButton.styleFrom(
+                        foregroundColor: colors.textPrimary,
+                        padding: EdgeInsets.symmetric(horizontal: KSpacing.md15.w, vertical: KSpacing.sm.h),
+                      ),
+                      icon: SvgPicture.asset(
+                        Assets.icons.user,
+                        package: 'grab_go_shared',
+                        width: 16.w,
+                        height: 16.h,
+                        colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                      ),
+                      label: Text(
+                        "Continue as guest",
+                        style: TextStyle(
+                          fontFamily: "Lato",
+                          package: 'grab_go_shared',
+                          color: colors.textPrimary,
+                          fontSize: KTextSize.small.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: KSpacing.xs.h),
 
                   Column(
                     children: [
@@ -638,37 +678,37 @@ class _LoginState extends State<Login> with SingleTickerProviderStateMixin {
                         ),
                       ),
 
-                      SizedBox(height: KSpacing.sm.h),
+                      // SizedBox(height: KSpacing.sm.h),
 
-                      RichText(
-                        textAlign: TextAlign.center,
-                        text: TextSpan(
-                          text: "Want to partner with us? ",
-                          style: TextStyle(
-                            fontFamily: "Lato",
-                            package: 'grab_go_shared',
-                            color: colors.textSecondary,
-                            fontSize: KTextSize.small.sp,
-                            height: 1.4,
-                          ),
-                          children: [
-                            TextSpan(
-                              recognizer: TapGestureRecognizer()
-                                ..onTap = () {
-                                  context.push("/restaurantRegistration");
-                                },
-                              text: " Join as a restaurant",
-                              style: TextStyle(
-                                fontFamily: "Lato",
-                                package: 'grab_go_shared',
-                                fontWeight: FontWeight.w600,
-                                color: colors.textPrimary,
-                                fontSize: KTextSize.small.sp,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      // RichText(
+                      //   textAlign: TextAlign.center,
+                      //   text: TextSpan(
+                      //     text: "Want to partner with us? ",
+                      //     style: TextStyle(
+                      //       fontFamily: "Lato",
+                      //       package: 'grab_go_shared',
+                      //       color: colors.textSecondary,
+                      //       fontSize: KTextSize.small.sp,
+                      //       height: 1.4,
+                      //     ),
+                      //     children: [
+                      //       TextSpan(
+                      //         recognizer: TapGestureRecognizer()
+                      //           ..onTap = () {
+                      //             context.push("/restaurantRegistration");
+                      //           },
+                      //         text: " Join as a restaurant",
+                      //         style: TextStyle(
+                      //           fontFamily: "Lato",
+                      //           package: 'grab_go_shared',
+                      //           fontWeight: FontWeight.w600,
+                      //           color: colors.textPrimary,
+                      //           fontSize: KTextSize.small.sp,
+                      //         ),
+                      //       ),
+                      //     ],
+                      //   ),
+                      // ),
                     ],
                   ),
 

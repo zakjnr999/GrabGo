@@ -8,6 +8,7 @@ import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
 import 'package:grab_go_customer/features/grabmart/model/grabmart_item.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/features/pharmacy/model/pharmacy_item.dart';
+import 'package:grab_go_customer/shared/services/auth_guard.dart';
 import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
 import 'package:grab_go_customer/shared/widgets/vertical_zigzag_tag.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
@@ -162,7 +163,11 @@ class PopularItemCard extends StatelessWidget {
                       right: 6.r,
                       top: 6.r,
                       child: GestureDetector(
-                        onTap: () {
+                        onTap: () async {
+                          final isAuthenticated =
+                              await AuthGuard.ensureAuthenticated(context);
+                          if (!isAuthenticated) return;
+
                           if (item is FoodItem) {
                             if (isFavorite) {
                               favoriteProvider.removeFromFavorites(

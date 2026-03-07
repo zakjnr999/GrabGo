@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:grab_go_customer/shared/services/auth_guard.dart';
+import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,7 +15,8 @@ class ReferralBanner extends StatefulWidget {
   State<ReferralBanner> createState() => _ReferralBannerState();
 }
 
-class _ReferralBannerState extends State<ReferralBanner> with SingleTickerProviderStateMixin {
+class _ReferralBannerState extends State<ReferralBanner>
+    with SingleTickerProviderStateMixin {
   late AnimationController _shimmerController;
   late Animation<double> _shimmerAnimation;
   bool _isDismissed = false;
@@ -22,12 +25,14 @@ class _ReferralBannerState extends State<ReferralBanner> with SingleTickerProvid
   void initState() {
     super.initState();
     _checkDismissalStatus();
-    _shimmerController = AnimationController(duration: const Duration(milliseconds: 2000), vsync: this)..repeat();
+    _shimmerController = AnimationController(
+      duration: const Duration(milliseconds: 2000),
+      vsync: this,
+    )..repeat();
 
-    _shimmerAnimation = Tween<double>(
-      begin: -2,
-      end: 2,
-    ).animate(CurvedAnimation(parent: _shimmerController, curve: Curves.easeInOut));
+    _shimmerAnimation = Tween<double>(begin: -2, end: 2).animate(
+      CurvedAnimation(parent: _shimmerController, curve: Curves.easeInOut),
+    );
   }
 
   Future<void> _checkDismissalStatus() async {
@@ -67,7 +72,11 @@ class _ReferralBannerState extends State<ReferralBanner> with SingleTickerProvid
 
     return GestureDetector(
       onTap: () {
-        context.push('/referral');
+        if (UserService().isLoggedIn) {
+          context.push('/referral');
+          return;
+        }
+        context.push(AuthGuard.loginRoute(returnTo: '/referral'));
       },
       child: Container(
         margin: EdgeInsets.only(left: 20.w, right: 20.w, bottom: KSpacing.lg.h),
@@ -90,7 +99,11 @@ class _ReferralBannerState extends State<ReferralBanner> with SingleTickerProvid
                 height: 80.h,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [colors.accentOrange, colors.accentOrange.withValues(alpha: 0.85), const Color(0xFFFFB800)],
+                    colors: [
+                      colors.accentOrange,
+                      colors.accentOrange.withValues(alpha: 0.85),
+                      const Color(0xFFFFB800),
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -106,7 +119,11 @@ class _ReferralBannerState extends State<ReferralBanner> with SingleTickerProvid
                       child: Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [Colors.transparent, Colors.white.withValues(alpha: 0.15), Colors.transparent],
+                            colors: [
+                              Colors.transparent,
+                              Colors.white.withValues(alpha: 0.15),
+                              Colors.transparent,
+                            ],
                             stops: const [0.0, 0.5, 1.0],
                             begin: Alignment.centerLeft,
                             end: Alignment.centerRight,
@@ -124,7 +141,10 @@ class _ReferralBannerState extends State<ReferralBanner> with SingleTickerProvid
                 child: Container(
                   width: 80.w,
                   height: 80.h,
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.1)),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.1),
+                  ),
                 ),
               ),
               Positioned(
@@ -133,7 +153,10 @@ class _ReferralBannerState extends State<ReferralBanner> with SingleTickerProvid
                 child: Container(
                   width: 60.w,
                   height: 60.h,
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.08)),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.08),
+                  ),
                 ),
               ),
 
@@ -146,7 +169,9 @@ class _ReferralBannerState extends State<ReferralBanner> with SingleTickerProvid
                       height: 52.h,
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(KBorderSize.borderSmall),
+                        borderRadius: BorderRadius.circular(
+                          KBorderSize.borderSmall,
+                        ),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.1),
@@ -161,7 +186,10 @@ class _ReferralBannerState extends State<ReferralBanner> with SingleTickerProvid
                           package: 'grab_go_shared',
                           width: 28.w,
                           height: 28.h,
-                          colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                          colorFilter: ColorFilter.mode(
+                            colors.accentOrange,
+                            BlendMode.srcIn,
+                          ),
                         ),
                       ),
                     ),
@@ -204,9 +232,16 @@ class _ReferralBannerState extends State<ReferralBanner> with SingleTickerProvid
                       child: Container(
                         width: 32.w,
                         height: 32.h,
-                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                        ),
                         child: Center(
-                          child: Icon(Icons.close, size: 18.sp, color: Colors.white),
+                          child: Icon(
+                            Icons.close,
+                            size: 18.sp,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),

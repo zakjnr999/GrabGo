@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/shared/services/storage_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
-import 'package:grab_go_customer/shared/services/auth_guard.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -15,7 +14,8 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with TickerProviderStateMixin {
   late AnimationController _fadeController;
   late AnimationController _scaleController;
   late AnimationController _floatingController;
@@ -32,17 +32,31 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   }
 
   void _initializeAnimations() {
-    _fadeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500));
-    _fadeAnimation = CurvedAnimation(parent: _fadeController, curve: Curves.easeIn);
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeIn,
+    );
 
-    _scaleController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000));
-    _scaleAnimation = CurvedAnimation(parent: _scaleController, curve: Curves.elasticOut);
+    _scaleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+    _scaleAnimation = CurvedAnimation(
+      parent: _scaleController,
+      curve: Curves.elasticOut,
+    );
 
-    _floatingController = AnimationController(vsync: this, duration: const Duration(seconds: 3))..repeat(reverse: true);
-    _floatingAnimation = Tween<double>(
-      begin: -10,
-      end: 10,
-    ).animate(CurvedAnimation(parent: _floatingController, curve: Curves.easeInOut));
+    _floatingController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat(reverse: true);
+    _floatingAnimation = Tween<double>(begin: -10, end: 10).animate(
+      CurvedAnimation(parent: _floatingController, curve: Curves.easeInOut),
+    );
 
     _fadeController.forward();
     _scaleController.forward();
@@ -50,12 +64,16 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
   Future<void> _initializeApp() async {
     try {
-      await Future.wait([_performInitialization(), Future.delayed(const Duration(milliseconds: 2000))]);
+      await Future.wait([
+        _performInitialization(),
+        Future.delayed(const Duration(milliseconds: 2000)),
+      ]);
 
       if (!mounted) return;
 
       final router = GoRouter.of(context);
-      final currentLocation = router.routerDelegate.currentConfiguration.uri.path;
+      final currentLocation =
+          router.routerDelegate.currentConfiguration.uri.path;
 
       if (currentLocation != '/' && currentLocation != '') {
         return;
@@ -66,7 +84,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       if (isFirst) {
         context.go("/onboarding");
       } else {
-        await AuthGuard.checkAuthAndRedirect(context);
+        context.go("/homepage");
       }
     } catch (e) {
       debugPrint('Splash screen initialization error: $e');
@@ -134,7 +152,9 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                       child: Opacity(
                         opacity: 0.3,
                         child: Image(
-                          image: Assets.images.splashImage.provider(package: 'grab_go_shared'),
+                          image: Assets.images.splashImage.provider(
+                            package: 'grab_go_shared',
+                          ),
                           fit: BoxFit.cover,
                         ),
                       ),
@@ -210,11 +230,12 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                                     angle: value * 0.15,
                                     child: Opacity(
                                       opacity: value * 0.7,
-                                      child: Assets.images.ingredientThree.image(
-                                        height: 100.h,
-                                        width: 100.w,
-                                        package: 'grab_go_shared',
-                                      ),
+                                      child: Assets.images.ingredientThree
+                                          .image(
+                                            height: 100.h,
+                                            width: 100.w,
+                                            package: 'grab_go_shared',
+                                          ),
                                     ),
                                   ),
                                 );
@@ -276,7 +297,9 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                                 ],
                               ),
                               child: Image(
-                                image: Assets.icons.appIconCustomer.provider(package: 'grab_go_shared'),
+                                image: Assets.icons.appIconCustomer.provider(
+                                  package: 'grab_go_shared',
+                                ),
                                 height: 100.h,
                                 width: 100.w,
                                 color: Colors.white,
@@ -313,7 +336,9 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                                   fontSize: 14.sp,
                                   shadows: [
                                     Shadow(
-                                      color: Colors.black.withValues(alpha: 0.2),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.2,
+                                      ),
                                       blurRadius: 5,
                                       offset: const Offset(0, 2),
                                     ),

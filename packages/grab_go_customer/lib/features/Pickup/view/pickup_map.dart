@@ -112,8 +112,7 @@ class _PickupMapState extends State<PickupMap> {
     super.didChangeDependencies();
     final locationProvider = Provider.of<NativeLocationProvider>(context);
 
-    if (locationProvider.latitude != _lastLat ||
-        locationProvider.longitude != _lastLng) {
+    if (locationProvider.latitude != _lastLat || locationProvider.longitude != _lastLng) {
       final oldLat = _lastLat;
       final oldLng = _lastLng;
 
@@ -144,9 +143,7 @@ class _PickupMapState extends State<PickupMap> {
             _currentPosition = nextPosition;
           });
           if (oldLat != null && oldLng != null && _mapController != null) {
-            _mapController!.animateCamera(
-              CameraUpdate.newLatLngZoom(LatLng(_lastLat!, _lastLng!), 14),
-            );
+            _mapController!.animateCamera(CameraUpdate.newLatLngZoom(LatLng(_lastLat!, _lastLng!), 14));
           }
           _updateUserMarker();
           _loadVendors();
@@ -219,9 +216,7 @@ class _PickupMapState extends State<PickupMap> {
 
       if (position != null && mounted) {
         setState(() => _currentPosition = position);
-        _mapController?.animateCamera(
-          CameraUpdate.newLatLng(LatLng(position.latitude, position.longitude)),
-        );
+        _mapController?.animateCamera(CameraUpdate.newLatLng(LatLng(position.latitude, position.longitude)));
       }
     } catch (e) {
       // Handle error quietly
@@ -230,10 +225,7 @@ class _PickupMapState extends State<PickupMap> {
 
   Future<void> _getCurrentLocation() async {
     try {
-      final locationProvider = Provider.of<NativeLocationProvider>(
-        context,
-        listen: false,
-      );
+      final locationProvider = Provider.of<NativeLocationProvider>(context, listen: false);
 
       if (locationProvider.hasLocation) {
         _lastLat = locationProvider.latitude;
@@ -263,14 +255,10 @@ class _PickupMapState extends State<PickupMap> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever)
-        return;
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) return;
 
       final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-        ),
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
       );
 
       if (!mounted) return;
@@ -279,12 +267,7 @@ class _PickupMapState extends State<PickupMap> {
         _lastLat = position.latitude;
         _lastLng = position.longitude;
       });
-      _mapController?.animateCamera(
-        CameraUpdate.newLatLngZoom(
-          LatLng(position.latitude, position.longitude),
-          14,
-        ),
-      );
+      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(LatLng(position.latitude, position.longitude), 14));
     } catch (e) {
       // Error getting current location
     }
@@ -293,10 +276,7 @@ class _PickupMapState extends State<PickupMap> {
   void _startLocationUpdates() {
     _positionSubscription =
         Geolocator.getPositionStream(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            distanceFilter: 20,
-          ),
+          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 20),
         ).listen(
           (Position position) {
             if (!mounted) return;
@@ -321,11 +301,7 @@ class _PickupMapState extends State<PickupMap> {
     });
     try {
       if (_currentPosition != null) {
-        await vendorProvider.getAllNearbyVendors(
-          _currentPosition!.latitude,
-          _currentPosition!.longitude,
-          radius: 10,
-        );
+        await vendorProvider.getAllNearbyVendors(_currentPosition!.latitude, _currentPosition!.longitude, radius: 10);
       } else {
         await vendorProvider.fetchVendors(VendorType.food, forceRefresh: true);
       }
@@ -366,9 +342,7 @@ class _PickupMapState extends State<PickupMap> {
       setState(() {
         _userMarker = null;
       });
-    } else if (_currentZoom >= 14.0 &&
-        _userMarker == null &&
-        _currentPosition != null) {
+    } else if (_currentZoom >= 14.0 && _userMarker == null && _currentPosition != null) {
       _updateUserMarker();
     }
 
@@ -408,8 +382,7 @@ class _PickupMapState extends State<PickupMap> {
     try {
       final bounds = await _mapController!.getVisibleRegion();
 
-      if (_lastLoadedBounds != null &&
-          !_boundsChangedSignificantly(bounds, _lastLoadedBounds!)) {
+      if (_lastLoadedBounds != null && !_boundsChangedSignificantly(bounds, _lastLoadedBounds!)) {
         return;
       }
       _lastLoadedBounds = bounds;
@@ -419,16 +392,9 @@ class _PickupMapState extends State<PickupMap> {
       );
       final radius = _calculateRadius(bounds);
       if (!mounted) return;
-      final vendorProvider = Provider.of<VendorProvider>(
-        context,
-        listen: false,
-      );
+      final vendorProvider = Provider.of<VendorProvider>(context, listen: false);
 
-      await vendorProvider.getAllNearbyVendors(
-        center.latitude,
-        center.longitude,
-        radius: radius,
-      );
+      await vendorProvider.getAllNearbyVendors(center.latitude, center.longitude, radius: radius);
       if (!mounted) return;
       setState(() {
         _hasAttemptedVendorFetch = true;
@@ -442,16 +408,11 @@ class _PickupMapState extends State<PickupMap> {
     }
   }
 
-  bool _boundsChangedSignificantly(
-    LatLngBounds newBounds,
-    LatLngBounds oldBounds,
-  ) {
+  bool _boundsChangedSignificantly(LatLngBounds newBounds, LatLngBounds oldBounds) {
     const threshold = 0.01;
 
-    final latDiff =
-        (newBounds.northeast.latitude - oldBounds.northeast.latitude).abs();
-    final lngDiff =
-        (newBounds.northeast.longitude - oldBounds.northeast.longitude).abs();
+    final latDiff = (newBounds.northeast.latitude - oldBounds.northeast.latitude).abs();
+    final lngDiff = (newBounds.northeast.longitude - oldBounds.northeast.longitude).abs();
 
     return latDiff > threshold || lngDiff > threshold;
   }
@@ -518,10 +479,7 @@ class _PickupMapState extends State<PickupMap> {
 
     final Set<Polyline> polylines = {};
     if (_selectedVendorId != null && _currentPosition != null) {
-      final vendor = _vendors.cast<VendorModel?>().firstWhere(
-        (v) => v?.id == _selectedVendorId,
-        orElse: () => null,
-      );
+      final vendor = _vendors.cast<VendorModel?>().firstWhere((v) => v?.id == _selectedVendorId, orElse: () => null);
 
       if (vendor != null && vendor.location != null) {
         polylines.add(
@@ -553,10 +511,7 @@ class _PickupMapState extends State<PickupMap> {
 
   Future<void> _updateUserMarker() async {
     if (!mounted || _currentPosition == null || _currentZoom < 14.0) return;
-    final LatLng newPosition = LatLng(
-      _currentPosition!.latitude,
-      _currentPosition!.longitude,
-    );
+    final LatLng newPosition = LatLng(_currentPosition!.latitude, _currentPosition!.longitude);
 
     if (_lastUserMarkerPosition != null) {
       final distance = Geolocator.distanceBetween(
@@ -576,9 +531,7 @@ class _PickupMapState extends State<PickupMap> {
     if (_markerCache.containsKey(userCacheKey)) {
       userIcon = _markerCache[userCacheKey]!;
     } else {
-      userIcon = await CustomMapMarkers.createRiderLocationMarker(
-        primaryColor: colors.accentOrange,
-      );
+      userIcon = await CustomMapMarkers.createRiderLocationMarker(primaryColor: colors.accentOrange);
       _markerCache[userCacheKey] = userIcon;
     }
 
@@ -594,16 +547,11 @@ class _PickupMapState extends State<PickupMap> {
     });
   }
 
-  Future<void> _addVendorMarker(
-    Set<Marker> markers,
-    VendorModel vendor,
-    AppColorsExtension colors,
-  ) async {
+  Future<void> _addVendorMarker(Set<Marker> markers, VendorModel vendor, AppColorsExtension colors) async {
     if (vendor.location == null) return;
 
     final bool isSelected = vendor.id == _selectedVendorId;
-    final cacheKey =
-        'vendor_tap_pin_${_markerStyleVersion}_${vendor.id}_${vendor.vendorTypeEnum.name}';
+    final cacheKey = 'vendor_tap_pin_${_markerStyleVersion}_${vendor.id}_${vendor.vendorTypeEnum.name}';
 
     BitmapDescriptor markerIcon;
     if (_markerCache.containsKey(cacheKey)) {
@@ -638,10 +586,7 @@ class _PickupMapState extends State<PickupMap> {
     );
   }
 
-  List<VendorCluster> _clusterVendors(
-    List<VendorModel> vendors,
-    double zoomLevel,
-  ) {
+  List<VendorCluster> _clusterVendors(List<VendorModel> vendors, double zoomLevel) {
     final clusterDistance = _getClusterDistance(zoomLevel);
 
     final List<VendorCluster> clusters = [];
@@ -649,10 +594,7 @@ class _PickupMapState extends State<PickupMap> {
     while (unclustered.isNotEmpty) {
       final vendor = unclustered.removeAt(0);
       if (vendor.location == null) continue;
-      final cluster = VendorCluster(
-        center: LatLng(vendor.location!.lat, vendor.location!.lng),
-        vendors: [vendor],
-      );
+      final cluster = VendorCluster(center: LatLng(vendor.location!.lat, vendor.location!.lng), vendors: [vendor]);
       unclustered.removeWhere((other) {
         if (other.location == null) return false;
 
@@ -675,10 +617,7 @@ class _PickupMapState extends State<PickupMap> {
           totalLat += v.location!.lat;
           totalLng += v.location!.lng;
         }
-        cluster.center = LatLng(
-          totalLat / cluster.vendors.length,
-          totalLng / cluster.vendors.length,
-        );
+        cluster.center = LatLng(totalLat / cluster.vendors.length, totalLng / cluster.vendors.length);
       }
       clusters.add(cluster);
     }
@@ -693,9 +632,7 @@ class _PickupMapState extends State<PickupMap> {
   }
 
   void _onClusterTapped(VendorCluster cluster) {
-    _mapController?.animateCamera(
-      CameraUpdate.newLatLngZoom(cluster.center, _currentZoom + 2),
-    );
+    _mapController?.animateCamera(CameraUpdate.newLatLngZoom(cluster.center, _currentZoom + 2));
   }
 
   void _onVendorMarkerTapped(VendorModel vendor) {
@@ -710,10 +647,7 @@ class _PickupMapState extends State<PickupMap> {
       _sheetController?.close();
       _sheetController = null;
     }
-    _sheetController = VendorDetailBottomSheet.show(
-      context: context,
-      vendor: vendor,
-    );
+    _sheetController = VendorDetailBottomSheet.show(context: context, vendor: vendor);
     _sheetController?.closed.then((_) {
       if (mounted) {
         setState(() {
@@ -726,16 +660,12 @@ class _PickupMapState extends State<PickupMap> {
   }
 
   void _fitCameraToMarkers() {
-    final Set<Marker> markers = _userMarker == null
-        ? _vendorMarkers
-        : <Marker>{..._vendorMarkers, _userMarker!};
+    final Set<Marker> markers = _userMarker == null ? _vendorMarkers : <Marker>{..._vendorMarkers, _userMarker!};
     if (_mapController == null || markers.isEmpty) {
       return;
     }
     if (markers.length == 1) {
-      _mapController?.animateCamera(
-        CameraUpdate.newLatLngZoom(markers.first.position, 15),
-      );
+      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(markers.first.position, 15));
       return;
     }
     double minLat = double.infinity;
@@ -751,9 +681,7 @@ class _PickupMapState extends State<PickupMap> {
       maxLng = lng > maxLng ? lng : maxLng;
     }
     if (minLat == maxLat && minLng == maxLng) {
-      _mapController?.animateCamera(
-        CameraUpdate.newLatLngZoom(LatLng(minLat, minLng), 15),
-      );
+      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(LatLng(minLat, minLng), 15));
       return;
     }
     const padding = 0.002;
@@ -767,18 +695,11 @@ class _PickupMapState extends State<PickupMap> {
   void _centerOnUser() {
     if (_currentPosition == null || _mapController == null) return;
     _mapController!.animateCamera(
-      CameraUpdate.newLatLngZoom(
-        LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-        15,
-      ),
+      CameraUpdate.newLatLngZoom(LatLng(_currentPosition!.latitude, _currentPosition!.longitude), 15),
     );
   }
 
-  Widget _buildFilterChips(
-    VendorProvider provider,
-    AppColorsExtension colors,
-    bool isDark,
-  ) {
+  Widget _buildFilterChips(VendorProvider provider, AppColorsExtension colors, bool isDark) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: EdgeInsets.symmetric(horizontal: 16.w),
@@ -829,17 +750,14 @@ class _PickupMapState extends State<PickupMap> {
           _buildFilterChip(
             label: 'Near Me',
             isSelected: provider.maxDistance != null,
-            onTap: () => provider.setMaxDistance(
-              provider.maxDistance == null ? 5.0 : null,
-            ),
+            onTap: () => provider.setMaxDistance(provider.maxDistance == null ? 5.0 : null),
             colors: colors,
             isDark: isDark,
           ),
           _buildFilterChip(
             label: 'Top Rated',
             isSelected: provider.minRating != null,
-            onTap: () =>
-                provider.setMinRating(provider.minRating == null ? 4.5 : null),
+            onTap: () => provider.setMinRating(provider.minRating == null ? 4.5 : null),
             colors: colors,
             isDark: isDark,
           ),
@@ -853,16 +771,14 @@ class _PickupMapState extends State<PickupMap> {
           _buildFilterChip(
             label: 'Budget',
             isSelected: provider.priceRange == 1,
-            onTap: () =>
-                provider.setPriceRange(provider.priceRange == 1 ? null : 1),
+            onTap: () => provider.setPriceRange(provider.priceRange == 1 ? null : 1),
             colors: colors,
             isDark: isDark,
           ),
           _buildFilterChip(
             label: 'Mid',
             isSelected: provider.priceRange == 2,
-            onTap: () =>
-                provider.setPriceRange(provider.priceRange == 2 ? null : 2),
+            onTap: () => provider.setPriceRange(provider.priceRange == 2 ? null : 2),
             colors: colors,
             isDark: isDark,
           ),
@@ -887,13 +803,7 @@ class _PickupMapState extends State<PickupMap> {
           decoration: BoxDecoration(
             color: isSelected ? colors.accentOrange : colors.backgroundPrimary,
             borderRadius: BorderRadius.circular(20.r),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(10),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            boxShadow: [BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 8, offset: const Offset(0, 2))],
           ),
           child: Text(
             label,
@@ -931,16 +841,11 @@ class _PickupMapState extends State<PickupMap> {
               onCameraMove: _onCameraMoveDebounced,
               initialCameraPosition: CameraPosition(
                 target: _currentPosition != null
-                    ? LatLng(
-                        _currentPosition!.latitude,
-                        _currentPosition!.longitude,
-                      )
+                    ? LatLng(_currentPosition!.latitude, _currentPosition!.longitude)
                     : const LatLng(5.6037, -0.1870),
                 zoom: 13,
               ),
-              markers: _userMarker == null
-                  ? _vendorMarkers
-                  : <Marker>{..._vendorMarkers, _userMarker!},
+              markers: _userMarker == null ? _vendorMarkers : <Marker>{..._vendorMarkers, _userMarker!},
               rotateGesturesEnabled: false,
               scrollGesturesEnabled: true,
               zoomGesturesEnabled: true,
@@ -956,16 +861,11 @@ class _PickupMapState extends State<PickupMap> {
               mapToolbarEnabled: false,
               compassEnabled: false,
               mapType: MapType.normal,
-              style: GrabGoMapStyles.forBrightness(
-                Theme.of(context).brightness,
-              ),
+              style: GrabGoMapStyles.forBrightness(Theme.of(context).brightness),
             ),
           ),
 
-          if (_isLoading)
-            const Positioned.fill(
-              child: IgnorePointer(child: PickupMapSkeleton()),
-            ),
+          if (_isLoading) const Positioned.fill(child: IgnorePointer(child: PickupMapSkeleton())),
 
           Positioned(
             top: MediaQuery.of(context).padding.top + 10.h,
@@ -984,11 +884,7 @@ class _PickupMapState extends State<PickupMap> {
                       color: colors.backgroundPrimary,
                       borderRadius: BorderRadius.circular(30.r),
                       boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withAlpha(10),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
+                        BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 8, offset: const Offset(0, 2)),
                       ],
                     ),
 
@@ -999,19 +895,12 @@ class _PickupMapState extends State<PickupMap> {
                           package: 'grab_go_shared',
                           width: 20.w,
                           height: 20.w,
-                          colorFilter: ColorFilter.mode(
-                            colors.textPrimary,
-                            BlendMode.srcIn,
-                          ),
+                          colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                         ),
                         SizedBox(width: 12.w),
                         Text(
                           'Search stores and restaurants',
-                          style: TextStyle(
-                            color: colors.textSecondary,
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.normal,
-                          ),
+                          style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.normal),
                         ),
                       ],
                     ),
@@ -1046,10 +935,7 @@ class _PickupMapState extends State<PickupMap> {
             ),
           ),
 
-          if (_hasAttemptedVendorFetch &&
-              !_isLoading &&
-              _errorMessage == null &&
-              _vendors.isEmpty)
+          if (_hasAttemptedVendorFetch && !_isLoading && _errorMessage == null && _vendors.isEmpty)
             Positioned(
               left: 20.w,
               right: 20.w,
@@ -1070,43 +956,17 @@ class _PickupMapState extends State<PickupMap> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Row(
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Container(
-                          padding: EdgeInsets.all(10.r),
-                          decoration: BoxDecoration(
-                            color: colors.accentOrange.withValues(alpha: 0.12),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.map_outlined,
-                            color: colors.accentOrange,
-                            size: 22.r,
-                          ),
+                        Text(
+                          'GrabGo is Not Here Yet',
+                          style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
                         ),
-                        SizedBox(width: 14.w),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'GrabGo is Not Here Yet',
-                                style: TextStyle(
-                                  fontSize: 15.sp,
-                                  fontWeight: FontWeight.w700,
-                                  color: colors.textPrimary,
-                                ),
-                              ),
-                              SizedBox(height: 4.h),
-                              Text(
-                                "We haven't launched in this area yet.",
-                                style: TextStyle(
-                                  fontSize: 12.5.sp,
-                                  color: colors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
+                        SizedBox(height: 4.h),
+                        Text(
+                          "We haven't launched in this area yet.",
+                          style: TextStyle(fontSize: 12.5.sp, color: colors.textSecondary),
                         ),
                       ],
                     ),
@@ -1117,11 +977,7 @@ class _PickupMapState extends State<PickupMap> {
                       backgroundColor: colors.accentOrange,
                       borderRadius: KBorderSize.borderMedium,
                       buttonText: 'Change Location',
-                      textStyle: TextStyle(
-                        fontSize: 14.5.sp,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      textStyle: TextStyle(fontSize: 14.5.sp, color: Colors.white, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
@@ -1133,18 +989,12 @@ class _PickupMapState extends State<PickupMap> {
               child: Container(
                 margin: EdgeInsets.symmetric(horizontal: 32.w),
                 padding: EdgeInsets.all(16.r),
-                decoration: BoxDecoration(
-                  color: colors.backgroundPrimary,
-                  borderRadius: BorderRadius.circular(12.r),
-                ),
+                decoration: BoxDecoration(color: colors.backgroundPrimary, borderRadius: BorderRadius.circular(12.r)),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(_errorMessage!, textAlign: TextAlign.center),
-                    TextButton(
-                      onPressed: _loadVendors,
-                      child: const Text('Retry'),
-                    ),
+                    TextButton(onPressed: _loadVendors, child: const Text('Retry')),
                   ],
                 ),
               ),
@@ -1169,9 +1019,7 @@ Widget _buildMapControlButton({
       shape: BoxShape.circle,
       boxShadow: [
         BoxShadow(
-          color: isDark
-              ? Colors.black.withAlpha(30)
-              : Colors.black.withAlpha(15),
+          color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(15),
           blurRadius: 8,
           offset: const Offset(0, 2),
         ),
