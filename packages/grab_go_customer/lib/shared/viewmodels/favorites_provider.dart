@@ -19,6 +19,7 @@ class FavoriteVendor {
   final String name;
   final String image;
   final List<String> bannerImages;
+  final Map<String, dynamic>? openingHours;
   final String? address;
   final String? city;
   final String? area;
@@ -43,6 +44,7 @@ class FavoriteVendor {
     required this.name,
     required this.image,
     this.bannerImages = const [],
+    this.openingHours,
     this.address,
     this.city,
     this.area,
@@ -84,6 +86,7 @@ class FavoriteVendor {
     'name': name,
     'image': image,
     'bannerImages': bannerImages,
+    'openingHours': openingHours,
     'address': address,
     'city': city,
     'area': area,
@@ -121,6 +124,9 @@ class FavoriteVendor {
               .where((entry) => entry.trim().isNotEmpty)
               .toList(growable: false) ??
           const [],
+      openingHours: json['openingHours'] is Map
+          ? Map<String, dynamic>.from(json['openingHours'] as Map)
+          : null,
       address: json['address']?.toString(),
       city: json['city']?.toString(),
       area: json['area']?.toString(),
@@ -812,6 +818,9 @@ class FavoritesProvider extends ChangeNotifier with CacheMixin {
               .where((entry) => entry.trim().isNotEmpty)
               .toList(growable: false) ??
           const [],
+      openingHours: entity['openingHours'] is Map
+          ? Map<String, dynamic>.from(entity['openingHours'] as Map)
+          : null,
       address: entity['address']?.toString(),
       city: entity['city']?.toString(),
       area: entity['area']?.toString(),

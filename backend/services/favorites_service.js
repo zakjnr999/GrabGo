@@ -3,6 +3,31 @@ const { normalizeRatingResponse } = require('../utils/rating_calculator');
 const { isGrabGoExclusiveActive } = require('../utils/grabgo_exclusive');
 const { isRestaurantOpen } = require('../utils/restaurant');
 
+const DAY_MAP = {
+  0: 'sunday',
+  1: 'monday',
+  2: 'tuesday',
+  3: 'wednesday',
+  4: 'thursday',
+  5: 'friday',
+  6: 'saturday',
+};
+
+const formatOpeningHours = (openingHours) => {
+  if (!Array.isArray(openingHours)) return null;
+
+  return openingHours.reduce((acc, row) => {
+    const key = DAY_MAP[row.dayOfWeek];
+    if (!key) return acc;
+    acc[key] = {
+      open: row.openTime ?? '09:00',
+      close: row.closeTime ?? '21:00',
+      isClosed: Boolean(row.isClosed),
+    };
+    return acc;
+  }, {});
+};
+
 /**
  * Favorites Service (Prisma)
  *
@@ -80,6 +105,14 @@ const FAVORITES_SELECT = {
           averagePreparationTime: true,
           isGrabGoExclusive: true,
           isGrabGoExclusiveUntil: true,
+          openingHours: {
+            select: {
+              dayOfWeek: true,
+              openTime: true,
+              closeTime: true,
+              isClosed: true,
+            },
+          },
         },
       },
     },
@@ -114,6 +147,14 @@ const FAVORITES_SELECT = {
           prescriptionRequired: true,
           isGrabGoExclusive: true,
           isGrabGoExclusiveUntil: true,
+          openingHours: {
+            select: {
+              dayOfWeek: true,
+              openTime: true,
+              closeTime: true,
+              isClosed: true,
+            },
+          },
         },
       },
     },
@@ -349,6 +390,7 @@ const formatVendorFavorite = (entity, type) => {
     totalReviews: ratingMeta.totalReviews,
     reviewCount: ratingMeta.reviewCount,
     categories,
+    openingHours: formatOpeningHours(entity.openingHours),
     isGrabGoExclusiveActive: isGrabGoExclusiveActive(entity),
   };
 };
