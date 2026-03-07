@@ -11,6 +11,9 @@ import 'package:grab_go_customer/features/vendors/model/vendor_model.dart';
 import 'package:grab_go_shared/shared/services/cache_service.dart';
 
 class FoodProvider with ChangeNotifier {
+  static const String _homeNearbyVendorsCacheKey = 'home_nearby_food';
+  static const String _homeExclusiveVendorsCacheKey = 'home_exclusive_food';
+
   final FoodCategoryProvider _categoryProvider;
   final FoodBannerProvider _bannerProvider;
   final FoodDealsProvider _dealsProvider;
@@ -285,6 +288,72 @@ class FoodProvider with ChangeNotifier {
       _dealsProvider.primeFromCache(),
       _discoveryProvider.primeFromCache(),
     ]);
+    _loadHomeVendorsFromCache();
+  }
+
+  void _loadHomeVendorsFromCache() {
+    try {
+      final cachedNearby = CacheService.getVendorsByType(
+        _homeNearbyVendorsCacheKey,
+      );
+      final cachedExclusive = CacheService.getVendorsByType(
+        _homeExclusiveVendorsCacheKey,
+      );
+
+      final nearbyVendors = cachedNearby
+          .map((json) => VendorModel.fromJson(json))
+          .toList(growable: false);
+      final exclusiveVendors = cachedExclusive
+          .map((json) => VendorModel.fromJson(json))
+          .toList(growable: false);
+
+      final hasChanged =
+          !_sameVendorIds(_nearbyVendors, nearbyVendors) ||
+          !_sameVendorIds(_exclusiveVendors, exclusiveVendors);
+
+      _nearbyVendors = nearbyVendors;
+      _exclusiveVendors = exclusiveVendors;
+
+      if (hasChanged) {
+        notifyListeners();
+      }
+    } catch (error) {
+      if (kDebugMode) {
+        print('Error loading home vendor sections from cache: $error');
+      }
+    }
+  }
+
+  Future<void> _saveHomeVendorsToCache() async {
+    try {
+      await Future.wait([
+        CacheService.saveVendorsByType(
+          _homeNearbyVendorsCacheKey,
+          _nearbyVendors
+              .map((vendor) => vendor.toJson())
+              .toList(growable: false),
+        ),
+        CacheService.saveVendorsByType(
+          _homeExclusiveVendorsCacheKey,
+          _exclusiveVendors
+              .map((vendor) => vendor.toJson())
+              .toList(growable: false),
+        ),
+      ]);
+    } catch (error) {
+      if (kDebugMode) {
+        print('Error saving home vendor sections to cache: $error');
+      }
+    }
+  }
+
+  bool _sameVendorIds(List<VendorModel> a, List<VendorModel> b) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].id != b[i].id) return false;
+    }
+    return true;
   }
 
   Future<void> _applyHomeFeed(FoodHomeFeed feed) async {
@@ -304,6 +373,7 @@ class FoodProvider with ChangeNotifier {
 
     _nearbyVendors = feed.nearbyVendors;
     _exclusiveVendors = feed.exclusiveVendors;
+    await _saveHomeVendorsToCache();
     notifyListeners();
   }
 

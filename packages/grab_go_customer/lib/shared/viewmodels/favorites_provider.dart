@@ -18,6 +18,7 @@ class FavoriteVendor {
   final String id;
   final String name;
   final String image;
+  final List<String> bannerImages;
   final String? address;
   final String? city;
   final String? area;
@@ -26,6 +27,13 @@ class FavoriteVendor {
   final bool isAcceptingOrders;
   final bool isVerified;
   final bool featured;
+  final double deliveryFee;
+  final double minOrder;
+  final double rating;
+  final int totalReviews;
+  final List<String> categories;
+  final int averageDeliveryTime;
+  final bool isGrabGoExclusiveActive;
   final DateTime? lastOnlineAt;
   final DateTime? addedAt;
   final FavoriteVendorType type;
@@ -34,6 +42,7 @@ class FavoriteVendor {
     required this.id,
     required this.name,
     required this.image,
+    this.bannerImages = const [],
     this.address,
     this.city,
     this.area,
@@ -42,6 +51,13 @@ class FavoriteVendor {
     required this.isAcceptingOrders,
     required this.isVerified,
     required this.featured,
+    this.deliveryFee = 0,
+    this.minOrder = 0,
+    this.rating = 4.0,
+    this.totalReviews = 0,
+    this.categories = const [],
+    this.averageDeliveryTime = 30,
+    this.isGrabGoExclusiveActive = false,
     this.lastOnlineAt,
     this.addedAt,
     required this.type,
@@ -67,6 +83,7 @@ class FavoriteVendor {
     'id': id,
     'name': name,
     'image': image,
+    'bannerImages': bannerImages,
     'address': address,
     'city': city,
     'area': area,
@@ -75,6 +92,13 @@ class FavoriteVendor {
     'isAcceptingOrders': isAcceptingOrders,
     'isVerified': isVerified,
     'featured': featured,
+    'deliveryFee': deliveryFee,
+    'minOrder': minOrder,
+    'rating': rating,
+    'totalReviews': totalReviews,
+    'categories': categories,
+    'averageDeliveryTime': averageDeliveryTime,
+    'isGrabGoExclusiveActive': isGrabGoExclusiveActive,
     'lastOnlineAt': lastOnlineAt?.toIso8601String(),
     'addedAt': addedAt?.toIso8601String(),
     'type': type.name,
@@ -91,6 +115,12 @@ class FavoriteVendor {
       id: json['id']?.toString() ?? '',
       name: json['name']?.toString() ?? 'Unknown Vendor',
       image: json['image']?.toString() ?? '',
+      bannerImages:
+          (json['bannerImages'] as List<dynamic>?)
+              ?.map((entry) => entry.toString())
+              .where((entry) => entry.trim().isNotEmpty)
+              .toList(growable: false) ??
+          const [],
       address: json['address']?.toString(),
       city: json['city']?.toString(),
       area: json['area']?.toString(),
@@ -102,6 +132,24 @@ class FavoriteVendor {
       ),
       isVerified: _parseBool(json['isVerified'], defaultValue: false),
       featured: _parseBool(json['featured'], defaultValue: false),
+      deliveryFee: _parseDouble(json['deliveryFee']),
+      minOrder: _parseDouble(json['minOrder']),
+      rating: _parseDouble(json['rating'], defaultValue: 4.0),
+      totalReviews: _parseInt(json['totalReviews']),
+      categories:
+          (json['categories'] as List<dynamic>?)
+              ?.map((entry) => entry.toString())
+              .where((entry) => entry.trim().isNotEmpty)
+              .toList(growable: false) ??
+          const [],
+      averageDeliveryTime: _parseInt(
+        json['averageDeliveryTime'],
+        defaultValue: 30,
+      ),
+      isGrabGoExclusiveActive: _parseBool(
+        json['isGrabGoExclusiveActive'],
+        defaultValue: false,
+      ),
       lastOnlineAt: json['lastOnlineAt'] != null
           ? DateTime.tryParse(json['lastOnlineAt'].toString())
           : null,
@@ -720,30 +768,19 @@ class FavoritesProvider extends ChangeNotifier with CacheMixin {
         item['restaurantImage']?.toString() ??
         '';
 
-    return FoodItem(
-      id: id,
-      name: item['name']?.toString() ?? 'Unknown Item',
-      image: item['foodImage']?.toString() ?? item['image']?.toString() ?? '',
-      description: item['description']?.toString() ?? '',
-      sellerName: vendorName,
-      sellerId: vendorId.hashCode,
-      restaurantId: vendorId,
-      restaurantImage: vendorLogo,
-      price: _parseDouble(item['price']),
-      rating: _parseDouble(item['rating'], defaultValue: 0.0),
-      reviewCount: _parseInt(item['reviewCount']),
-      prepTimeMinutes: 0,
-      calories: 0,
-      deliveryTimeMinutes: 30,
-      isAvailable: _parseBool(item['isAvailable'], defaultValue: true),
-      discountPercentage: _parseDouble(item['discountPercentage']),
-      orderCount: _parseInt(item['orderCount']),
-      isRestaurantOpen: _parseBool(
-        vendor?['isOpen'] ?? item['isRestaurantOpen'],
-        defaultValue: true,
-      ),
-      favoriteItemType: sourceType,
-    );
+    final enrichedItem = Map<String, dynamic>.from(item)
+      ..['sellerName'] = vendorName
+      ..['restaurantId'] = vendorId
+      ..['sellerId'] = vendorId
+      ..['restaurantImage'] = vendorLogo
+      ..['favoriteItemType'] = sourceType
+      ..['isRestaurantOpen'] = vendor?['isOpen'] ?? item['isRestaurantOpen']
+      ..['estimatedDeliveryTime'] =
+          item['estimatedDeliveryTime']?.toString().trim().isNotEmpty == true
+          ? item['estimatedDeliveryTime']
+          : '${_parseInt(vendor?['averageDeliveryTime'], defaultValue: 25)}-${_parseInt(vendor?['averageDeliveryTime'], defaultValue: 25) + 10} min';
+
+    return FoodItem.fromJson(enrichedItem);
   }
 
   FavoriteVendor? _mapFavoriteVendor({
@@ -769,6 +806,12 @@ class FavoritesProvider extends ChangeNotifier with CacheMixin {
       id: id,
       name: name,
       image: entity['logo']?.toString() ?? entity['image']?.toString() ?? '',
+      bannerImages:
+          (entity['bannerImages'] as List<dynamic>?)
+              ?.map((entry) => entry.toString())
+              .where((entry) => entry.trim().isNotEmpty)
+              .toList(growable: false) ??
+          const [],
       address: entity['address']?.toString(),
       city: entity['city']?.toString(),
       area: entity['area']?.toString(),
@@ -780,6 +823,24 @@ class FavoritesProvider extends ChangeNotifier with CacheMixin {
       ),
       isVerified: _parseBool(entity['isVerified'], defaultValue: false),
       featured: _parseBool(entity['featured'], defaultValue: false),
+      deliveryFee: _parseDouble(entity['deliveryFee']),
+      minOrder: _parseDouble(entity['minOrder']),
+      rating: _parseDouble(entity['rating'], defaultValue: 4.0),
+      totalReviews: _parseInt(entity['totalReviews']),
+      categories:
+          (entity['categories'] as List<dynamic>?)
+              ?.map((entry) => entry.toString())
+              .where((entry) => entry.trim().isNotEmpty)
+              .toList(growable: false) ??
+          const [],
+      averageDeliveryTime: _parseInt(
+        entity['averageDeliveryTime'],
+        defaultValue: 30,
+      ),
+      isGrabGoExclusiveActive: _parseBool(
+        entity['isGrabGoExclusiveActive'],
+        defaultValue: false,
+      ),
       lastOnlineAt: entity['lastOnlineAt'] != null
           ? DateTime.tryParse(entity['lastOnlineAt'].toString())
           : null,

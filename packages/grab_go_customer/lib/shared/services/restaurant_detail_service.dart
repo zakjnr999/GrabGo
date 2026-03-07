@@ -26,6 +26,13 @@ class RestaurantDetailService {
     return _cache[restaurantId];
   }
 
+  static Map<String, dynamic>? getCachedRestaurantDetails(String restaurantId) {
+    if (restaurantId.isEmpty) return null;
+    final snapshot = _cache[restaurantId];
+    if (snapshot == null) return null;
+    return Map<String, dynamic>.from(snapshot);
+  }
+
   static Future<void> _ensureRestaurantIndexLoaded() async {
     if (_hasLoadedRestaurantIndex) return;
 

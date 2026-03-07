@@ -7,9 +7,9 @@ import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/features/order/model/vendor_review_models.dart';
 import 'package:grab_go_customer/features/order/service/vendor_review_service_wrapper.dart';
 import 'package:grab_go_customer/shared/services/auth_guard.dart';
+import 'package:grab_go_customer/shared/widgets/fractional_star_rating.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
-import 'package:grab_go_shared/shared/utils/app_colors_extension.dart';
-import 'package:grab_go_shared/shared/widgets/app_toast_message.dart';
+import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:intl/intl.dart';
 
 class _ReviewReportOption {
@@ -60,53 +60,47 @@ class VendorReviewsPage extends StatefulWidget {
   State<VendorReviewsPage> createState() => _VendorReviewsPageState();
 }
 
-class _VendorReviewsPageState extends State<VendorReviewsPage> with SingleTickerProviderStateMixin {
+class _VendorReviewsPageState extends State<VendorReviewsPage> {
   static const List<_ReviewReportOption> _reportOptions = [
-    _ReviewReportOption(value: 'abusive_offensive', label: 'Abusive or offensive'),
+    _ReviewReportOption(
+      value: 'abusive_offensive',
+      label: 'Abusive or offensive',
+    ),
     _ReviewReportOption(value: 'spam', label: 'Spam'),
     _ReviewReportOption(value: 'personal_info', label: 'Personal information'),
     _ReviewReportOption(value: 'unrelated', label: 'Unrelated to the vendor'),
-    _ReviewReportOption(value: 'false_misleading', label: 'False or misleading'),
+    _ReviewReportOption(
+      value: 'false_misleading',
+      label: 'False or misleading',
+    ),
   ];
 
-  late TabController _tabController;
-  final VendorReviewServiceWrapper _reviewService = VendorReviewServiceWrapper();
+  final VendorReviewServiceWrapper _reviewService =
+      VendorReviewServiceWrapper();
 
   VendorReviewFeed? _feed;
   bool _isLoading = false;
+  bool _showBodySkeleton = false;
   bool _isReportingReview = false;
   String? _error;
-  String _activeSort = 'popular';
+  static const String _reviewSort = 'latest';
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(_handleTabChange);
     _loadReviews();
   }
 
-  @override
-  void dispose() {
-    _tabController.removeListener(_handleTabChange);
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  void _handleTabChange() {
-    if (_tabController.indexIsChanging) return;
-    final nextSort = _tabController.index == 0 ? 'popular' : 'latest';
-    if (nextSort == _activeSort) return;
-    _loadReviews(sort: nextSort, showLoader: _feed == null);
-  }
-
-  Future<void> _loadReviews({String sort = 'popular', bool showLoader = true}) async {
+  Future<void> _loadReviews({
+    String sort = _reviewSort,
+    bool showLoader = true,
+  }) async {
     if (_isLoading) return;
 
     setState(() {
-      _activeSort = sort;
       _isLoading = true;
       if (showLoader) {
+        _showBodySkeleton = true;
         _error = null;
       }
     });
@@ -125,11 +119,17 @@ class _VendorReviewsPageState extends State<VendorReviewsPage> with SingleTicker
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '').replaceFirst('Failed to load vendor reviews: ', '');
+        _error = e
+            .toString()
+            .replaceFirst('Exception: ', '')
+            .replaceFirst('Failed to load vendor reviews: ', '');
       });
     } finally {
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() {
+          _isLoading = false;
+          _showBodySkeleton = false;
+        });
       }
     }
   }
@@ -155,15 +155,36 @@ class _VendorReviewsPageState extends State<VendorReviewsPage> with SingleTicker
     final colors = context.appColors;
 
     setState(() => _isReportingReview = true);
+    LoadingDialog.instance().show(
+      context: context,
+      text: 'Reporting review...',
+    );
 
     try {
-      await _reviewService.reportVendorReview(reviewId: review.id, reason: reason);
+      await _reviewService.reportVendorReview(
+        reviewId: review.id,
+        reason: reason,
+      );
+      LoadingDialog.instance().hide();
       if (!mounted) return;
-      AppToastMessage.show(context: context, message: 'Review reported. We will take a look.');
+      AppToastMessage.show(
+        context: context,
+        message: 'Review reported. We will take a look.',
+        backgroundColor: colors.accentOrange,
+      );
     } catch (e) {
+      LoadingDialog.instance().hide();
       if (!mounted) return;
-      final message = e.toString().replaceFirst('Exception: ', '').replaceFirst('Failed to report vendor review: ', '');
-      AppToastMessage.show(context: context, message: message, backgroundColor: colors.error, maxLines: 3);
+      final message = e
+          .toString()
+          .replaceFirst('Exception: ', '')
+          .replaceFirst('Failed to report vendor review: ', '');
+      AppToastMessage.show(
+        context: context,
+        message: message,
+        backgroundColor: colors.error,
+        maxLines: 3,
+      );
     } finally {
       if (mounted) {
         setState(() => _isReportingReview = false);
@@ -176,34 +197,72 @@ class _VendorReviewsPageState extends State<VendorReviewsPage> with SingleTicker
     return showModalBottomSheet<String>(
       context: context,
       backgroundColor: colors.backgroundPrimary,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24.r))),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+      ),
       builder: (context) {
         return SafeArea(
           top: false,
           child: Padding(
-            padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 20.h),
+            padding: EdgeInsets.symmetric(vertical: 12.h),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Report review',
-                  style: TextStyle(color: colors.textPrimary, fontSize: 18.sp, fontWeight: FontWeight.w700),
+                Center(
+                  child: Container(
+                    width: 40.w,
+                    height: 4.h,
+                    decoration: BoxDecoration(
+                      color: colors.textSecondary.withAlpha(110),
+                      borderRadius: BorderRadius.circular(999.r),
+                    ),
+                  ),
                 ),
-                SizedBox(height: 8.h),
-                Text(
-                  'Choose the reason that best matches this review.',
-                  style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w500),
+                SizedBox(height: 12.h),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20.h),
+                  child: Text(
+                    'Report review',
+                    style: TextStyle(
+                      color: colors.textPrimary,
+                      fontSize: 18.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                SizedBox(height: 4.h),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20.h),
+                  child: Text(
+                    'Choose the reason that best matches this review.',
+                    style: TextStyle(
+                      color: colors.textSecondary,
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
                 SizedBox(height: 16.h),
                 ..._reportOptions.map((option) {
                   return ListTile(
-                    contentPadding: EdgeInsets.zero,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 20.w),
                     title: Text(
                       option.label,
-                      style: TextStyle(color: colors.textPrimary, fontSize: 15.sp, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 15.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                    trailing: Icon(Icons.chevron_right_rounded, color: colors.textSecondary),
+                    trailing: SvgPicture.asset(
+                      Assets.icons.navArrowRight,
+                      package: 'grab_go_shared',
+                      colorFilter: ColorFilter.mode(
+                        colors.textSecondary,
+                        BlendMode.srcIn,
+                      ),
+                    ),
                     onTap: () => Navigator.of(context).pop(option.value),
                   );
                 }),
@@ -223,14 +282,17 @@ class _VendorReviewsPageState extends State<VendorReviewsPage> with SingleTicker
     final feed = _feed;
     final vendorSnapshot = feed?.vendor;
     final displayRating = vendorSnapshot?.rating ?? widget.initialRating;
-    final displayReviewCount = vendorSnapshot?.totalReviews ?? widget.initialReviewCount;
+    final displayReviewCount =
+        vendorSnapshot?.totalReviews ?? widget.initialReviewCount;
 
     final systemUiOverlayStyle = SystemUiOverlayStyle(
       statusBarColor: colors.backgroundPrimary,
       statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       systemNavigationBarColor: colors.backgroundPrimary,
       systemNavigationBarDividerColor: Colors.transparent,
-      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      systemNavigationBarIconBrightness: isDark
+          ? Brightness.light
+          : Brightness.dark,
     );
 
     SystemChrome.setSystemUIOverlayStyle(systemUiOverlayStyle);
@@ -239,16 +301,24 @@ class _VendorReviewsPageState extends State<VendorReviewsPage> with SingleTicker
       child: Scaffold(
         backgroundColor: colors.backgroundPrimary,
         body: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: EdgeInsets.only(top: padding.top + 10, left: 20.w, right: 20.w, bottom: 16.h),
+              padding: EdgeInsets.only(
+                top: padding.top + 10,
+                left: 20.w,
+                right: 20.w,
+                bottom: 16.h,
+              ),
               child: Row(
                 children: [
                   Container(
                     height: 44,
                     width: 44,
-                    decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
+                    decoration: BoxDecoration(
+                      color: colors.backgroundSecondary,
+                      shape: BoxShape.circle,
+                    ),
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
@@ -259,7 +329,10 @@ class _VendorReviewsPageState extends State<VendorReviewsPage> with SingleTicker
                           child: SvgPicture.asset(
                             Assets.icons.navArrowLeft,
                             package: 'grab_go_shared',
-                            colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                            colorFilter: ColorFilter.mode(
+                              colors.textPrimary,
+                              BlendMode.srcIn,
+                            ),
                           ),
                         ),
                       ),
@@ -285,7 +358,11 @@ class _VendorReviewsPageState extends State<VendorReviewsPage> with SingleTicker
                           widget.vendorName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                            color: colors.textSecondary,
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ],
                     ),
@@ -293,258 +370,308 @@ class _VendorReviewsPageState extends State<VendorReviewsPage> with SingleTicker
                 ],
               ),
             ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(20.w, 0.h, 20.w, 8.h),
-              child: Row(
-                children: [
-                  Row(
-                    children: List.generate(
-                      5,
-                      (index) => Padding(
-                        padding: EdgeInsets.only(right: 2.w),
-                        child: SvgPicture.asset(
-                          Assets.icons.starSolid,
-                          package: 'grab_go_shared',
-                          height: 24.h,
-                          width: 24.w,
-                          colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
-                        ),
+            Divider(
+              color: colors.backgroundSecondary,
+              height: 1.h,
+              thickness: 1,
+            ),
+            Expanded(
+              child: AppRefreshIndicator(
+                bgColor: colors.accentOrange,
+                iconPath: Assets.icons.star,
+                onRefresh: () =>
+                    _loadReviews(sort: _reviewSort, showLoader: true),
+                child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
+                  ),
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: _buildSummarySection(
+                        colors,
+                        feed,
+                        displayRating,
+                        displayReviewCount,
                       ),
                     ),
-                  ),
-                  SizedBox(width: 10.w),
-                  Text(
-                    displayRating.toStringAsFixed(1),
-                    style: TextStyle(color: colors.textPrimary, fontSize: 24.sp, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.w),
-              child: Text(
-                displayReviewCount > 0
-                    ? 'Based on $displayReviewCount ${displayReviewCount == 1 ? 'review' : 'reviews'}'
-                    : 'No reviews yet',
-                style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w400),
-              ),
-            ),
-            if (feed != null && feed.breakdown.isNotEmpty) ...[
-              SizedBox(height: 14.h),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20.w),
-                child: Column(
-                  children: List.generate(5, (index) {
-                    final rating = 5 - index;
-                    final count = feed.breakdown[rating] ?? 0;
-                    final total = feed.vendor.totalReviews <= 0 ? 1 : feed.vendor.totalReviews;
-                    final fraction = count / total;
-
-                    return Padding(
-                      padding: EdgeInsets.only(bottom: 6.h),
-                      child: Row(
-                        children: [
-                          SizedBox(
-                            width: 18.w,
-                            child: Text(
-                              '$rating',
-                              style: TextStyle(
-                                color: colors.textSecondary,
-                                fontSize: 12.sp,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 8.w),
-                          Expanded(
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(999.r),
-                              child: LinearProgressIndicator(
-                                value: fraction.clamp(0.0, 1.0),
-                                minHeight: 6.h,
-                                backgroundColor: colors.backgroundSecondary,
-                                valueColor: AlwaysStoppedAnimation<Color>(colors.accentOrange),
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 8.w),
-                          SizedBox(
-                            width: 24.w,
-                            child: Text(
-                              '$count',
-                              textAlign: TextAlign.right,
-                              style: TextStyle(
-                                color: colors.textSecondary,
-                                fontSize: 12.sp,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
+                    ..._buildReviewSlivers(colors),
+                  ],
                 ),
               ),
-            ],
-            SizedBox(height: 16.h),
-            Container(
-              decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: colors.inputBorder.withValues(alpha: 0.5), width: 1)),
-              ),
-              child: TabBar(
-                controller: _tabController,
-                labelColor: colors.accentOrange,
-                unselectedLabelColor: colors.textSecondary,
-                labelStyle: TextStyle(
-                  fontSize: 15.sp,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'Lato',
-                  package: 'grab_go_shared',
-                ),
-                unselectedLabelStyle: TextStyle(
-                  fontSize: 15.sp,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'Lato',
-                  package: 'grab_go_shared',
-                ),
-                indicatorColor: colors.accentOrange,
-                indicatorWeight: 3,
-                indicatorSize: TabBarIndicatorSize.tab,
-                dividerColor: Colors.transparent,
-                splashFactory: NoSplash.splashFactory,
-                overlayColor: WidgetStateProperty.all(Colors.transparent),
-                tabs: const [
-                  Tab(text: 'Popular'),
-                  Tab(text: 'Latest'),
-                ],
-              ),
             ),
-            Expanded(child: _buildBody(colors)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildBody(AppColorsExtension colors) {
-    if (_isLoading && _feed == null) {
-      return ListView.separated(
-        padding: EdgeInsets.symmetric(vertical: 16.h),
-        itemCount: 6,
-        separatorBuilder: (context, index) =>
-            Divider(color: colors.backgroundSecondary, height: 1, thickness: 1, indent: 20, endIndent: 20),
-        itemBuilder: (context, index) => Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 130.w,
-                height: 14.h,
-                decoration: BoxDecoration(
-                  color: colors.backgroundSecondary,
-                  borderRadius: BorderRadius.circular(999.r),
+  Widget _buildSummarySection(
+    AppColorsExtension colors,
+    VendorReviewFeed? feed,
+    double displayRating,
+    int displayReviewCount,
+  ) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 16.h),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(20.w, 0.h, 20.w, 8.h),
+            child: Row(
+              children: [
+                FractionalStarRating(
+                  rating: displayRating,
+                  size: 24,
+                  spacing: 2,
                 ),
-              ),
-              SizedBox(height: 10.h),
-              Container(
-                width: double.infinity,
-                height: 12.h,
-                decoration: BoxDecoration(
-                  color: colors.backgroundSecondary,
-                  borderRadius: BorderRadius.circular(999.r),
+                SizedBox(width: 10.w),
+                Text(
+                  displayRating.toStringAsFixed(1),
+                  style: TextStyle(
+                    color: colors.textPrimary,
+                    fontSize: 24.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              SizedBox(height: 6.h),
-              Container(
-                width: 0.65.sw,
-                height: 12.h,
-                decoration: BoxDecoration(
-                  color: colors.backgroundSecondary,
-                  borderRadius: BorderRadius.circular(999.r),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      );
-    }
-
-    if (_error != null && _feed == null) {
-      return Center(
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 24.w),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                _error!,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.w),
+            child: Text(
+              displayReviewCount > 0
+                  ? 'Based on $displayReviewCount ${displayReviewCount == 1 ? 'review' : 'reviews'}'
+                  : 'No reviews yet',
+              style: TextStyle(
+                color: colors.textSecondary,
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w400,
               ),
-              SizedBox(height: 16.h),
-              TextButton(
-                onPressed: () => _loadReviews(sort: _activeSort),
-                child: Text(
-                  'Retry',
-                  style: TextStyle(color: colors.accentOrange, fontSize: 14.sp, fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      );
-    }
+          if (feed != null && feed.breakdown.isNotEmpty) ...[
+            SizedBox(height: 14.h),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.w),
+              child: Column(
+                children: List.generate(5, (index) {
+                  final rating = 5 - index;
+                  final count = feed.breakdown[rating] ?? 0;
+                  final total = feed.vendor.totalReviews <= 0
+                      ? 1
+                      : feed.vendor.totalReviews;
+                  final fraction = count / total;
 
-    final feed = _feed;
-    if (feed == null || feed.reviews.isEmpty) {
-      return Center(
-        child: Text(
-          'No comments yet for this vendor.',
-          style: TextStyle(color: colors.textSecondary, fontSize: 15.sp, fontWeight: FontWeight.w500),
-        ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: () => _loadReviews(sort: _activeSort, showLoader: false),
-      child: ListView.separated(
-        padding: EdgeInsets.symmetric(vertical: 10.h),
-        itemCount: feed.reviews.length,
-        separatorBuilder: (context, index) =>
-            Divider(color: colors.backgroundSecondary, height: 1, thickness: 1, indent: 20, endIndent: 20),
-        itemBuilder: (context, index) {
-          final review = feed.reviews[index];
-          return _buildReviewCard(colors, review);
-        },
+                  return Padding(
+                    padding: EdgeInsets.only(bottom: 6.h),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 18.w,
+                          child: Text(
+                            '$rating',
+                            style: TextStyle(
+                              color: colors.textSecondary,
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 8.w),
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(999.r),
+                            child: LinearProgressIndicator(
+                              value: fraction.clamp(0.0, 1.0),
+                              minHeight: 6.h,
+                              backgroundColor: colors.backgroundSecondary,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                colors.accentOrange,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 8.w),
+                        SizedBox(
+                          width: 24.w,
+                          child: Text(
+                            '$count',
+                            textAlign: TextAlign.right,
+                            style: TextStyle(
+                              color: colors.textSecondary,
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
 
+  List<Widget> _buildReviewSlivers(AppColorsExtension colors) {
+    if (_showBodySkeleton || (_isLoading && _feed == null)) {
+      return [
+        SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, index) => Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 130.w,
+                    height: 14.h,
+                    decoration: BoxDecoration(
+                      color: colors.backgroundSecondary,
+                      borderRadius: BorderRadius.circular(999.r),
+                    ),
+                  ),
+                  SizedBox(height: 10.h),
+                  Container(
+                    width: double.infinity,
+                    height: 12.h,
+                    decoration: BoxDecoration(
+                      color: colors.backgroundSecondary,
+                      borderRadius: BorderRadius.circular(999.r),
+                    ),
+                  ),
+                  SizedBox(height: 6.h),
+                  Container(
+                    width: 0.65.sw,
+                    height: 12.h,
+                    decoration: BoxDecoration(
+                      color: colors.backgroundSecondary,
+                      borderRadius: BorderRadius.circular(999.r),
+                    ),
+                  ),
+                  SizedBox(height: 14.h),
+                  Divider(
+                    color: colors.backgroundSecondary,
+                    height: 1,
+                    thickness: 1,
+                  ),
+                ],
+              ),
+            ),
+            childCount: 6,
+          ),
+        ),
+      ];
+    }
+
+    if (_error != null && _feed == null) {
+      return [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24.w),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    _error!,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: colors.textSecondary,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  SizedBox(height: 16.h),
+                  TextButton(
+                    onPressed: () => _loadReviews(sort: _reviewSort),
+                    child: Text(
+                      'Retry',
+                      style: TextStyle(
+                        color: colors.accentOrange,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ];
+    }
+
+    final feed = _feed;
+    if (feed == null || feed.reviews.isEmpty) {
+      return [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(
+            child: Text(
+              'No comments yet for this vendor.',
+              style: TextStyle(
+                color: colors.textSecondary,
+                fontSize: 15.sp,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
+      ];
+    }
+
+    return [
+      SliverList(
+        delegate: SliverChildBuilderDelegate((context, index) {
+          final review = feed.reviews[index];
+          return Column(
+            children: [
+              _buildReviewCard(colors, review),
+              Divider(
+                color: colors.backgroundSecondary,
+                height: 1,
+                thickness: 1,
+                indent: 20,
+                endIndent: 20,
+              ),
+            ],
+          );
+        }, childCount: feed.reviews.length),
+      ),
+    ];
+  }
+
   Widget _buildReviewCard(AppColorsExtension colors, VendorReviewEntry review) {
     final createdAt = review.createdAt;
-    final subtitle = createdAt == null
-        ? review.reviewer.name
-        : '${review.reviewer.name} • ${DateFormat('MMM d, yyyy').format(createdAt.toLocal())}';
+    final Size size = MediaQuery.sizeOf(context);
+    final reviewDate = createdAt == null
+        ? null
+        : DateFormat('MMM d, yyyy').format(createdAt.toLocal());
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildAvatar(colors, review.reviewer),
+              _buildAvatar(colors, review.reviewer, size),
               SizedBox(width: 12.w),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      subtitle,
-                      style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w700),
+                    _buildReviewerMeta(
+                      colors,
+                      review.reviewer.name,
+                      reviewDate,
                     ),
                     SizedBox(height: 6.h),
                     Row(
@@ -553,12 +680,16 @@ class _VendorReviewsPageState extends State<VendorReviewsPage> with SingleTicker
                         (index) => Padding(
                           padding: EdgeInsets.only(right: 2.w),
                           child: SvgPicture.asset(
-                            index < review.rating ? Assets.icons.starSolid : Assets.icons.star,
+                            index < review.rating
+                                ? Assets.icons.starSolid
+                                : Assets.icons.star,
                             package: 'grab_go_shared',
-                            height: 14.h,
-                            width: 14.w,
+                            height: 13,
+                            width: 13,
                             colorFilter: ColorFilter.mode(
-                              index < review.rating ? colors.accentOrange : colors.divider,
+                              index < review.rating
+                                  ? colors.accentOrange
+                                  : colors.divider,
                               BlendMode.srcIn,
                             ),
                           ),
@@ -569,9 +700,20 @@ class _VendorReviewsPageState extends State<VendorReviewsPage> with SingleTicker
                 ),
               ),
               IconButton(
-                onPressed: _isReportingReview ? null : () => _reportReview(review),
+                onPressed: _isReportingReview
+                    ? null
+                    : () => _reportReview(review),
                 splashRadius: 18.r,
-                icon: Icon(Icons.more_horiz_rounded, color: colors.textSecondary, size: 20.sp),
+                icon: SvgPicture.asset(
+                  Assets.icons.flag,
+                  height: 15,
+                  width: 15,
+                  package: 'grab_go_shared',
+                  colorFilter: ColorFilter.mode(
+                    colors.textSecondary,
+                    BlendMode.srcIn,
+                  ),
+                ),
               ),
             ],
           ),
@@ -579,7 +721,12 @@ class _VendorReviewsPageState extends State<VendorReviewsPage> with SingleTicker
             SizedBox(height: 12.h),
             Text(
               review.comment!.trim(),
-              style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w400, height: 1.45),
+              style: TextStyle(
+                color: colors.textPrimary,
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w400,
+                height: 1.45,
+              ),
             ),
           ],
           if (review.feedbackTags.isNotEmpty) ...[
@@ -590,14 +737,21 @@ class _VendorReviewsPageState extends State<VendorReviewsPage> with SingleTicker
               children: review.feedbackTags
                   .map((tag) {
                     return Container(
-                      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 10.w,
+                        vertical: 4.h,
+                      ),
                       decoration: BoxDecoration(
                         color: colors.backgroundSecondary,
                         borderRadius: BorderRadius.circular(999.r),
                       ),
                       child: Text(
                         tag,
-                        style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          color: colors.textSecondary,
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     );
                   })
@@ -609,28 +763,93 @@ class _VendorReviewsPageState extends State<VendorReviewsPage> with SingleTicker
     );
   }
 
-  Widget _buildAvatar(AppColorsExtension colors, VendorReviewReviewer reviewer) {
-    final imageUrl = reviewer.profilePicture?.trim();
-    if (imageUrl != null && imageUrl.isNotEmpty) {
-      return ClipOval(
-        child: CachedNetworkImage(
-          imageUrl: imageUrl,
-          width: 40.w,
-          height: 40.w,
-          fit: BoxFit.cover,
-          errorWidget: (context, url, error) => _buildAvatarFallback(colors),
+  Widget _buildReviewerMeta(
+    AppColorsExtension colors,
+    String reviewerName,
+    String? reviewDate,
+  ) {
+    if (reviewDate == null || reviewDate.isEmpty) {
+      return Text(
+        reviewerName,
+        style: TextStyle(
+          color: colors.textPrimary,
+          fontSize: 14.sp,
+          fontWeight: FontWeight.w700,
         ),
       );
     }
-    return _buildAvatarFallback(colors);
+
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 6.w,
+      runSpacing: 2.h,
+      children: [
+        Text(
+          reviewerName,
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        Container(
+          width: 4.w,
+          height: 4.w,
+          decoration: BoxDecoration(
+            color: colors.textSecondary.withAlpha(110),
+            borderRadius: BorderRadius.circular(999.r),
+          ),
+        ),
+        Text(
+          reviewDate,
+          style: TextStyle(
+            color: colors.textSecondary,
+            fontSize: 13.sp,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
   }
 
-  Widget _buildAvatarFallback(AppColorsExtension colors) {
-    return Container(
-      width: 40.w,
-      height: 40.w,
-      decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
-      child: Icon(Icons.person_outline, size: 20.sp, color: colors.textSecondary),
+  Widget _buildAvatar(
+    AppColorsExtension colors,
+    VendorReviewReviewer reviewer,
+    Size size,
+  ) {
+    final imageUrl = reviewer.profilePicture?.trim();
+    final double avatarSize = size.width * 0.10;
+    return ClipOval(
+      child: CachedNetworkImage(
+        height: avatarSize,
+        width: avatarSize,
+        fit: BoxFit.cover,
+        imageUrl: ImageOptimizer.getPreviewUrl(imageUrl ?? '', width: 200),
+        memCacheWidth: 200,
+        maxHeightDiskCache: 200,
+        placeholder: (context, url) => Container(
+          height: avatarSize,
+          width: avatarSize,
+          padding: EdgeInsets.all(12.r),
+          color: colors.accentOrange.withValues(alpha: 0.1),
+          child: SvgPicture.asset(
+            Assets.icons.user,
+            package: "grab_go_shared",
+            colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+          ),
+        ),
+        errorWidget: (context, url, error) => Container(
+          height: avatarSize,
+          width: avatarSize,
+          padding: EdgeInsets.all(12.r),
+          color: colors.accentOrange.withValues(alpha: 0.1),
+          child: SvgPicture.asset(
+            Assets.icons.user,
+            package: "grab_go_shared",
+            colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+          ),
+        ),
+      ),
     );
   }
 }

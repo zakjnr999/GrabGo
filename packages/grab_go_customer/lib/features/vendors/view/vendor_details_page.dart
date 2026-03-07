@@ -58,6 +58,7 @@ class _VendorDetailsPageState extends State<VendorDetailsPage> {
   bool _isMenuSearchVisible = false;
   bool _isLoadingVendorDetails = true;
   bool _isLoadingItems = true;
+  bool _showFloatingOverviewCard = true;
   String? _itemsError;
 
   String get _publicVendorType {
@@ -85,7 +86,12 @@ class _VendorDetailsPageState extends State<VendorDetailsPage> {
 
   void _handleScroll() {
     if (!mounted) return;
-    setState(() {});
+    final nextShowFloatingOverviewCard = _scrollController.offset < 60.0;
+    if (nextShowFloatingOverviewCard == _showFloatingOverviewCard) return;
+
+    setState(() {
+      _showFloatingOverviewCard = nextShowFloatingOverviewCard;
+    });
   }
 
   @override
@@ -472,10 +478,6 @@ class _VendorDetailsPageState extends State<VendorDetailsPage> {
     final popularSectionHeight = popularCardImageHeight + 106.h;
     final expandedHeight = size.height * 0.20;
     final overviewCardTop = expandedHeight - overviewCardOverlap + 40.h;
-    final scrollOffset = _scrollController.hasClients
-        ? _scrollController.offset
-        : 0.0;
-    final showFloatingOverviewCard = scrollOffset < 60.0;
     final heroImageUrl = _isLoadingVendorDetails
         ? _heroImageUrlFor(widget.vendor, allowLogoFallback: false)
         : (_heroImageUrlFor(_vendor, allowLogoFallback: false) ??
@@ -903,15 +905,15 @@ class _VendorDetailsPageState extends State<VendorDetailsPage> {
               right: 20.w,
               top: overviewCardTop,
               child: IgnorePointer(
-                ignoring: !showFloatingOverviewCard,
+                ignoring: !_showFloatingOverviewCard,
                 child: AnimatedSlide(
-                  offset: showFloatingOverviewCard
+                  offset: _showFloatingOverviewCard
                       ? Offset.zero
                       : const Offset(0, -0.08),
                   duration: const Duration(milliseconds: 180),
                   curve: Curves.easeOut,
                   child: AnimatedOpacity(
-                    opacity: showFloatingOverviewCard ? 1 : 0,
+                    opacity: _showFloatingOverviewCard ? 1 : 0,
                     duration: const Duration(milliseconds: 160),
                     curve: Curves.easeOut,
                     child: _buildVendorOverviewCard(colors, accentColor),

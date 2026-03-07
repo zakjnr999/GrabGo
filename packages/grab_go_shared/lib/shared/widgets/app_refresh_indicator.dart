@@ -27,6 +27,7 @@ class AppRefreshIndicator extends StatelessWidget {
       onRefresh: onRefresh,
       builder: (context, child, controller) {
         return Stack(
+          fit: StackFit.expand,
           children: [
             child,
             if (controller.state != IndicatorState.idle)
@@ -73,7 +74,9 @@ class AppRefreshIndicator extends StatelessWidget {
               ],
             ),
             child: Center(
-              child: controller.state.isLoading ? _LoadingAnimation(iconPath: iconPath) : _buildPullIcon(rotation),
+              child: controller.state.isLoading
+                  ? _LoadingAnimation(iconPath: iconPath)
+                  : _buildPullIcon(rotation),
             ),
           ),
         ),
@@ -104,13 +107,17 @@ class _LoadingAnimation extends StatefulWidget {
   State<_LoadingAnimation> createState() => _LoadingAnimationState();
 }
 
-class _LoadingAnimationState extends State<_LoadingAnimation> with SingleTickerProviderStateMixin {
+class _LoadingAnimationState extends State<_LoadingAnimation>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(milliseconds: 1500), vsync: this)..repeat();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat();
   }
 
   @override
@@ -124,7 +131,10 @@ class _LoadingAnimationState extends State<_LoadingAnimation> with SingleTickerP
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
-        return Transform.rotate(angle: _controller.value * math.pi * 2, child: child);
+        return Transform.rotate(
+          angle: _controller.value * math.pi * 2,
+          child: child,
+        );
       },
       child: SvgPicture.asset(
         widget.iconPath ?? Assets.icons.utensilsCrossed,

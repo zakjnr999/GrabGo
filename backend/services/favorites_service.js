@@ -1,4 +1,6 @@
 const prisma = require('../config/prisma');
+const { normalizeRatingResponse } = require('../utils/rating_calculator');
+const { isGrabGoExclusiveActive } = require('../utils/grabgo_exclusive');
 
 /**
  * Favorites Service (Prisma)
@@ -16,6 +18,9 @@ const FAVORITES_SELECT = {
           id: true,
           restaurantName: true,
           logo: true,
+          bannerImages: true,
+          description: true,
+          foodType: true,
           address: true,
           city: true,
           area: true,
@@ -25,6 +30,15 @@ const FAVORITES_SELECT = {
           isVerified: true,
           featured: true,
           lastOnlineAt: true,
+          deliveryFee: true,
+          minOrder: true,
+          rating: true,
+          ratingCount: true,
+          totalReviews: true,
+          averageDeliveryTime: true,
+          averagePreparationTime: true,
+          isGrabGoExclusive: true,
+          isGrabGoExclusiveUntil: true,
         },
       },
     },
@@ -37,6 +51,8 @@ const FAVORITES_SELECT = {
           id: true,
           storeName: true,
           logo: true,
+          description: true,
+          storeType: true,
           address: true,
           city: true,
           area: true,
@@ -46,6 +62,15 @@ const FAVORITES_SELECT = {
           isVerified: true,
           featured: true,
           lastOnlineAt: true,
+          deliveryFee: true,
+          minOrder: true,
+          rating: true,
+          ratingCount: true,
+          totalReviews: true,
+          averageDeliveryTime: true,
+          averagePreparationTime: true,
+          isGrabGoExclusive: true,
+          isGrabGoExclusiveUntil: true,
         },
       },
     },
@@ -58,6 +83,8 @@ const FAVORITES_SELECT = {
           id: true,
           storeName: true,
           logo: true,
+          bannerImages: true,
+          description: true,
           address: true,
           city: true,
           area: true,
@@ -67,6 +94,17 @@ const FAVORITES_SELECT = {
           isVerified: true,
           featured: true,
           lastOnlineAt: true,
+          deliveryFee: true,
+          minOrder: true,
+          rating: true,
+          ratingCount: true,
+          totalReviews: true,
+          averageDeliveryTime: true,
+          averagePreparationTime: true,
+          emergencyService: true,
+          prescriptionRequired: true,
+          isGrabGoExclusive: true,
+          isGrabGoExclusiveUntil: true,
         },
       },
     },
@@ -79,6 +117,10 @@ const FAVORITES_SELECT = {
           id: true,
           storeName: true,
           logo: true,
+          bannerImages: true,
+          description: true,
+          services: true,
+          productTypes: true,
           address: true,
           city: true,
           area: true,
@@ -88,6 +130,14 @@ const FAVORITES_SELECT = {
           isVerified: true,
           featured: true,
           lastOnlineAt: true,
+          deliveryFee: true,
+          minOrder: true,
+          rating: true,
+          ratingCount: true,
+          totalReviews: true,
+          is24Hours: true,
+          isGrabGoExclusive: true,
+          isGrabGoExclusiveUntil: true,
         },
       },
     },
@@ -101,14 +151,24 @@ const FAVORITES_SELECT = {
           name: true,
           price: true,
           foodImage: true,
+          description: true,
           isAvailable: true,
           rating: true,
           totalReviews: true,
+          discountPercentage: true,
+          discountEndDate: true,
+          orderCount: true,
+          prepTimeMinutes: true,
           restaurant: {
             select: {
               id: true,
               restaurantName: true,
               logo: true,
+              rating: true,
+              ratingCount: true,
+              totalReviews: true,
+              isOpen: true,
+              averageDeliveryTime: true,
             },
           },
         },
@@ -124,14 +184,19 @@ const FAVORITES_SELECT = {
           name: true,
           price: true,
           image: true,
+          description: true,
           isAvailable: true,
           rating: true,
           reviewCount: true,
+          discountPercentage: true,
+          discountEndDate: true,
+          orderCount: true,
           store: {
             select: {
               id: true,
               storeName: true,
               logo: true,
+              isOpen: true,
             },
           },
         },
@@ -147,14 +212,19 @@ const FAVORITES_SELECT = {
           name: true,
           price: true,
           image: true,
+          description: true,
           isAvailable: true,
           rating: true,
           reviewCount: true,
+          discountPercentage: true,
+          discountEndDate: true,
+          orderCount: true,
           store: {
             select: {
               id: true,
               storeName: true,
               logo: true,
+              isOpen: true,
             },
           },
         },
@@ -170,14 +240,19 @@ const FAVORITES_SELECT = {
           name: true,
           price: true,
           image: true,
+          description: true,
           isAvailable: true,
           rating: true,
           reviewCount: true,
+          discountPercentage: true,
+          discountEndDate: true,
+          orderCount: true,
           store: {
             select: {
               id: true,
               storeName: true,
               logo: true,
+              isOpen: true,
             },
           },
         },
@@ -219,53 +294,137 @@ const assertTargetExists = async (delegate, id, label) => {
   }
 };
 
+const formatVendorFavorite = (entity, type) => {
+  if (!entity) return null;
+
+  const ratingMeta = normalizeRatingResponse({
+    rating: entity.rating,
+    ratingCount: entity.ratingCount,
+    totalReviews: entity.totalReviews,
+  });
+
+  const categories = (() => {
+    if (type === 'restaurant') {
+      return entity.foodType ? [entity.foodType] : [];
+    }
+    if (type === 'groceryStore') {
+      return entity.storeType ? [entity.storeType] : ['Grocery Store'];
+    }
+    if (type === 'pharmacyStore') {
+      return ['Pharmacy'];
+    }
+    if (type === 'grabMartStore') {
+      if (Array.isArray(entity.productTypes) && entity.productTypes.length > 0) {
+        return entity.productTypes;
+      }
+      if (Array.isArray(entity.services) && entity.services.length > 0) {
+        return entity.services;
+      }
+      return ['GrabMart'];
+    }
+    return [];
+  })();
+
+  return {
+    ...entity,
+    rating: ratingMeta.rating,
+    rawRating: ratingMeta.rawRating,
+    weightedRating: ratingMeta.weightedRating,
+    ratingCount: ratingMeta.ratingCount,
+    totalReviews: ratingMeta.totalReviews,
+    reviewCount: ratingMeta.reviewCount,
+    categories,
+    isGrabGoExclusiveActive: isGrabGoExclusiveActive(entity),
+  };
+};
+
+const formatFavoriteItem = (item, sourceType) => {
+  if (!item) return null;
+
+  const ratingMeta = normalizeRatingResponse({
+    rating: item.rating,
+    reviewCount: item.reviewCount,
+    totalReviews: item.totalReviews,
+  });
+
+  const vendor = item.restaurant || item.store || null;
+  const base = {
+    ...item,
+    rating: ratingMeta.rating,
+    rawRating: ratingMeta.rawRating,
+    weightedRating: ratingMeta.weightedRating,
+    reviewCount: ratingMeta.reviewCount,
+    ratingCount: ratingMeta.ratingCount,
+    totalReviews: ratingMeta.totalReviews,
+    favoriteItemType: sourceType,
+    sellerName:
+      vendor?.restaurantName ||
+      vendor?.storeName ||
+      item.sellerName ||
+      'Unknown Vendor',
+    sellerId: vendor?.id || item.restaurantId || item.storeId || '',
+    restaurantId: vendor?.id || item.restaurantId || item.storeId || '',
+    restaurantImage: vendor?.logo || item.restaurantImage || '',
+    estimatedDeliveryTime:
+      vendor?.averageDeliveryTime != null
+        ? `${vendor.averageDeliveryTime}-${vendor.averageDeliveryTime + 10} min`
+        : item.estimatedDeliveryTime || '25-30 min',
+    isRestaurantOpen:
+      typeof vendor?.isOpen === 'boolean'
+        ? vendor.isOpen
+        : item.isRestaurantOpen ?? true,
+  };
+
+  return base;
+};
+
 const mapFavoritesResponse = (user) => {
   const restaurants = (user.favoriteRestaurants || []).map((entry) => ({
     id: entry.restaurant?.id || null,
     addedAt: entry.addedAt,
-    restaurant: entry.restaurant || null,
+    restaurant: formatVendorFavorite(entry.restaurant, 'restaurant'),
   }));
 
   const groceryStores = (user.favoriteStores || []).map((entry) => ({
     id: entry.store?.id || null,
     addedAt: entry.addedAt,
-    store: entry.store || null,
+    store: formatVendorFavorite(entry.store, 'groceryStore'),
   }));
 
   const pharmacies = (user.favoritePharmacies || []).map((entry) => ({
     id: entry.pharmacy?.id || null,
     addedAt: entry.addedAt,
-    pharmacy: entry.pharmacy || null,
+    pharmacy: formatVendorFavorite(entry.pharmacy, 'pharmacyStore'),
   }));
 
   const grabMartStores = (user.favoriteGrabMartStores || []).map((entry) => ({
     id: entry.store?.id || null,
     addedAt: entry.addedAt,
-    store: entry.store || null,
+    store: formatVendorFavorite(entry.store, 'grabMartStore'),
   }));
 
   const foodItems = (user.favoriteFoods || []).map((entry) => ({
     id: entry.food?.id || null,
     addedAt: entry.addedAt,
-    item: entry.food || null,
+    item: formatFavoriteItem(entry.food, 'food'),
   }));
 
   const groceryItems = (user.favoriteGroceryItems || []).map((entry) => ({
     id: entry.groceryItem?.id || null,
     addedAt: entry.addedAt,
-    item: entry.groceryItem || null,
+    item: formatFavoriteItem(entry.groceryItem, 'grocery'),
   }));
 
   const pharmacyItems = (user.favoritePharmacyItems || []).map((entry) => ({
     id: entry.pharmacyItem?.id || null,
     addedAt: entry.addedAt,
-    item: entry.pharmacyItem || null,
+    item: formatFavoriteItem(entry.pharmacyItem, 'pharmacy_item'),
   }));
 
   const grabMartItems = (user.favoriteGrabMartItems || []).map((entry) => ({
     id: entry.grabMartItem?.id || null,
     addedAt: entry.addedAt,
-    item: entry.grabMartItem || null,
+    item: formatFavoriteItem(entry.grabMartItem, 'grabmart_item'),
   }));
 
   const counts = {

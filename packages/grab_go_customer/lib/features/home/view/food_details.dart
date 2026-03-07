@@ -21,21 +21,14 @@ import 'package:grab_go_customer/shared/widgets/food_details_appbar.dart';
 import 'package:grab_go_customer/shared/widgets/price_tag_widget.dart';
 import 'package:grab_go_customer/shared/widgets/grocery_item_card.dart';
 import 'package:grab_go_customer/shared/widgets/deal_card.dart';
+import 'package:grab_go_customer/shared/services/food_vendor_snapshot_resolver.dart';
 
 class FoodDetails extends StatefulWidget {
-  const FoodDetails({
-    super.key,
-    this.foodItem,
-    this.groceryItem,
-    this.pharmacyItem,
-    this.grabMartItem,
-  }) : assert(
-         foodItem != null ||
-             groceryItem != null ||
-             pharmacyItem != null ||
-             grabMartItem != null,
-         'At least one item type must be provided',
-       );
+  const FoodDetails({super.key, this.foodItem, this.groceryItem, this.pharmacyItem, this.grabMartItem})
+    : assert(
+        foodItem != null || groceryItem != null || pharmacyItem != null || grabMartItem != null,
+        'At least one item type must be provided',
+      );
 
   final FoodItem? foodItem;
   final GroceryItem? groceryItem;
@@ -51,11 +44,9 @@ class FoodDetails extends StatefulWidget {
   State<FoodDetails> createState() => _FoodDetailsState();
 }
 
-class _FoodDetailsState extends State<FoodDetails>
-    with TickerProviderStateMixin {
+class _FoodDetailsState extends State<FoodDetails> with TickerProviderStateMixin {
   static const String _preferenceSelectionDelimiter = '::';
-  static const String _removePreferenceSelectionSentinel =
-      '__REMOVE_PREFERENCE_SELECTION__';
+  static const String _removePreferenceSelectionSentinel = '__REMOVE_PREFERENCE_SELECTION__';
 
   late FoodCategoryModel selectedCategory;
   int _restaurantItemsToShow = 3;
@@ -76,15 +67,9 @@ class _FoodDetailsState extends State<FoodDetails>
     _scrollController = ScrollController();
     _scrollController.addListener(_onScroll);
 
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
+    _animationController = AnimationController(duration: const Duration(milliseconds: 800), vsync: this);
 
-    _bounceController = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    );
+    _bounceController = AnimationController(duration: const Duration(milliseconds: 500), vsync: this);
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
@@ -121,8 +106,7 @@ class _FoodDetailsState extends State<FoodDetails>
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent * 0.9) {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.9) {
       if (!_isLoadingMore) {
         _loadMoreRestaurantItems();
       }
@@ -132,6 +116,52 @@ class _FoodDetailsState extends State<FoodDetails>
   bool get isPharmacy => widget.isPharmacy;
   bool get isGrabMart => widget.isGrabMart;
   bool get isStoreItem => widget.isStoreItem;
+
+  void _openFoodVendorDetails() {
+    final foodItem = widget.foodItem;
+    if (foodItem == null) return;
+
+    final vendorId = foodItem.restaurantId.trim();
+    if (vendorId.isEmpty) return;
+
+    context.push('/vendorDetails', extra: FoodVendorSnapshotResolver.resolve(context, foodItem));
+  }
+
+  Widget _buildFoodVendorRow(AppColorsExtension colors) {
+    final foodItem = widget.foodItem;
+    if (foodItem == null) return const SizedBox.shrink();
+
+    final vendorId = foodItem.restaurantId.trim();
+    final sellerName = foodItem.sellerName.trim();
+    final canOpenVendor = vendorId.isNotEmpty;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Flexible(
+          child: Text(
+            sellerName.isEmpty ? 'By restaurant' : 'By $sellerName',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: colors.textSecondary, fontSize: 13.sp, fontWeight: FontWeight.w500),
+          ),
+        ),
+        if (canOpenVendor) ...[
+          SizedBox(width: 6.w),
+          GestureDetector(
+            onTap: _openFoodVendorDetails,
+            child: SvgPicture.asset(
+              Assets.icons.navArrowRight,
+              package: 'grab_go_shared',
+              height: 12.h,
+              width: 12.w,
+              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
 
   void _ensureFoodCatalogLoaded() {
     if (widget.foodItem == null) return;
@@ -160,15 +190,13 @@ class _FoodDetailsState extends State<FoodDetails>
     });
   }
 
-  List<Map<String, dynamic>> get _portionOptions =>
-      widget.foodItem?.portionOptions ?? const <Map<String, dynamic>>[];
+  List<Map<String, dynamic>> get _portionOptions => widget.foodItem?.portionOptions ?? const <Map<String, dynamic>>[];
 
   List<Map<String, dynamic>> get _preferenceGroups =>
       widget.foodItem?.preferenceGroups ?? const <Map<String, dynamic>>[];
 
   bool get _isFoodCustomizationEnabled =>
-      widget.foodItem != null &&
-      (_portionOptions.isNotEmpty || _preferenceGroups.isNotEmpty);
+      widget.foodItem != null && (_portionOptions.isNotEmpty || _preferenceGroups.isNotEmpty);
 
   void _initializeCustomizationDrafts() {
     if (widget.foodItem == null) return;
@@ -176,8 +204,7 @@ class _FoodDetailsState extends State<FoodDetails>
     if (_portionOptions.isNotEmpty) {
       final defaultOption = _portionOptions.firstWhere(
         (option) =>
-            _parseBool(option['isDefault'], defaultValue: false) &&
-            _parseBool(option['isActive'], defaultValue: true),
+            _parseBool(option['isDefault'], defaultValue: false) && _parseBool(option['isActive'], defaultValue: true),
         orElse: () => _portionOptions.firstWhere(
           (option) => _parseBool(option['isActive'], defaultValue: true),
           orElse: () => _portionOptions.first,
@@ -196,8 +223,7 @@ class _FoodDetailsState extends State<FoodDetails>
           .toList(growable: false);
       if (options.isEmpty) continue;
 
-      final maxSelections = ((group['maxSelections'] as num?)?.toInt() ?? 1)
-          .clamp(1, 99);
+      final maxSelections = ((group['maxSelections'] as num?)?.toInt() ?? 1).clamp(1, 99);
       final defaults = options
           .where(
             (option) =>
@@ -208,9 +234,7 @@ class _FoodDetailsState extends State<FoodDetails>
           .whereType<String>()
           .toList(growable: false);
       if (defaults.isNotEmpty) {
-        _selectedPreferenceOptionIdsByGroup[groupId] = defaults
-            .take(maxSelections)
-            .toSet();
+        _selectedPreferenceOptionIdsByGroup[groupId] = defaults.take(maxSelections).toSet();
       }
     }
 
@@ -221,17 +245,13 @@ class _FoodDetailsState extends State<FoodDetails>
   }
 
   String? _readOptionId(Map<String, dynamic> option) {
-    final raw =
-        option['id'] ?? option['code'] ?? option['key'] ?? option['value'];
+    final raw = option['id'] ?? option['code'] ?? option['key'] ?? option['value'];
     final id = raw?.toString().trim();
     return (id == null || id.isEmpty) ? null : id;
   }
 
   String _readOptionLabel(Map<String, dynamic> option, {String fallback = ''}) {
-    return option['label']?.toString() ??
-        option['name']?.toString() ??
-        option['title']?.toString() ??
-        fallback;
+    return option['label']?.toString() ?? option['name']?.toString() ?? option['title']?.toString() ?? fallback;
   }
 
   double _readOptionPrice(Map<String, dynamic> option, {double fallback = 0}) {
@@ -248,14 +268,8 @@ class _FoodDetailsState extends State<FoodDetails>
     return 0;
   }
 
-  List<Map<String, dynamic>> _readPreferenceSizeOptions(
-    Map<String, dynamic> option,
-  ) {
-    final raw =
-        option['sizeOptions'] ??
-        option['sizes'] ??
-        option['priceTiers'] ??
-        option['variants'];
+  List<Map<String, dynamic>> _readPreferenceSizeOptions(Map<String, dynamic> option) {
+    final raw = option['sizeOptions'] ?? option['sizes'] ?? option['priceTiers'] ?? option['variants'];
     if (raw is! List) return const <Map<String, dynamic>>[];
 
     return raw
@@ -286,20 +300,12 @@ class _FoodDetailsState extends State<FoodDetails>
     }
 
     final optionId = normalized.substring(0, delimiterIndex).trim();
-    final sizeOptionId = normalized
-        .substring(delimiterIndex + _preferenceSelectionDelimiter.length)
-        .trim();
+    final sizeOptionId = normalized.substring(delimiterIndex + _preferenceSelectionDelimiter.length).trim();
 
-    return {
-      'optionId': optionId.isEmpty ? null : optionId,
-      'sizeOptionId': sizeOptionId.isEmpty ? null : sizeOptionId,
-    };
+    return {'optionId': optionId.isEmpty ? null : optionId, 'sizeOptionId': sizeOptionId.isEmpty ? null : sizeOptionId};
   }
 
-  String? _findSelectedPreferenceKeyForOption({
-    required String groupId,
-    required String optionId,
-  }) {
+  String? _findSelectedPreferenceKeyForOption({required String groupId, required String optionId}) {
     final selected = _selectedPreferenceOptionIdsByGroup[groupId];
     if (selected == null || selected.isEmpty) return null;
 
@@ -312,17 +318,13 @@ class _FoodDetailsState extends State<FoodDetails>
     return null;
   }
 
-  Map<String, dynamic>? _resolveDefaultSizeOption(
-    List<Map<String, dynamic>> sizeOptions,
-  ) {
+  Map<String, dynamic>? _resolveDefaultSizeOption(List<Map<String, dynamic>> sizeOptions) {
     if (sizeOptions.isEmpty) return null;
 
     return sizeOptions.firstWhere(
       (entry) =>
-          _parseBool(entry['isDefault'], defaultValue: false) &&
-          _parseBool(entry['isActive'], defaultValue: true),
-      orElse: () =>
-          sizeOptions.length == 1 ? sizeOptions.first : <String, dynamic>{},
+          _parseBool(entry['isDefault'], defaultValue: false) && _parseBool(entry['isActive'], defaultValue: true),
+      orElse: () => sizeOptions.length == 1 ? sizeOptions.first : <String, dynamic>{},
     );
   }
 
@@ -332,8 +334,7 @@ class _FoodDetailsState extends State<FoodDetails>
   }) {
     if (sizeOptions.isEmpty) return null;
 
-    if (selectedSizeOptionId != null &&
-        selectedSizeOptionId.trim().isNotEmpty) {
+    if (selectedSizeOptionId != null && selectedSizeOptionId.trim().isNotEmpty) {
       for (final size in sizeOptions) {
         if (_readOptionId(size) == selectedSizeOptionId.trim()) {
           return size;
@@ -381,17 +382,13 @@ class _FoodDetailsState extends State<FoodDetails>
 
     final basePrice = widget.foodItem?.price ?? 0;
     final explicitPrice = _readOptionPrice(option, fallback: double.nan);
-    final unitPrice = explicitPrice.isFinite
-        ? explicitPrice
-        : (basePrice + _readOptionPriceDelta(option));
+    final unitPrice = explicitPrice.isFinite ? explicitPrice : (basePrice + _readOptionPriceDelta(option));
 
     return {
       'id': _readOptionId(option),
       'label': _readOptionLabel(option, fallback: _selectedPortionId!),
       'quantityLabel':
-          option['quantityLabel']?.toString() ??
-          option['quantity']?.toString() ??
-          option['size']?.toString(),
+          option['quantityLabel']?.toString() ?? option['quantity']?.toString() ?? option['size']?.toString(),
       'price': unitPrice,
       'priceDelta': _readOptionPriceDelta(option),
     };
@@ -406,8 +403,7 @@ class _FoodDetailsState extends State<FoodDetails>
     for (final group in _preferenceGroups) {
       final groupId = _readOptionId(group);
       if (groupId == null) continue;
-      final groupLabel =
-          _readOptionLabel(group, fallback: groupId).trim().isEmpty
+      final groupLabel = _readOptionLabel(group, fallback: groupId).trim().isEmpty
           ? groupId
           : _readOptionLabel(group, fallback: groupId);
       final selectedKeys = _selectedPreferenceOptionIdsByGroup[groupId] ?? {};
@@ -435,30 +431,20 @@ class _FoodDetailsState extends State<FoodDetails>
           selectedSizeOptionId: parsedSelection['sizeOptionId'],
         );
 
-        final selectedSizeId = selectedSize == null
-            ? null
-            : _readOptionId(selectedSize);
+        final selectedSizeId = selectedSize == null ? null : _readOptionId(selectedSize);
         final basePriceDelta = _readOptionPriceDelta(option);
-        final sizePriceDelta = selectedSize == null
-            ? 0
-            : _readOptionPriceDelta(selectedSize);
+        final sizePriceDelta = selectedSize == null ? 0 : _readOptionPriceDelta(selectedSize);
         final totalPriceDelta = basePriceDelta + sizePriceDelta;
-        final resolvedSelectionKey = _buildPreferenceSelectionKey(
-          optionId,
-          sizeOptionId: selectedSizeId,
-        );
+        final resolvedSelectionKey = _buildPreferenceSelectionKey(optionId, sizeOptionId: selectedSizeId);
         final optionLabel = _readOptionLabel(option, fallback: optionId);
-        final selectedSizeLabel = selectedSize == null
-            ? null
-            : _readOptionLabel(selectedSize, fallback: '');
+        final selectedSizeLabel = selectedSize == null ? null : _readOptionLabel(selectedSize, fallback: '');
 
         selected.add({
           'groupId': groupId,
           'groupLabel': groupLabel,
           'optionId': resolvedSelectionKey,
           'optionBaseId': optionId,
-          'optionLabel':
-              selectedSizeLabel != null && selectedSizeLabel.isNotEmpty
+          'optionLabel': selectedSizeLabel != null && selectedSizeLabel.isNotEmpty
               ? '$optionLabel ($selectedSizeLabel)'
               : optionLabel,
           'sizeOptionId': selectedSizeId,
@@ -471,13 +457,9 @@ class _FoodDetailsState extends State<FoodDetails>
     }
 
     selected.sort((a, b) {
-      final groupCompare = (a['groupId']?.toString() ?? '').compareTo(
-        b['groupId']?.toString() ?? '',
-      );
+      final groupCompare = (a['groupId']?.toString() ?? '').compareTo(b['groupId']?.toString() ?? '');
       if (groupCompare != 0) return groupCompare;
-      return (a['optionId']?.toString() ?? '').compareTo(
-        b['optionId']?.toString() ?? '',
-      );
+      return (a['optionId']?.toString() ?? '').compareTo(b['optionId']?.toString() ?? '');
     });
 
     return selected;
@@ -515,16 +497,8 @@ class _FoodDetailsState extends State<FoodDetails>
   }) {
     final normalizedPortionId = portionId?.trim();
     final normalizedPreferenceIds =
-        preferenceOptionIds
-            .map((entry) => entry.trim())
-            .where((entry) => entry.isNotEmpty)
-            .toSet()
-            .toList()
-          ..sort();
-    final normalizedNote = (note ?? '')
-        .trim()
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .toLowerCase();
+        preferenceOptionIds.map((entry) => entry.trim()).where((entry) => entry.isNotEmpty).toSet().toList()..sort();
+    final normalizedNote = (note ?? '').trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
 
     if ((normalizedPortionId == null || normalizedPortionId.isEmpty) &&
         normalizedPreferenceIds.isEmpty &&
@@ -590,10 +564,7 @@ class _FoodDetailsState extends State<FoodDetails>
     return '$sign${_formatMoney(delta.abs())}';
   }
 
-  String _selectionRuleLabel({
-    required int minSelections,
-    required int maxSelections,
-  }) {
+  String _selectionRuleLabel({required int minSelections, required int maxSelections}) {
     if (minSelections <= 0 && maxSelections <= 1) {
       return 'Optional • choose up to 1';
     }
@@ -607,21 +578,16 @@ class _FoodDetailsState extends State<FoodDetails>
   String? _validateFoodCustomizationSelection() {
     if (widget.foodItem == null) return null;
 
-    if (_portionOptions.isNotEmpty &&
-        (_selectedPortionId == null || _selectedPortionId!.trim().isEmpty)) {
+    if (_portionOptions.isNotEmpty && (_selectedPortionId == null || _selectedPortionId!.trim().isEmpty)) {
       return 'Please choose a portion size.';
     }
 
     for (final group in _preferenceGroups) {
       final groupId = _readOptionId(group);
       if (groupId == null) continue;
-      final minSelections = _parseInt(
-        group['minSelections'],
-        defaultValue: 0,
-      ).clamp(0, 99);
+      final minSelections = _parseInt(group['minSelections'], defaultValue: 0).clamp(0, 99);
       if (minSelections <= 0) continue;
-      final selectedCount =
-          _selectedPreferenceOptionIdsByGroup[groupId]?.length ?? 0;
+      final selectedCount = _selectedPreferenceOptionIdsByGroup[groupId]?.length ?? 0;
       if (selectedCount < minSelections) {
         final label = _readOptionLabel(group, fallback: 'this preference');
         return minSelections == 1
@@ -684,14 +650,8 @@ class _FoodDetailsState extends State<FoodDetails>
     required int maxSelections,
     required String groupLabel,
   }) {
-    final selected = _selectedPreferenceOptionIdsByGroup.putIfAbsent(
-      groupId,
-      () => <String>{},
-    );
-    final existingSelectionKey = _findSelectedPreferenceKeyForOption(
-      groupId: groupId,
-      optionId: optionId,
-    );
+    final selected = _selectedPreferenceOptionIdsByGroup.putIfAbsent(groupId, () => <String>{});
+    final existingSelectionKey = _findSelectedPreferenceKeyForOption(groupId: groupId, optionId: optionId);
     final isExactSelection = existingSelectionKey == selectionKey;
 
     if (isExactSelection) {
@@ -745,9 +705,7 @@ class _FoodDetailsState extends State<FoodDetails>
       context: context,
       isScrollControlled: true,
       backgroundColor: colors.backgroundPrimary,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16.r))),
       builder: (sheetContext) {
         return SafeArea(
           top: false,
@@ -761,10 +719,7 @@ class _FoodDetailsState extends State<FoodDetails>
                   child: Container(
                     width: 36.w,
                     height: 4.h,
-                    decoration: BoxDecoration(
-                      color: colors.divider,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
+                    decoration: BoxDecoration(color: colors.divider, borderRadius: BorderRadius.circular(999)),
                   ),
                 ),
                 SizedBox(height: 14.h),
@@ -772,21 +727,14 @@ class _FoodDetailsState extends State<FoodDetails>
                   padding: EdgeInsets.symmetric(horizontal: 20.w),
                   child: Text(
                     'Choose size for $optionLabel',
-                    style: TextStyle(
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.w800,
-                      color: colors.textPrimary,
-                    ),
+                    style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
                   ),
                 ),
                 SizedBox(height: 10.h),
                 ...sizeOptions.map((sizeOption) {
                   final sizeOptionId = _readOptionId(sizeOption);
                   if (sizeOptionId == null) return const SizedBox.shrink();
-                  final sizeLabel = _readOptionLabel(
-                    sizeOption,
-                    fallback: sizeOptionId,
-                  );
+                  final sizeLabel = _readOptionLabel(sizeOption, fallback: sizeOptionId);
                   final priceDelta = _readOptionPriceDelta(sizeOption);
                   final isSelected = selectedSizeOptionId == sizeOptionId;
 
@@ -796,19 +744,11 @@ class _FoodDetailsState extends State<FoodDetails>
                     onTap: () => Navigator.pop(sheetContext, sizeOptionId),
                     title: Text(
                       sizeLabel,
-                      style: TextStyle(
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w700,
-                        color: colors.textPrimary,
-                      ),
+                      style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
                     ),
                     subtitle: Text(
                       _formatDeltaLabel(priceDelta),
-                      style: TextStyle(
-                        fontSize: 11.sp,
-                        fontWeight: FontWeight.w600,
-                        color: colors.textSecondary,
-                      ),
+                      style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: colors.textSecondary),
                     ),
                     trailing: isSelected
                         ? SvgPicture.asset(
@@ -816,16 +756,9 @@ class _FoodDetailsState extends State<FoodDetails>
                             package: 'grab_go_shared',
                             height: 18.h,
                             width: 18.w,
-                            colorFilter: ColorFilter.mode(
-                              colors.accentOrange,
-                              BlendMode.srcIn,
-                            ),
+                            colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                           )
-                        : Icon(
-                            Icons.circle_outlined,
-                            color: colors.inputBorder,
-                            size: 18.sp,
-                          ),
+                        : Icon(Icons.circle_outlined, color: colors.inputBorder, size: 18.sp),
                   );
                 }),
                 if (showRemoveAction) ...[
@@ -833,19 +766,12 @@ class _FoodDetailsState extends State<FoodDetails>
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: 20.w),
                     child: AppButton(
-                      onPressed: () => Navigator.pop(
-                        sheetContext,
-                        _removePreferenceSelectionSentinel,
-                      ),
+                      onPressed: () => Navigator.pop(sheetContext, _removePreferenceSelectionSentinel),
                       width: double.infinity,
                       backgroundColor: colors.accentOrange,
                       borderRadius: KBorderSize.borderMedium,
                       buttonText: "Remove Selection",
-                      textStyle: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15.sp,
-                      ),
+                      textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15.sp),
                     ),
                   ),
                 ],
@@ -880,10 +806,7 @@ class _FoodDetailsState extends State<FoodDetails>
       return;
     }
 
-    final existingSelectionKey = _findSelectedPreferenceKeyForOption(
-      groupId: groupId,
-      optionId: optionId,
-    );
+    final existingSelectionKey = _findSelectedPreferenceKeyForOption(groupId: groupId, optionId: optionId);
     final parsedExistingSelection = existingSelectionKey == null
         ? const <String, String?>{'optionId': null, 'sizeOptionId': null}
         : _parsePreferenceSelectionKey(existingSelectionKey);
@@ -908,10 +831,7 @@ class _FoodDetailsState extends State<FoodDetails>
       return;
     }
 
-    final selectionKey = _buildPreferenceSelectionKey(
-      optionId,
-      sizeOptionId: pickedSizeOptionId,
-    );
+    final selectionKey = _buildPreferenceSelectionKey(optionId, sizeOptionId: pickedSizeOptionId);
     if (existingSelectionKey != null && existingSelectionKey == selectionKey) {
       return;
     }
@@ -938,30 +858,20 @@ class _FoodDetailsState extends State<FoodDetails>
           if (_portionOptions.isNotEmpty) ...[
             Text(
               'Portion size',
-              style: TextStyle(
-                fontSize: 13.sp,
-                fontWeight: FontWeight.w700,
-                color: colors.textPrimary,
-              ),
+              style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
             ),
             SizedBox(height: 8.h),
             Wrap(
               spacing: 8.w,
               runSpacing: 8.h,
               children: _portionOptions
-                  .where(
-                    (option) =>
-                        _parseBool(option['isActive'], defaultValue: true),
-                  )
+                  .where((option) => _parseBool(option['isActive'], defaultValue: true))
                   .map((option) {
                     final optionId = _readOptionId(option);
                     if (optionId == null) return const SizedBox.shrink();
                     final isSelected = _selectedPortionId == optionId;
                     final label = _readOptionLabel(option, fallback: optionId);
-                    final explicitPrice = _readOptionPrice(
-                      option,
-                      fallback: double.nan,
-                    );
+                    final explicitPrice = _readOptionPrice(option, fallback: double.nan);
                     final priceText = explicitPrice.isFinite
                         ? _formatMoney(explicitPrice)
                         : _formatDeltaLabel(_readOptionPriceDelta(option));
@@ -975,14 +885,9 @@ class _FoodDetailsState extends State<FoodDetails>
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
                         curve: Curves.easeOut,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 12.w,
-                          vertical: 10.h,
-                        ),
+                        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
                         decoration: BoxDecoration(
-                          color: isSelected
-                              ? colors.accentOrange.withValues(alpha: 0.12)
-                              : colors.backgroundSecondary,
+                          color: isSelected ? colors.accentOrange.withValues(alpha: 0.12) : colors.backgroundSecondary,
                           borderRadius: BorderRadius.circular(12.r),
                         ),
                         child: Column(
@@ -994,9 +899,7 @@ class _FoodDetailsState extends State<FoodDetails>
                               style: TextStyle(
                                 fontSize: 12.sp,
                                 fontWeight: FontWeight.w700,
-                                color: isSelected
-                                    ? colors.accentOrange
-                                    : colors.textPrimary,
+                                color: isSelected ? colors.accentOrange : colors.textPrimary,
                               ),
                             ),
                             SizedBox(height: 2.h),
@@ -1023,24 +926,14 @@ class _FoodDetailsState extends State<FoodDetails>
             final options = ((group['options'] as List?) ?? const [])
                 .whereType<Map>()
                 .map((entry) => Map<String, dynamic>.from(entry))
-                .where(
-                  (option) =>
-                      _parseBool(option['isActive'], defaultValue: true),
-                )
+                .where((option) => _parseBool(option['isActive'], defaultValue: true))
                 .toList(growable: false);
             if (options.isEmpty) return const SizedBox.shrink();
 
-            final minSelections = _parseInt(
-              group['minSelections'],
-              defaultValue: 0,
-            ).clamp(0, 99);
-            final maxSelections = _parseInt(
-              group['maxSelections'],
-              defaultValue: 1,
-            ).clamp(1, 99);
+            final minSelections = _parseInt(group['minSelections'], defaultValue: 0).clamp(0, 99);
+            final maxSelections = _parseInt(group['maxSelections'], defaultValue: 1).clamp(1, 99);
             final groupLabel = _readOptionLabel(group, fallback: groupId);
-            final selected =
-                _selectedPreferenceOptionIdsByGroup[groupId] ?? <String>{};
+            final selected = _selectedPreferenceOptionIdsByGroup[groupId] ?? <String>{};
 
             return Padding(
               padding: EdgeInsets.only(bottom: 14.h),
@@ -1049,23 +942,12 @@ class _FoodDetailsState extends State<FoodDetails>
                 children: [
                   Text(
                     groupLabel,
-                    style: TextStyle(
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.w700,
-                      color: colors.textPrimary,
-                    ),
+                    style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
                   ),
                   SizedBox(height: 2.h),
                   Text(
-                    _selectionRuleLabel(
-                      minSelections: minSelections,
-                      maxSelections: maxSelections,
-                    ),
-                    style: TextStyle(
-                      fontSize: 11.sp,
-                      fontWeight: FontWeight.w500,
-                      color: colors.textSecondary,
-                    ),
+                    _selectionRuleLabel(minSelections: minSelections, maxSelections: maxSelections),
+                    style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
                   ),
                   SizedBox(height: 8.h),
                   Wrap(
@@ -1075,51 +957,31 @@ class _FoodDetailsState extends State<FoodDetails>
                         .map((option) {
                           final optionId = _readOptionId(option);
                           if (optionId == null) return const SizedBox.shrink();
-                          final sizeOptions = _readPreferenceSizeOptions(
-                            option,
+                          final sizeOptions = _readPreferenceSizeOptions(option);
+                          final selectedSelectionKey = _findSelectedPreferenceKeyForOption(
+                            groupId: groupId,
+                            optionId: optionId,
                           );
-                          final selectedSelectionKey =
-                              _findSelectedPreferenceKeyForOption(
-                                groupId: groupId,
-                                optionId: optionId,
-                              );
-                          final isSelected =
-                              selectedSelectionKey != null &&
-                              selected.contains(selectedSelectionKey);
+                          final isSelected = selectedSelectionKey != null && selected.contains(selectedSelectionKey);
                           final parsedSelection = selectedSelectionKey == null
-                              ? const <String, String?>{
-                                  'optionId': null,
-                                  'sizeOptionId': null,
-                                }
-                              : _parsePreferenceSelectionKey(
-                                  selectedSelectionKey,
-                                );
+                              ? const <String, String?>{'optionId': null, 'sizeOptionId': null}
+                              : _parsePreferenceSelectionKey(selectedSelectionKey);
                           final selectedSize = _resolveSelectedSizeOption(
                             sizeOptions: sizeOptions,
-                            selectedSizeOptionId:
-                                parsedSelection['sizeOptionId'],
+                            selectedSizeOptionId: parsedSelection['sizeOptionId'],
                           );
-                          final optionLabel = _readOptionLabel(
-                            option,
-                            fallback: optionId,
-                          );
+                          final optionLabel = _readOptionLabel(option, fallback: optionId);
                           final baseDelta = _readOptionPriceDelta(option);
                           final selectedSizeLabel = selectedSize == null
                               ? null
                               : _readOptionLabel(selectedSize, fallback: '');
-                          final selectedSizeDelta = selectedSize == null
-                              ? 0
-                              : _readOptionPriceDelta(selectedSize);
+                          final selectedSizeDelta = selectedSize == null ? 0 : _readOptionPriceDelta(selectedSize);
                           final deltaLabel = sizeOptions.isEmpty
                               ? _formatDeltaLabel(baseDelta)
                               : isSelected
                               ? [
-                                  if (selectedSizeLabel != null &&
-                                      selectedSizeLabel.isNotEmpty)
-                                    selectedSizeLabel,
-                                  _formatDeltaLabel(
-                                    baseDelta + selectedSizeDelta,
-                                  ),
+                                  if (selectedSizeLabel != null && selectedSizeLabel.isNotEmpty) selectedSizeLabel,
+                                  _formatDeltaLabel(baseDelta + selectedSizeDelta),
                                 ].join(' • ')
                               : 'Custom';
 
@@ -1134,15 +996,10 @@ class _FoodDetailsState extends State<FoodDetails>
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 180),
                               curve: Curves.easeOut,
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 12.w,
-                                vertical: 10.h,
-                              ),
+                              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
                               decoration: BoxDecoration(
                                 color: isSelected
-                                    ? colors.accentOrange.withValues(
-                                        alpha: 0.12,
-                                      )
+                                    ? colors.accentOrange.withValues(alpha: 0.12)
                                     : colors.backgroundSecondary,
                                 borderRadius: BorderRadius.circular(12.r),
                               ),
@@ -1155,9 +1012,7 @@ class _FoodDetailsState extends State<FoodDetails>
                                     style: TextStyle(
                                       fontSize: 12.sp,
                                       fontWeight: FontWeight.w700,
-                                      color: isSelected
-                                          ? colors.accentOrange
-                                          : colors.textPrimary,
+                                      color: isSelected ? colors.accentOrange : colors.textPrimary,
                                     ),
                                   ),
                                   SizedBox(height: 2.h),
@@ -1181,24 +1036,14 @@ class _FoodDetailsState extends State<FoodDetails>
             );
           }),
           Text(
-            _isFoodCustomizationEnabled
-                ? 'Special instructions'
-                : 'Special instructions (optional)',
-            style: TextStyle(
-              fontSize: 13.sp,
-              fontWeight: FontWeight.w700,
-              color: colors.textPrimary,
-            ),
+            _isFoodCustomizationEnabled ? 'Special instructions' : 'Special instructions (optional)',
+            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
           ),
           SizedBox(height: 8.h),
           if (!_isFoodCustomizationEnabled) ...[
             Text(
               'Tell the vendor how you want this order prepared.',
-              style: TextStyle(
-                fontSize: 11.sp,
-                fontWeight: FontWeight.w500,
-                color: colors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
             ),
             SizedBox(height: 8.h),
           ],
@@ -1211,16 +1056,10 @@ class _FoodDetailsState extends State<FoodDetails>
             style: TextStyle(fontSize: 13.sp, color: colors.textPrimary),
             decoration: InputDecoration(
               hintText: 'Less salt, extra stew, no onions, etc.',
-              hintStyle: TextStyle(
-                fontSize: 12.sp,
-                color: colors.textSecondary,
-              ),
+              hintStyle: TextStyle(fontSize: 12.sp, color: colors.textSecondary),
               filled: true,
               fillColor: colors.backgroundSecondary,
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 12.w,
-                vertical: 10.h,
-              ),
+              contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                 borderSide: BorderSide(color: colors.inputBorder),
@@ -1336,16 +1175,12 @@ class _FoodDetailsState extends State<FoodDetails>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final padding = MediaQuery.paddingOf(context);
     Size size = MediaQuery.sizeOf(context);
-    final itemDisplayPrice = widget.foodItem != null
-        ? _resolveCustomizedFoodPrice()
-        : itemPrice;
+    final itemDisplayPrice = widget.foodItem != null ? _resolveCustomizedFoodPrice() : itemPrice;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
         systemNavigationBarColor: colors.backgroundPrimary,
-        systemNavigationBarIconBrightness: isDark
-            ? Brightness.light
-            : Brightness.dark,
+        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       ),
       child: PopScope(
         canPop: false,
@@ -1368,9 +1203,7 @@ class _FoodDetailsState extends State<FoodDetails>
             builder: (context, child) {
               return CustomScrollView(
                 controller: _scrollController,
-                physics: const AlwaysScrollableScrollPhysics(
-                  parent: AlwaysScrollableScrollPhysics(),
-                ),
+                physics: const AlwaysScrollableScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
                 slivers: <Widget>[
                   FoodDetailsAppBar(foodItem: cartItem),
                   SliverToBoxAdapter(
@@ -1390,39 +1223,34 @@ class _FoodDetailsState extends State<FoodDetails>
                                   children: [
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                        crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           if (isStoreItem) ...[
                                             Builder(
                                               builder: (context) {
                                                 String brand = "";
-                                                if (widget.isGrocery)
-                                                  brand =
-                                                      widget.groceryItem!.brand;
-                                                if (isPharmacy)
-                                                  brand = widget
-                                                      .pharmacyItem!
-                                                      .brand;
-                                                if (isGrabMart)
-                                                  brand = widget
-                                                      .grabMartItem!
-                                                      .brand;
+                                                if (widget.isGrocery) {
+                                                  brand = widget.groceryItem!.brand;
+                                                }
+                                                if (isPharmacy) {
+                                                  brand = widget.pharmacyItem!.brand;
+                                                }
+                                                if (isGrabMart) {
+                                                  brand = widget.grabMartItem!.brand;
+                                                }
 
-                                                if (brand.isEmpty)
+                                                if (brand.isEmpty) {
                                                   return const SizedBox.shrink();
+                                                }
                                                 return Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
                                                   children: [
                                                     Text(
                                                       brand.toUpperCase(),
                                                       style: TextStyle(
-                                                        color: colors
-                                                            .textSecondary,
+                                                        color: colors.textSecondary,
                                                         fontSize: 12.sp,
-                                                        fontWeight:
-                                                            FontWeight.w600,
+                                                        fontWeight: FontWeight.w600,
                                                         letterSpacing: 1.0,
                                                       ),
                                                     ),
@@ -1446,89 +1274,55 @@ class _FoodDetailsState extends State<FoodDetails>
                                             Builder(
                                               builder: (context) {
                                                 String unit = "";
-                                                if (widget.isGrocery)
-                                                  unit =
-                                                      widget.groceryItem!.unit;
-                                                if (isPharmacy)
-                                                  unit =
-                                                      widget.pharmacyItem!.unit;
-                                                if (isGrabMart)
-                                                  unit =
-                                                      widget.grabMartItem!.unit;
+                                                if (widget.isGrocery) {
+                                                  unit = widget.groceryItem!.unit;
+                                                }
+                                                if (isPharmacy) {
+                                                  unit = widget.pharmacyItem!.unit;
+                                                }
+                                                if (isGrabMart) {
+                                                  unit = widget.grabMartItem!.unit;
+                                                }
 
                                                 return Container(
-                                                  padding: EdgeInsets.symmetric(
-                                                    horizontal: 8.w,
-                                                    vertical: 4.h,
-                                                  ),
+                                                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                                                   decoration: BoxDecoration(
-                                                    color:
-                                                        colors.inputBackground,
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          6.r,
-                                                        ),
+                                                    color: colors.inputBackground,
+                                                    borderRadius: BorderRadius.circular(6.r),
                                                   ),
                                                   child: Text(
                                                     unit,
                                                     style: TextStyle(
-                                                      color:
-                                                          colors.textSecondary,
+                                                      color: colors.textSecondary,
                                                       fontSize: 12.sp,
-                                                      fontWeight:
-                                                          FontWeight.w600,
+                                                      fontWeight: FontWeight.w600,
                                                     ),
                                                   ),
                                                 );
                                               },
                                             )
                                           else
-                                            Text(
-                                              "By ${widget.foodItem!.sellerName}",
-                                              style: TextStyle(
-                                                color: colors.textSecondary,
-                                                fontSize: 13.sp,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          if (isPharmacy &&
-                                              widget
-                                                  .pharmacyItem!
-                                                  .requiresPrescription) ...[
+                                            _buildFoodVendorRow(colors),
+                                          if (isPharmacy && widget.pharmacyItem!.requiresPrescription) ...[
                                             SizedBox(height: 8.h),
                                             Container(
-                                              padding: EdgeInsets.symmetric(
-                                                horizontal: 8.w,
-                                                vertical: 4.h,
-                                              ),
+                                              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                                               decoration: BoxDecoration(
-                                                color: Colors.red.withValues(
-                                                  alpha: 0.1,
-                                                ),
-                                                borderRadius:
-                                                    BorderRadius.circular(6.r),
-                                                border: Border.all(
-                                                  color: Colors.red.withValues(
-                                                    alpha: 0.3,
-                                                  ),
-                                                ),
+                                                color: Colors.red.withValues(alpha: 0.1),
+                                                borderRadius: BorderRadius.circular(6.r),
+                                                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                                               ),
                                               child: Row(
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
-                                                  Icon(
-                                                    Icons.description_outlined,
-                                                    size: 14.sp,
-                                                    color: Colors.red,
-                                                  ),
+                                                  Icon(Icons.description_outlined, size: 14.sp, color: Colors.red),
                                                   SizedBox(width: 4.w),
                                                   Text(
                                                     "Prescription Required",
                                                     style: TextStyle(
                                                       color: Colors.red,
                                                       fontSize: 11.sp,
-                                                      fontWeight:
-                                                          FontWeight.w700,
+                                                      fontWeight: FontWeight.w700,
                                                     ),
                                                   ),
                                                 ],
@@ -1546,30 +1340,8 @@ class _FoodDetailsState extends State<FoodDetails>
                                                     package: 'grab_go_shared',
                                                     height: 16,
                                                     width: 16,
-                                                    colorFilter:
-                                                        ColorFilter.mode(
-                                                          colors.accentOrange,
-                                                          BlendMode.srcIn,
-                                                        ),
+                                                    colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
                                                   ),
-                                                ),
-                                              ),
-                                              SizedBox(width: 4.w),
-                                              Text(
-                                                itemRating.toStringAsFixed(1),
-                                                style: TextStyle(
-                                                  fontSize: 13.sp,
-                                                  color: colors.textPrimary,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                              SizedBox(width: 4.w),
-                                              Text(
-                                                '($itemReviewCount ${itemReviewCount == 1 ? 'review' : 'reviews'})',
-                                                style: TextStyle(
-                                                  fontSize: 13.sp,
-                                                  color: colors.textSecondary,
-                                                  fontWeight: FontWeight.w400,
                                                 ),
                                               ),
                                               SizedBox(width: 4.w),
@@ -1586,44 +1358,59 @@ class _FoodDetailsState extends State<FoodDetails>
                                                         : 'food',
                                                     itemName: itemName,
                                                     initialRating: itemRating,
-                                                    initialReviewCount:
-                                                        itemReviewCount,
+                                                    initialReviewCount: itemReviewCount,
                                                   ),
                                                 ),
-                                                child: SvgPicture.asset(
-                                                  Assets.icons.navArrowRight,
-                                                  package: 'grab_go_shared',
-                                                  height: 12.h,
-                                                  width: 12.w,
-                                                  colorFilter: ColorFilter.mode(
-                                                    colors.textPrimary,
-                                                    BlendMode.srcIn,
-                                                  ),
+                                                child: Row(
+                                                  children: [
+                                                    Text(
+                                                      itemRating.toStringAsFixed(1),
+                                                      style: TextStyle(
+                                                        fontSize: 13.sp,
+                                                        color: colors.textPrimary,
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                    SizedBox(width: 4.w),
+                                                    Text(
+                                                      '($itemReviewCount ${itemReviewCount == 1 ? 'review' : 'reviews'})',
+                                                      style: TextStyle(
+                                                        fontSize: 13.sp,
+                                                        color: colors.textSecondary,
+                                                        fontWeight: FontWeight.w400,
+                                                      ),
+                                                    ),
+                                                    SizedBox(width: 4.w),
+                                                    SvgPicture.asset(
+                                                      Assets.icons.navArrowRight,
+                                                      package: 'grab_go_shared',
+                                                      height: 12.h,
+                                                      width: 12.w,
+                                                      colorFilter: ColorFilter.mode(
+                                                        colors.textPrimary,
+                                                        BlendMode.srcIn,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ),
                                             ],
                                           ),
                                           SizedBox(height: 8.h),
                                           Row(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.center,
+                                            crossAxisAlignment: CrossAxisAlignment.center,
                                             children: [
                                               SvgPicture.asset(
                                                 Assets.icons.timer,
                                                 package: 'grab_go_shared',
                                                 height: 16.h,
                                                 width: 16.w,
-                                                colorFilter: ColorFilter.mode(
-                                                  colors.textPrimary,
-                                                  BlendMode.srcIn,
-                                                ),
+                                                colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                                               ),
                                               SizedBox(width: 4.w),
                                               Text(
                                                 widget.foodItem != null
-                                                    ? widget
-                                                          .foodItem!
-                                                          .estimatedDeliveryTime
+                                                    ? widget.foodItem!.estimatedDeliveryTime
                                                     : "25-30",
                                                 style: TextStyle(
                                                   fontFamily: 'Lato',
@@ -1633,8 +1420,7 @@ class _FoodDetailsState extends State<FoodDetails>
                                                 ),
                                               ),
                                               SizedBox(width: 10.w),
-                                              if (widget.foodItem?.orderCount !=
-                                                  0) ...[
+                                              if (widget.foodItem?.orderCount != 0) ...[
                                                 Container(
                                                   height: 4.h,
                                                   width: 4.w,
@@ -1666,8 +1452,7 @@ class _FoodDetailsState extends State<FoodDetails>
                                       currency: 'GHS',
                                       priceColor: colors.accentOrange,
                                       size: PriceTagSize.medium,
-                                      backgroundColor: colors.accentOrange
-                                          .withValues(alpha: 0.2),
+                                      backgroundColor: colors.accentOrange.withValues(alpha: 0.2),
                                       borderColor: Colors.transparent,
                                       showShadow: false,
                                     ),
@@ -1720,65 +1505,46 @@ class _FoodDetailsState extends State<FoodDetails>
                               if (hasIngredients) ...[
                                 SizedBox(height: KSpacing.md.h),
                                 Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 20.w,
-                                  ),
+                                  padding: EdgeInsets.symmetric(horizontal: 20.w),
                                   child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      _buildSectionHeader(
-                                        colors,
-                                        'Ingredients',
-                                      ),
+                                      _buildSectionHeader(colors, 'Ingredients'),
                                       SizedBox(height: 12.h),
                                       Wrap(
                                         spacing: 8.w,
                                         runSpacing: 8.h,
-                                        children: widget.foodItem!.ingredients
-                                            .map((ingredient) {
-                                              return Container(
-                                                padding: EdgeInsets.symmetric(
-                                                  horizontal: 8.w,
-                                                  vertical: 4.h,
+                                        children: widget.foodItem!.ingredients.map((ingredient) {
+                                          return Container(
+                                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                                            decoration: BoxDecoration(
+                                              color: colors.accentOrange.withValues(alpha: 0.1),
+                                              borderRadius: BorderRadius.circular(20.r),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Container(
+                                                  width: 6.w,
+                                                  height: 6.h,
+                                                  decoration: BoxDecoration(
+                                                    color: colors.accentOrange,
+                                                    shape: BoxShape.circle,
+                                                  ),
                                                 ),
-                                                decoration: BoxDecoration(
-                                                  color: colors.accentOrange
-                                                      .withValues(alpha: 0.1),
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                        20.r,
-                                                      ),
+                                                SizedBox(width: 6.w),
+                                                Text(
+                                                  ingredient,
+                                                  style: TextStyle(
+                                                    fontSize: 13.sp,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: colors.accentOrange,
+                                                  ),
                                                 ),
-                                                child: Row(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    Container(
-                                                      width: 6.w,
-                                                      height: 6.h,
-                                                      decoration: BoxDecoration(
-                                                        color:
-                                                            colors.accentOrange,
-                                                        shape: BoxShape.circle,
-                                                      ),
-                                                    ),
-                                                    SizedBox(width: 6.w),
-                                                    Text(
-                                                      ingredient,
-                                                      style: TextStyle(
-                                                        fontSize: 13.sp,
-                                                        fontWeight:
-                                                            FontWeight.w800,
-                                                        color:
-                                                            colors.accentOrange,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              );
-                                            })
-                                            .toList(),
+                                              ],
+                                            ),
+                                          );
+                                        }).toList(),
                                       ),
                                     ],
                                   ),
@@ -1790,77 +1556,43 @@ class _FoodDetailsState extends State<FoodDetails>
                               if (!widget.isGrocery && widget.foodItem != null)
                                 Consumer<FoodProvider>(
                                   builder: (context, foodProvider, child) {
-                                    final youMayLikeItems = foodProvider
-                                        .getYouMayLikeItems(
-                                          widget.foodItem!,
-                                          limit: 5,
-                                        );
+                                    final youMayLikeItems = foodProvider.getYouMayLikeItems(widget.foodItem!, limit: 5);
 
                                     if (youMayLikeItems.isEmpty) {
                                       return const SizedBox.shrink();
                                     }
 
                                     return Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Padding(
                                           padding: EdgeInsets.only(left: 20.w),
-                                          child: _buildSectionHeader(
-                                            colors,
-                                            'You May Like',
-                                          ),
+                                          child: _buildSectionHeader(colors, 'You May Like'),
                                         ),
                                         SizedBox(height: 12.h),
                                         Builder(
                                           builder: (context) {
-                                            final cardWidth =
-                                                (size.width * 0.62).clamp(
-                                                  200.0,
-                                                  260.0,
-                                                );
-                                            final imageHeight =
-                                                (cardWidth * 0.45).clamp(
-                                                  90.0,
-                                                  125.0,
-                                                );
-                                            final cardHeight =
-                                                (imageHeight + 110.h).clamp(
-                                                  208.0,
-                                                  250.0,
-                                                );
+                                            final cardWidth = (size.width * 0.62).clamp(200.0, 260.0);
+                                            final imageHeight = (cardWidth * 0.45).clamp(90.0, 125.0);
+                                            final cardHeight = (imageHeight + 110.h).clamp(208.0, 250.0);
                                             return SizedBox(
                                               height: cardHeight,
                                               child: ListView.builder(
-                                                padding: EdgeInsets.only(
-                                                  left: 20.w,
-                                                ),
-                                                scrollDirection:
-                                                    Axis.horizontal,
-                                                physics:
-                                                    const AlwaysScrollableScrollPhysics(),
-                                                itemCount:
-                                                    youMayLikeItems.length,
+                                                padding: EdgeInsets.only(left: 20.w),
+                                                scrollDirection: Axis.horizontal,
+                                                physics: const AlwaysScrollableScrollPhysics(),
+                                                itemCount: youMayLikeItems.length,
                                                 itemBuilder: (context, index) {
-                                                  final item =
-                                                      youMayLikeItems[index];
+                                                  final item = youMayLikeItems[index];
                                                   return Padding(
-                                                    padding: EdgeInsets.only(
-                                                      right: 12.w,
-                                                    ),
+                                                    padding: EdgeInsets.only(right: 12.w),
                                                     child: DealCard(
                                                       item: item,
-                                                      discountPercent: item
-                                                          .discountPercentage
-                                                          .toInt(),
-                                                      deliveryTime: item
-                                                          .estimatedDeliveryTime,
+                                                      discountPercent: item.discountPercentage.toInt(),
+                                                      deliveryTime: item.estimatedDeliveryTime,
                                                       cardWidth: cardWidth,
                                                       onTap: () {
-                                                        context.push(
-                                                          '/foodDetails',
-                                                          extra: item,
-                                                        );
+                                                        context.push('/foodDetails', extra: item);
                                                       },
                                                     ),
                                                   );
@@ -1879,57 +1611,35 @@ class _FoodDetailsState extends State<FoodDetails>
                               if (!widget.isGrocery && widget.foodItem != null)
                                 Consumer<FoodProvider>(
                                   builder: (context, foodProvider, child) {
-                                    final allRestaurantFoods = foodProvider
-                                        .getItemsFromRestaurant(
-                                          restaurantId:
-                                              widget.foodItem!.restaurantId,
-                                          sellerId: widget.foodItem!.sellerId,
-                                          sellerName:
-                                              widget.foodItem!.sellerName,
-                                          excludeItemId: widget.foodItem!.id,
-                                        );
+                                    final allRestaurantFoods = foodProvider.getItemsFromRestaurant(
+                                      restaurantId: widget.foodItem!.restaurantId,
+                                      sellerId: widget.foodItem!.sellerId,
+                                      sellerName: widget.foodItem!.sellerName,
+                                      excludeItemId: widget.foodItem!.id,
+                                    );
 
                                     if (allRestaurantFoods.isEmpty) {
                                       return const SizedBox.shrink();
                                     }
 
-                                    final displayedItems = allRestaurantFoods
-                                        .take(_restaurantItemsToShow)
-                                        .toList();
-                                    final hasMoreItems =
-                                        allRestaurantFoods.length >
-                                        _restaurantItemsToShow;
+                                    final displayedItems = allRestaurantFoods.take(_restaurantItemsToShow).toList();
+                                    final hasMoreItems = allRestaurantFoods.length > _restaurantItemsToShow;
 
                                     return Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Padding(
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: 20.w,
-                                          ),
-                                          child: _buildSectionHeader(
-                                            colors,
-                                            'More From Restaurant',
-                                          ),
+                                          padding: EdgeInsets.symmetric(horizontal: 20.w),
+                                          child: _buildSectionHeader(colors, 'More From Restaurant'),
                                         ),
                                         SizedBox(height: 12.h),
                                         Padding(
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: 20.w,
-                                          ),
+                                          padding: EdgeInsets.symmetric(horizontal: 20.w),
                                           child: Column(
-                                            children: displayedItems.map((
-                                              item,
-                                            ) {
+                                            children: displayedItems.map((item) {
                                               return Padding(
-                                                padding: EdgeInsets.only(
-                                                  bottom: 12.h,
-                                                ),
-                                                child: _buildRestaurantFoodItem(
-                                                  item,
-                                                  colors,
-                                                ),
+                                                padding: EdgeInsets.only(bottom: 12.h),
+                                                child: _buildRestaurantFoodItem(item, colors),
                                               );
                                             }).toList(),
                                           ),
@@ -1953,26 +1663,21 @@ class _FoodDetailsState extends State<FoodDetails>
                                     final similarItems = groceryProvider.items
                                         .where(
                                           (item) =>
-                                              item.categoryId ==
-                                                  widget
-                                                      .groceryItem!
-                                                      .categoryId &&
+                                              item.categoryId == widget.groceryItem!.categoryId &&
                                               item.id != widget.groceryItem!.id,
                                         )
                                         .take(5)
                                         .toList();
 
-                                    if (similarItems.isEmpty)
+                                    if (similarItems.isEmpty) {
                                       return const SizedBox.shrink();
+                                    }
 
                                     return Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Padding(
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: 20.w,
-                                          ),
+                                          padding: EdgeInsets.symmetric(horizontal: 20.w),
                                           child: Text(
                                             "Similar Items",
                                             style: TextStyle(
@@ -1986,28 +1691,18 @@ class _FoodDetailsState extends State<FoodDetails>
                                         SizedBox(
                                           height: 250.h,
                                           child: ListView.builder(
-                                            padding: EdgeInsets.only(
-                                              left: 20.w,
-                                            ),
+                                            padding: EdgeInsets.only(left: 20.w),
                                             scrollDirection: Axis.horizontal,
-                                            physics:
-                                                const BouncingScrollPhysics(),
+                                            physics: const BouncingScrollPhysics(),
                                             itemCount: similarItems.length,
                                             itemBuilder: (context, index) {
                                               return SizedBox(
                                                 width: 160.w,
                                                 child: GroceryItemCard(
                                                   item: similarItems[index],
-                                                  margin: EdgeInsets.only(
-                                                    right: 12.w,
-                                                    bottom: 10.h,
-                                                  ),
+                                                  margin: EdgeInsets.only(right: 12.w, bottom: 10.h),
                                                   onTap: () {
-                                                    context.push(
-                                                      '/foodDetails',
-                                                      extra:
-                                                          similarItems[index],
-                                                    );
+                                                    context.push('/foodDetails', extra: similarItems[index]);
                                                   },
                                                 ),
                                               );
@@ -2054,19 +1749,16 @@ class _FoodDetailsState extends State<FoodDetails>
               decoration: BoxDecoration(color: colors.backgroundPrimary),
               child: Consumer<CartProvider>(
                 builder: (context, provider, _) {
-                  final CartItem actionableCartItem = widget.foodItem != null
-                      ? _buildFoodCartItem()
-                      : cartItem;
+                  final CartItem actionableCartItem = widget.foodItem != null ? _buildFoodCartItem() : cartItem;
                   final int qty = provider.getItemQuantity(
                     actionableCartItem,
                     includeFoodCustomizations: widget.foodItem != null,
                   );
                   final bool isInCart = qty > 0;
-                  final bool isItemPending = provider
-                      .isItemOperationPendingForDisplay(
-                        actionableCartItem,
-                        includeFoodCustomizations: widget.foodItem != null,
-                      );
+                  final bool isItemPending = provider.isItemOperationPendingForDisplay(
+                    actionableCartItem,
+                    includeFoodCustomizations: widget.foodItem != null,
+                  );
                   final actionItem = provider.resolveItemForCartAction(
                     actionableCartItem,
                     includeFoodCustomizations: widget.foodItem != null,
@@ -2084,13 +1776,10 @@ class _FoodDetailsState extends State<FoodDetails>
                                 padding: EdgeInsets.symmetric(horizontal: 10.w),
                                 decoration: BoxDecoration(
                                   color: colors.backgroundSecondary,
-                                  borderRadius: BorderRadius.circular(
-                                    KBorderSize.borderMedium,
-                                  ),
+                                  borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                                 ),
                                 child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
                                     InkWell(
                                       onTap: () {
@@ -2105,17 +1794,10 @@ class _FoodDetailsState extends State<FoodDetails>
                                               height: 20.w,
                                               child: CircularProgressIndicator(
                                                 strokeWidth: 2,
-                                                valueColor:
-                                                    AlwaysStoppedAnimation<
-                                                      Color
-                                                    >(colors.textSecondary),
+                                                valueColor: AlwaysStoppedAnimation<Color>(colors.textSecondary),
                                               ),
                                             )
-                                          : Icon(
-                                              Icons.remove,
-                                              color: colors.textSecondary,
-                                              size: 20,
-                                            ),
+                                          : Icon(Icons.remove, color: colors.textSecondary, size: 20),
                                     ),
                                     Text(
                                       isItemPending ? '...' : qty.toString(),
@@ -2128,35 +1810,21 @@ class _FoodDetailsState extends State<FoodDetails>
                                     GestureDetector(
                                       onTap: () {
                                         if (isItemPending) return;
-                                        _handleAddToCart(
-                                          provider,
-                                          actionableCartItem,
-                                        );
+                                        _handleAddToCart(provider, actionableCartItem);
                                       },
                                       child: Container(
                                         padding: EdgeInsets.all(2.r),
-                                        decoration: BoxDecoration(
-                                          color: colors.accentOrange,
-                                          shape: BoxShape.circle,
-                                        ),
+                                        decoration: BoxDecoration(color: colors.accentOrange, shape: BoxShape.circle),
                                         child: isItemPending
                                             ? SizedBox(
                                                 width: 20.w,
                                                 height: 20.w,
-                                                child:
-                                                    const CircularProgressIndicator(
-                                                      strokeWidth: 2,
-                                                      valueColor:
-                                                          AlwaysStoppedAnimation<
-                                                            Color
-                                                          >(Colors.white),
-                                                    ),
+                                                child: const CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                                ),
                                               )
-                                            : const Icon(
-                                                Icons.add,
-                                                color: Colors.white,
-                                                size: 20,
-                                              ),
+                                            : const Icon(Icons.add, color: Colors.white, size: 20),
                                       ),
                                     ),
                                   ],
@@ -2170,9 +1838,7 @@ class _FoodDetailsState extends State<FoodDetails>
                         child: Container(
                           decoration: BoxDecoration(
                             color: colors.accentOrange,
-                            borderRadius: BorderRadius.circular(
-                              KBorderSize.borderRadius15,
-                            ),
+                            borderRadius: BorderRadius.circular(KBorderSize.borderRadius15),
                           ),
                           child: AppButton(
                             onPressed: () {
@@ -2185,16 +1851,8 @@ class _FoodDetailsState extends State<FoodDetails>
                             },
                             backgroundColor: Colors.transparent,
                             borderRadius: KBorderSize.borderMedium,
-                            buttonText: isItemPending
-                                ? "Updating..."
-                                : (isInCart
-                                      ? "Remove from Cart"
-                                      : "Add to Cart"),
-                            textStyle: TextStyle(
-                              color: Colors.white,
-                              fontSize: 15.sp,
-                              fontWeight: FontWeight.w600,
-                            ),
+                            buttonText: isItemPending ? "Updating..." : (isInCart ? "Remove from Cart" : "Add to Cart"),
+                            textStyle: TextStyle(color: Colors.white, fontSize: 15.sp, fontWeight: FontWeight.w600),
                           ),
                         ),
                       ),
@@ -2212,30 +1870,16 @@ class _FoodDetailsState extends State<FoodDetails>
   Text _buildSectionHeader(AppColorsExtension colors, String name) {
     return Text(
       name,
-      style: TextStyle(
-        fontSize: 16.sp,
-        fontWeight: FontWeight.w800,
-        color: colors.textPrimary,
-      ),
+      style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w800, color: colors.textPrimary),
     );
   }
 
   Widget _buildRestaurantFoodItem(FoodItem item, AppColorsExtension colors) {
     return Consumer<CartProvider>(
       builder: (context, cartProvider, child) {
-        final bool isInCart = cartProvider.hasItemInCart(
-          item,
-          includeFoodCustomizations: true,
-        );
-        final bool isItemPending = cartProvider
-            .isItemOperationPendingForDisplay(
-              item,
-              includeFoodCustomizations: true,
-            );
-        final actionItem = cartProvider.resolveItemForCartAction(
-          item,
-          includeFoodCustomizations: true,
-        );
+        final bool isInCart = cartProvider.hasItemInCart(item, includeFoodCustomizations: true);
+        final bool isItemPending = cartProvider.isItemOperationPendingForDisplay(item, includeFoodCustomizations: true);
+        final actionItem = cartProvider.resolveItemForCartAction(item, includeFoodCustomizations: true);
 
         return FoodItemCard(
           item: item,
@@ -2256,13 +1900,8 @@ class _FoodDetailsState extends State<FoodDetails>
               padding: EdgeInsets.all(8.r),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isInCart
-                    ? colors.accentOrange
-                    : colors.backgroundSecondary,
-                border: Border.all(
-                  color: isInCart ? colors.accentOrange : colors.inputBorder,
-                  width: 1,
-                ),
+                color: isInCart ? colors.accentOrange : colors.backgroundSecondary,
+                border: Border.all(color: isInCart ? colors.accentOrange : colors.inputBorder, width: 1),
               ),
               child: isItemPending
                   ? SizedBox(
@@ -2270,9 +1909,7 @@ class _FoodDetailsState extends State<FoodDetails>
                       height: 16.w,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          isInCart ? Colors.white : colors.accentOrange,
-                        ),
+                        valueColor: AlwaysStoppedAnimation<Color>(isInCart ? Colors.white : colors.accentOrange),
                       ),
                     )
                   : SvgPicture.asset(
@@ -2280,10 +1917,7 @@ class _FoodDetailsState extends State<FoodDetails>
                       package: 'grab_go_shared',
                       height: 16.h,
                       width: 16.w,
-                      colorFilter: ColorFilter.mode(
-                        isInCart ? Colors.white : colors.textPrimary,
-                        BlendMode.srcIn,
-                      ),
+                      colorFilter: ColorFilter.mode(isInCart ? Colors.white : colors.textPrimary, BlendMode.srcIn),
                     ),
             ),
           ),
