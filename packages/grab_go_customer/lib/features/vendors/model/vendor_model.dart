@@ -167,6 +167,7 @@ class VendorModel {
   final List<String>? paymentMethods;
   final List<String>? bannerImages;
   final bool? isGrabGoExclusive;
+  final bool? isGrabGoExclusiveActive;
   final DateTime? isGrabGoExclusiveUntil;
   final String? vendorType;
   final DateTime? lastOnlineAt;
@@ -229,6 +230,7 @@ class VendorModel {
     this.paymentMethods,
     this.bannerImages,
     this.isGrabGoExclusive,
+    this.isGrabGoExclusiveActive,
     this.isGrabGoExclusiveUntil,
     this.vendorType,
     this.lastOnlineAt,
@@ -285,6 +287,7 @@ class VendorModel {
     List<String>? paymentMethods,
     List<String>? bannerImages,
     bool? isGrabGoExclusive,
+    bool? isGrabGoExclusiveActive,
     DateTime? isGrabGoExclusiveUntil,
     String? vendorType,
     DateTime? lastOnlineAt,
@@ -341,6 +344,8 @@ class VendorModel {
       paymentMethods: paymentMethods ?? this.paymentMethods,
       bannerImages: bannerImages ?? this.bannerImages,
       isGrabGoExclusive: isGrabGoExclusive ?? this.isGrabGoExclusive,
+      isGrabGoExclusiveActive:
+          isGrabGoExclusiveActive ?? this.isGrabGoExclusiveActive,
       isGrabGoExclusiveUntil:
           isGrabGoExclusiveUntil ?? this.isGrabGoExclusiveUntil,
       vendorType: vendorType ?? this.vendorType,
@@ -488,6 +493,9 @@ class VendorModel {
       isGrabGoExclusive: _hasAnyKey(json, ['isGrabGoExclusive', 'is_exclusive'])
           ? detail.isGrabGoExclusive
           : isGrabGoExclusive,
+      isGrabGoExclusiveActive: json.containsKey('isGrabGoExclusiveActive')
+          ? detail.isGrabGoExclusiveActive
+          : isGrabGoExclusiveActive,
       isGrabGoExclusiveUntil: json.containsKey('isGrabGoExclusiveUntil')
           ? detail.isGrabGoExclusiveUntil
           : isGrabGoExclusiveUntil,
@@ -629,6 +637,13 @@ class VendorModel {
       ),
       isGrabGoExclusive:
           json['isGrabGoExclusive'] as bool? ?? json['is_exclusive'] as bool?,
+      isGrabGoExclusiveActive: json['isGrabGoExclusiveActive'] is bool
+          ? json['isGrabGoExclusiveActive'] as bool
+          : json['isGrabGoExclusiveActive'] is String
+          ? (json['isGrabGoExclusiveActive'] as String).toLowerCase() == 'true'
+          : json['isGrabGoExclusiveActive'] is num
+          ? (json['isGrabGoExclusiveActive'] as num) != 0
+          : null,
       isGrabGoExclusiveUntil: json['isGrabGoExclusiveUntil'] != null
           ? DateTime.tryParse(json['isGrabGoExclusiveUntil'].toString())
           : null,
@@ -674,7 +689,22 @@ class VendorModel {
 
   Map<String, dynamic> toJson() => _$VendorModelToJson(this);
 
-  bool get isExclusive => isGrabGoExclusive ?? false;
+  bool get isExclusive {
+    if (isGrabGoExclusiveActive != null) {
+      return isGrabGoExclusiveActive!;
+    }
+
+    if (isGrabGoExclusive != true) {
+      return false;
+    }
+
+    if (isGrabGoExclusiveUntil == null) {
+      return true;
+    }
+
+    return isGrabGoExclusiveUntil!.isAfter(DateTime.now());
+  }
+
   List<String> get vendorCategories => categories ?? [];
   String get address => location?.address ?? '';
   String get city => location?.city ?? '';

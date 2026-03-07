@@ -13,6 +13,8 @@ class VendorHorizontalSection extends StatelessWidget {
   final Color accentColor;
   final String? emptyText;
   final bool showClosedOnImage;
+  final VoidCallback? onSeeAll;
+  final bool highlightExclusiveBadge;
 
   const VendorHorizontalSection({
     super.key,
@@ -24,6 +26,8 @@ class VendorHorizontalSection extends StatelessWidget {
     required this.accentColor,
     this.emptyText,
     this.showClosedOnImage = false,
+    this.onSeeAll,
+    this.highlightExclusiveBadge = false,
   });
 
   @override
@@ -40,7 +44,7 @@ class VendorHorizontalSection extends StatelessWidget {
           title: title,
           sectionTotal: vendors.length,
           accentColor: accentColor,
-          onSeeAll: () {},
+          onSeeAll: onSeeAll,
         ),
         SizedBox(height: 12.h),
 
@@ -61,6 +65,7 @@ class VendorHorizontalSection extends StatelessWidget {
                   width: cardWidth,
                   margin: EdgeInsets.symmetric(vertical: 4.h),
                   showClosedOnImage: showClosedOnImage,
+                  highlightExclusiveBadge: highlightExclusiveBadge,
                 ),
               );
             },

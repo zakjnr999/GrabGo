@@ -16,6 +16,7 @@ class VendorCard extends StatelessWidget {
   final double? width;
   final EdgeInsetsGeometry? margin;
   final bool showClosedOnImage;
+  final bool highlightExclusiveBadge;
 
   const VendorCard({
     super.key,
@@ -25,6 +26,7 @@ class VendorCard extends StatelessWidget {
     this.width,
     this.margin,
     this.showClosedOnImage = false,
+    this.highlightExclusiveBadge = false,
   });
 
   @override
@@ -275,6 +277,32 @@ class VendorCard extends StatelessWidget {
     double imageHeight,
   ) {
     final imageUrl = _vendorCardImageUrl();
+    final trustBadges = <Widget>[
+      if (highlightExclusiveBadge && vendor.isExclusive)
+        _buildTrustBadge(
+          colors: colors,
+          iconAsset: Assets.icons.sparkles,
+          label: 'Exclusive',
+          textColor: Colors.white,
+          backgroundColor: colors.accentOrange.withValues(alpha: 0.92),
+        ),
+      if (vendor.featured ?? false)
+        _buildTrustBadge(
+          colors: colors,
+          iconAsset: Assets.icons.sparkles,
+          label: 'Featured',
+          textColor: Colors.white,
+          backgroundColor: colors.accentOrange.withValues(alpha: 0.92),
+        ),
+      if (vendor.isVerified ?? false)
+        _buildTrustBadge(
+          colors: colors,
+          iconAsset: Assets.icons.badgeCheck,
+          label: 'Verified',
+          textColor: Colors.white,
+          backgroundColor: Colors.black.withValues(alpha: 0.55),
+        ),
+    ];
 
     return Stack(
       children: [
@@ -326,33 +354,17 @@ class VendorCard extends StatelessWidget {
             ),
           ),
         ),
-        if ((vendor.featured ?? false) || (vendor.isVerified ?? false))
+        if (trustBadges.isNotEmpty)
           Positioned(
             left: 8.w,
             top: 8.h,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (vendor.featured ?? false)
-                  _buildTrustBadge(
-                    colors: colors,
-                    iconAsset: Assets.icons.sparkles,
-                    label: 'Featured',
-                    textColor: Colors.white,
-                    backgroundColor: colors.accentOrange.withValues(
-                      alpha: 0.92,
-                    ),
-                  ),
-                if ((vendor.featured ?? false) && (vendor.isVerified ?? false))
-                  SizedBox(height: 6.h),
-                if (vendor.isVerified ?? false)
-                  _buildTrustBadge(
-                    colors: colors,
-                    iconAsset: Assets.icons.badgeCheck,
-                    label: 'Verified',
-                    textColor: Colors.white,
-                    backgroundColor: Colors.black.withValues(alpha: 0.55),
-                  ),
+                for (var i = 0; i < trustBadges.length; i++) ...[
+                  if (i > 0) SizedBox(height: 6.h),
+                  trustBadges[i],
+                ],
               ],
             ),
           ),

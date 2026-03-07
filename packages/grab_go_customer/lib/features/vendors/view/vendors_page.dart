@@ -228,6 +228,9 @@ class _VendorsPageState extends State<VendorsPage> {
                     context.push('/vendorDetails', extra: vendor),
                 isLoading: provider.isLoading,
                 accentColor: colors.accentOrange,
+                onSeeAll: () =>
+                    context.push('/exclusive-vendors?tab=${vendorType.id}'),
+                highlightExclusiveBadge: true,
               ),
               SizedBox(height: KSpacing.lg.h),
 

@@ -23,12 +23,14 @@ final class _$VendorService extends VendorService {
     String? isOpen,
     double? minRating,
     int? limit,
+    String? exclusive,
   }) {
     final Uri $url = Uri.parse('/restaurants');
     final Map<String, dynamic> $params = <String, dynamic>{
       'isOpen': isOpen,
       'minRating': minRating,
       'limit': limit,
+      'exclusive': exclusive,
     };
     final Request $request = Request(
       'GET',
@@ -87,12 +89,14 @@ final class _$VendorService extends VendorService {
     String? isOpen,
     double? minRating,
     int? limit,
+    String? exclusive,
   }) {
     final Uri $url = Uri.parse('/groceries/stores');
     final Map<String, dynamic> $params = <String, dynamic>{
       'isOpen': isOpen,
       'minRating': minRating,
       'limit': limit,
+      'exclusive': exclusive,
     };
     final Request $request = Request(
       'GET',
@@ -151,12 +155,14 @@ final class _$VendorService extends VendorService {
     String? isOpen,
     double? minRating,
     int? limit,
+    String? exclusive,
   }) {
     final Uri $url = Uri.parse('/pharmacies/stores');
     final Map<String, dynamic> $params = <String, dynamic>{
       'isOpen': isOpen,
       'minRating': minRating,
       'limit': limit,
+      'exclusive': exclusive,
     };
     final Request $request = Request(
       'GET',
@@ -236,6 +242,7 @@ final class _$VendorService extends VendorService {
     String? is24Hours,
     double? minRating,
     int? limit,
+    String? exclusive,
   }) {
     final Uri $url = Uri.parse('/grabmart/stores');
     final Map<String, dynamic> $params = <String, dynamic>{
@@ -243,6 +250,7 @@ final class _$VendorService extends VendorService {
       'is24Hours': is24Hours,
       'minRating': minRating,
       'limit': limit,
+      'exclusive': exclusive,
     };
     final Request $request = Request(
       'GET',

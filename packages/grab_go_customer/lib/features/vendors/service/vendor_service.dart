@@ -11,13 +11,18 @@ abstract class VendorService extends ChopperService {
     @Query('isOpen') String? isOpen,
     @Query('minRating') double? minRating,
     @Query('limit') int? limit,
+    @Query('exclusive') String? exclusive,
   });
 
   @GET(path: '/restaurants/{id}')
-  Future<Response<Map<String, dynamic>>> getRestaurantById(@Path('id') String id);
+  Future<Response<Map<String, dynamic>>> getRestaurantById(
+    @Path('id') String id,
+  );
 
   @GET(path: '/restaurants/search')
-  Future<Response<Map<String, dynamic>>> searchRestaurants({@Query('q') required String query});
+  Future<Response<Map<String, dynamic>>> searchRestaurants({
+    @Query('q') required String query,
+  });
 
   @GET(path: '/restaurants/nearby')
   Future<Response<Map<String, dynamic>>> getNearbyRestaurants({
@@ -33,13 +38,18 @@ abstract class VendorService extends ChopperService {
     @Query('isOpen') String? isOpen,
     @Query('minRating') double? minRating,
     @Query('limit') int? limit,
+    @Query('exclusive') String? exclusive,
   });
 
   @GET(path: '/groceries/stores/{id}')
-  Future<Response<Map<String, dynamic>>> getGroceryStoreById(@Path('id') String id);
+  Future<Response<Map<String, dynamic>>> getGroceryStoreById(
+    @Path('id') String id,
+  );
 
   @GET(path: '/groceries/search')
-  Future<Response<Map<String, dynamic>>> searchGroceryStores({@Query('q') required String query});
+  Future<Response<Map<String, dynamic>>> searchGroceryStores({
+    @Query('q') required String query,
+  });
 
   @GET(path: '/groceries/nearby')
   Future<Response<Map<String, dynamic>>> getNearbyGroceryStores({
@@ -55,10 +65,13 @@ abstract class VendorService extends ChopperService {
     @Query('isOpen') String? isOpen,
     @Query('minRating') double? minRating,
     @Query('limit') int? limit,
+    @Query('exclusive') String? exclusive,
   });
 
   @GET(path: '/pharmacies/stores/{id}')
-  Future<Response<Map<String, dynamic>>> getPharmacyStoreById(@Path('id') String id);
+  Future<Response<Map<String, dynamic>>> getPharmacyStoreById(
+    @Path('id') String id,
+  );
 
   @GET(path: '/pharmacies/search')
   Future<Response<Map<String, dynamic>>> searchPharmacies({
@@ -88,10 +101,13 @@ abstract class VendorService extends ChopperService {
     @Query('is24Hours') String? is24Hours,
     @Query('minRating') double? minRating,
     @Query('limit') int? limit,
+    @Query('exclusive') String? exclusive,
   });
 
   @GET(path: '/grabmart/stores/{id}')
-  Future<Response<Map<String, dynamic>>> getGrabMartStoreById(@Path('id') String id);
+  Future<Response<Map<String, dynamic>>> getGrabMartStoreById(
+    @Path('id') String id,
+  );
 
   @GET(path: '/grabmart/search')
   Future<Response<Map<String, dynamic>>> searchGrabMarts({
@@ -104,7 +120,9 @@ abstract class VendorService extends ChopperService {
   Future<Response<Map<String, dynamic>>> get24HourGrabMarts();
 
   @GET(path: '/grabmart/with-services')
-  Future<Response<Map<String, dynamic>>> getGrabMartsWithServices({@Query('services') required String services});
+  Future<Response<Map<String, dynamic>>> getGrabMartsWithServices({
+    @Query('services') required String services,
+  });
 
   @GET(path: '/grabmart/nearby')
   Future<Response<Map<String, dynamic>>> getNearbyGrabMarts({

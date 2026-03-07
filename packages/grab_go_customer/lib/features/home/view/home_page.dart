@@ -38,6 +38,7 @@ import 'package:grab_go_customer/shared/services/connectivity_service.dart';
 import 'package:grab_go_customer/shared/services/notification_service.dart';
 import 'package:grab_go_customer/features/vendors/viewmodel/vendor_provider.dart';
 import 'package:grab_go_customer/features/vendors/model/vendor_type.dart';
+import 'package:grab_go_customer/features/vendors/widgets/exclusive_vendors_preview_section.dart';
 import 'package:grab_go_customer/features/vendors/widgets/vendor_horizontal_section.dart';
 import 'package:provider/provider.dart';
 
@@ -71,12 +72,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   static const double _scrollThreshold = 150.0;
   static const double _bottomNavHeightFactor = 0.16;
   static const double _headerExtraHeight = 20.0;
-  static double _homeHeaderGap(Size size) => (size.shortestSide * 0.008).clamp(2.0, 5.0);
-  static double _homeFirstSectionGap(Size size) => (size.shortestSide * 0.006).clamp(1.0, 4.0);
-  static double _homeContentTrim(Size size) => (size.shortestSide * 0.018).clamp(8.0, 12.0);
+  static double _homeHeaderGap(Size size) =>
+      (size.shortestSide * 0.008).clamp(2.0, 5.0);
+  static double _homeFirstSectionGap(Size size) =>
+      (size.shortestSide * 0.006).clamp(1.0, 4.0);
+  static double _homeContentTrim(Size size) =>
+      (size.shortestSide * 0.018).clamp(8.0, 12.0);
 
   static double _homeContentTopPadding(Size size) {
-    final base = UmbrellaHeaderMetrics.contentTopPaddingFor(size, extra: _headerExtraHeight);
+    final base = UmbrellaHeaderMetrics.contentTopPaddingFor(
+      size,
+      extra: _headerExtraHeight,
+    );
     return base - _homeContentTrim(size) + _homeHeaderGap(size);
   }
 
@@ -87,8 +94,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _scrollController.addListener(_onScroll);
     _scrollOffsetNotifier = ValueNotifier<double>(0.0);
 
-    _fabAnimationController = AnimationController(duration: const Duration(milliseconds: 300), vsync: this);
-    _badgePulseController = AnimationController(duration: const Duration(milliseconds: 400), vsync: this);
+    _fabAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _badgePulseController = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
 
     _fabAnimationController.forward();
     _initializeData();
@@ -99,7 +112,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     super.didChangeDependencies();
     final locationProvider = Provider.of<NativeLocationProvider>(context);
 
-    if (locationProvider.latitude != null && locationProvider.longitude != null) {
+    if (locationProvider.latitude != null &&
+        locationProvider.longitude != null) {
       bool shouldRefresh = false;
 
       if (_lastLat == null || _lastLng == null) {
@@ -118,7 +132,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
       if (shouldRefresh) {
         if (kDebugMode) {
-          print('[HOME] Significant location change detected, triggering refresh...');
+          print(
+            '[HOME] Significant location change detected, triggering refresh...',
+          );
         }
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _refreshData(refreshAllServices: true);
@@ -184,10 +200,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
       _refreshUnreadNotificationCount();
 
-      Provider.of<NativeLocationProvider>(context, listen: false).fetchAddress();
+      Provider.of<NativeLocationProvider>(
+        context,
+        listen: false,
+      ).fetchAddress();
 
-      final vendorProvider = Provider.of<VendorProvider>(context, listen: false);
-      final locationProvider = Provider.of<NativeLocationProvider>(context, listen: false);
+      final vendorProvider = Provider.of<VendorProvider>(
+        context,
+        listen: false,
+      );
+      final locationProvider = Provider.of<NativeLocationProvider>(
+        context,
+        listen: false,
+      );
       final foodProvider = Provider.of<FoodProvider>(context, listen: false);
       final hasCachedData = foodProvider.categories.isNotEmpty;
 
@@ -218,8 +243,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
       foodProvider.refreshAll();
 
-      if (locationProvider.latitude != null && locationProvider.longitude != null) {
-        vendorProvider.fetchVendors(VendorType.food, lat: locationProvider.latitude, lng: locationProvider.longitude);
+      if (locationProvider.latitude != null &&
+          locationProvider.longitude != null) {
+        vendorProvider.fetchVendors(
+          VendorType.food,
+          lat: locationProvider.latitude,
+          lng: locationProvider.longitude,
+        );
       }
     });
   }
@@ -239,13 +269,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       });
     }
 
-    final locationProvider = Provider.of<NativeLocationProvider>(context, listen: false);
+    final locationProvider = Provider.of<NativeLocationProvider>(
+      context,
+      listen: false,
+    );
     final vendorProvider = Provider.of<VendorProvider>(context, listen: false);
 
     if (kDebugMode) {
       print('[HOME] Refreshing data (all services: $refreshAllServices)...');
       final locationData = CacheService.getUserLocation();
-      print('[HOME] Current location: ${locationData?['latitude']}, ${locationData?['longitude']}');
+      print(
+        '[HOME] Current location: ${locationData?['latitude']}, ${locationData?['longitude']}',
+      );
       print('[HOME] Active feed: food');
     }
 
@@ -253,7 +288,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       final provider = Provider.of<FoodProvider>(context, listen: false);
       await provider.refreshAll(forceRefresh: true);
 
-      if (locationProvider.latitude != null && locationProvider.longitude != null) {
+      if (locationProvider.latitude != null &&
+          locationProvider.longitude != null) {
         await vendorProvider.fetchVendors(
           VendorType.food,
           lat: locationProvider.latitude,
@@ -312,7 +348,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     final bool isFoodLoading = foodProvider.isLoading;
     final bool hasNoFood = foodProvider.categories.isEmpty;
-    final bool isFoodUnavailable = !isFoodLoading && hasNoFood && foodProvider.hasAttemptedFetch;
+    final bool isFoodUnavailable =
+        !isFoodLoading && hasNoFood && foodProvider.hasAttemptedFetch;
 
     if (isFoodLoading || !foodProvider.hasAttemptedFetch) {
       shouldShowSkeleton = true;
@@ -330,7 +367,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       statusBarIconBrightness: Brightness.light,
       systemNavigationBarColor: colors.backgroundPrimary,
       systemNavigationBarDividerColor: Colors.transparent,
-      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      systemNavigationBarIconBrightness: isDark
+          ? Brightness.light
+          : Brightness.dark,
     );
 
     if (foodProvider.categories.isNotEmpty && _selectedCategory == null) {
@@ -366,7 +405,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           slivers: [
                             if (shouldShowEmptyState)
                               SliverPadding(
-                                padding: EdgeInsets.only(top: _homeContentTopPadding(size)),
+                                padding: EdgeInsets.only(
+                                  top: _homeContentTopPadding(size),
+                                ),
                                 sliver: SliverFillRemaining(
                                   hasScrollBody: false,
                                   child: Center(
@@ -379,56 +420,111 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               )
                             else
                               SliverPadding(
-                                padding: EdgeInsets.only(top: _homeContentTopPadding(size)),
+                                padding: EdgeInsets.only(
+                                  top: _homeContentTopPadding(size),
+                                ),
                                 sliver: SliverToBoxAdapter(
                                   child: Container(
                                     color: colors.backgroundPrimary,
                                     child: shouldShowSkeleton
-                                        ? HomePageSkeleton(firstSectionGap: _homeFirstSectionGap(size))
+                                        ? HomePageSkeleton(
+                                            firstSectionGap:
+                                                _homeFirstSectionGap(size),
+                                          )
                                         : Column(
                                             children: [
                                               if (!shouldShowEmptyState) ...[
-                                                SizedBox(height: _homeFirstSectionGap(size)),
+                                                SizedBox(
+                                                  height: _homeFirstSectionGap(
+                                                    size,
+                                                  ),
+                                                ),
                                                 _buildServiceSelector(),
                                                 SizedBox(height: KSpacing.lg.h),
                                                 PromotionalBannerCarousel(
-                                                  banners: AppPromotionalBanners.getDefaultBanners(
-                                                    onReferralTap: () => context.push('/referral'),
-                                                    onGrabGoProTap: () => context.push('/subscription'),
-                                                    onWelcomeTap: () {},
-                                                    onFlashDealTap: () {},
-                                                    onGrabMartTap: () {},
-                                                  ),
+                                                  banners:
+                                                      AppPromotionalBanners.getDefaultBanners(
+                                                        onReferralTap: () =>
+                                                            context.push(
+                                                              '/referral',
+                                                            ),
+                                                        onGrabGoProTap: () =>
+                                                            context.push(
+                                                              '/subscription',
+                                                            ),
+                                                        onWelcomeTap: () {},
+                                                        onFlashDealTap: () {},
+                                                        onGrabMartTap: () {},
+                                                      ),
                                                 ),
                                                 SizedBox(height: KSpacing.lg.h),
                                               ],
                                               AnimatedSwitcher(
-                                                duration: const Duration(milliseconds: 300),
+                                                duration: const Duration(
+                                                  milliseconds: 300,
+                                                ),
                                                 switchInCurve: Curves.easeInOut,
-                                                switchOutCurve: Curves.easeInOut,
-                                                transitionBuilder: (Widget child, Animation<double> animation) {
-                                                  return FadeTransition(
-                                                    opacity: animation,
-                                                    child: SlideTransition(
-                                                      position: Tween<Offset>(
-                                                        begin: const Offset(0.0, 0.02),
-                                                        end: Offset.zero,
-                                                      ).animate(animation),
-                                                      child: child,
-                                                    ),
-                                                  );
-                                                },
+                                                switchOutCurve:
+                                                    Curves.easeInOut,
+                                                transitionBuilder:
+                                                    (
+                                                      Widget child,
+                                                      Animation<double>
+                                                      animation,
+                                                    ) {
+                                                      return FadeTransition(
+                                                        opacity: animation,
+                                                        child: SlideTransition(
+                                                          position:
+                                                              Tween<Offset>(
+                                                                begin:
+                                                                    const Offset(
+                                                                      0.0,
+                                                                      0.02,
+                                                                    ),
+                                                                end:
+                                                                    Offset.zero,
+                                                              ).animate(
+                                                                animation,
+                                                              ),
+                                                          child: child,
+                                                        ),
+                                                      );
+                                                    },
                                                 child: Column(
-                                                  key: const ValueKey<String>('home_food_feed'),
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  key: const ValueKey<String>(
+                                                    'home_food_feed',
+                                                  ),
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
                                                   children: [
-                                                    _buildFoodCategories(foodProvider, isDark, size, colors),
+                                                    _buildFoodCategories(
+                                                      foodProvider,
+                                                      isDark,
+                                                      size,
+                                                      colors,
+                                                    ),
                                                     _buildDealsSection(),
-                                                    _buildPopularSection(foodProvider),
+                                                    _buildPopularSection(
+                                                      foodProvider,
+                                                    ),
                                                     _buildOrderAgainSection(),
-                                                    _buildNearbyVendorsSection(locationProvider),
+                                                    ExclusiveVendorsPreviewSection(
+                                                      onSeeAll: () =>
+                                                          context.push(
+                                                            '/exclusive-vendors',
+                                                          ),
+                                                    ),
+                                                    SizedBox(
+                                                      height: KSpacing.lg.h,
+                                                    ),
+                                                    _buildNearbyVendorsSection(
+                                                      locationProvider,
+                                                    ),
                                                     _buildPromoBanners(),
-                                                    _buildTopRatedSection(foodProvider),
+                                                    _buildTopRatedSection(
+                                                      foodProvider,
+                                                    ),
                                                   ],
                                                 ),
                                               ),
@@ -438,9 +534,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                 ),
                               ),
                             if (!shouldShowSkeleton)
-                              ..._buildRecommendedSectionSlivers(foodProvider, colors, size, isDark),
+                              ..._buildRecommendedSectionSlivers(
+                                foodProvider,
+                                colors,
+                                size,
+                                isDark,
+                              ),
 
-                            SliverToBoxAdapter(child: SizedBox(height: bottomContentPadding)),
+                            SliverToBoxAdapter(
+                              child: SizedBox(height: bottomContentPadding),
+                            ),
                           ],
                         ),
                       ),
@@ -462,10 +565,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       ValueListenableBuilder<double>(
                         valueListenable: _scrollOffsetNotifier,
                         builder: (context, scrollOffset, _) {
-                          final collapseProgress = (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
-                          final opacity = (1.0 - (collapseProgress * 2)).clamp(0.0, 1.0);
+                          final collapseProgress =
+                              (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
+                          final opacity = (1.0 - (collapseProgress * 2)).clamp(
+                            0.0,
+                            1.0,
+                          );
 
-                          if (opacity == 0 || !locationProvider.shouldShowAccuracyPopup) {
+                          if (opacity == 0 ||
+                              !locationProvider.shouldShowAccuracyPopup) {
                             return const SizedBox.shrink();
                           }
 
@@ -477,9 +585,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               duration: const Duration(milliseconds: 200),
                               opacity: opacity,
                               child: LocationAccuracyPopup(
-                                distanceInMeters: locationProvider.distanceFromSavedLocation ?? 0,
+                                distanceInMeters:
+                                    locationProvider
+                                        .distanceFromSavedLocation ??
+                                    0,
                                 onUpdateLocation: () async {
-                                  await locationProvider.updateToCurrentLocation();
+                                  await locationProvider
+                                      .updateToCurrentLocation();
                                 },
                                 onDismiss: () {
                                   locationProvider.dismissAccuracyPopup();
@@ -497,7 +609,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  Builder _buildFoodCategories(FoodProvider itemsProvider, bool isDark, Size size, AppColorsExtension colors) {
+  Builder _buildFoodCategories(
+    FoodProvider itemsProvider,
+    bool isDark,
+    Size size,
+    AppColorsExtension colors,
+  ) {
     return Builder(
       builder: (context) {
         if (itemsProvider.isLoading && itemsProvider.categories.isEmpty) {
@@ -507,8 +624,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         }
 
         List<FoodCategoryModel> categoriesToShow = itemsProvider.categories;
-        if (_activeFilter.isActive && _activeFilter.selectedCategories.isNotEmpty) {
-          final validCategoryIds = itemsProvider.categories.map((cat) => cat.id).where((id) => id.isNotEmpty).toSet();
+        if (_activeFilter.isActive &&
+            _activeFilter.selectedCategories.isNotEmpty) {
+          final validCategoryIds = itemsProvider.categories
+              .map((cat) => cat.id)
+              .where((id) => id.isNotEmpty)
+              .toSet();
 
           final validSelectedCategories = _activeFilter.selectedCategories
               .where((id) => id.isNotEmpty && validCategoryIds.contains(id))
@@ -516,7 +637,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
           if (validSelectedCategories.isNotEmpty) {
             categoriesToShow = itemsProvider.categories
-                .where((category) => validSelectedCategories.contains(category.id))
+                .where(
+                  (category) => validSelectedCategories.contains(category.id),
+                )
                 .toList();
           } else {
             categoriesToShow = itemsProvider.categories;
@@ -541,7 +664,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               child: Center(
                 child: Text(
                   "No categories match your filter",
-                  style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    color: colors.textSecondary,
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             );
@@ -613,7 +740,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Widget _buildServiceSelector() {
-    const nonFoodServices = [AppServices.groceries, AppServices.pharmacy, AppServices.convenience, AppServices.parcel];
+    const nonFoodServices = [
+      AppServices.groceries,
+      AppServices.pharmacy,
+      AppServices.convenience,
+      AppServices.parcel,
+    ];
 
     return ServiceSelector(
       services: nonFoodServices,
@@ -651,7 +783,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         setState(() {
           _activeFilter = filter.copyWith();
           if (filter.isActive && filter.selectedCategories.isNotEmpty) {
-            final validCategoryIds = itemsProvider.categories.map((cat) => cat.id).where((id) => id.isNotEmpty).toSet();
+            final validCategoryIds = itemsProvider.categories
+                .map((cat) => cat.id)
+                .where((id) => id.isNotEmpty)
+                .toSet();
 
             final validSelectedCategories = filter.selectedCategories
                 .where((id) => id.isNotEmpty && validCategoryIds.contains(id))
@@ -662,21 +797,25 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   .where((cat) => validSelectedCategories.contains(cat.id))
                   .toList();
 
-              if (_selectedCategory != null && !validSelectedCategories.contains(_selectedCategory!.id)) {
+              if (_selectedCategory != null &&
+                  !validSelectedCategories.contains(_selectedCategory!.id)) {
                 _selectedCategory = filteredCategories.first;
               } else {
                 _selectedCategory ??= filteredCategories.first;
               }
             } else {
               _activeFilter.selectedCategories.clear();
-              if (_selectedCategory == null && itemsProvider.categories.isNotEmpty) {
+              if (_selectedCategory == null &&
+                  itemsProvider.categories.isNotEmpty) {
                 _selectedCategory = itemsProvider.categories.first;
               }
             }
           } else {
             if (itemsProvider.categories.isNotEmpty) {
               if (_selectedCategory == null ||
-                  !itemsProvider.categories.any((cat) => cat.id == _selectedCategory!.id)) {
+                  !itemsProvider.categories.any(
+                    (cat) => cat.id == _selectedCategory!.id,
+                  )) {
                 _selectedCategory = itemsProvider.categories.first;
               }
             }
@@ -699,10 +838,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         if (!isMatchingType && !provider.isLoading) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
-            if (locationProvider.latitude == null || locationProvider.longitude == null) {
+            if (locationProvider.latitude == null ||
+                locationProvider.longitude == null) {
               return;
             }
-            provider.fetchVendors(vendorType, lat: locationProvider.latitude, lng: locationProvider.longitude);
+            provider.fetchVendors(
+              vendorType,
+              lat: locationProvider.latitude,
+              lng: locationProvider.longitude,
+            );
           });
           return const SizedBox.shrink();
         }
@@ -721,7 +865,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               isLoading: provider.isLoading,
               accentColor: accentColor,
               showClosedOnImage: true,
-              onItemTap: (vendor) => context.push('/vendorDetails', extra: vendor),
+              onItemTap: (vendor) =>
+                  context.push('/vendorDetails', extra: vendor),
             ),
             SizedBox(height: KSpacing.lg.h),
           ],
@@ -741,11 +886,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return ValueListenableBuilder<double>(
       valueListenable: _scrollOffsetNotifier,
       builder: (context, scrollOffset, _) {
-        final collapseProgress = (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
+        final collapseProgress = (scrollOffset / _scrollThreshold).clamp(
+          0.0,
+          1.0,
+        );
 
-        final expandedHeight = UmbrellaHeaderMetrics.expandedHeightFor(size, extra: _headerExtraHeight);
+        final expandedHeight = UmbrellaHeaderMetrics.expandedHeightFor(
+          size,
+          extra: _headerExtraHeight,
+        );
 
-        final currentHeight = expandedHeight - ((expandedHeight - _collapsedHeight) * collapseProgress);
+        final currentHeight =
+            expandedHeight -
+            ((expandedHeight - _collapsedHeight) * collapseProgress);
 
         final contentOpacity = (1.0 - collapseProgress).clamp(0.0, 1.0);
 
@@ -758,7 +911,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             child: AnimatedOpacity(
               duration: const Duration(milliseconds: 100),
               opacity: contentOpacity,
-              child: _buildHomeHeader(context, size, colors, isDark, locationProvider, foodProvider),
+              child: _buildHomeHeader(
+                context,
+                size,
+                colors,
+                isDark,
+                locationProvider,
+                foodProvider,
+              ),
             ),
           ),
         );
@@ -778,13 +938,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       child: Column(
         children: [
           Padding(
-            padding: EdgeInsets.fromLTRB(20.w, MediaQuery.of(context).padding.top + 10.h, 10.w, 6.h),
+            padding: EdgeInsets.fromLTRB(
+              20.w,
+              MediaQuery.of(context).padding.top + 10.h,
+              10.w,
+              6.h,
+            ),
             child: Row(
               children: [
                 Expanded(
                   child: GestureDetector(
                     onTap: () async {
-                      final locationChanged = await context.push("/confirm-address?returnTo=previous");
+                      final locationChanged = await context.push(
+                        "/confirm-address?returnTo=previous",
+                      );
 
                       if (locationChanged == true && mounted) {
                         setState(() {
@@ -797,7 +964,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Location updated - showing nearby items'),
+                                content: Text(
+                                  'Location updated - showing nearby items',
+                                ),
                                 duration: Duration(seconds: 2),
                                 behavior: SnackBarBehavior.floating,
                               ),
@@ -819,15 +988,24 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           package: 'grab_go_shared',
                           height: 16.h,
                           width: 16.w,
-                          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                          colorFilter: const ColorFilter.mode(
+                            Colors.white,
+                            BlendMode.srcIn,
+                          ),
                         ),
                         SizedBox(width: 10.w),
                         Flexible(
                           child: Text(
-                            locationProvider.address.isEmpty ? "Fetching location..." : locationProvider.address,
+                            locationProvider.address.isEmpty
+                                ? "Fetching location..."
+                                : locationProvider.address,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: Colors.white),
+                            style: TextStyle(
+                              fontSize: 13.sp,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                         SizedBox(width: 6.w),
@@ -836,7 +1014,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           package: 'grab_go_shared',
                           height: 16.h,
                           width: 16.w,
-                          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                          colorFilter: const ColorFilter.mode(
+                            Colors.white,
+                            BlendMode.srcIn,
+                          ),
                         ),
                       ],
                     ),
@@ -861,23 +1042,37 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           SvgPicture.asset(
                             Assets.icons.bell,
                             package: 'grab_go_shared',
-                            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                            colorFilter: const ColorFilter.mode(
+                              Colors.white,
+                              BlendMode.srcIn,
+                            ),
                           ),
                           if (_unreadNotificationCount > 0)
                             Positioned(
                               right: -8.w,
                               top: -8.h,
                               child: Container(
-                                constraints: BoxConstraints(minWidth: 16.w, minHeight: 16.h),
-                                padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
+                                constraints: BoxConstraints(
+                                  minWidth: 16.w,
+                                  minHeight: 16.h,
+                                ),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 4.w,
+                                  vertical: 1.h,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(color: colors.accentOrange, width: 1.5),
+                                  border: Border.all(
+                                    color: colors.accentOrange,
+                                    width: 1.5,
+                                  ),
                                 ),
                                 alignment: Alignment.center,
                                 child: Text(
-                                  _unreadNotificationCount > 99 ? '99+' : _unreadNotificationCount.toString(),
+                                  _unreadNotificationCount > 99
+                                      ? '99+'
+                                      : _unreadNotificationCount.toString(),
                                   style: TextStyle(
                                     color: colors.accentOrange,
                                     fontSize: 9.sp,
@@ -965,7 +1160,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       builder: (context, provider, _) {
         return Column(
           children: [
-            PromoSection(banners: provider.promotionalBanners, onSeeAll: () {}, isLoading: provider.isLoadingBanners),
+            PromoSection(
+              banners: provider.promotionalBanners,
+              onSeeAll: () {},
+              isLoading: provider.isLoadingBanners,
+            ),
             SizedBox(height: KSpacing.lg.h),
           ],
         );
@@ -1033,12 +1232,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           final item = recommendedItems[index];
           return Consumer<CartProvider>(
             builder: (context, provider, _) {
-              final bool isInCart = provider.hasItemInCart(item, includeFoodCustomizations: true);
-              final bool isItemPending = provider.isItemOperationPendingForDisplay(
+              final bool isInCart = provider.hasItemInCart(
                 item,
                 includeFoodCustomizations: true,
               );
-              final itemForAction = provider.resolveItemForCartAction(item, includeFoodCustomizations: true);
+              final bool isItemPending = provider
+                  .isItemOperationPendingForDisplay(
+                    item,
+                    includeFoodCustomizations: true,
+                  );
+              final itemForAction = provider.resolveItemForCartAction(
+                item,
+                includeFoodCustomizations: true,
+              );
               return FoodItemCard(
                 item: item,
                 onTap: () => context.push('/foodDetails', extra: item),
@@ -1055,7 +1261,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     padding: EdgeInsets.all(8.r),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: isInCart ? colors.accentOrange : colors.backgroundSecondary,
+                      color: isInCart
+                          ? colors.accentOrange
+                          : colors.backgroundSecondary,
                     ),
                     child: isItemPending
                         ? SizedBox(
@@ -1063,7 +1271,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             height: 16.w,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(isInCart ? Colors.white : colors.accentOrange),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                isInCart ? Colors.white : colors.accentOrange,
+                              ),
                             ),
                           )
                         : SvgPicture.asset(
@@ -1090,13 +1300,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               // Trigger load more when this widget is built
               Future.delayed(const Duration(milliseconds: 500), () {
                 if (mounted && hasMore && !isLoading) {
-                  final provider = Provider.of<FoodDiscoveryProvider>(context, listen: false);
+                  final provider = Provider.of<FoodDiscoveryProvider>(
+                    context,
+                    listen: false,
+                  );
                   provider.loadMoreRecommendedItems();
                 }
               });
               return Padding(
                 padding: EdgeInsets.only(bottom: 16.h),
-                child: LoadingMore(colors: colors, spinnerColor: colors.accentOrange, borderColor: colors.accentOrange),
+                child: LoadingMore(
+                  colors: colors,
+                  spinnerColor: colors.accentOrange,
+                  borderColor: colors.accentOrange,
+                ),
               );
             },
           ),

@@ -12,6 +12,7 @@ import 'package:grab_go_customer/features/profile/view/settings_page.dart';
 import 'package:grab_go_customer/features/status/view/status_page.dart';
 import 'package:grab_go_customer/features/vendors/model/vendor_model.dart';
 import 'package:grab_go_customer/features/vendors/view/vendor_details_page.dart';
+import 'package:grab_go_customer/features/vendors/view/exclusive_vendors_page.dart';
 import 'package:grab_go_customer/features/vendors/view/vendor_info_page.dart';
 import 'package:grab_go_customer/features/status/view/all_statuses_page.dart';
 import 'package:grab_go_customer/features/status/model/status_model.dart';
@@ -854,6 +855,27 @@ final GoRouter appRouter = GoRouter(
               animation: animation,
               secondaryAnimation: secondaryAnimation,
               transitionType: SharedAxisTransitionType.horizontal,
+              child: child,
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: "/exclusive-vendors",
+      pageBuilder: (context, state) {
+        return CustomTransitionPage(
+          key: state.pageKey,
+          child: ExclusiveVendorsPage(
+            initialTabId: state.uri.queryParameters['tab'],
+          ),
+          transitionDuration: const Duration(milliseconds: 400),
+          reverseTransitionDuration: const Duration(milliseconds: 400),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SharedAxisTransition(
+              animation: animation,
+              secondaryAnimation: secondaryAnimation,
+              transitionType: SharedAxisTransitionType.vertical,
               child: child,
             );
           },

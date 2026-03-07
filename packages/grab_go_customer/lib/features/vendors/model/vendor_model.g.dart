@@ -121,6 +121,7 @@ VendorModel _$VendorModelFromJson(Map<String, dynamic> json) => VendorModel(
       ?.map((e) => e as String)
       .toList(),
   isGrabGoExclusive: json['isGrabGoExclusive'] as bool?,
+  isGrabGoExclusiveActive: json['isGrabGoExclusiveActive'] as bool?,
   isGrabGoExclusiveUntil: json['isGrabGoExclusiveUntil'] == null
       ? null
       : DateTime.parse(json['isGrabGoExclusiveUntil'] as String),
@@ -188,6 +189,7 @@ Map<String, dynamic> _$VendorModelToJson(
   'paymentMethods': instance.paymentMethods,
   'bannerImages': instance.bannerImages,
   'isGrabGoExclusive': instance.isGrabGoExclusive,
+  'isGrabGoExclusiveActive': instance.isGrabGoExclusiveActive,
   'isGrabGoExclusiveUntil': instance.isGrabGoExclusiveUntil?.toIso8601String(),
   'vendorType': instance.vendorType,
   'lastOnlineAt': instance.lastOnlineAt?.toIso8601String(),
