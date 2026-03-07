@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/shared/widgets/popular_item_card.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';
+import 'package:grab_go_customer/shared/widgets/trailing_see_all_card.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
 class PopularSection extends StatelessWidget {
@@ -15,6 +16,7 @@ class PopularSection extends StatelessWidget {
   final String? icon;
   final bool useVerticalZigzagTag;
   final Color? accentColor;
+  final bool showEndSeeAllCard;
 
   const PopularSection({
     super.key,
@@ -27,6 +29,7 @@ class PopularSection extends StatelessWidget {
     this.icon,
     this.useVerticalZigzagTag = false,
     this.accentColor,
+    this.showEndSeeAllCard = false,
   });
 
   @override
@@ -36,6 +39,9 @@ class PopularSection extends StatelessWidget {
     final cardWidth = size.width * 0.5;
     final imageHeight = (cardWidth * 0.60).clamp(96.0, 120.0);
     final cardHeight = (imageHeight + 114.0).clamp(210.0, 250.0);
+    final showTrailingSeeAllCard =
+        showEndSeeAllCard && !isLoading && popularItems.isNotEmpty;
+    final itemCount = popularItems.length + (showTrailingSeeAllCard ? 1 : 0);
 
     return Column(
       children: [
@@ -52,11 +58,25 @@ class PopularSection extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             padding: EdgeInsets.only(left: 20.w),
             physics: const AlwaysScrollableScrollPhysics(),
-            itemCount: popularItems.length,
+            itemCount: itemCount,
             itemBuilder: (context, index) {
+              if (showTrailingSeeAllCard && index == popularItems.length) {
+                return Padding(
+                  padding: EdgeInsets.only(right: 20.w),
+                  child: TrailingSeeAllCard(
+                    width: 136.w,
+                    height: cardHeight - 8.h,
+                    accentColor: accentColor ?? AppColors.accentOrange,
+                    subtitle: 'View more dishes',
+                    onTap: onSeeAll,
+                  ),
+                );
+              }
+
               final item = popularItems[index];
               final orderCount = item.orderCount;
-              final originalItem = originalItems != null && index < originalItems!.length
+              final originalItem =
+                  originalItems != null && index < originalItems!.length
                   ? originalItems![index]
                   : null;
 

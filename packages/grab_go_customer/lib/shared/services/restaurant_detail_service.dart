@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
 import 'package:grab_go_customer/features/restaurant/service/restaurant_service.dart';
@@ -6,6 +8,8 @@ class RestaurantDetailService {
   static final RestaurantService _restaurantService = chopperClient
       .getService<RestaurantService>();
   static final Map<String, Map<String, dynamic>> _cache = {};
+  static Future<void>? _restaurantIndexLoadFuture;
+  static bool _hasLoadedRestaurantIndex = false;
 
   /// Fetch restaurant details by ID with caching
   static Future<Map<String, dynamic>?> getRestaurantDetails(
@@ -18,32 +22,49 @@ class RestaurantDetailService {
       return _cache[restaurantId];
     }
 
+    await _ensureRestaurantIndexLoaded();
+    return _cache[restaurantId];
+  }
+
+  static Future<void> _ensureRestaurantIndexLoaded() async {
+    if (_hasLoadedRestaurantIndex) return;
+
+    final activeLoad = _restaurantIndexLoadFuture;
+    if (activeLoad != null) {
+      await activeLoad;
+      return;
+    }
+
+    _restaurantIndexLoadFuture = _loadRestaurantIndex();
+    try {
+      await _restaurantIndexLoadFuture;
+    } finally {
+      _restaurantIndexLoadFuture = null;
+    }
+  }
+
+  static Future<void> _loadRestaurantIndex() async {
     try {
       if (kDebugMode) {
-        print('🏪 Fetching restaurant details for ID: $restaurantId');
+        print('🏪 Fetching restaurant detail index');
       }
 
       final response = await _restaurantService.getRestaurants();
-
-      if (kDebugMode) {
-        print('🏪 Restaurant API response status: ${response.statusCode}');
-        print(
-          '🏪 Restaurant API response successful: ${response.isSuccessful}',
-        );
-      }
 
       if (response.isSuccessful && response.body != null) {
         final responseData = response.body!;
         if (responseData['success'] == true) {
           final List<dynamic> restaurants = responseData['data'] ?? [];
 
-          // Find the restaurant with matching ID
-          final restaurant = restaurants.firstWhere(
-            (r) => r['_id'] == restaurantId,
-            orElse: () => null,
-          );
+          for (final rawRestaurant in restaurants) {
+            if (rawRestaurant is! Map) continue;
+            final restaurant = Map<String, dynamic>.from(rawRestaurant);
+            final restaurantId =
+                restaurant['_id']?.toString() ??
+                restaurant['id']?.toString() ??
+                '';
+            if (restaurantId.isEmpty) continue;
 
-          if (restaurant != null) {
             final dynamic rawRating =
                 restaurant['weightedRating'] ??
                 restaurant['displayRating'] ??
@@ -54,8 +75,8 @@ class RestaurantDetailService {
                 restaurant['reviewCount'] ??
                 restaurant['ratingCount'];
 
-            final restaurantDetails = {
-              '_id': restaurant['_id'],
+            _cache[restaurantId] = {
+              '_id': restaurantId,
               'restaurant_name':
                   restaurant['restaurant_name'] ?? restaurant['name'] ?? '',
               'logo': restaurant['logo'] ?? restaurant['image'] ?? '',
@@ -69,30 +90,15 @@ class RestaurantDetailService {
               'phone': restaurant['phone'] ?? '',
               'description': restaurant['description'] ?? '',
             };
-
-            // Cache the result
-            _cache[restaurantId] = restaurantDetails;
-
-            if (kDebugMode) {
-              print(
-                '✅ Found restaurant: ${restaurantDetails['restaurant_name']}',
-              );
-            }
-
-            return restaurantDetails;
           }
+
+          _hasLoadedRestaurantIndex = true;
         }
       }
-
-      if (kDebugMode) {
-        print('⚠️ Restaurant not found for ID: $restaurantId');
-      }
-      return null;
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error fetching restaurant details: $e');
       }
-      return null;
     }
   }
 
@@ -127,5 +133,7 @@ class RestaurantDetailService {
   /// Clear cache (useful for refreshing data)
   static void clearCache() {
     _cache.clear();
+    _hasLoadedRestaurantIndex = false;
+    _restaurantIndexLoadFuture = null;
   }
 }

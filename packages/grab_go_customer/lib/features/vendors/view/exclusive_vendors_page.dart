@@ -31,6 +31,8 @@ class _ExclusiveVendorsPageState extends State<ExclusiveVendorsPage> {
   String _searchQuery = '';
   double? _lastLat;
   double? _lastLng;
+  bool _hasRequestedInitialLoad = false;
+  int _latestLoadToken = 0;
 
   late _ExclusiveVendorTab _selectedTab;
 
@@ -52,9 +54,12 @@ class _ExclusiveVendorsPageState extends State<ExclusiveVendorsPage> {
     final locationProvider = Provider.of<NativeLocationProvider>(context);
     final latitude = locationProvider.latitude;
     final longitude = locationProvider.longitude;
-    final locationChanged = latitude != _lastLat || longitude != _lastLng;
+    final locationChanged =
+        _hasRequestedInitialLoad &&
+        (latitude != _lastLat || longitude != _lastLng);
 
-    if (_vendors.isEmpty || locationChanged) {
+    if (!_hasRequestedInitialLoad || locationChanged) {
+      _hasRequestedInitialLoad = true;
       _lastLat = latitude;
       _lastLng = longitude;
       _loadExclusiveVendors(latitude: latitude, longitude: longitude);
@@ -71,6 +76,8 @@ class _ExclusiveVendorsPageState extends State<ExclusiveVendorsPage> {
     double? latitude,
     double? longitude,
   }) async {
+    final loadToken = ++_latestLoadToken;
+
     setState(() {
       _isLoading = true;
       _error = null;
@@ -81,17 +88,18 @@ class _ExclusiveVendorsPageState extends State<ExclusiveVendorsPage> {
         latitude: latitude,
         longitude: longitude,
       );
-      if (!mounted) return;
+      if (!mounted || loadToken != _latestLoadToken) return;
       setState(() {
         _vendors = vendors;
+        _error = null;
       });
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted || loadToken != _latestLoadToken) return;
       setState(() {
         _error = error.toString().replaceFirst('Exception: ', '');
       });
     } finally {
-      if (mounted) {
+      if (mounted && loadToken == _latestLoadToken) {
         setState(() {
           _isLoading = false;
         });

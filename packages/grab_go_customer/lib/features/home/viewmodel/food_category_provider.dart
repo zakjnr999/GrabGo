@@ -74,6 +74,38 @@ class FoodCategoryProvider extends ChangeNotifier with CacheMixin {
     await _fetchFromApi();
   }
 
+  Future<void> primeFromCache() async {
+    if (_state.categories.isNotEmpty) return;
+    await _loadFromCache();
+  }
+
+  Future<void> hydrateFromHomeFeed(
+    List<FoodCategoryModel> categories, {
+    bool persistCache = true,
+  }) async {
+    _updateState(
+      _state.copyWith(
+        categories: categories,
+        isLoading: false,
+        error: null,
+        hasAttemptedFetch: true,
+      ),
+    );
+    if (persistCache) {
+      await _saveToCache();
+    }
+  }
+
+  void setHomeFeedLoading(bool isLoading) {
+    _updateState(
+      _state.copyWith(
+        isLoading: isLoading,
+        error: null,
+        hasAttemptedFetch: true,
+      ),
+    );
+  }
+
   /// Refresh categories (force reload)
   Future<void> refreshCategories() async {
     await _fetchFromApi();
@@ -221,6 +253,14 @@ class FoodCategoryProvider extends ChangeNotifier with CacheMixin {
     List<FoodCategoryModel> categories,
   ) async {
     if (categories.isEmpty) return categories;
+    final needsRestaurantHydration = categories.any(
+      (category) => category.items.any(
+        (foodItem) =>
+            foodItem.sellerName == 'Loading Restaurant...' &&
+            foodItem.restaurantId.isNotEmpty,
+      ),
+    );
+    if (!needsRestaurantHydration) return categories;
 
     try {
       if (kDebugMode) {

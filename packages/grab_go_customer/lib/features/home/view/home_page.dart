@@ -87,6 +87,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return base - _homeContentTrim(size) + _homeHeaderGap(size);
   }
 
+  bool _hasRenderableHomeContent(FoodProvider foodProvider) {
+    return foodProvider.categories.isNotEmpty ||
+        foodProvider.dealItems.isNotEmpty ||
+        foodProvider.orderHistoryItems.isNotEmpty ||
+        foodProvider.popularItems.isNotEmpty ||
+        foodProvider.topRatedItems.isNotEmpty ||
+        foodProvider.recommendedItems.isNotEmpty ||
+        foodProvider.promotionalBanners.isNotEmpty ||
+        foodProvider.nearbyVendors.isNotEmpty ||
+        foodProvider.exclusiveVendors.isNotEmpty;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -195,45 +207,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   void _initializeData() {
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
 
       _refreshUnreadNotificationCount();
+      final locationProvider = context.read<NativeLocationProvider>();
+      final foodProvider = context.read<FoodProvider>();
+      final hadRenderableContent = _hasRenderableHomeContent(foodProvider);
 
-      Provider.of<NativeLocationProvider>(
-        context,
-        listen: false,
-      ).fetchAddress();
-
-      final vendorProvider = Provider.of<VendorProvider>(
-        context,
-        listen: false,
-      );
-      final locationProvider = Provider.of<NativeLocationProvider>(
-        context,
-        listen: false,
-      );
-      final foodProvider = Provider.of<FoodProvider>(context, listen: false);
-      final hasCachedData = foodProvider.categories.isNotEmpty;
-
-      final hasInternet = await ConnectivityService.hasInternetConnection();
-
-      if (!mounted) return;
-
-      if (!hasInternet && !hasCachedData) {
-        setState(() {
-          _hasNoInternet = true;
-          _isRetrying = false;
-        });
-        return;
-      }
-
-      if (_hasNoInternet || _isRetrying) {
-        setState(() {
-          _hasNoInternet = false;
-          _isRetrying = false;
-        });
-      }
+      locationProvider.fetchAddress();
 
       if (foodProvider.categories.isNotEmpty && _selectedCategory == null) {
         setState(() {
@@ -243,15 +225,32 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
       foodProvider.refreshAll();
 
-      if (locationProvider.latitude != null &&
-          locationProvider.longitude != null) {
-        vendorProvider.fetchVendors(
-          VendorType.food,
-          lat: locationProvider.latitude,
-          lng: locationProvider.longitude,
-        );
-      }
+      _syncStartupConnectivity(hadRenderableContent);
     });
+  }
+
+  Future<void> _syncStartupConnectivity(bool hadRenderableContent) async {
+    final hasInternet = await ConnectivityService.hasInternetConnection();
+    if (!mounted) return;
+
+    final hasRenderableContentNow = _hasRenderableHomeContent(
+      context.read<FoodProvider>(),
+    );
+
+    if (!hasInternet && !hadRenderableContent && !hasRenderableContentNow) {
+      setState(() {
+        _hasNoInternet = true;
+        _isRetrying = false;
+      });
+      return;
+    }
+
+    if (_hasNoInternet || _isRetrying) {
+      setState(() {
+        _hasNoInternet = false;
+        _isRetrying = false;
+      });
+    }
   }
 
   void _onRetry() {
@@ -269,12 +268,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       });
     }
 
-    final locationProvider = Provider.of<NativeLocationProvider>(
-      context,
-      listen: false,
-    );
-    final vendorProvider = Provider.of<VendorProvider>(context, listen: false);
-
     if (kDebugMode) {
       print('[HOME] Refreshing data (all services: $refreshAllServices)...');
       final locationData = CacheService.getUserLocation();
@@ -287,16 +280,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     try {
       final provider = Provider.of<FoodProvider>(context, listen: false);
       await provider.refreshAll(forceRefresh: true);
-
-      if (locationProvider.latitude != null &&
-          locationProvider.longitude != null) {
-        await vendorProvider.fetchVendors(
-          VendorType.food,
-          lat: locationProvider.latitude,
-          lng: locationProvider.longitude,
-          forceRefresh: true,
-        );
-      }
     } catch (e) {
       if (kDebugMode) {
         print('[HOME] Error refreshing data: $e');
@@ -342,6 +325,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     final locationProvider = Provider.of<NativeLocationProvider>(context);
     final foodProvider = Provider.of<FoodProvider>(context);
+    final hasRenderableHomeContent = _hasRenderableHomeContent(foodProvider);
 
     bool shouldShowSkeleton = false;
     bool shouldShowEmptyState = false;
@@ -351,16 +335,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final bool isFoodUnavailable =
         !isFoodLoading && hasNoFood && foodProvider.hasAttemptedFetch;
 
-    if (isFoodLoading || !foodProvider.hasAttemptedFetch) {
+    if (!hasRenderableHomeContent &&
+        (isFoodLoading || !foodProvider.hasAttemptedFetch)) {
       shouldShowSkeleton = true;
-    } else if (isFoodUnavailable) {
+    } else if (!hasRenderableHomeContent && isFoodUnavailable) {
       shouldShowEmptyState = true;
     }
 
-    if (_isRefreshingLocation || _isSwipeRefreshing || _isRetrying) {
+    if ((_isRefreshingLocation || _isSwipeRefreshing || _isRetrying) &&
+        !hasRenderableHomeContent) {
       shouldShowSkeleton = true;
       shouldShowEmptyState = false;
     }
+
+    final shouldShowOfflineScreen = _hasNoInternet && !hasRenderableHomeContent;
 
     final systemUiOverlayStyle = SystemUiOverlayStyle(
       statusBarColor: colors.accentOrange,
@@ -386,7 +374,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       value: systemUiOverlayStyle,
       child: Scaffold(
         backgroundColor: colors.backgroundPrimary,
-        body: _hasNoInternet
+        body: shouldShowOfflineScreen
             ? SafeArea(child: NoInternetScreen(onRetry: _onRetry))
             : SafeArea(
                 top: false,
@@ -509,16 +497,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                                       foodProvider,
                                                     ),
                                                     _buildOrderAgainSection(),
-                                                    ExclusiveVendorsPreviewSection(
-                                                      onSeeAll: () =>
-                                                          context.push(
-                                                            '/exclusive-vendors',
-                                                          ),
+                                                    _buildExclusiveVendorsSection(
+                                                      foodProvider,
                                                     ),
                                                     SizedBox(
                                                       height: KSpacing.lg.h,
                                                     ),
                                                     _buildNearbyVendorsSection(
+                                                      foodProvider,
                                                       locationProvider,
                                                     ),
                                                     _buildPromoBanners(),
@@ -825,53 +811,114 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildNearbyVendorsSection(NativeLocationProvider locationProvider) {
+  Widget _buildExclusiveVendorsSection(FoodProvider foodProvider) {
+    final vendors = foodProvider.exclusiveVendors.take(10).toList();
+    if (foodProvider.isLoading && vendors.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    if (vendors.isEmpty && foodProvider.error != null) {
+      return ExclusiveVendorsPreviewSection(
+        onSeeAll: () => context.push('/exclusive-vendors'),
+      );
+    }
+    if (vendors.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return VendorHorizontalSection(
+      title: 'GrabGo Exclusives',
+      icon: Assets.icons.sparkles,
+      vendors: vendors,
+      isLoading: false,
+      accentColor: context.appColors.accentOrange,
+      showClosedOnImage: true,
+      highlightExclusiveBadge: true,
+      showEndSeeAllCard: true,
+      onSeeAll: () => context.push('/exclusive-vendors'),
+      onItemTap: (vendor) => context.push('/vendorDetails', extra: vendor),
+    );
+  }
+
+  Widget _buildNearbyVendorsSection(
+    FoodProvider foodProvider,
+    NativeLocationProvider locationProvider,
+  ) {
     if (!locationProvider.hasLocation) return const SizedBox.shrink();
 
     const vendorType = VendorType.food;
     final accentColor = Color(vendorType.color);
+    final vendors = foodProvider.nearbyVendors.take(10).toList();
 
-    return Consumer<VendorProvider>(
-      builder: (context, provider, _) {
-        final isMatchingType = provider.selectedType == vendorType;
+    if (foodProvider.isLoading && vendors.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
-        if (!isMatchingType && !provider.isLoading) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) return;
-            if (locationProvider.latitude == null ||
-                locationProvider.longitude == null) {
-              return;
-            }
-            provider.fetchVendors(
-              vendorType,
-              lat: locationProvider.latitude,
-              lng: locationProvider.longitude,
-            );
-          });
-          return const SizedBox.shrink();
-        }
+    if (vendors.isEmpty && foodProvider.error != null) {
+      return Consumer<VendorProvider>(
+        builder: (context, provider, _) {
+          final isMatchingType = provider.selectedType == vendorType;
 
-        final vendors = provider.nearestVendors.take(10).toList();
-        if (!provider.isLoading && vendors.isEmpty) {
-          return const SizedBox.shrink();
-        }
+          if (!isMatchingType && !provider.isLoading) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              if (locationProvider.latitude == null ||
+                  locationProvider.longitude == null) {
+                return;
+              }
+              provider.fetchVendors(
+                vendorType,
+                lat: locationProvider.latitude,
+                lng: locationProvider.longitude,
+              );
+            });
+            return const SizedBox.shrink();
+          }
 
-        return Column(
-          children: [
-            VendorHorizontalSection(
-              title: 'Restaurants Near You',
-              icon: Assets.icons.mapPin,
-              vendors: vendors,
-              isLoading: provider.isLoading,
-              accentColor: accentColor,
-              showClosedOnImage: true,
-              onItemTap: (vendor) =>
-                  context.push('/vendorDetails', extra: vendor),
-            ),
-            SizedBox(height: KSpacing.lg.h),
-          ],
-        );
-      },
+          final fallbackVendors = provider.nearestVendors.take(10).toList();
+          if (!provider.isLoading && fallbackVendors.isEmpty) {
+            return const SizedBox.shrink();
+          }
+
+          return Column(
+            children: [
+              VendorHorizontalSection(
+                title: 'Restaurants Near You',
+                icon: Assets.icons.mapPin,
+                vendors: fallbackVendors,
+                isLoading: provider.isLoading,
+                accentColor: accentColor,
+                showClosedOnImage: true,
+                showEndSeeAllCard: true,
+                onSeeAll: () {},
+                onItemTap: (vendor) =>
+                    context.push('/vendorDetails', extra: vendor),
+              ),
+              SizedBox(height: KSpacing.lg.h),
+            ],
+          );
+        },
+      );
+    }
+
+    if (!foodProvider.isLoading && vendors.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      children: [
+        VendorHorizontalSection(
+          title: 'Restaurants Near You',
+          icon: Assets.icons.mapPin,
+          vendors: vendors,
+          isLoading: false,
+          accentColor: accentColor,
+          showClosedOnImage: true,
+          showEndSeeAllCard: true,
+          onSeeAll: () {},
+          onItemTap: (vendor) => context.push('/vendorDetails', extra: vendor),
+        ),
+        SizedBox(height: KSpacing.lg.h),
+      ],
     );
   }
 
@@ -1109,6 +1156,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               },
               isLoading: provider.isLoadingDeals,
               useVerticalZigzagTag: true,
+              showEndSeeAllCard: true,
             );
           },
         ),
@@ -1130,6 +1178,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 context.push('/foodDetails', extra: item);
               },
               isLoading: provider.isLoadingOrderHistory,
+              showEndSeeAllCard: true,
             ),
             SizedBox(height: KSpacing.lg.h),
           ],
@@ -1149,6 +1198,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             context.push('/foodDetails', extra: item);
           },
           isLoading: foodProvider.isLoadingPopular,
+          showEndSeeAllCard: true,
         ),
         SizedBox(height: KSpacing.lg.h),
       ],
@@ -1181,6 +1231,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           onSeeAll: () {},
           onItemTap: (item) => context.push('/foodDetails', extra: item),
           isLoading: foodProvider.isLoadingTopRated,
+          showEndSeeAllCard: true,
         ),
         SizedBox(height: KSpacing.lg.h),
       ],

@@ -6,6 +6,7 @@ import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
 import 'package:provider/provider.dart';
+import 'exclusive_stamp_badge.dart';
 import '../model/vendor_model.dart';
 import '../model/vendor_type.dart';
 
@@ -188,77 +189,33 @@ class VendorCard extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Wrap(
-                                spacing: 6.w,
-                                runSpacing: 2.h,
-                                crossAxisAlignment: WrapCrossAlignment.center,
+                        opsState == null
+                            ? _buildPricingRow(colors)
+                            : Row(
                                 children: [
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      SvgPicture.asset(
-                                        Assets.icons.deliveryTruck,
-                                        package: 'grab_go_shared',
-                                        height: 13,
-                                        width: 13.w,
-                                        colorFilter: ColorFilter.mode(
-                                          colors.textPrimary,
-                                          BlendMode.srcIn,
-                                        ),
-                                      ),
-                                      SizedBox(width: 4.w),
-                                      Text(
-                                        vendor.deliveryFeeText,
-                                        style: TextStyle(
-                                          color: colors.textPrimary,
-                                          fontSize: 12.sp,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ],
+                                  Expanded(
+                                    child: Wrap(
+                                      spacing: 10.w,
+                                      runSpacing: 2.h,
+                                      crossAxisAlignment:
+                                          WrapCrossAlignment.center,
+                                      children: [
+                                        _buildDeliveryFeeMeta(colors),
+                                        if (vendor.minOrder > 0) ...[
+                                          _buildMinOrderMeta(colors),
+                                        ],
+                                      ],
+                                    ),
                                   ),
-                                  if (vendor.minOrder > 0) ...[
-                                    Text(
-                                      "|",
-                                      style: TextStyle(
-                                        color: colors.textTertiary,
-                                        fontSize: 12.sp,
-                                      ),
-                                    ),
-                                    Text(
-                                      "Min:",
-                                      style: TextStyle(
-                                        color: colors.textSecondary,
-                                        fontSize: 12.sp,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    Text(
-                                      "GHS ${vendor.minOrder.toStringAsFixed(0)}",
-                                      style: TextStyle(
-                                        color: colors.textPrimary,
-                                        fontSize: 12.sp,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ],
+                                  SizedBox(width: 8.w),
+                                  _buildOpsStatePill(
+                                    colors: colors,
+                                    label: opsState.label,
+                                    textColor: opsState.textColor,
+                                    backgroundColor: opsState.backgroundColor,
+                                  ),
                                 ],
                               ),
-                            ),
-                            if (opsState != null) ...[
-                              SizedBox(width: 8.w),
-                              _buildOpsStatePill(
-                                colors: colors,
-                                label: opsState.label,
-                                textColor: opsState.textColor,
-                                backgroundColor: opsState.backgroundColor,
-                              ),
-                            ],
-                          ],
-                        ),
                       ],
                     ),
                   ),
@@ -277,16 +234,9 @@ class VendorCard extends StatelessWidget {
     double imageHeight,
   ) {
     final imageUrl = _vendorCardImageUrl();
+    final showExclusiveStamp = highlightExclusiveBadge && vendor.isExclusive;
     final trustBadges = <Widget>[
-      if (highlightExclusiveBadge && vendor.isExclusive)
-        _buildTrustBadge(
-          colors: colors,
-          iconAsset: Assets.icons.sparkles,
-          label: 'Exclusive',
-          textColor: Colors.white,
-          backgroundColor: colors.accentOrange.withValues(alpha: 0.92),
-        ),
-      if (vendor.featured ?? false)
+      if (!showExclusiveStamp && (vendor.featured ?? false))
         _buildTrustBadge(
           colors: colors,
           iconAsset: Assets.icons.sparkles,
@@ -294,7 +244,7 @@ class VendorCard extends StatelessWidget {
           textColor: Colors.white,
           backgroundColor: colors.accentOrange.withValues(alpha: 0.92),
         ),
-      if (vendor.isVerified ?? false)
+      if (!showExclusiveStamp && (vendor.isVerified ?? false))
         _buildTrustBadge(
           colors: colors,
           iconAsset: Assets.icons.badgeCheck,
@@ -354,6 +304,12 @@ class VendorCard extends StatelessWidget {
             ),
           ),
         ),
+        if (showExclusiveStamp)
+          Positioned(
+            left: 0,
+            top: 10.h,
+            child: ExclusiveStampBadge(width: 74.w, height: 24.h),
+          ),
         if (trustBadges.isNotEmpty)
           Positioned(
             left: 8.w,
@@ -479,42 +435,26 @@ class VendorCard extends StatelessWidget {
 
   _VendorOpsState? _buildOpsState(AppColorsExtension colors) {
     if (vendor.isAvailableForOrders) {
-      return _VendorOpsState(
-        label: 'Accepting orders',
-        textColor: colors.accentGreen,
-        backgroundColor: colors.accentGreen.withValues(alpha: 0.12),
-      );
+      return null;
     }
 
-    final lastSeenLabel = _formatLastSeen(vendor.lastOnlineAt);
     if (vendor.isTemporarilyUnavailableButOpen) {
       return _VendorOpsState(
-        label: lastSeenLabel ?? 'Not accepting',
+        label: 'Not accepting',
         textColor: colors.error,
         backgroundColor: colors.error.withValues(alpha: 0.10),
       );
     }
 
+    if (showClosedOnImage) {
+      return null;
+    }
+
     return _VendorOpsState(
-      label: lastSeenLabel ?? 'Closed for now',
+      label: 'Closed for now',
       textColor: colors.error,
       backgroundColor: colors.error.withValues(alpha: 0.10),
     );
-  }
-
-  String? _formatLastSeen(DateTime? lastSeenAt) {
-    if (lastSeenAt == null) return null;
-
-    final now = DateTime.now();
-    final difference = now.difference(lastSeenAt.toLocal());
-    if (difference.isNegative) return null;
-
-    if (difference.inMinutes < 1) return 'Seen just now';
-    if (difference.inMinutes < 60) return 'Seen ${difference.inMinutes}m ago';
-    if (difference.inHours < 24) return 'Seen ${difference.inHours}h ago';
-    if (difference.inDays == 1) return 'Seen yesterday';
-    if (difference.inDays < 7) return 'Seen ${difference.inDays}d ago';
-    return 'Seen recently';
   }
 
   Widget _buildTrustBadge({
@@ -587,6 +527,80 @@ class VendorCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPricingRow(AppColorsExtension colors) {
+    if (vendor.minOrder <= 0) {
+      return _buildDeliveryFeeMeta(colors);
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Flexible(child: _buildDeliveryFeeMeta(colors)),
+        SizedBox(width: 12.w),
+        Flexible(
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: _buildMinOrderMeta(colors),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDeliveryFeeMeta(AppColorsExtension colors) {
+    final deliveryValue = vendor.deliveryFee == 0
+        ? 'Free'
+        : 'GHS ${vendor.deliveryFee.toStringAsFixed(0)}';
+
+    return Wrap(
+      spacing: 4.w,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Text(
+          'Delivery:',
+          style: TextStyle(
+            color: colors.textSecondary,
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        Text(
+          deliveryValue,
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMinOrderMeta(AppColorsExtension colors) {
+    return Wrap(
+      spacing: 4.w,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Text(
+          'Min order:',
+          style: TextStyle(
+            color: colors.textSecondary,
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        Text(
+          'GHS ${vendor.minOrder.toStringAsFixed(0)}',
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
     );
   }
 

@@ -60,7 +60,8 @@ class FoodDiscoveryState {
       isLoadingRecentItems: isLoadingRecentItems ?? this.isLoadingRecentItems,
       recentItemsError: recentItemsError,
       orderHistoryItems: orderHistoryItems ?? this.orderHistoryItems,
-      isLoadingOrderHistory: isLoadingOrderHistory ?? this.isLoadingOrderHistory,
+      isLoadingOrderHistory:
+          isLoadingOrderHistory ?? this.isLoadingOrderHistory,
       popularItems: popularItems ?? this.popularItems,
       isLoadingPopular: isLoadingPopular ?? this.isLoadingPopular,
       topRatedItems: topRatedItems ?? this.topRatedItems,
@@ -99,6 +100,49 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
   int get recommendedPage => _state.recommendedPage;
   bool get hasMoreRecommended => _state.hasMoreRecommended;
 
+  Future<void> primeFromCache() async {
+    await Future.wait([
+      if (_state.orderHistoryItems.isEmpty) _loadOrderHistoryFromCache(),
+      if (_state.popularItems.isEmpty) _loadPopularFromCache(),
+      if (_state.topRatedItems.isEmpty) _loadTopRatedFromCache(),
+      if (_state.recommendedItems.isEmpty) _loadRecommendedFromCache(),
+    ]);
+  }
+
+  Future<void> hydrateFromHomeFeed({
+    required List<FoodItem> orderHistoryItems,
+    required List<FoodItem> popularItems,
+    required List<FoodItem> topRatedItems,
+    required List<FoodItem> recommendedItems,
+    required bool hasMoreRecommended,
+    int recommendedPage = 1,
+    bool persistCache = true,
+  }) async {
+    _updateState(
+      _state.copyWith(
+        orderHistoryItems: orderHistoryItems,
+        isLoadingOrderHistory: false,
+        popularItems: popularItems,
+        isLoadingPopular: false,
+        topRatedItems: topRatedItems,
+        isLoadingTopRated: false,
+        recommendedItems: recommendedItems,
+        isLoadingRecommended: false,
+        recommendedPage: recommendedPage,
+        hasMoreRecommended: hasMoreRecommended,
+      ),
+    );
+
+    if (!persistCache) return;
+
+    await Future.wait([
+      _saveOrderHistoryToCache(),
+      _savePopularToCache(),
+      _saveTopRatedToCache(),
+      _saveRecommendedToCache(),
+    ]);
+  }
+
   /// Fetch recent order items
   Future<void> fetchRecentOrderItems({bool forceRefresh = false}) async {
     // Try loading from cache first if we have no data and not force refreshing
@@ -121,7 +165,9 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
         userLat: userLat,
         userLng: userLng,
       );
-      _updateState(_state.copyWith(recentOrderItems: items, isLoadingRecentItems: false));
+      _updateState(
+        _state.copyWith(recentOrderItems: items, isLoadingRecentItems: false),
+      );
       await _saveRecentOrderItemsToCache();
     } catch (e) {
       if (kDebugMode) {
@@ -133,7 +179,12 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
         await _loadRecentOrderItemsFromCache();
       }
 
-      _updateState(_state.copyWith(isLoadingRecentItems: false, recentItemsError: e.toString()));
+      _updateState(
+        _state.copyWith(
+          isLoadingRecentItems: false,
+          recentItemsError: e.toString(),
+        ),
+      );
     }
   }
 
@@ -150,19 +201,25 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
     }
 
     if (kDebugMode) {
-      print('[FoodDiscoveryProvider] Fetching order history... (force: $forceRefresh)');
+      print(
+        '[FoodDiscoveryProvider] Fetching order history... (force: $forceRefresh)',
+      );
     }
 
     _updateState(_state.copyWith(isLoadingOrderHistory: true));
 
     try {
       final items = await _repository.fetchOrderHistory();
-      _updateState(_state.copyWith(orderHistoryItems: items, isLoadingOrderHistory: false));
+      _updateState(
+        _state.copyWith(orderHistoryItems: items, isLoadingOrderHistory: false),
+      );
 
       await _saveOrderHistoryToCache();
 
       if (kDebugMode) {
-        print('[FoodDiscoveryProvider] Order history fetched: ${items.length} items');
+        print(
+          '[FoodDiscoveryProvider] Order history fetched: ${items.length} items',
+        );
       }
     } catch (e) {
       if (kDebugMode) {
@@ -205,7 +262,9 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
         userLat: userLat,
         userLng: userLng,
       );
-      _updateState(_state.copyWith(popularItems: items, isLoadingPopular: false));
+      _updateState(
+        _state.copyWith(popularItems: items, isLoadingPopular: false),
+      );
       await _savePopularToCache();
     } catch (e) {
       if (kDebugMode) {
@@ -243,12 +302,14 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
       final userLng = locationData?['longitude']?.toDouble();
 
       final items = await _repository.fetchTopRatedItems(
-        limit: 10, 
+        limit: 10,
         minRating: 4.5,
         userLat: userLat,
         userLng: userLng,
       );
-      _updateState(_state.copyWith(topRatedItems: items, isLoadingTopRated: false));
+      _updateState(
+        _state.copyWith(topRatedItems: items, isLoadingTopRated: false),
+      );
       await _saveTopRatedToCache();
     } catch (e) {
       if (kDebugMode) {
@@ -281,7 +342,9 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
   /// Private: Save popular items to cache
   Future<void> _savePopularToCache() async {
     try {
-      final itemsJson = _state.popularItems.map((item) => item.toJson()).toList();
+      final itemsJson = _state.popularItems
+          .map((item) => item.toJson())
+          .toList();
       CacheService.savePopularItems(itemsJson);
     } catch (e) {
       if (kDebugMode) {
@@ -308,7 +371,9 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
   /// Private: Save top-rated items to cache
   Future<void> _saveTopRatedToCache() async {
     try {
-      final itemsJson = _state.topRatedItems.map((item) => item.toJson()).toList();
+      final itemsJson = _state.topRatedItems
+          .map((item) => item.toJson())
+          .toList();
       CacheService.saveTopRatedItems(itemsJson);
     } catch (e) {
       if (kDebugMode) {
@@ -335,7 +400,9 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
   /// Private: Save order history to cache
   Future<void> _saveOrderHistoryToCache() async {
     try {
-      final itemsJson = _state.orderHistoryItems.map((item) => item.toJson()).toList();
+      final itemsJson = _state.orderHistoryItems
+          .map((item) => item.toJson())
+          .toList();
       CacheService.saveOrderHistory(itemsJson);
     } catch (e) {
       if (kDebugMode) {
@@ -362,7 +429,9 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
   /// Private: Save recent order items to cache
   Future<void> _saveRecentOrderItemsToCache() async {
     try {
-      final itemsJson = _state.recentOrderItems.map((item) => item.toJson()).toList();
+      final itemsJson = _state.recentOrderItems
+          .map((item) => item.toJson())
+          .toList();
       CacheService.saveRecentOrderItems(itemsJson);
     } catch (e) {
       if (kDebugMode) {
@@ -380,12 +449,8 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
       await _loadRecommendedFromCache();
     }
 
-    // Reset pagination and fetch first page
-    _updateState(_state.copyWith(
-      recommendedPage: 1,
-      hasMoreRecommended: true,
-      recommendedItems: [], // Clear existing items
-    ));
+    // Reset pagination and fetch first page while keeping rendered items visible.
+    _updateState(_state.copyWith(recommendedPage: 1, hasMoreRecommended: true));
 
     // Fetch fresh data from API (page 1)
     await _fetchFromApiRecommended(page: 1);
@@ -401,7 +466,10 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
   }
 
   /// Private: Internal fetch for recommended items
-  Future<void> _fetchFromApiRecommended({int page = 1, bool append = false}) async {
+  Future<void> _fetchFromApiRecommended({
+    int page = 1,
+    bool append = false,
+  }) async {
     _updateState(_state.copyWith(isLoadingRecommended: true));
 
     try {
@@ -411,25 +479,27 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
       final userLng = locationData?['longitude']?.toDouble();
 
       final items = await _repository.fetchRecommendedItems(
-        limit: 20, 
+        limit: 20,
         page: page,
         userLat: userLat,
         userLng: userLng,
       );
-      
+
       // Append or replace items
       final newItems = append ? [..._state.recommendedItems, ...items] : items;
-      
+
       // Update hasMore flag (if we got less than requested, no more items)
       final hasMore = items.length >= 20;
-      
-      _updateState(_state.copyWith(
-        recommendedItems: newItems,
-        isLoadingRecommended: false,
-        recommendedPage: page,
-        hasMoreRecommended: hasMore,
-      ));
-      
+
+      _updateState(
+        _state.copyWith(
+          recommendedItems: newItems,
+          isLoadingRecommended: false,
+          recommendedPage: page,
+          hasMoreRecommended: hasMore,
+        ),
+      );
+
       if (!append) {
         await _saveRecommendedToCache();
       }
@@ -464,7 +534,9 @@ class FoodDiscoveryProvider extends ChangeNotifier with CacheMixin {
   /// Private: Save recommended items to cache
   Future<void> _saveRecommendedToCache() async {
     try {
-      final itemsJson = _state.recommendedItems.map((item) => item.toJson()).toList();
+      final itemsJson = _state.recommendedItems
+          .map((item) => item.toJson())
+          .toList();
       CacheService.saveRecommendedItems(itemsJson);
     } catch (e) {
       if (kDebugMode) {

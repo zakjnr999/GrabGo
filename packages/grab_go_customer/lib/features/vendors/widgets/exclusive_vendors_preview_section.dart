@@ -24,9 +24,10 @@ class _ExclusiveVendorsPreviewSectionState
 
   List<VendorModel> _vendors = const [];
   bool _isLoading = false;
-  bool _hasLoadedOnce = false;
+  bool _hasRequestedInitialLoad = false;
   double? _lastLat;
   double? _lastLng;
+  int _latestLoadToken = 0;
 
   @override
   void didChangeDependencies() {
@@ -35,9 +36,12 @@ class _ExclusiveVendorsPreviewSectionState
     final locationProvider = Provider.of<NativeLocationProvider>(context);
     final latitude = locationProvider.latitude;
     final longitude = locationProvider.longitude;
-    final locationChanged = latitude != _lastLat || longitude != _lastLng;
+    final locationChanged =
+        _hasRequestedInitialLoad &&
+        (latitude != _lastLat || longitude != _lastLng);
 
-    if (!_hasLoadedOnce || locationChanged) {
+    if (!_hasRequestedInitialLoad || locationChanged) {
+      _hasRequestedInitialLoad = true;
       _lastLat = latitude;
       _lastLng = longitude;
       _loadExclusiveVendors(latitude: latitude, longitude: longitude);
@@ -48,7 +52,7 @@ class _ExclusiveVendorsPreviewSectionState
     double? latitude,
     double? longitude,
   }) async {
-    if (_isLoading) return;
+    final loadToken = ++_latestLoadToken;
 
     if (mounted) {
       setState(() {
@@ -61,20 +65,19 @@ class _ExclusiveVendorsPreviewSectionState
         latitude: latitude,
         longitude: longitude,
       );
-      if (!mounted) return;
+      if (!mounted || loadToken != _latestLoadToken) return;
       setState(() {
         _vendors = vendors.take(10).toList(growable: false);
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || loadToken != _latestLoadToken) return;
       setState(() {
         _vendors = const [];
       });
     } finally {
-      if (mounted) {
+      if (mounted && loadToken == _latestLoadToken) {
         setState(() {
           _isLoading = false;
-          _hasLoadedOnce = true;
         });
       }
     }
@@ -96,7 +99,9 @@ class _ExclusiveVendorsPreviewSectionState
       vendors: _vendors,
       isLoading: false,
       accentColor: context.appColors.accentOrange,
+      showClosedOnImage: true,
       highlightExclusiveBadge: true,
+      showEndSeeAllCard: true,
       onSeeAll: widget.onSeeAll,
       onItemTap: (vendor) => context.push('/vendorDetails', extra: vendor),
     );

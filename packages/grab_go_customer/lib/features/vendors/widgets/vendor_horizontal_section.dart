@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:grab_go_customer/features/vendors/model/vendor_model.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';
+import 'package:grab_go_customer/shared/widgets/trailing_see_all_card.dart';
 import 'vendor_card.dart';
 
 class VendorHorizontalSection extends StatelessWidget {
@@ -15,6 +16,7 @@ class VendorHorizontalSection extends StatelessWidget {
   final bool showClosedOnImage;
   final VoidCallback? onSeeAll;
   final bool highlightExclusiveBadge;
+  final bool showEndSeeAllCard;
 
   const VendorHorizontalSection({
     super.key,
@@ -28,6 +30,7 @@ class VendorHorizontalSection extends StatelessWidget {
     this.showClosedOnImage = false,
     this.onSeeAll,
     this.highlightExclusiveBadge = false,
+    this.showEndSeeAllCard = false,
   });
 
   @override
@@ -37,15 +40,12 @@ class VendorHorizontalSection extends StatelessWidget {
     final cardWidth = (size.width * 0.72).clamp(220.0, 300.0);
     final imageHeight = (cardWidth * 0.45).clamp(90.0, 125.0);
     final cardHeight = (imageHeight + 120.h).clamp(210.0, 255.0);
+    final showTrailingSeeAllCard = showEndSeeAllCard && !isLoading && vendors.isNotEmpty;
+    final itemCount = vendors.length + (showTrailingSeeAllCard ? 1 : 0);
 
     return Column(
       children: [
-        SectionHeader(
-          title: title,
-          sectionTotal: vendors.length,
-          accentColor: accentColor,
-          onSeeAll: onSeeAll,
-        ),
+        SectionHeader(title: title, sectionTotal: vendors.length, accentColor: accentColor, onSeeAll: onSeeAll),
         SizedBox(height: 12.h),
 
         SizedBox(
@@ -54,8 +54,15 @@ class VendorHorizontalSection extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             padding: EdgeInsets.only(left: 20.w),
             physics: const AlwaysScrollableScrollPhysics(),
-            itemCount: vendors.length,
+            itemCount: itemCount,
             itemBuilder: (context, index) {
+              if (showTrailingSeeAllCard && index == vendors.length) {
+                return Padding(
+                  padding: EdgeInsets.only(right: 20.w),
+                  child: _buildTrailingSeeAllCard(context, width: cardWidth * 0.48, height: cardHeight - 8.h),
+                );
+              }
+
               final vendor = vendors[index];
               return Container(
                 padding: EdgeInsets.only(right: 15.w),
@@ -72,6 +79,16 @@ class VendorHorizontalSection extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildTrailingSeeAllCard(BuildContext context, {required double width, required double height}) {
+    return TrailingSeeAllCard(
+      width: width,
+      height: height,
+      accentColor: accentColor,
+      subtitle: 'View more vendors',
+      onTap: onSeeAll,
     );
   }
 }

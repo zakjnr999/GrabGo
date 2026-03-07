@@ -4,6 +4,7 @@ import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/shared/widgets/quick_reorder_card.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';
+import 'package:grab_go_customer/shared/widgets/trailing_see_all_card.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:provider/provider.dart';
 
@@ -13,6 +14,7 @@ class OrderAgainSection extends StatelessWidget {
   final VoidCallback onSeeAll;
   final Function(FoodItem) onItemTap;
   final bool isLoading;
+  final bool showEndSeeAllCard;
 
   const OrderAgainSection({
     super.key,
@@ -21,11 +23,15 @@ class OrderAgainSection extends StatelessWidget {
     required this.onSeeAll,
     required this.onItemTap,
     required this.isLoading,
+    this.showEndSeeAllCard = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
+    final showTrailingSeeAllCard =
+        showEndSeeAllCard && !isLoading && recentOrders.isNotEmpty;
+    final itemCount = recentOrders.length + (showTrailingSeeAllCard ? 1 : 0);
 
     if (recentOrders.isEmpty) return const SizedBox.shrink();
 
@@ -44,8 +50,21 @@ class OrderAgainSection extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             padding: EdgeInsets.only(left: 20.w),
             physics: const AlwaysScrollableScrollPhysics(),
-            itemCount: recentOrders.length,
+            itemCount: itemCount,
             itemBuilder: (context, index) {
+              if (showTrailingSeeAllCard && index == recentOrders.length) {
+                return Padding(
+                  padding: EdgeInsets.only(right: 20.w),
+                  child: TrailingSeeAllCard(
+                    width: 136.w,
+                    height: 198.h,
+                    accentColor: colors.accentOrange,
+                    subtitle: 'View past orders',
+                    onTap: onSeeAll,
+                  ),
+                );
+              }
+
               final item = recentOrders[index];
               final originalItem =
                   originalItems != null && index < originalItems!.length

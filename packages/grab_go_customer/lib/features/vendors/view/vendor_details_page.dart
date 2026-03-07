@@ -21,6 +21,7 @@ import 'package:grab_go_customer/features/pharmacy/repository/pharmacy_repositor
 import 'package:grab_go_customer/features/pharmacy/viewmodel/pharmacy_provider.dart';
 import 'package:grab_go_customer/features/vendors/model/vendor_model.dart';
 import 'package:grab_go_customer/features/vendors/model/vendor_type.dart';
+import 'package:grab_go_customer/features/vendors/widgets/exclusive_stamp_badge.dart';
 import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
 import 'package:grab_go_customer/shared/widgets/deal_card.dart';
 import 'package:grab_go_customer/shared/widgets/food_item_card.dart';
@@ -473,394 +474,410 @@ class _VendorDetailsPageState extends State<VendorDetailsPage> {
         body: Stack(
           clipBehavior: Clip.none,
           children: [
-            CustomScrollView(
-              controller: _scrollController,
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                SliverAppBar(
-                  expandedHeight: expandedHeight,
-                  backgroundColor: Colors.transparent,
-                  surfaceTintColor: Colors.transparent,
-                  systemOverlayStyle: const SystemUiOverlayStyle(
-                    statusBarColor: Colors.transparent,
-                    statusBarIconBrightness: Brightness.light,
-                    statusBarBrightness: Brightness.dark,
-                  ),
-                  elevation: 0,
-                  pinned: true,
-                  stretch: false,
-                  automaticallyImplyLeading: false,
-                  flexibleSpace: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final collapsedHeight = kToolbarHeight + topPadding;
-                      final totalRange = (expandedHeight - collapsedHeight)
-                          .clamp(1.0, double.infinity);
-                      final collapseT =
-                          (1 -
-                                  ((constraints.maxHeight - collapsedHeight) /
-                                      totalRange))
-                              .clamp(0.0, 1.0);
-                      final collapsingToolbarColor = Color.lerp(
-                        Colors.transparent,
-                        colors.backgroundPrimary.withValues(alpha: 0.6),
-                        collapseT,
-                      )!;
-                      final useDarkStatusIcons = !isDark && collapseT > 0.72;
+            NotificationListener<OverscrollIndicatorNotification>(
+              onNotification: (notification) {
+                notification.disallowIndicator();
+                return false;
+              },
+              child: CustomScrollView(
+                controller: _scrollController,
+                physics: const ClampingScrollPhysics(),
+                slivers: [
+                  SliverAppBar(
+                    expandedHeight: expandedHeight,
+                    backgroundColor: Colors.transparent,
+                    surfaceTintColor: Colors.transparent,
+                    systemOverlayStyle: const SystemUiOverlayStyle(
+                      statusBarColor: Colors.transparent,
+                      statusBarIconBrightness: Brightness.light,
+                      statusBarBrightness: Brightness.dark,
+                    ),
+                    elevation: 0,
+                    pinned: true,
+                    stretch: false,
+                    automaticallyImplyLeading: false,
+                    flexibleSpace: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final collapsedHeight = kToolbarHeight + topPadding;
+                        final totalRange = (expandedHeight - collapsedHeight)
+                            .clamp(1.0, double.infinity);
+                        final collapseT =
+                            (1 -
+                                    ((constraints.maxHeight - collapsedHeight) /
+                                        totalRange))
+                                .clamp(0.0, 1.0);
+                        final collapsingToolbarColor = Color.lerp(
+                          Colors.transparent,
+                          colors.backgroundPrimary.withValues(alpha: 0.6),
+                          collapseT,
+                        )!;
+                        final useDarkStatusIcons = !isDark && collapseT > 0.72;
 
-                      return AnnotatedRegion<SystemUiOverlayStyle>(
-                        value: SystemUiOverlayStyle(
-                          statusBarColor: Colors.transparent,
-                          statusBarIconBrightness: useDarkStatusIcons
-                              ? Brightness.dark
-                              : Brightness.light,
-                          statusBarBrightness: useDarkStatusIcons
-                              ? Brightness.light
-                              : Brightness.dark,
-                        ),
-                        child: Stack(
-                          clipBehavior: Clip.none,
-                          fit: StackFit.expand,
-                          children: [
-                            if (heroImageUrl != null)
-                              CachedNetworkImage(
-                                imageUrl: ImageOptimizer.getFullUrl(
-                                  heroImageUrl,
-                                  width: 1200,
-                                ),
-                                fit: BoxFit.cover,
-                                memCacheWidth: 900,
-                                maxHeightDiskCache: 700,
-                                placeholder: (context, url) =>
-                                    _buildHeroPlaceholder(colors, accentColor),
-                                errorWidget: (context, url, error) =>
-                                    _buildHeroPlaceholder(colors, accentColor),
-                              )
-                            else
-                              _buildHeroPlaceholder(colors, accentColor),
-                            Positioned.fill(
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [
-                                      Color.lerp(
-                                        Colors.black.withValues(alpha: 0.56),
-                                        Colors.black.withValues(alpha: 0.24),
-                                        collapseT,
-                                      )!,
-                                      Color.lerp(
-                                        Colors.black.withValues(alpha: 0.18),
-                                        Colors.transparent,
-                                        collapseT,
-                                      )!,
-                                      Colors.transparent,
-                                    ],
-                                    stops: const [0.0, 0.35, 1.0],
+                        return AnnotatedRegion<SystemUiOverlayStyle>(
+                          value: SystemUiOverlayStyle(
+                            statusBarColor: Colors.transparent,
+                            statusBarIconBrightness: useDarkStatusIcons
+                                ? Brightness.dark
+                                : Brightness.light,
+                            statusBarBrightness: useDarkStatusIcons
+                                ? Brightness.light
+                                : Brightness.dark,
+                          ),
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            fit: StackFit.expand,
+                            children: [
+                              if (heroImageUrl != null)
+                                CachedNetworkImage(
+                                  imageUrl: ImageOptimizer.getFullUrl(
+                                    heroImageUrl,
+                                    width: 1200,
                                   ),
-                                ),
-                              ),
-                            ),
-                            if (!_isLoadingVendorDetails &&
-                                !_vendor.isAvailableForOrders)
+                                  fit: BoxFit.cover,
+                                  memCacheWidth: 900,
+                                  maxHeightDiskCache: 700,
+                                  placeholder: (context, url) =>
+                                      _buildHeroPlaceholder(
+                                        colors,
+                                        accentColor,
+                                      ),
+                                  errorWidget: (context, url, error) =>
+                                      _buildHeroPlaceholder(
+                                        colors,
+                                        accentColor,
+                                      ),
+                                )
+                              else
+                                _buildHeroPlaceholder(colors, accentColor),
                               Positioned.fill(
-                                child: Container(
-                                  padding: EdgeInsets.only(top: 20.h),
-                                  color: Colors.black.withValues(alpha: 0.55),
-                                  alignment: Alignment.center,
-                                  child: Text(
-                                    _buildHeroOverlayMessage(),
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14.sp,
-                                      fontWeight: FontWeight.w700,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        Color.lerp(
+                                          Colors.black.withValues(alpha: 0.56),
+                                          Colors.black.withValues(alpha: 0.24),
+                                          collapseT,
+                                        )!,
+                                        Color.lerp(
+                                          Colors.black.withValues(alpha: 0.18),
+                                          Colors.transparent,
+                                          collapseT,
+                                        )!,
+                                        Colors.transparent,
+                                      ],
+                                      stops: const [0.0, 0.35, 1.0],
                                     ),
                                   ),
                                 ),
                               ),
-                            Positioned.fill(
-                              child: ColoredBox(color: collapsingToolbarColor),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                  actionsPadding: EdgeInsets.symmetric(
-                    horizontal: 10.w,
-                    vertical: 2.h,
-                  ),
-                  actions: [
-                    _buildSliverActionButton(
-                      onTap: () {
-                        final router = GoRouter.of(context);
-                        if (router.canPop()) {
-                          router.pop();
-                        } else {
-                          context.go('/homepage');
-                        }
-                      },
-                      child: SvgPicture.asset(
-                        Assets.icons.navArrowLeft,
-                        package: 'grab_go_shared',
-                        height: 20.h,
-                        width: 20.w,
-                        colorFilter: const ColorFilter.mode(
-                          Colors.white,
-                          BlendMode.srcIn,
-                        ),
-                      ),
-                    ),
-                    const Spacer(),
-
-                    _buildSliverActionButton(
-                      onTap: _shareVendor,
-                      child: SvgPicture.asset(
-                        Assets.icons.shareAndroid,
-                        package: 'grab_go_shared',
-                        height: 20.h,
-                        width: 20.w,
-                        colorFilter: const ColorFilter.mode(
-                          Colors.white,
-                          BlendMode.srcIn,
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 10.w),
-                    Consumer<FavoritesProvider>(
-                      builder: (context, favoritesProvider, child) {
-                        final isFavorite = favoritesProvider
-                            .isVendorFavoriteById(
-                              _vendor.id,
-                              _favoriteVendorType,
-                            );
-                        return _buildSliverActionButton(
-                          onTap: () async {
-                            try {
-                              await favoritesProvider.toggleVendorFavorite(
-                                _asFavoriteVendor(),
-                              );
-                            } catch (_) {
-                              if (!mounted) return;
-                              AppToastMessage.show(
-                                context: context,
-                                backgroundColor: colors.error,
-                                message:
-                                    'Unable to update favorites. Please try again.',
-                              );
-                            }
-                          },
-                          child: SvgPicture.asset(
-                            isFavorite
-                                ? Assets.icons.heartSolid
-                                : Assets.icons.heart,
-                            package: 'grab_go_shared',
-                            height: 20.h,
-                            width: 20.w,
-                            colorFilter: ColorFilter.mode(
-                              isFavorite ? colors.error : Colors.white,
-                              BlendMode.srcIn,
-                            ),
+                              if (!_isLoadingVendorDetails &&
+                                  !_vendor.isAvailableForOrders)
+                                Positioned.fill(
+                                  child: Container(
+                                    padding: EdgeInsets.only(top: 20.h),
+                                    color: Colors.black.withValues(alpha: 0.55),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      _buildHeroOverlayMessage(),
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14.sp,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              Positioned.fill(
+                                child: ColoredBox(
+                                  color: collapsingToolbarColor,
+                                ),
+                              ),
+                            ],
                           ),
                         );
                       },
                     ),
-                    SizedBox(width: 10.w),
-                    _buildSliverActionButton(
-                      onTap: _toggleMenuSearch,
-                      child: SvgPicture.asset(
-                        Assets.icons.search,
-                        package: 'grab_go_shared',
-                        height: 20.h,
-                        width: 20.w,
-                        colorFilter: const ColorFilter.mode(
-                          Colors.white,
-                          BlendMode.srcIn,
+                    actionsPadding: EdgeInsets.symmetric(
+                      horizontal: 10.w,
+                      vertical: 2.h,
+                    ),
+                    actions: [
+                      _buildSliverActionButton(
+                        onTap: () {
+                          final router = GoRouter.of(context);
+                          if (router.canPop()) {
+                            router.pop();
+                          } else {
+                            context.go('/homepage');
+                          }
+                        },
+                        child: SvgPicture.asset(
+                          Assets.icons.navArrowLeft,
+                          package: 'grab_go_shared',
+                          height: 20.h,
+                          width: 20.w,
+                          colorFilter: const ColorFilter.mode(
+                            Colors.white,
+                            BlendMode.srcIn,
+                          ),
                         ),
                       ),
-                    ),
-                    SizedBox(width: 10.w),
-                    _buildSliverActionButton(
-                      onTap: _openVendorInfo,
-                      child: SvgPicture.asset(
-                        Assets.icons.infoCircle,
-                        package: 'grab_go_shared',
-                        height: 20.h,
-                        width: 20.w,
-                        colorFilter: const ColorFilter.mode(
-                          Colors.white,
-                          BlendMode.srcIn,
+                      const Spacer(),
+
+                      _buildSliverActionButton(
+                        onTap: _shareVendor,
+                        child: SvgPicture.asset(
+                          Assets.icons.shareAndroid,
+                          package: 'grab_go_shared',
+                          height: 20.h,
+                          width: 20.w,
+                          colorFilter: const ColorFilter.mode(
+                            Colors.white,
+                            BlendMode.srcIn,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      bottom: menuCategories.length > 1 ? 0 : 24.h,
-                    ),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: colors.backgroundPrimary,
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(22.r),
-                          topRight: Radius.circular(22.r),
+                      SizedBox(width: 10.w),
+                      Consumer<FavoritesProvider>(
+                        builder: (context, favoritesProvider, child) {
+                          final isFavorite = favoritesProvider
+                              .isVendorFavoriteById(
+                                _vendor.id,
+                                _favoriteVendorType,
+                              );
+                          return _buildSliverActionButton(
+                            onTap: () async {
+                              try {
+                                await favoritesProvider.toggleVendorFavorite(
+                                  _asFavoriteVendor(),
+                                );
+                              } catch (_) {
+                                if (!mounted) return;
+                                AppToastMessage.show(
+                                  context: context,
+                                  backgroundColor: colors.error,
+                                  message:
+                                      'Unable to update favorites. Please try again.',
+                                );
+                              }
+                            },
+                            child: SvgPicture.asset(
+                              isFavorite
+                                  ? Assets.icons.heartSolid
+                                  : Assets.icons.heart,
+                              package: 'grab_go_shared',
+                              height: 20.h,
+                              width: 20.w,
+                              colorFilter: ColorFilter.mode(
+                                isFavorite ? colors.error : Colors.white,
+                                BlendMode.srcIn,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      SizedBox(width: 10.w),
+                      _buildSliverActionButton(
+                        onTap: _toggleMenuSearch,
+                        child: SvgPicture.asset(
+                          Assets.icons.search,
+                          package: 'grab_go_shared',
+                          height: 20.h,
+                          width: 20.w,
+                          colorFilter: const ColorFilter.mode(
+                            Colors.white,
+                            BlendMode.srcIn,
+                          ),
                         ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(height: sheetTopSpacing),
-                          SizedBox(height: overviewCardBodySpacing),
-                          _buildQuickStatsCard(colors),
-                          if ((_vendor.description?.trim().isNotEmpty ??
-                              false)) ...[
+                      SizedBox(width: 10.w),
+                      _buildSliverActionButton(
+                        onTap: _openVendorInfo,
+                        child: SvgPicture.asset(
+                          Assets.icons.infoCircle,
+                          package: 'grab_go_shared',
+                          height: 20.h,
+                          width: 20.w,
+                          colorFilter: const ColorFilter.mode(
+                            Colors.white,
+                            BlendMode.srcIn,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        bottom: menuCategories.length > 1 ? 0 : 24.h,
+                      ),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: colors.backgroundPrimary,
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(22.r),
+                            topRight: Radius.circular(22.r),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(height: sheetTopSpacing),
+                            SizedBox(height: overviewCardBodySpacing),
+                            _buildQuickStatsCard(colors),
+                            if ((_vendor.description?.trim().isNotEmpty ??
+                                false)) ...[
+                              SizedBox(height: 10.h),
+                              _buildDescriptionSection(colors),
+                            ],
+                            if (popularItems.isNotEmpty || _isLoadingItems) ...[
+                              SizedBox(height: majorSectionSpacing),
+                              SectionHeader(
+                                title: 'Popular at ${_vendor.displayName}',
+                                sectionTotal: popularItems.length,
+                                accentColor: accentColor,
+                                onSeeAll: null,
+                              ),
+                              SizedBox(height: sectionInnerSpacing),
+                              SizedBox(
+                                height: popularSectionHeight,
+                                child: _isLoadingItems
+                                    ? _buildPopularLoadingRow(colors)
+                                    : ListView.builder(
+                                        padding: EdgeInsets.only(left: 20.w),
+                                        scrollDirection: Axis.horizontal,
+                                        physics:
+                                            const AlwaysScrollableScrollPhysics(),
+                                        itemCount: popularItems.length,
+                                        itemBuilder: (context, index) {
+                                          final item =
+                                              popularItems[index].displayItem;
+                                          return Padding(
+                                            padding: EdgeInsets.only(
+                                              right: 12.w,
+                                            ),
+                                            child: DealCard(
+                                              item: item,
+                                              discountPercent: item
+                                                  .discountPercentage
+                                                  .toInt(),
+                                              deliveryTime:
+                                                  item.estimatedDeliveryTime,
+                                              cardWidth: popularCardWidth,
+                                              onTap: () => _openItemDetails(
+                                                popularItems[index],
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                              ),
+                            ],
                             SizedBox(height: 10.h),
-                            _buildDescriptionSection(colors),
-                          ],
-                          if (popularItems.isNotEmpty || _isLoadingItems) ...[
-                            SizedBox(height: majorSectionSpacing),
                             SectionHeader(
-                              title: 'Popular at ${_vendor.displayName}',
-                              sectionTotal: popularItems.length,
+                              title: 'Menu',
+                              sectionTotal: filteredMenuItems.length,
                               accentColor: accentColor,
                               onSeeAll: null,
                             ),
-                            SizedBox(height: sectionInnerSpacing),
-                            SizedBox(
-                              height: popularSectionHeight,
-                              child: _isLoadingItems
-                                  ? _buildPopularLoadingRow(colors)
-                                  : ListView.builder(
-                                      padding: EdgeInsets.only(left: 20.w),
-                                      scrollDirection: Axis.horizontal,
-                                      physics:
-                                          const AlwaysScrollableScrollPhysics(),
-                                      itemCount: popularItems.length,
-                                      itemBuilder: (context, index) {
-                                        final item =
-                                            popularItems[index].displayItem;
-                                        return Padding(
-                                          padding: EdgeInsets.only(right: 12.w),
-                                          child: DealCard(
-                                            item: item,
-                                            discountPercent: item
-                                                .discountPercentage
-                                                .toInt(),
-                                            deliveryTime:
-                                                item.estimatedDeliveryTime,
-                                            cardWidth: popularCardWidth,
-                                            onTap: () => _openItemDetails(
-                                              popularItems[index],
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
+                            if (_isMenuSearchVisible) ...[
+                              SizedBox(height: sectionInnerSpacing),
+                              _buildMenuSearchField(colors),
+                            ],
+                            if (menuCategories.length > 1) ...[
+                              SizedBox(height: sectionInnerSpacing),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (menuCategories.length > 1)
+                    SliverPersistentHeader(
+                      pinned: true,
+                      delegate: _PinnedHeaderDelegate(
+                        minHeight: 44.h,
+                        maxHeight: 44.h,
+                        child: Container(
+                          color: colors.backgroundPrimary,
+                          child: _buildMenuCategoryTabs(colors, menuCategories),
+                        ),
+                      ),
+                    ),
+                  SliverToBoxAdapter(
+                    child: SizedBox(
+                      height: menuCategories.length > 1
+                          ? sectionInnerSpacing
+                          : 24.h,
+                    ),
+                  ),
+                  if (_isLoadingItems)
+                    SliverToBoxAdapter(child: _buildMenuLoadingList(colors))
+                  else if (_itemsError != null)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 20.w),
+                        child: _buildInlineMessage(
+                          colors: colors,
+                          message: _itemsError!,
+                          actionText: 'Retry',
+                          onTap: _fetchVendorItems,
+                        ),
+                      ),
+                    )
+                  else if (_vendorItems.isEmpty)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 20.w),
+                        child: _buildInlineMessage(
+                          colors: colors,
+                          message:
+                              'No items available from this vendor right now.',
+                        ),
+                      ),
+                    )
+                  else if (filteredMenuItems.isEmpty)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 20.w),
+                        child: _buildInlineMessage(
+                          colors: colors,
+                          message: _menuSearchQuery.isNotEmpty
+                              ? 'No menu items match "$_menuSearchQuery".'
+                              : 'No items found in this category right now.',
+                        ),
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      padding: EdgeInsets.symmetric(horizontal: 16.w),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          final item = filteredMenuItems[index];
+                          return FoodItemCard(
+                            item: item.displayItem,
+                            margin: EdgeInsets.symmetric(
+                              horizontal: 4.w,
+                              vertical: 6.h,
                             ),
-                          ],
-                          SizedBox(height: 10.h),
-                          SectionHeader(
-                            title: 'Menu',
-                            sectionTotal: filteredMenuItems.length,
-                            accentColor: accentColor,
-                            onSeeAll: null,
-                          ),
-                          if (_isMenuSearchVisible) ...[
-                            SizedBox(height: sectionInnerSpacing),
-                            _buildMenuSearchField(colors),
-                          ],
-                          if (menuCategories.length > 1) ...[
-                            SizedBox(height: sectionInnerSpacing),
-                          ],
-                        ],
+                            onTap: () => _openItemDetails(item),
+                            trailing: _buildVendorMenuCardTrailing(
+                              colors,
+                              item.sourceItem is CartItem
+                                  ? item.sourceItem as CartItem
+                                  : item.displayItem,
+                            ),
+                          );
+                        }, childCount: filteredMenuItems.length),
                       ),
                     ),
-                  ),
-                ),
-                if (menuCategories.length > 1)
-                  SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _PinnedHeaderDelegate(
-                      minHeight: 44.h,
-                      maxHeight: 44.h,
-                      child: Container(
-                        color: colors.backgroundPrimary,
-                        child: _buildMenuCategoryTabs(colors, menuCategories),
-                      ),
-                    ),
-                  ),
-                SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: menuCategories.length > 1
-                        ? sectionInnerSpacing
-                        : 24.h,
-                  ),
-                ),
-                if (_isLoadingItems)
-                  SliverToBoxAdapter(child: _buildMenuLoadingList(colors))
-                else if (_itemsError != null)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 20.w),
-                      child: _buildInlineMessage(
-                        colors: colors,
-                        message: _itemsError!,
-                        actionText: 'Retry',
-                        onTap: _fetchVendorItems,
-                      ),
-                    ),
-                  )
-                else if (_vendorItems.isEmpty)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 20.w),
-                      child: _buildInlineMessage(
-                        colors: colors,
-                        message:
-                            'No items available from this vendor right now.',
-                      ),
-                    ),
-                  )
-                else if (filteredMenuItems.isEmpty)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 20.w),
-                      child: _buildInlineMessage(
-                        colors: colors,
-                        message: _menuSearchQuery.isNotEmpty
-                            ? 'No menu items match "$_menuSearchQuery".'
-                            : 'No items found in this category right now.',
-                      ),
-                    ),
-                  )
-                else
-                  SliverPadding(
-                    padding: EdgeInsets.symmetric(horizontal: 16.w),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        final item = filteredMenuItems[index];
-                        return FoodItemCard(
-                          item: item.displayItem,
-                          margin: EdgeInsets.symmetric(
-                            horizontal: 4.w,
-                            vertical: 6.h,
-                          ),
-                          onTap: () => _openItemDetails(item),
-                          trailing: _buildVendorMenuCardTrailing(
-                            colors,
-                            item.sourceItem is CartItem
-                                ? item.sourceItem as CartItem
-                                : item.displayItem,
-                          ),
-                        );
-                      }, childCount: filteredMenuItems.length),
-                    ),
-                  ),
-                SliverToBoxAdapter(child: SizedBox(height: 24.h)),
-              ],
+                  SliverToBoxAdapter(child: SizedBox(height: 24.h)),
+                ],
+              ),
             ),
             Positioned(
               left: 20.w,
@@ -1179,8 +1196,23 @@ class _VendorDetailsPageState extends State<VendorDetailsPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      displayVendor.displayName,
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(text: displayVendor.displayName),
+                          if (displayVendor.isExclusive)
+                            WidgetSpan(
+                              alignment: PlaceholderAlignment.middle,
+                              child: Padding(
+                                padding: EdgeInsets.only(left: 6.w),
+                                child: ExclusiveStampBadge.compact(
+                                  width: 18.w,
+                                  height: 18.w,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(

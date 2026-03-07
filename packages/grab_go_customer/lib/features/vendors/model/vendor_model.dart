@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:intl/intl.dart' as intl;
 import 'vendor_type.dart';
 
 part 'vendor_model.g.dart';
@@ -570,6 +571,7 @@ class VendorModel {
     final int parsedTotalReviews = totalReviewsValue is num
         ? totalReviewsValue.toInt()
         : int.tryParse(totalReviewsValue.toString()) ?? 0;
+    final vendorTypeId = json['vendorType']?.toString();
 
     return VendorModel(
       id: (json['_id'] ?? json['id'] ?? '').toString(),
@@ -684,6 +686,9 @@ class VendorModel {
       updatedAt: json['updatedAt'] != null
           ? DateTime.tryParse(json['updatedAt'].toString())
           : null,
+      vendorTypeEnum: vendorTypeId != null && vendorTypeId.trim().isNotEmpty
+          ? VendorType.fromId(vendorTypeId)
+          : VendorType.food,
     );
   }
 
@@ -746,6 +751,94 @@ class VendorModel {
       ? 'Not accepting'
       : 'Closed';
 
-  String get overlayAvailabilityLabel =>
-      isTemporarilyUnavailableButOpen ? 'Not accepting' : "We're closed";
+  DaySchedule? _scheduleForWeekday(int weekday) {
+    final hours = openingHours;
+    if (hours == null) return null;
+
+    switch (weekday) {
+      case DateTime.monday:
+        return hours.monday;
+      case DateTime.tuesday:
+        return hours.tuesday;
+      case DateTime.wednesday:
+        return hours.wednesday;
+      case DateTime.thursday:
+        return hours.thursday;
+      case DateTime.friday:
+        return hours.friday;
+      case DateTime.saturday:
+        return hours.saturday;
+      case DateTime.sunday:
+        return hours.sunday;
+    }
+    return null;
+  }
+
+  DateTime? _resolveScheduleDateTime({
+    required DateTime baseDate,
+    required String? timeValue,
+  }) {
+    if (timeValue == null || timeValue.trim().isEmpty) return null;
+    final parts = timeValue.trim().split(':');
+    if (parts.length < 2) return null;
+
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) return null;
+
+    return DateTime(baseDate.year, baseDate.month, baseDate.day, hour, minute);
+  }
+
+  DateTime? _findNextOpeningDateTime(DateTime now) {
+    for (var offset = 0; offset < 7; offset++) {
+      final candidateDate = now.add(Duration(days: offset));
+      final schedule = _scheduleForWeekday(candidateDate.weekday);
+      if (schedule == null || schedule.isClosed) continue;
+
+      final openingTime = _resolveScheduleDateTime(
+        baseDate: candidateDate,
+        timeValue: schedule.open,
+      );
+      if (openingTime == null) continue;
+
+      if (offset > 0 || openingTime.isAfter(now)) {
+        return openingTime;
+      }
+    }
+
+    return null;
+  }
+
+  String _formatNextOpeningLabel(DateTime openingTime, DateTime now) {
+    final timeText = intl.DateFormat('h:mm a').format(openingTime);
+    final today = DateTime(now.year, now.month, now.day);
+    final openingDay = DateTime(
+      openingTime.year,
+      openingTime.month,
+      openingTime.day,
+    );
+    final dayDifference = openingDay.difference(today).inDays;
+
+    if (dayDifference <= 0) {
+      return 'Opens at $timeText';
+    }
+    if (dayDifference == 1) {
+      return 'Opens tomorrow at $timeText';
+    }
+    return 'Opens ${intl.DateFormat('EEE').format(openingTime)} at $timeText';
+  }
+
+  String get overlayAvailabilityLabel {
+    if (isTemporarilyUnavailableButOpen) {
+      return 'Not accepting';
+    }
+
+    final now = DateTime.now();
+    final nextOpeningTime = _findNextOpeningDateTime(now);
+    if (nextOpeningTime == null) {
+      return "We're closed";
+    }
+
+    return _formatNextOpeningLabel(nextOpeningTime, now);
+  }
 }

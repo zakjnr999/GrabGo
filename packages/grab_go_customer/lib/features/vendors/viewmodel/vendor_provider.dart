@@ -58,7 +58,11 @@ class VendorProvider extends ChangeNotifier {
   }
 
   List<VendorModel> get exclusiveVendors {
-    return _derivedVendorSource.where((v) => v.isExclusive).toList();
+    final list = _derivedVendorSource
+        .where((vendor) => vendor.isExclusive)
+        .toList();
+    list.sort(_compareExclusiveVendors);
+    return list;
   }
 
   List<VendorModel> get nearestVendors {
@@ -100,6 +104,39 @@ class VendorProvider extends ChangeNotifier {
     return count;
   }
 
+  int _compareExclusiveVendors(VendorModel a, VendorModel b) {
+    final availabilityOrder = _compareBoolDesc(
+      a.isAvailableForOrders,
+      b.isAvailableForOrders,
+    );
+    if (availabilityOrder != 0) return availabilityOrder;
+
+    final distanceOrder = _compareNullableDoubleAsc(a.distance, b.distance);
+    if (distanceOrder != 0) return distanceOrder;
+
+    final ratingOrder = b.rating.compareTo(a.rating);
+    if (ratingOrder != 0) return ratingOrder;
+
+    final featuredOrder = _compareBoolDesc(
+      a.featured ?? false,
+      b.featured ?? false,
+    );
+    if (featuredOrder != 0) return featuredOrder;
+
+    return a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase());
+  }
+
+  int _compareBoolDesc(bool a, bool b) {
+    return (b ? 1 : 0).compareTo(a ? 1 : 0);
+  }
+
+  int _compareNullableDoubleAsc(double? a, double? b) {
+    if (a == null && b == null) return 0;
+    if (a == null) return 1;
+    if (b == null) return -1;
+    return a.compareTo(b);
+  }
+
   List<VendorModel> _mapCachedVendors(
     List<Map<String, dynamic>> cachedJson,
     VendorType type, {
@@ -131,9 +168,23 @@ class VendorProvider extends ChangeNotifier {
     bool forceRefresh = false,
   }) async {
     final typeName = type.toString().split('.').last;
+    if (_isLoading && _selectedType == type) return;
+
+    final previousType = _selectedType;
     _selectedType = type;
-    _vendors = [];
-    _filteredVendors = [];
+
+    final cachedJson = CacheService.getVendorsByType(typeName);
+    final hasCachedVendors = cachedJson.isNotEmpty;
+    final isTypeSwitch = previousType != null && previousType != type;
+
+    if (hasCachedVendors &&
+        (!forceRefresh || _vendors.isEmpty || isTypeSwitch)) {
+      _vendors = _mapCachedVendors(cachedJson, type, lat: lat, lng: lng);
+      _applyFilters();
+    } else if (isTypeSwitch && !hasCachedVendors) {
+      _vendors = [];
+      _filteredVendors = [];
+    }
 
     _isLoading = true;
     _error = null;
@@ -187,21 +238,19 @@ class VendorProvider extends ChangeNotifier {
         _vendors = _mapCachedVendors(vendorsList, type, lat: lat, lng: lng);
         _applyFilters();
       } else {
-        final cachedJson = CacheService.getVendorsByType(typeName);
-        if (cachedJson.isNotEmpty) {
+        if (_vendors.isEmpty && hasCachedVendors) {
           _vendors = _mapCachedVendors(cachedJson, type, lat: lat, lng: lng);
           _applyFilters();
-        } else {
+        } else if (_vendors.isEmpty) {
           _error = 'Failed to fetch vendors';
         }
       }
     } catch (e) {
       debugPrint('Error fetching vendors: $e');
-      final cachedJson = CacheService.getVendorsByType(typeName);
-      if (cachedJson.isNotEmpty) {
+      if (_vendors.isEmpty && hasCachedVendors) {
         _vendors = _mapCachedVendors(cachedJson, type, lat: lat, lng: lng);
         _applyFilters();
-      } else {
+      } else if (_vendors.isEmpty) {
         _error = e.toString();
       }
     } finally {
@@ -530,8 +579,9 @@ class VendorProvider extends ChangeNotifier {
         final matchesProductType =
             vendor.productTypes?.contains(_selectedCategoryId) ?? false;
 
-        if (!matchesCategory && !matchesService && !matchesProductType)
+        if (!matchesCategory && !matchesService && !matchesProductType) {
           return false;
+        }
       }
       return true;
     }).toList();

@@ -39,12 +39,16 @@ final class _$FoodService extends FoodService {
     String? restaurant,
     String? category,
     String? isAvailable,
+    double? userLat,
+    double? userLng,
   }) {
     final Uri $url = Uri.parse('/foods');
     final Map<String, dynamic> $params = <String, dynamic>{
       'restaurant': restaurant,
       'category': category,
       'isAvailable': isAvailable,
+      'userLat': userLat,
+      'userLng': userLng,
     };
     final Request $request = Request(
       'GET',
@@ -66,6 +70,22 @@ final class _$FoodService extends FoodService {
   Future<Response<dynamic>> getPromotionalBanners() {
     final Uri $url = Uri.parse('/promotions/banners');
     final Request $request = Request('GET', $url, client.baseUrl);
+    return client.send<dynamic, dynamic>($request);
+  }
+
+  @override
+  Future<Response<dynamic>> getHomeFeed({double? userLat, double? userLng}) {
+    final Uri $url = Uri.parse('/home/food-feed');
+    final Map<String, dynamic> $params = <String, dynamic>{
+      'userLat': userLat,
+      'userLng': userLng,
+    };
+    final Request $request = Request(
+      'GET',
+      $url,
+      client.baseUrl,
+      parameters: $params,
+    );
     return client.send<dynamic, dynamic>($request);
   }
 

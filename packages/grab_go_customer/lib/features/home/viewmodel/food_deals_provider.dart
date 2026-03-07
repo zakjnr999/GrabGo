@@ -84,6 +84,21 @@ class FoodDealsProvider extends ChangeNotifier with CacheMixin {
     }
   }
 
+  Future<void> primeFromCache() async {
+    if (_state.deals.isNotEmpty) return;
+    await _loadFromCache();
+  }
+
+  Future<void> hydrateFromHomeFeed(
+    List<FoodItem> deals, {
+    bool persistCache = true,
+  }) async {
+    _updateState(_state.copyWith(deals: deals, isLoading: false, error: null));
+    if (persistCache) {
+      await _saveToCache();
+    }
+  }
+
   /// Force refresh deals (for pull-to-refresh)
   Future<void> refreshDeals() async {
     await fetchDeals(forceRefresh: true);

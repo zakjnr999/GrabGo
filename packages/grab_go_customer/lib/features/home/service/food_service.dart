@@ -15,6 +15,8 @@ abstract class FoodService extends ChopperService {
     @Query('restaurant') String? restaurant,
     @Query('category') String? category,
     @Query('isAvailable') String? isAvailable,
+    @Query('userLat') double? userLat,
+    @Query('userLng') double? userLng,
   });
 
   @GET(path: '/foods/deals')
@@ -22,6 +24,12 @@ abstract class FoodService extends ChopperService {
 
   @GET(path: '/promotions/banners')
   Future<Response> getPromotionalBanners();
+
+  @GET(path: '/home/food-feed')
+  Future<Response> getHomeFeed({
+    @Query('userLat') double? userLat,
+    @Query('userLng') double? userLng,
+  });
 
   @GET(path: '/foods/order-history')
   Future<Response> getOrderHistory();

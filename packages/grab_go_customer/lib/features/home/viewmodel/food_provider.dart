@@ -1,16 +1,25 @@
 import 'package:flutter/foundation.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
+import 'package:grab_go_customer/features/home/model/home_feed.dart';
 import 'package:grab_go_customer/features/home/model/promo_banner.dart';
+import 'package:grab_go_customer/features/home/repository/food_repository.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_category_provider.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_banner_provider.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_deals_provider.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_discovery_provider.dart';
+import 'package:grab_go_customer/features/vendors/model/vendor_model.dart';
+import 'package:grab_go_shared/shared/services/cache_service.dart';
 
 class FoodProvider with ChangeNotifier {
   final FoodCategoryProvider _categoryProvider;
   final FoodBannerProvider _bannerProvider;
   final FoodDealsProvider _dealsProvider;
   final FoodDiscoveryProvider _discoveryProvider;
+  final FoodRepository _repository = FoodRepository();
+  List<VendorModel> _nearbyVendors = const [];
+  List<VendorModel> _exclusiveVendors = const [];
+  bool _isRefreshingHomeFeed = false;
+  String? _homeFeedError;
 
   FoodProvider({
     FoodCategoryProvider? categoryProvider,
@@ -39,9 +48,11 @@ class FoodProvider with ChangeNotifier {
 
   // Categories Providers
   List<FoodCategoryModel> get categories => _categoryProvider.categories;
-  bool get isLoading => _categoryProvider.isLoading;
-  String? get error => _categoryProvider.error;
+  bool get isLoading => _isRefreshingHomeFeed || _categoryProvider.isLoading;
+  String? get error => _homeFeedError ?? _categoryProvider.error;
   bool get hasAttemptedFetch => _categoryProvider.hasAttemptedFetch;
+  List<VendorModel> get nearbyVendors => _nearbyVendors;
+  List<VendorModel> get exclusiveVendors => _exclusiveVendors;
 
   Future<void> fetchCategories() => _categoryProvider.fetchCategories();
   Future<void> refreshCategories() => _categoryProvider.refreshCategories();
@@ -219,8 +230,88 @@ class FoodProvider with ChangeNotifier {
   }
 
   /// Refresh all data from all providers (cache-first on initial load)
-  Future<void> refreshAll({bool forceRefresh = false}) async {
+  Future<void> refreshAll({
+    bool forceRefresh = false,
+    bool includeRecentOrderItems = false,
+  }) async {
+    if (_isRefreshingHomeFeed) return;
+
+    if (!forceRefresh) {
+      await _primeCachedSections();
+    }
+
+    _homeFeedError = null;
+    _isRefreshingHomeFeed = true;
+    _categoryProvider.setHomeFeedLoading(true);
+    notifyListeners();
+
+    try {
+      final locationData = CacheService.getUserLocation();
+      final userLat = locationData?['latitude']?.toDouble();
+      final userLng = locationData?['longitude']?.toDouble();
+      final feed = await _repository.fetchHomeFeed(
+        userLat: userLat,
+        userLng: userLng,
+      );
+      await _applyHomeFeed(feed);
+      if (includeRecentOrderItems) {
+        await _discoveryProvider.fetchRecentOrderItems(
+          forceRefresh: forceRefresh,
+        );
+      }
+    } catch (error) {
+      _homeFeedError = error.toString();
+      if (kDebugMode) {
+        print(
+          '[FoodProvider] Home feed request failed, using legacy fan-out: $error',
+        );
+      }
+      _categoryProvider.setHomeFeedLoading(false);
+      await _refreshAllLegacy(
+        forceRefresh: forceRefresh,
+        includeRecentOrderItems: includeRecentOrderItems,
+      );
+    } finally {
+      _isRefreshingHomeFeed = false;
+      _categoryProvider.setHomeFeedLoading(false);
+      notifyListeners();
+    }
+  }
+
+  Future<void> _primeCachedSections() async {
     await Future.wait([
+      _categoryProvider.primeFromCache(),
+      _bannerProvider.primeFromCache(),
+      _dealsProvider.primeFromCache(),
+      _discoveryProvider.primeFromCache(),
+    ]);
+  }
+
+  Future<void> _applyHomeFeed(FoodHomeFeed feed) async {
+    await Future.wait([
+      _categoryProvider.hydrateFromHomeFeed(feed.categories),
+      _bannerProvider.hydrateFromHomeFeed(feed.promoBanners),
+      _dealsProvider.hydrateFromHomeFeed(feed.deals),
+      _discoveryProvider.hydrateFromHomeFeed(
+        orderHistoryItems: feed.orderHistory,
+        popularItems: feed.popular,
+        topRatedItems: feed.topRated,
+        recommendedItems: feed.recommended.items,
+        recommendedPage: feed.recommended.page,
+        hasMoreRecommended: feed.recommended.hasMore,
+      ),
+    ]);
+
+    _nearbyVendors = feed.nearbyVendors;
+    _exclusiveVendors = feed.exclusiveVendors;
+    notifyListeners();
+  }
+
+  Future<void> _refreshAllLegacy({
+    required bool forceRefresh,
+    required bool includeRecentOrderItems,
+  }) async {
+    final futures = <Future<void>>[
       forceRefresh
           ? _categoryProvider.refreshCategories()
           : _categoryProvider.fetchCategories(),
@@ -231,7 +322,6 @@ class FoodProvider with ChangeNotifier {
           ? _dealsProvider.refreshDeals()
           : _dealsProvider.fetchDeals(),
       _discoveryProvider.fetchOrderHistory(forceRefresh: forceRefresh),
-      _discoveryProvider.fetchRecentOrderItems(forceRefresh: forceRefresh),
       forceRefresh
           ? _discoveryProvider.refreshPopularItems()
           : _discoveryProvider.fetchPopularItems(),
@@ -241,7 +331,15 @@ class FoodProvider with ChangeNotifier {
       forceRefresh
           ? _discoveryProvider.refreshRecommendedItems()
           : _discoveryProvider.fetchRecommendedItems(),
-    ]);
+    ];
+
+    if (includeRecentOrderItems) {
+      futures.add(
+        _discoveryProvider.fetchRecentOrderItems(forceRefresh: forceRefresh),
+      );
+    }
+
+    await Future.wait(futures);
   }
 
   // Banners Provider

@@ -10,10 +10,22 @@ class FoodBannerState {
   final bool isLoading;
   final String? error;
 
-  const FoodBannerState({this.banners = const [], this.isLoading = false, this.error});
+  const FoodBannerState({
+    this.banners = const [],
+    this.isLoading = false,
+    this.error,
+  });
 
-  FoodBannerState copyWith({List<PromoBanner>? banners, bool? isLoading, String? error}) {
-    return FoodBannerState(banners: banners ?? this.banners, isLoading: isLoading ?? this.isLoading, error: error);
+  FoodBannerState copyWith({
+    List<PromoBanner>? banners,
+    bool? isLoading,
+    String? error,
+  }) {
+    return FoodBannerState(
+      banners: banners ?? this.banners,
+      isLoading: isLoading ?? this.isLoading,
+      error: error,
+    );
   }
 }
 
@@ -32,20 +44,17 @@ class FoodBannerProvider extends ChangeNotifier with CacheMixin {
   Future<void> fetchPromotionalBanners({bool forceRefresh = false}) async {
     if (_state.isLoading) return;
 
-    // Try loading from cache first
+    var loadedFromCache = false;
     if (!forceRefresh && _state.banners.isEmpty) {
       if (CacheService.isPromotionalBannersCacheValid()) {
         await _loadFromCache();
-        if (_state.banners.isNotEmpty) {
-          if (kDebugMode) {
-            print('✅ Loaded ${_state.banners.length} banners from cache');
-          }
-          return;
-        }
+        loadedFromCache = _state.banners.isNotEmpty;
       }
     }
 
-    _updateState(_state.copyWith(isLoading: true));
+    if (!loadedFromCache) {
+      _updateState(_state.copyWith(isLoading: true));
+    }
 
     try {
       if (kDebugMode) {
@@ -55,7 +64,9 @@ class FoodBannerProvider extends ChangeNotifier with CacheMixin {
       if (kDebugMode) {
         print('✅ Fetched ${banners.length} promotional banners from backend');
       }
-      _updateState(_state.copyWith(banners: banners, isLoading: false, error: null));
+      _updateState(
+        _state.copyWith(banners: banners, isLoading: false, error: null),
+      );
       await _saveToCache();
     } catch (e) {
       if (kDebugMode) {
@@ -64,7 +75,29 @@ class FoodBannerProvider extends ChangeNotifier with CacheMixin {
       if (_state.banners.isEmpty) {
         await _loadFromCache();
       }
-      _updateState(_state.copyWith(isLoading: false, error: 'Failed to load banners: ${e.toString()}'));
+      _updateState(
+        _state.copyWith(
+          isLoading: false,
+          error: 'Failed to load banners: ${e.toString()}',
+        ),
+      );
+    }
+  }
+
+  Future<void> primeFromCache() async {
+    if (_state.banners.isNotEmpty) return;
+    await _loadFromCache();
+  }
+
+  Future<void> hydrateFromHomeFeed(
+    List<PromoBanner> banners, {
+    bool persistCache = true,
+  }) async {
+    _updateState(
+      _state.copyWith(banners: banners, isLoading: false, error: null),
+    );
+    if (persistCache) {
+      await _saveToCache();
     }
   }
 
@@ -78,7 +111,9 @@ class FoodBannerProvider extends ChangeNotifier with CacheMixin {
     try {
       final cached = CacheService.getPromotionalBanners();
       if (cached.isNotEmpty) {
-        final banners = cached.map((json) => PromoBanner.fromJson(json)).toList();
+        final banners = cached
+            .map((json) => PromoBanner.fromJson(json))
+            .toList();
         _updateState(_state.copyWith(banners: banners));
       }
     } catch (e) {
@@ -91,7 +126,9 @@ class FoodBannerProvider extends ChangeNotifier with CacheMixin {
   /// Save to cache
   Future<void> _saveToCache() async {
     try {
-      final bannersJson = _state.banners.map((banner) => banner.toJson()).toList();
+      final bannersJson = _state.banners
+          .map((banner) => banner.toJson())
+          .toList();
       CacheService.savePromotionalBanners(bannersJson);
     } catch (e) {
       if (kDebugMode) {

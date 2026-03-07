@@ -2,8 +2,8 @@ import 'package:chopper/chopper.dart';
 import 'package:flutter/foundation.dart';
 import 'package:grab_go_customer/core/api/api_client.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
+import 'package:grab_go_customer/features/home/model/home_feed.dart';
 import 'package:grab_go_customer/features/home/model/promo_banner.dart';
-import 'package:grab_go_customer/features/home/model/promotional_banner.dart';
 import 'package:grab_go_customer/features/home/service/food_service.dart';
 
 class FoodRepository {
@@ -11,34 +11,57 @@ class FoodRepository {
 
   FoodRepository({FoodService? service}) : service = service ?? foodService;
 
-  Future<List<FoodCategoryModel>> fetchCategories({double? userLat, double? userLng}) async {
-    final Response response = await service.getCategories(userLat: userLat, userLng: userLng);
+  Future<List<FoodCategoryModel>> fetchCategories({
+    double? userLat,
+    double? userLng,
+  }) async {
+    final Response response = await service.getCategories(
+      userLat: userLat,
+      userLng: userLng,
+    );
     if (response.isSuccessful) {
       final body = response.body;
       final data = (body['data'] as List<dynamic>?) ?? [];
-      return data.map((e) => FoodCategoryModel.fromJson(e as Map<String, dynamic>)).toList();
+      return data
+          .map((e) => FoodCategoryModel.fromJson(e as Map<String, dynamic>))
+          .toList();
     } else {
       throw Exception('Failed to load categories: ${response.statusCode}');
     }
   }
 
-  Future<List<FoodItem>> fetchFoods({String? restaurantId, String? categoryId}) async {
+  Future<List<FoodItem>> fetchFoods({
+    String? restaurantId,
+    String? categoryId,
+    double? userLat,
+    double? userLng,
+  }) async {
     final Response response = await service.getFoods(
       restaurant: restaurantId,
       category: categoryId,
       isAvailable: 'true',
+      userLat: userLat,
+      userLng: userLng,
     );
     if (response.isSuccessful) {
       final body = response.body;
       final data = (body['data'] as List<dynamic>?) ?? [];
-      return data.map((e) => FoodItem.fromJson(e as Map<String, dynamic>)).toList();
+      return data
+          .map((e) => FoodItem.fromJson(e as Map<String, dynamic>))
+          .toList();
     } else {
       throw Exception('Failed to load foods: ${response.statusCode}');
     }
   }
 
-  Future<List<FoodCategoryModel>> fetchCategoriesWithFoods({double? userLat, double? userLng}) async {
-    final categories = await fetchCategories(userLat: userLat, userLng: userLng);
+  Future<List<FoodCategoryModel>> fetchCategoriesWithFoods({
+    double? userLat,
+    double? userLng,
+  }) async {
+    final categories = await fetchCategories(
+      userLat: userLat,
+      userLng: userLng,
+    );
 
     if (categories.isEmpty) {
       return [];
@@ -47,7 +70,11 @@ class FoodRepository {
     // Parallelize categorical food fetching for production performance
     final categoryFutures = categories.map((category) async {
       try {
-        final categoryFoods = await fetchFoods(categoryId: category.id);
+        final categoryFoods = await fetchFoods(
+          categoryId: category.id,
+          userLat: userLat,
+          userLng: userLng,
+        );
         return FoodCategoryModel(
           id: category.id,
           name: category.name,
@@ -71,8 +98,32 @@ class FoodRepository {
     return await Future.wait(categoryFutures);
   }
 
+  Future<FoodHomeFeed> fetchHomeFeed({double? userLat, double? userLng}) async {
+    final Response response = await service.getHomeFeed(
+      userLat: userLat,
+      userLng: userLng,
+    );
+
+    if (response.isSuccessful && response.body != null) {
+      final body = response.body as Map<String, dynamic>;
+      final payload = body['data'];
+      if (payload is Map<String, dynamic>) {
+        return FoodHomeFeed.fromJson(payload);
+      }
+      if (payload is Map) {
+        return FoodHomeFeed.fromJson(Map<String, dynamic>.from(payload));
+      }
+      throw Exception('Invalid home feed payload');
+    }
+
+    throw Exception('Failed to load home feed: ${response.statusCode}');
+  }
+
   /// Fetch user's recent order items for "Order Again" section
-  Future<List<FoodItem>> fetchRecentOrderItems({double? userLat, double? userLng}) async {
+  Future<List<FoodItem>> fetchRecentOrderItems({
+    double? userLat,
+    double? userLng,
+  }) async {
     try {
       // Build URI with optional location parameters
       String path = '/orders/recent-items';
@@ -136,7 +187,9 @@ class FoodRepository {
       final response = await service.getPromotionalBanners().timeout(
         const Duration(seconds: 30),
         onTimeout: () {
-          throw Exception('Request timeout: /promotions/banners took too long to respond');
+          throw Exception(
+            'Request timeout: /promotions/banners took too long to respond',
+          );
         },
       );
 
@@ -168,7 +221,9 @@ class FoodRepository {
         print('❌ Response body: ${response.body}');
       }
 
-      throw Exception('Failed to load promotional banners: ${response.statusCode}');
+      throw Exception(
+        'Failed to load promotional banners: ${response.statusCode}',
+      );
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error fetching promotional banners: $e');
@@ -213,7 +268,9 @@ class FoodRepository {
       if (response.isSuccessful && response.body != null) {
         final data = response.body as Map<String, dynamic>;
         if (data['success'] == true && data['data'] != null) {
-          return (data['data'] as List).map((json) => FoodItem.fromJson(json)).toList();
+          return (data['data'] as List)
+              .map((json) => FoodItem.fromJson(json))
+              .toList();
         }
       }
 
@@ -234,16 +291,25 @@ class FoodRepository {
     double? userLng,
   }) async {
     try {
-      final response = await service.getTopRatedItems(limit, minRating, userLat, userLng);
+      final response = await service.getTopRatedItems(
+        limit,
+        minRating,
+        userLat,
+        userLng,
+      );
 
       if (response.isSuccessful && response.body != null) {
         final data = response.body as Map<String, dynamic>;
         if (data['success'] == true && data['data'] != null) {
-          return (data['data'] as List).map((json) => FoodItem.fromJson(json)).toList();
+          return (data['data'] as List)
+              .map((json) => FoodItem.fromJson(json))
+              .toList();
         }
       }
 
-      throw Exception('Failed to fetch top rated items: ${response.statusCode}');
+      throw Exception(
+        'Failed to fetch top rated items: ${response.statusCode}',
+      );
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error fetching top rated items: $e');
@@ -260,16 +326,25 @@ class FoodRepository {
     double? userLng,
   }) async {
     try {
-      final response = await service.getRecommendedItems(limit, page, userLat, userLng);
+      final response = await service.getRecommendedItems(
+        limit,
+        page,
+        userLat,
+        userLng,
+      );
 
       if (response.isSuccessful && response.body != null) {
         final data = response.body as Map<String, dynamic>;
         if (data['success'] == true && data['data'] != null) {
-          return (data['data'] as List).map((json) => FoodItem.fromJson(json)).toList();
+          return (data['data'] as List)
+              .map((json) => FoodItem.fromJson(json))
+              .toList();
         }
       }
 
-      throw Exception('Failed to fetch recommended items: ${response.statusCode}');
+      throw Exception(
+        'Failed to fetch recommended items: ${response.statusCode}',
+      );
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error fetching recommended items: $e');
