@@ -99,6 +99,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         foodProvider.exclusiveVendors.isNotEmpty;
   }
 
+  bool _isFoodUnavailable(FoodProvider foodProvider) {
+    return !foodProvider.isLoading &&
+        foodProvider.categories.isEmpty &&
+        foodProvider.hasAttemptedFetch &&
+        foodProvider.error == null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -149,7 +156,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           );
         }
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          _refreshData(refreshAllServices: true);
+          _refreshForLocationChange();
         });
       }
     }
@@ -261,6 +268,43 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _initializeData();
   }
 
+  Future<void> _refreshForLocationChange({
+    bool showSuccessMessage = false,
+  }) async {
+    if (!mounted || _isRefreshingLocation) return;
+
+    final locationProvider = context.read<NativeLocationProvider>();
+    final nextLat = locationProvider.latitude;
+    final nextLng = locationProvider.longitude;
+
+    setState(() {
+      _isRefreshingLocation = true;
+      _lastLat = nextLat;
+      _lastLng = nextLng;
+      _hasNoInternet = false;
+    });
+
+    try {
+      await _refreshData(refreshAllServices: true);
+
+      if (showSuccessMessage && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Location updated - showing nearby items'),
+            duration: Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRefreshingLocation = false;
+        });
+      }
+    }
+  }
+
   Future<void> _refreshData({bool refreshAllServices = false}) async {
     if (!_isRefreshingLocation && mounted) {
       setState(() {
@@ -331,19 +375,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     bool shouldShowEmptyState = false;
 
     final bool isFoodLoading = foodProvider.isLoading;
-    final bool hasNoFood = foodProvider.categories.isEmpty;
-    final bool isFoodUnavailable =
-        !isFoodLoading && hasNoFood && foodProvider.hasAttemptedFetch;
+    final bool isFoodUnavailable = _isFoodUnavailable(foodProvider);
 
-    if (!hasRenderableHomeContent &&
+    if (_isRefreshingLocation) {
+      shouldShowSkeleton = true;
+    } else if (!hasRenderableHomeContent &&
         (isFoodLoading || !foodProvider.hasAttemptedFetch)) {
       shouldShowSkeleton = true;
-    } else if (!hasRenderableHomeContent && isFoodUnavailable) {
+    } else if (isFoodUnavailable) {
       shouldShowEmptyState = true;
     }
 
-    if ((_isRefreshingLocation || _isSwipeRefreshing || _isRetrying) &&
-        !hasRenderableHomeContent) {
+    if ((_isSwipeRefreshing || _isRetrying) && !hasRenderableHomeContent) {
       shouldShowSkeleton = true;
       shouldShowEmptyState = false;
     }
@@ -1001,31 +1044,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       );
 
                       if (locationChanged == true && mounted) {
-                        setState(() {
-                          _isRefreshingLocation = true;
-                        });
-
-                        try {
-                          await _refreshData();
-
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Location updated - showing nearby items',
-                                ),
-                                duration: Duration(seconds: 2),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          }
-                        } finally {
-                          if (mounted) {
-                            setState(() {
-                              _isRefreshingLocation = false;
-                            });
-                          }
-                        }
+                        await _refreshForLocationChange(
+                          showSuccessMessage: true,
+                        );
                       }
                     },
                     child: Row(

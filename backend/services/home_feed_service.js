@@ -719,7 +719,11 @@ const attachDistance = (vendor, userLatitude, userLongitude) => {
   return withDistance;
 };
 
-const getExclusiveVendors = async ({ userLatitude, userLongitude }) => {
+const getExclusiveVendors = async ({
+  userLatitude,
+  userLongitude,
+  maxDistanceKm,
+}) => {
   const now = new Date();
   const exclusiveWhere = {
     status: 'approved',
@@ -754,12 +758,20 @@ const getExclusiveVendors = async ({ userLatitude, userLongitude }) => {
     }),
   ]);
 
-  const formatted = [
+  let formatted = [
     ...restaurants.map((restaurant) => formatRestaurantCard(attachDistance(restaurant, userLatitude, userLongitude))),
     ...groceries.map((store) => formatStoreCard(attachDistance(store, userLatitude, userLongitude), 'grocery')),
     ...pharmacies.map((store) => formatStoreCard(attachDistance(store, userLatitude, userLongitude), 'pharmacy')),
     ...grabmarts.map((store) => formatStoreCard(attachDistance(store, userLatitude, userLongitude), 'grabmart')),
   ];
+
+  if (userLatitude != null && userLongitude != null) {
+    formatted = formatted.filter(
+      (vendor) =>
+          vendor.distance != null &&
+          vendor.distance <= (maxDistanceKm ?? Number.POSITIVE_INFINITY),
+    );
+  }
 
   formatted.sort(sortExclusiveVendors);
   return formatted.slice(0, HOME_SECTION_LIMIT);
@@ -767,7 +779,13 @@ const getExclusiveVendors = async ({ userLatitude, userLongitude }) => {
 
 const fetchFoodHomeFeed = async ({ userId, userLat, userLng, maxDistance = 15 }) => {
   const locationContext = await getLocationContext({ userLat, userLng, maxDistance });
-  const { nearbyRestaurantIds, nearbyVendors, userLatitude, userLongitude } = locationContext;
+  const {
+    nearbyRestaurantIds,
+    nearbyVendors,
+    userLatitude,
+    userLongitude,
+    maxDistanceKm,
+  } = locationContext;
 
   const [
     categories,
@@ -786,7 +804,7 @@ const fetchFoodHomeFeed = async ({ userId, userLat, userLng, maxDistance = 15 })
     getTopRatedItems({ nearbyRestaurantIds, userLat, userLng }),
     getRecommendedItems({ userId, nearbyRestaurantIds, userLat, userLng }),
     getPromotionalBanners(),
-    getExclusiveVendors({ userLatitude, userLongitude }),
+    getExclusiveVendors({ userLatitude, userLongitude, maxDistanceKm }),
   ]);
 
   return {
