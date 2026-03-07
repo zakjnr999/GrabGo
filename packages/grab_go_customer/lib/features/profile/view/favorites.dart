@@ -22,8 +22,7 @@ class FavoritesPage extends StatefulWidget {
   State<FavoritesPage> createState() => _FavoritesPageState();
 }
 
-class _FavoritesPageState extends State<FavoritesPage>
-    with SingleTickerProviderStateMixin {
+class _FavoritesPageState extends State<FavoritesPage> with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   late AnimationController _searchAnimationController;
   final FocusNode _searchFocus = FocusNode();
@@ -33,21 +32,15 @@ class _FavoritesPageState extends State<FavoritesPage>
   bool _isSearchActive = false;
 
   final ScrollController _scrollController = ScrollController();
-  final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(
-    0.0,
-  );
-  static const double _collapsedHeight =
-      140.0; // Increased to show tabs when collapsed
+  final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0.0);
+  static const double _collapsedHeight = 140.0; // Increased to show tabs when collapsed
   static const double _scrollThreshold = 100.0;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    _searchAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
+    _searchAnimationController = AnimationController(duration: const Duration(milliseconds: 300), vsync: this);
   }
 
   @override
@@ -104,9 +97,7 @@ class _FavoritesPageState extends State<FavoritesPage>
       statusBarColor: colors.backgroundPrimary,
       statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       systemNavigationBarColor: colors.backgroundPrimary,
-      systemNavigationBarIconBrightness: isDark
-          ? Brightness.light
-          : Brightness.dark,
+      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
     );
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -131,45 +122,27 @@ class _FavoritesPageState extends State<FavoritesPage>
                           final filteredItems = isItemsTab
                               ? (_searchQuery.isEmpty
                                     ? favoritesProvider.favoriteItems.toList()
-                                    : favoritesProvider.searchFavorites(
-                                        _searchQuery,
-                                      ))
+                                    : favoritesProvider.searchFavorites(_searchQuery))
                               : <FoodItem>[];
                           final filteredVendors = isItemsTab
                               ? <FavoriteVendor>[]
                               : (_searchQuery.isEmpty
                                     ? favoritesProvider.favoriteVendors
-                                    : favoritesProvider.searchFavoriteVendors(
-                                        _searchQuery,
-                                      ));
+                                    : favoritesProvider.searchFavoriteVendors(_searchQuery));
 
-                          final activeListIsEmpty = isItemsTab
-                              ? filteredItems.isEmpty
-                              : filteredVendors.isEmpty;
+                          final activeListIsEmpty = isItemsTab ? filteredItems.isEmpty : filteredVendors.isEmpty;
                           if (activeListIsEmpty) {
                             if (_searchQuery.isNotEmpty) {
                               return _buildNoResultsState(colors, size);
                             }
-                            return _buildTabEmptyState(
-                              colors,
-                              size,
-                              isItemsTab: isItemsTab,
-                            );
+                            return _buildTabEmptyState(colors, size, isItemsTab: isItemsTab);
                           }
 
                           if (isItemsTab) {
-                            return _buildFavoritesList(
-                              colors,
-                              filteredItems,
-                              size,
-                            );
+                            return _buildFavoritesList(colors, filteredItems, size);
                           }
 
-                          return _buildFavoriteVendorsList(
-                            colors,
-                            filteredVendors,
-                            size,
-                          );
+                          return _buildFavoriteVendorsList(colors, filteredVendors, size);
                         },
                       ),
                     ),
@@ -177,12 +150,7 @@ class _FavoritesPageState extends State<FavoritesPage>
                 ),
 
                 // Collapsible Header
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: _buildCollapsibleFavoritesHeader(colors, size),
-                ),
+                Positioned(top: 0, left: 0, right: 0, child: _buildCollapsibleFavoritesHeader(colors, size)),
               ],
             ),
           ),
@@ -191,24 +159,16 @@ class _FavoritesPageState extends State<FavoritesPage>
     );
   }
 
-  Widget _buildCollapsibleFavoritesHeader(
-    AppColorsExtension colors,
-    Size size,
-  ) {
+  Widget _buildCollapsibleFavoritesHeader(AppColorsExtension colors, Size size) {
     final statusBarHeight = MediaQuery.of(context).padding.top;
     final dynamicCollapsedHeight = _collapsedHeight + statusBarHeight;
 
     return ValueListenableBuilder<double>(
       valueListenable: _scrollOffsetNotifier,
       builder: (context, scrollOffset, _) {
-        final collapseProgress = (scrollOffset / _scrollThreshold).clamp(
-          0.0,
-          1.0,
-        );
+        final collapseProgress = (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
         final expandedHeight = UmbrellaHeaderMetrics.expandedHeightFor(size);
-        final currentHeight =
-            expandedHeight -
-            ((expandedHeight - dynamicCollapsedHeight) * collapseProgress);
+        final currentHeight = expandedHeight - ((expandedHeight - dynamicCollapsedHeight) * collapseProgress);
         final contentOpacity = (1.0 - collapseProgress).clamp(0.0, 1.0);
 
         return SizedBox(
@@ -224,9 +184,7 @@ class _FavoritesPageState extends State<FavoritesPage>
               ),
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 200),
-                child: _isSearchActive
-                    ? _buildSearchBar(colors)
-                    : _buildStickyTabs(colors),
+                child: _isSearchActive ? _buildSearchBar(colors) : _buildStickyTabs(colors),
               ),
             ],
           ),
@@ -242,19 +200,11 @@ class _FavoritesPageState extends State<FavoritesPage>
       padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 10.h),
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
-        border: Border(
-          bottom: BorderSide(
-            color: colors.inputBorder.withValues(alpha: 0.5),
-            width: 1,
-          ),
-        ),
+        border: Border(bottom: BorderSide(color: colors.inputBorder.withValues(alpha: 0.5), width: 1)),
       ),
       child: Container(
         padding: EdgeInsets.all(3.r),
-        decoration: BoxDecoration(
-          color: colors.backgroundSecondary,
-          borderRadius: BorderRadius.circular(999.r),
-        ),
+        decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(999.r)),
         child: LayoutBuilder(
           builder: (context, constraints) {
             final tabWidth = constraints.maxWidth / _favoriteTabs.length;
@@ -268,10 +218,7 @@ class _FavoritesPageState extends State<FavoritesPage>
                   bottom: 0,
                   width: tabWidth,
                   child: Container(
-                    decoration: BoxDecoration(
-                      color: colors.accentOrange,
-                      borderRadius: BorderRadius.circular(999.r),
-                    ),
+                    decoration: BoxDecoration(color: colors.accentOrange, borderRadius: BorderRadius.circular(999.r)),
                   ),
                 ),
                 Row(
@@ -287,21 +234,14 @@ class _FavoritesPageState extends State<FavoritesPage>
                         },
                         behavior: HitTestBehavior.opaque,
                         child: Padding(
-                          padding: EdgeInsets.symmetric(
-                            vertical: 12.h,
-                            horizontal: 6.w,
-                          ),
+                          padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 6.w),
                           child: AnimatedDefaultTextStyle(
                             duration: const Duration(milliseconds: 220),
                             curve: Curves.easeOutCubic,
                             style: TextStyle(
-                              color: selected
-                                  ? Colors.white
-                                  : colors.textSecondary,
+                              color: selected ? Colors.white : colors.textSecondary,
                               fontSize: 11.sp,
-                              fontWeight: selected
-                                  ? FontWeight.w700
-                                  : FontWeight.w600,
+                              fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                               fontFamily: 'Lato',
                               package: 'grab_go_shared',
                             ),
@@ -334,11 +274,7 @@ class _FavoritesPageState extends State<FavoritesPage>
         padding: EdgeInsets.fromLTRB(20.w, statusBarHeight, 20.w, 10.h),
         child: Row(
           children: [
-            _buildHeaderButton(
-              icon: Assets.icons.navArrowLeft,
-              onTap: () => context.pop(),
-              colors: colors,
-            ),
+            _buildHeaderButton(icon: Assets.icons.navArrowLeft, onTap: () => context.pop(), colors: colors),
             SizedBox(width: 16.w),
             Expanded(
               child: Text(
@@ -397,10 +333,7 @@ class _FavoritesPageState extends State<FavoritesPage>
                     _handleClearAllFavorites();
                 }
               },
-              child: _buildHeaderButton(
-                icon: Assets.icons.moreVertical,
-                colors: colors,
-              ),
+              child: _buildHeaderButton(icon: Assets.icons.moreVertical, colors: colors),
             ),
           ],
         ),
@@ -417,10 +350,7 @@ class _FavoritesPageState extends State<FavoritesPage>
     return Container(
       height: 44,
       width: 44,
-      decoration: BoxDecoration(
-        color: colors.backgroundSecondary,
-        shape: BoxShape.circle,
-      ),
+      decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -431,10 +361,7 @@ class _FavoritesPageState extends State<FavoritesPage>
             child: SvgPicture.asset(
               icon,
               package: 'grab_go_shared',
-              colorFilter: ColorFilter.mode(
-                colors.textPrimary,
-                BlendMode.srcIn,
-              ),
+              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
             ),
           ),
         ),
@@ -446,10 +373,7 @@ class _FavoritesPageState extends State<FavoritesPage>
     return Container(
       key: const ValueKey('search'),
       margin: EdgeInsets.symmetric(horizontal: 20.w),
-      decoration: BoxDecoration(
-        color: colors.backgroundSecondary,
-        borderRadius: BorderRadius.circular(14.r),
-      ),
+      decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(14.r)),
       child: TextField(
         controller: _searchController,
         focusNode: _searchFocus,
@@ -458,11 +382,7 @@ class _FavoritesPageState extends State<FavoritesPage>
             _searchQuery = value;
           });
         },
-        style: TextStyle(
-          color: colors.textPrimary,
-          fontSize: 14.sp,
-          fontWeight: FontWeight.w500,
-        ),
+        style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
         cursorColor: Colors.white,
         decoration: InputDecoration(
           hintText: "Search your favorites...",
@@ -476,10 +396,7 @@ class _FavoritesPageState extends State<FavoritesPage>
             child: SvgPicture.asset(
               Assets.icons.search,
               package: 'grab_go_shared',
-              colorFilter: ColorFilter.mode(
-                colors.textPrimary,
-                BlendMode.srcIn,
-              ),
+              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
             ),
           ),
           suffixIcon: _searchQuery.isNotEmpty
@@ -495,61 +412,23 @@ class _FavoritesPageState extends State<FavoritesPage>
                     height: 18.h,
                     width: 18.w,
                     package: "grab_go_shared",
-                    colorFilter: ColorFilter.mode(
-                      colors.textPrimary,
-                      BlendMode.srcIn,
-                    ),
+                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                   ),
                 )
               : null,
           border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: 16.w,
-            vertical: 12.h,
-          ),
+          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
         ),
       ),
     );
   }
 
   Widget _buildEmptyState(AppColorsExtension colors, Size size) {
-    return Padding(
-      padding: EdgeInsets.only(
-        top: UmbrellaHeaderMetrics.contentPaddingFor(size) + 24.h,
-        left: 40.w,
-        right: 40.w,
-      ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              "No Favorites Yet",
-              style: TextStyle(
-                color: colors.textPrimary,
-                fontSize: 18.sp,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-
-            SizedBox(height: 12.h),
-
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.w),
-              child: Text(
-                "Start adding your favorite items by tapping the heart icon on any item",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: colors.textSecondary,
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w500,
-                  height: 1.4,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return _buildCenteredFavoriteEmptyState(
+      colors,
+      size,
+      title: "No Favorites Yet",
+      description: "Start adding your favorite items by tapping the heart icon on any item",
     );
   }
 
@@ -569,11 +448,7 @@ class _FavoritesPageState extends State<FavoritesPage>
           children: [
             Text(
               "No Results Found",
-              style: TextStyle(
-                color: colors.textPrimary,
-                fontSize: 22.sp,
-                fontWeight: FontWeight.w800,
-              ),
+              style: TextStyle(color: colors.textPrimary, fontSize: 22.sp, fontWeight: FontWeight.w800),
             ),
 
             SizedBox(height: 10.h),
@@ -583,68 +458,87 @@ class _FavoritesPageState extends State<FavoritesPage>
               child: Text(
                 "Try searching with different keywords",
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: colors.textSecondary,
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w500,
+                style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w500),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabEmptyState(AppColorsExtension colors, Size size, {required bool isItemsTab}) {
+    return _buildCenteredFavoriteEmptyState(
+      colors,
+      size,
+      title: isItemsTab ? "No Favorite Items" : "No Favorite Vendors",
+      description: isItemsTab
+          ? "Save items you love and they will appear here."
+          : "Save vendors you order from most and they will appear here.",
+    );
+  }
+
+  Widget _buildCenteredFavoriteEmptyState(
+    AppColorsExtension colors,
+    Size size, {
+    required String title,
+    required String description,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          controller: _scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Padding(
+              padding: EdgeInsets.only(
+                top: UmbrellaHeaderMetrics.contentPaddingFor(size),
+                left: 40.w,
+                right: 40.w,
+                bottom: 40.h,
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SvgPicture.asset(
+                      Assets.icons.emptyFavorites,
+                      package: 'grab_go_shared',
+                      width: 160.w,
+                      height: 160.h,
+                    ),
+                    SizedBox(height: 10.h),
+                    Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: colors.textPrimary, fontSize: 20.sp, fontWeight: FontWeight.w800),
+                    ),
+                    SizedBox(height: 12.h),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20.w),
+                      child: Text(
+                        description,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: colors.textSecondary,
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w500,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildTabEmptyState(
-    AppColorsExtension colors,
-    Size size, {
-    required bool isItemsTab,
-  }) {
-    return SingleChildScrollView(
-      controller: _scrollController,
-      physics: const AlwaysScrollableScrollPhysics(),
-      child: Padding(
-        padding: EdgeInsets.only(
-          top: UmbrellaHeaderMetrics.contentPaddingFor(size) + 24.h,
-          left: 40.w,
-          right: 40.w,
-          bottom: 40.h,
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              isItemsTab ? "No Favorite Items" : "No Favorite Vendors",
-              style: TextStyle(
-                color: colors.textPrimary,
-                fontSize: 20.sp,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            SizedBox(height: 10.h),
-            Text(
-              isItemsTab
-                  ? "Save items you love and they will appear here."
-                  : "Save vendors you order from most and they will appear here.",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: colors.textSecondary,
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFavoritesList(
-    AppColorsExtension colors,
-    List<FoodItem> items,
-    Size size,
-  ) {
+  Widget _buildFavoritesList(AppColorsExtension colors, List<FoodItem> items, Size size) {
     return ListView.builder(
       controller: _scrollController,
       padding: EdgeInsets.only(
@@ -662,18 +556,11 @@ class _FavoritesPageState extends State<FavoritesPage>
     );
   }
 
-  Widget _buildFavoriteVendorsList(
-    AppColorsExtension colors,
-    List<FavoriteVendor> vendors,
-    Size size,
-  ) {
+  Widget _buildFavoriteVendorsList(AppColorsExtension colors, List<FavoriteVendor> vendors, Size size) {
     return ListView.builder(
       controller: _scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.only(
-        top: UmbrellaHeaderMetrics.contentPaddingFor(size),
-        bottom: 8.h,
-      ),
+      padding: EdgeInsets.only(top: UmbrellaHeaderMetrics.contentPaddingFor(size), bottom: 8.h),
       itemBuilder: (context, index) {
         final vendor = vendors[index];
         final vendorModel = _favoriteVendorToVendorModel(vendor);
@@ -717,9 +604,7 @@ class _FavoritesPageState extends State<FavoritesPage>
       minOrder: favorite.minOrder,
       rating: favorite.rating,
       totalReviews: favorite.totalReviews,
-      categories: favorite.categories.isNotEmpty
-          ? favorite.categories
-          : [favorite.typeLabel],
+      categories: favorite.categories.isNotEmpty ? favorite.categories : [favorite.typeLabel],
       location: VendorLocation(
         lat: 0,
         lng: 0,
@@ -742,19 +627,12 @@ class _FavoritesPageState extends State<FavoritesPage>
       },
       trailing: Consumer<CartProvider>(
         builder: (context, cartProvider, child) {
-          final bool isInCart = cartProvider.hasItemInCart(
+          final bool isInCart = cartProvider.hasItemInCart(item, includeFoodCustomizations: true);
+          final bool isItemPending = cartProvider.isItemOperationPendingForDisplay(
             item,
             includeFoodCustomizations: true,
           );
-          final bool isItemPending = cartProvider
-              .isItemOperationPendingForDisplay(
-                item,
-                includeFoodCustomizations: true,
-              );
-          final itemForAction = cartProvider.resolveItemForCartAction(
-            item,
-            includeFoodCustomizations: true,
-          );
+          final itemForAction = cartProvider.resolveItemForCartAction(item, includeFoodCustomizations: true);
 
           return GestureDetector(
             onTap: () {
@@ -769,9 +647,7 @@ class _FavoritesPageState extends State<FavoritesPage>
               padding: EdgeInsets.all(8.r),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isInCart
-                    ? colors.accentOrange
-                    : colors.backgroundSecondary,
+                color: isInCart ? colors.accentOrange : colors.backgroundSecondary,
               ),
               child: isItemPending
                   ? SizedBox(
@@ -779,9 +655,7 @@ class _FavoritesPageState extends State<FavoritesPage>
                       height: 16.w,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          isInCart ? Colors.white : colors.accentOrange,
-                        ),
+                        valueColor: AlwaysStoppedAnimation<Color>(isInCart ? Colors.white : colors.accentOrange),
                       ),
                     )
                   : SvgPicture.asset(
@@ -789,10 +663,7 @@ class _FavoritesPageState extends State<FavoritesPage>
                       package: 'grab_go_shared',
                       height: 16.h,
                       width: 16.w,
-                      colorFilter: ColorFilter.mode(
-                        isInCart ? Colors.white : colors.textPrimary,
-                        BlendMode.srcIn,
-                      ),
+                      colorFilter: ColorFilter.mode(isInCart ? Colors.white : colors.textPrimary, BlendMode.srcIn),
                     ),
             ),
           );
@@ -827,25 +698,15 @@ class _FavoritesPageState extends State<FavoritesPage>
                 margin: EdgeInsets.only(top: 12.h, bottom: 8.h),
                 width: 40.w,
                 height: 4.h,
-                decoration: BoxDecoration(
-                  color: colors.inputBorder,
-                  borderRadius: BorderRadius.circular(2.r),
-                ),
+                decoration: BoxDecoration(color: colors.inputBorder, borderRadius: BorderRadius.circular(2.r)),
               ),
             ),
 
             Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: KSpacing.lg.w,
-                vertical: KSpacing.md.h,
-              ),
+              padding: EdgeInsets.symmetric(horizontal: KSpacing.lg.w, vertical: KSpacing.md.h),
               child: Text(
                 'Sort Favorites',
-                style: TextStyle(
-                  fontSize: 18.sp,
-                  fontWeight: FontWeight.w700,
-                  color: colors.textPrimary,
-                ),
+                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
               ),
             ),
 
@@ -931,16 +792,9 @@ class _FavoritesPageState extends State<FavoritesPage>
                         height: 24.h,
                         width: 24.w,
                         package: 'grab_go_shared',
-                        colorFilter: ColorFilter.mode(
-                          iconColor,
-                          BlendMode.srcIn,
-                        ),
+                        colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
                       )
-                    : Icon(
-                        icon ?? Icons.settings,
-                        size: 24.h,
-                        color: iconColor,
-                      ),
+                    : Icon(icon ?? Icons.settings, size: 24.h, color: iconColor),
               ),
             ),
             SizedBox(width: 12.w),
@@ -951,20 +805,12 @@ class _FavoritesPageState extends State<FavoritesPage>
                 children: [
                   Text(
                     title,
-                    style: TextStyle(
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w600,
-                      color: colors.textPrimary,
-                    ),
+                    style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
                   ),
                   SizedBox(height: 2.h),
                   Text(
                     subtitle,
-                    style: TextStyle(
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w400,
-                      color: colors.textSecondary,
-                    ),
+                    style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w400, color: colors.textSecondary),
                   ),
                 ],
               ),
@@ -974,10 +820,7 @@ class _FavoritesPageState extends State<FavoritesPage>
               package: "grab_go_shared",
               height: 18.h,
               width: 18.w,
-              colorFilter: ColorFilter.mode(
-                colors.textSecondary,
-                BlendMode.srcIn,
-              ),
+              colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
             ),
           ],
         ),

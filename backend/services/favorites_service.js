@@ -1,6 +1,7 @@
 const prisma = require('../config/prisma');
 const { normalizeRatingResponse } = require('../utils/rating_calculator');
 const { isGrabGoExclusiveActive } = require('../utils/grabgo_exclusive');
+const { isRestaurantOpen } = require('../utils/restaurant');
 
 /**
  * Favorites Service (Prisma)
@@ -39,6 +40,14 @@ const FAVORITES_SELECT = {
           averagePreparationTime: true,
           isGrabGoExclusive: true,
           isGrabGoExclusiveUntil: true,
+          openingHours: {
+            select: {
+              dayOfWeek: true,
+              openTime: true,
+              closeTime: true,
+              isClosed: true,
+            },
+          },
         },
       },
     },
@@ -297,6 +306,11 @@ const assertTargetExists = async (delegate, id, label) => {
 const formatVendorFavorite = (entity, type) => {
   if (!entity) return null;
 
+  const computedIsOpen =
+    type === 'restaurant' && Array.isArray(entity.openingHours)
+      ? isRestaurantOpen({ ...entity, openingHours: entity.openingHours })
+      : entity.isOpen;
+
   const ratingMeta = normalizeRatingResponse({
     rating: entity.rating,
     ratingCount: entity.ratingCount,
@@ -327,6 +341,7 @@ const formatVendorFavorite = (entity, type) => {
 
   return {
     ...entity,
+    isOpen: computedIsOpen,
     rating: ratingMeta.rating,
     rawRating: ratingMeta.rawRating,
     weightedRating: ratingMeta.weightedRating,
