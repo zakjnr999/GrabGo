@@ -398,7 +398,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       shouldShowEmptyState = true;
     }
 
-    if ((_isSwipeRefreshing || _isRetrying) && !hasRenderableHomeContent) {
+    if (_isSwipeRefreshing) {
+      shouldShowSkeleton = true;
+      shouldShowEmptyState = false;
+    } else if (_isRetrying && !hasRenderableHomeContent) {
       shouldShowSkeleton = true;
       shouldShowEmptyState = false;
     }

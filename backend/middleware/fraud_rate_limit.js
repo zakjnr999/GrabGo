@@ -604,6 +604,27 @@ const withdrawalRateLimit = createCompositeRateLimit((req) => {
   return rules;
 });
 
+const pickupRouteRateLimit = createCompositeRateLimit((req) => {
+  const ipHash = toHashedKey(getClientIp(req), 'ip');
+
+  return [
+    {
+      key: ruleKey('pickup:route:ip:min', ipHash),
+      limit: 120,
+      windowSeconds: 60,
+      reasonCode: 'PICKUP_ROUTE_VELOCITY_IP',
+      message: 'Too many pickup route requests from this network',
+    },
+    {
+      key: ruleKey('pickup:route:ip:10m', ipHash),
+      limit: 500,
+      windowSeconds: 600,
+      reasonCode: 'PICKUP_ROUTE_VELOCITY_IP_BURST',
+      message: 'Pickup route requests are temporarily rate limited',
+    },
+  ];
+});
+
 module.exports = {
   apiGlobalRateLimit,
   signupRateLimit,
@@ -627,4 +648,5 @@ module.exports = {
   fraudChallengeSendRateLimit,
   fraudChallengeVerifyRateLimit,
   withdrawalRateLimit,
+  pickupRouteRateLimit,
 };

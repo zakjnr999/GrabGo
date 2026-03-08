@@ -770,6 +770,7 @@ app.use("/api/promotions", require("./routes/promotions"));
 app.use("/api/cart", require("./routes/cart"));
 app.use("/api/favorites", require("./routes/favorites"));
 app.use("/api/promo", require("./routes/promo"));
+app.use("/api/pickup", require("./routes/pickup"));
 app.use("/api/parcel", require("./routes/parcel"));
 app.use("/api/test", require("./routes/test"));
 app.use("/api/tracking", require("./routes/tracking_routes"));

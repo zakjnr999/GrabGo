@@ -3,9 +3,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:grab_go_customer/features/Pickup/model/pickup_route_data.dart';
+import 'package:grab_go_customer/features/Pickup/service/pickup_route_service.dart';
 import 'package:grab_go_customer/features/Pickup/widgets/vendor_details_bottom_sheet.dart';
 import 'package:grab_go_customer/features/vendors/model/vendor_model.dart';
 import 'package:grab_go_customer/features/vendors/model/vendor_type.dart';
@@ -25,7 +28,9 @@ class PickupMap extends StatefulWidget {
 }
 
 class _PickupMapState extends State<PickupMap> {
-  static const String _markerStyleVersion = 'v2';
+  static const String _markerStyleVersion = 'v3';
+  static const double _routeRefreshDistanceMeters = 30;
+  static const Duration _routeRefreshMinInterval = Duration(seconds: 8);
   GoogleMapController? _mapController;
   List<VendorModel> _vendors = [];
   List<VendorCluster> _clusters = [];
@@ -40,17 +45,22 @@ class _PickupMapState extends State<PickupMap> {
   Marker? _userMarker;
   Set<Polyline> _polylines = {};
   final Map<String, BitmapDescriptor> _markerCache = {};
+  final PickupRouteService _pickupRouteService = PickupRouteService();
   Timer? _debounceTimer;
   Timer? _cameraMoveDebounce;
   CameraPosition? _lastCameraPosition;
   LatLngBounds? _lastLoadedBounds;
   double _currentZoom = 14;
-  static const LatLng _defaultPosition = LatLng(5.6037, -0.1870);
-
   double? _lastLat;
   double? _lastLng;
   LatLng? _lastUserMarkerPosition;
   bool _pendingLocationUpdate = false;
+  PickupRouteData? _activeRouteData;
+  List<LatLng> _activeRoutePoints = const [];
+  bool _isRouteLoading = false;
+  DateTime? _lastRouteRequestStartedAt;
+  LatLng? _lastRouteOrigin;
+  int _routeRequestSerial = 0;
 
   Color _colorForVendorType(VendorType type, AppColorsExtension colors) {
     switch (type) {
@@ -112,7 +122,8 @@ class _PickupMapState extends State<PickupMap> {
     super.didChangeDependencies();
     final locationProvider = Provider.of<NativeLocationProvider>(context);
 
-    if (locationProvider.latitude != _lastLat || locationProvider.longitude != _lastLng) {
+    if (locationProvider.latitude != _lastLat ||
+        locationProvider.longitude != _lastLng) {
       final oldLat = _lastLat;
       final oldLng = _lastLng;
 
@@ -134,7 +145,7 @@ class _PickupMapState extends State<PickupMap> {
           headingAccuracy: 0,
         );
 
-        WidgetsBinding.instance.addPostFrameCallback((_) {
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
           if (!mounted) {
             _pendingLocationUpdate = false;
             return;
@@ -142,11 +153,16 @@ class _PickupMapState extends State<PickupMap> {
           setState(() {
             _currentPosition = nextPosition;
           });
-          if (oldLat != null && oldLng != null && _mapController != null) {
-            _mapController!.animateCamera(CameraUpdate.newLatLngZoom(LatLng(_lastLat!, _lastLng!), 14));
+          if (oldLat != null && oldLng != null) {
+            _clearActiveRoute(closeSheet: true);
           }
-          _updateUserMarker();
-          _loadVendors();
+          if (oldLat != null && oldLng != null && _mapController != null) {
+            _mapController!.animateCamera(
+              CameraUpdate.newLatLngZoom(LatLng(_lastLat!, _lastLng!), 14),
+            );
+          }
+          await _updateUserMarker();
+          await _loadVendors();
           _pendingLocationUpdate = false;
         });
       }
@@ -156,10 +172,10 @@ class _PickupMapState extends State<PickupMap> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (mounted) {
-        _initPosition();
-        _loadVendors();
+        await _initPosition();
+        await _loadVendors();
       }
     });
     _startLocationUpdates();
@@ -182,13 +198,6 @@ class _PickupMapState extends State<PickupMap> {
     super.dispose();
   }
 
-  Future<void> _initializeMap() async {
-    await _getCurrentLocation();
-    await _updateUserMarker();
-    await _loadVendors();
-    _startLocationUpdates();
-  }
-
   void _onMapCreated(GoogleMapController controller) {
     _mapController = controller;
     if (mounted) {
@@ -201,82 +210,33 @@ class _PickupMapState extends State<PickupMap> {
 
   Future<void> _initPosition() async {
     try {
-      Position? position =
-          await Geolocator.getCurrentPosition(
-                locationSettings: AndroidSettings(
-                  accuracy: LocationAccuracy.medium,
-                  intervalDuration: const Duration(seconds: 5),
-                  distanceFilter: 20,
-                ),
-              )
-              .catchError((Object e) {
-                return null;
-              })
-              .then((value) => value as Position?);
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: AndroidSettings(
+          accuracy: LocationAccuracy.medium,
+          intervalDuration: const Duration(seconds: 5),
+          distanceFilter: 20,
+        ),
+      );
 
-      if (position != null && mounted) {
+      if (mounted) {
         setState(() => _currentPosition = position);
-        _mapController?.animateCamera(CameraUpdate.newLatLng(LatLng(position.latitude, position.longitude)));
+        _mapController?.animateCamera(
+          CameraUpdate.newLatLng(LatLng(position.latitude, position.longitude)),
+        );
+        await _updateUserMarker();
       }
     } catch (e) {
       // Handle error quietly
     }
   }
 
-  Future<void> _getCurrentLocation() async {
-    try {
-      final locationProvider = Provider.of<NativeLocationProvider>(context, listen: false);
-
-      if (locationProvider.hasLocation) {
-        _lastLat = locationProvider.latitude;
-        _lastLng = locationProvider.longitude;
-
-        _currentPosition = Position(
-          latitude: _lastLat!,
-          longitude: _lastLng!,
-          timestamp: DateTime.now(),
-          accuracy: 0,
-          altitude: 0,
-          heading: 0,
-          speed: 0,
-          speedAccuracy: 0,
-          altitudeAccuracy: 0,
-          headingAccuracy: 0,
-        );
-
-        if (mounted) setState(() {});
-        return;
-      }
-
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) return;
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) return;
-
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-      );
-
-      if (!mounted) return;
-      setState(() {
-        _currentPosition = position;
-        _lastLat = position.latitude;
-        _lastLng = position.longitude;
-      });
-      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(LatLng(position.latitude, position.longitude), 14));
-    } catch (e) {
-      // Error getting current location
-    }
-  }
-
   void _startLocationUpdates() {
     _positionSubscription =
         Geolocator.getPositionStream(
-          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 20),
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 20,
+          ),
         ).listen(
           (Position position) {
             if (!mounted) return;
@@ -284,6 +244,7 @@ class _PickupMapState extends State<PickupMap> {
               _currentPosition = position;
             });
             _updateUserMarker();
+            _maybeRefreshActiveRouteForLocationChange();
           },
           onError: (error) {
             // Location stream error
@@ -301,7 +262,11 @@ class _PickupMapState extends State<PickupMap> {
     });
     try {
       if (_currentPosition != null) {
-        await vendorProvider.getAllNearbyVendors(_currentPosition!.latitude, _currentPosition!.longitude, radius: 10);
+        await vendorProvider.getAllNearbyVendors(
+          _currentPosition!.latitude,
+          _currentPosition!.longitude,
+          radius: 10,
+        );
       } else {
         await vendorProvider.fetchVendors(VendorType.food, forceRefresh: true);
       }
@@ -323,6 +288,7 @@ class _PickupMapState extends State<PickupMap> {
         _isLoading = false;
       });
 
+      _syncSelectionWithVisibleVendors();
       await _updateMarkers();
       _fitCameraToMarkers();
     } catch (e) {
@@ -338,11 +304,15 @@ class _PickupMapState extends State<PickupMap> {
     final oldZoom = _currentZoom;
     _currentZoom = position.zoom;
 
-    if (_currentZoom < 14.0 && _userMarker != null) {
+    if (_currentZoom < 14.0 &&
+        _userMarker != null &&
+        _selectedVendorId == null) {
       setState(() {
         _userMarker = null;
       });
-    } else if (_currentZoom >= 14.0 && _userMarker == null && _currentPosition != null) {
+    } else if (_currentZoom >= 14.0 &&
+        _userMarker == null &&
+        _currentPosition != null) {
       _updateUserMarker();
     }
 
@@ -382,7 +352,8 @@ class _PickupMapState extends State<PickupMap> {
     try {
       final bounds = await _mapController!.getVisibleRegion();
 
-      if (_lastLoadedBounds != null && !_boundsChangedSignificantly(bounds, _lastLoadedBounds!)) {
+      if (_lastLoadedBounds != null &&
+          !_boundsChangedSignificantly(bounds, _lastLoadedBounds!)) {
         return;
       }
       _lastLoadedBounds = bounds;
@@ -392,9 +363,16 @@ class _PickupMapState extends State<PickupMap> {
       );
       final radius = _calculateRadius(bounds);
       if (!mounted) return;
-      final vendorProvider = Provider.of<VendorProvider>(context, listen: false);
+      final vendorProvider = Provider.of<VendorProvider>(
+        context,
+        listen: false,
+      );
 
-      await vendorProvider.getAllNearbyVendors(center.latitude, center.longitude, radius: radius);
+      await vendorProvider.getAllNearbyVendors(
+        center.latitude,
+        center.longitude,
+        radius: radius,
+      );
       if (!mounted) return;
       setState(() {
         _hasAttemptedVendorFetch = true;
@@ -402,17 +380,23 @@ class _PickupMapState extends State<PickupMap> {
             .where((v) => _isValidLatLng(v.location?.lat, v.location?.lng))
             .toList();
       });
+      _syncSelectionWithVisibleVendors();
       await _updateMarkers();
     } catch (e) {
       // Error loading vendors in bounds
     }
   }
 
-  bool _boundsChangedSignificantly(LatLngBounds newBounds, LatLngBounds oldBounds) {
+  bool _boundsChangedSignificantly(
+    LatLngBounds newBounds,
+    LatLngBounds oldBounds,
+  ) {
     const threshold = 0.01;
 
-    final latDiff = (newBounds.northeast.latitude - oldBounds.northeast.latitude).abs();
-    final lngDiff = (newBounds.northeast.longitude - oldBounds.northeast.longitude).abs();
+    final latDiff =
+        (newBounds.northeast.latitude - oldBounds.northeast.latitude).abs();
+    final lngDiff =
+        (newBounds.northeast.longitude - oldBounds.northeast.longitude).abs();
 
     return latDiff > threshold || lngDiff > threshold;
   }
@@ -478,23 +462,18 @@ class _PickupMapState extends State<PickupMap> {
     }
 
     final Set<Polyline> polylines = {};
-    if (_selectedVendorId != null && _currentPosition != null) {
-      final vendor = _vendors.cast<VendorModel?>().firstWhere((v) => v?.id == _selectedVendorId, orElse: () => null);
-
-      if (vendor != null && vendor.location != null) {
-        polylines.add(
-          Polyline(
-            polylineId: const PolylineId('selected_vendor_route'),
-            points: [
-              LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-              LatLng(vendor.location!.lat, vendor.location!.lng),
-            ],
-            color: colors.accentOrange.withValues(alpha: 0.6),
-            width: 3,
-            patterns: [PatternItem.dash(15), PatternItem.gap(10)],
-          ),
-        );
-      }
+    if (_activeRoutePoints.length >= 2) {
+      polylines.add(
+        Polyline(
+          polylineId: const PolylineId('selected_vendor_route'),
+          points: _activeRoutePoints,
+          color: colors.accentOrange.withValues(alpha: 0.94),
+          width: 6,
+          startCap: Cap.roundCap,
+          endCap: Cap.roundCap,
+          jointType: JointType.round,
+        ),
+      );
     }
 
     if (!mounted) return;
@@ -509,11 +488,14 @@ class _PickupMapState extends State<PickupMap> {
     }
   }
 
-  Future<void> _updateUserMarker() async {
-    if (!mounted || _currentPosition == null || _currentZoom < 14.0) return;
-    final LatLng newPosition = LatLng(_currentPosition!.latitude, _currentPosition!.longitude);
+  Future<void> _updateUserMarker({bool force = false}) async {
+    if (!mounted || _currentPosition == null) return;
+    final LatLng newPosition = LatLng(
+      _currentPosition!.latitude,
+      _currentPosition!.longitude,
+    );
 
-    if (_lastUserMarkerPosition != null) {
+    if (!force && _userMarker != null && _lastUserMarkerPosition != null) {
       final distance = Geolocator.distanceBetween(
         _lastUserMarkerPosition!.latitude,
         _lastUserMarkerPosition!.longitude,
@@ -525,13 +507,16 @@ class _PickupMapState extends State<PickupMap> {
 
     _lastUserMarkerPosition = newPosition;
 
-    const String userCacheKey = 'user_location_marker';
+    final String userCacheKey = 'user_location_marker_$_markerStyleVersion';
     final colors = context.appColors;
     BitmapDescriptor userIcon;
     if (_markerCache.containsKey(userCacheKey)) {
       userIcon = _markerCache[userCacheKey]!;
     } else {
-      userIcon = await CustomMapMarkers.createRiderLocationMarker(primaryColor: colors.accentOrange);
+      userIcon = await CustomMapMarkers.createPersonLocationMarker(
+        size: 120,
+        primaryColor: colors.accentOrange,
+      );
       _markerCache[userCacheKey] = userIcon;
     }
 
@@ -547,11 +532,16 @@ class _PickupMapState extends State<PickupMap> {
     });
   }
 
-  Future<void> _addVendorMarker(Set<Marker> markers, VendorModel vendor, AppColorsExtension colors) async {
+  Future<void> _addVendorMarker(
+    Set<Marker> markers,
+    VendorModel vendor,
+    AppColorsExtension colors,
+  ) async {
     if (vendor.location == null) return;
 
     final bool isSelected = vendor.id == _selectedVendorId;
-    final cacheKey = 'vendor_tap_pin_${_markerStyleVersion}_${vendor.id}_${vendor.vendorTypeEnum.name}';
+    final cacheKey =
+        'vendor_tap_pin_${_markerStyleVersion}_${vendor.id}_${vendor.vendorTypeEnum.name}';
 
     BitmapDescriptor markerIcon;
     if (_markerCache.containsKey(cacheKey)) {
@@ -586,7 +576,10 @@ class _PickupMapState extends State<PickupMap> {
     );
   }
 
-  List<VendorCluster> _clusterVendors(List<VendorModel> vendors, double zoomLevel) {
+  List<VendorCluster> _clusterVendors(
+    List<VendorModel> vendors,
+    double zoomLevel,
+  ) {
     final clusterDistance = _getClusterDistance(zoomLevel);
 
     final List<VendorCluster> clusters = [];
@@ -594,7 +587,10 @@ class _PickupMapState extends State<PickupMap> {
     while (unclustered.isNotEmpty) {
       final vendor = unclustered.removeAt(0);
       if (vendor.location == null) continue;
-      final cluster = VendorCluster(center: LatLng(vendor.location!.lat, vendor.location!.lng), vendors: [vendor]);
+      final cluster = VendorCluster(
+        center: LatLng(vendor.location!.lat, vendor.location!.lng),
+        vendors: [vendor],
+      );
       unclustered.removeWhere((other) {
         if (other.location == null) return false;
 
@@ -617,7 +613,10 @@ class _PickupMapState extends State<PickupMap> {
           totalLat += v.location!.lat;
           totalLng += v.location!.lng;
         }
-        cluster.center = LatLng(totalLat / cluster.vendors.length, totalLng / cluster.vendors.length);
+        cluster.center = LatLng(
+          totalLat / cluster.vendors.length,
+          totalLng / cluster.vendors.length,
+        );
       }
       clusters.add(cluster);
     }
@@ -632,40 +631,104 @@ class _PickupMapState extends State<PickupMap> {
   }
 
   void _onClusterTapped(VendorCluster cluster) {
-    _mapController?.animateCamera(CameraUpdate.newLatLngZoom(cluster.center, _currentZoom + 2));
+    _mapController?.animateCamera(
+      CameraUpdate.newLatLngZoom(cluster.center, _currentZoom + 2),
+    );
   }
 
-  void _onVendorMarkerTapped(VendorModel vendor) {
-    if (_selectedVendorId == vendor.id) return;
+  Future<void> _onVendorMarkerTapped(VendorModel vendor) async {
+    final isSameVendor = _selectedVendorId == vendor.id;
+
+    if (isSameVendor &&
+        _sheetController != null &&
+        (_isRouteLoading || _activeRouteData != null)) {
+      return;
+    }
+
+    if (isSameVendor && _activeRouteData != null) {
+      _showVendorSheet(vendor);
+      return;
+    }
 
     setState(() {
       _selectedVendorId = vendor.id;
+      if (!isSameVendor) {
+        _activeRouteData = null;
+        _activeRoutePoints = const [];
+      }
     });
     _updateMarkers();
 
+    if (_sheetController == null || !isSameVendor) {
+      _showVendorSheet(vendor);
+    }
+
+    final origin = _resolveCurrentLatLng();
+    if (origin == null) {
+      if (mounted) {
+        setState(() {
+          _isRouteLoading = false;
+        });
+      }
+      AppToastMessage.show(
+        context: context,
+        message: 'Enable location to preview a walking route.',
+        backgroundColor: context.appColors.error,
+      );
+      return;
+    }
+
+    await _updateUserMarker(force: true);
+
+    await _requestWalkingRoute(
+      vendor: vendor,
+      origin: origin,
+      showLoading: !isSameVendor || _activeRoutePoints.isEmpty,
+      clearExistingRoute: !isSameVendor,
+      fitCamera: true,
+    );
+  }
+
+  void _showVendorSheet(VendorModel vendor) {
     if (_sheetController != null) {
       _sheetController?.close();
       _sheetController = null;
     }
-    _sheetController = VendorDetailBottomSheet.show(context: context, vendor: vendor);
-    _sheetController?.closed.then((_) {
+    final controller = VendorDetailBottomSheet.show(
+      context: context,
+      vendor: vendor,
+    );
+    _sheetController = controller;
+    controller.closed.then((_) {
       if (mounted) {
-        setState(() {
-          _sheetController = null;
-          _selectedVendorId = null;
-        });
-        _updateMarkers();
+        if (identical(_sheetController, controller)) {
+          setState(() {
+            _sheetController = null;
+          });
+        }
       }
     });
   }
 
+  VendorModel? _findVendorById(String? vendorId) {
+    if (vendorId == null) return null;
+    return _vendors.cast<VendorModel?>().firstWhere(
+      (vendor) => vendor?.id == vendorId,
+      orElse: () => null,
+    );
+  }
+
   void _fitCameraToMarkers() {
-    final Set<Marker> markers = _userMarker == null ? _vendorMarkers : <Marker>{..._vendorMarkers, _userMarker!};
+    final Set<Marker> markers = _userMarker == null
+        ? _vendorMarkers
+        : <Marker>{..._vendorMarkers, _userMarker!};
     if (_mapController == null || markers.isEmpty) {
       return;
     }
     if (markers.length == 1) {
-      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(markers.first.position, 15));
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(markers.first.position, 15),
+      );
       return;
     }
     double minLat = double.infinity;
@@ -681,7 +744,9 @@ class _PickupMapState extends State<PickupMap> {
       maxLng = lng > maxLng ? lng : maxLng;
     }
     if (minLat == maxLat && minLng == maxLng) {
-      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(LatLng(minLat, minLng), 15));
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(LatLng(minLat, minLng), 15),
+      );
       return;
     }
     const padding = 0.002;
@@ -693,13 +758,388 @@ class _PickupMapState extends State<PickupMap> {
   }
 
   void _centerOnUser() {
-    if (_currentPosition == null || _mapController == null) return;
+    _centerOnUserAndShowMarker();
+  }
+
+  Future<void> _centerOnUserAndShowMarker() async {
+    final locationProvider = context.read<NativeLocationProvider>();
+
+    Position? resolvedPosition = _currentPosition;
+    if (resolvedPosition == null &&
+        _isValidLatLng(locationProvider.latitude, locationProvider.longitude)) {
+      resolvedPosition = Position(
+        latitude: locationProvider.latitude!,
+        longitude: locationProvider.longitude!,
+        timestamp: DateTime.now(),
+        accuracy: locationProvider.accuracy ?? 0,
+        altitude: 0,
+        heading: locationProvider.bearing ?? 0,
+        speed: locationProvider.speed ?? 0,
+        speedAccuracy: 0,
+        altitudeAccuracy: 0,
+        headingAccuracy: 0,
+      );
+    }
+
+    resolvedPosition ??= await (() async {
+      final nativeLocation = await locationProvider.getCurrentLocation();
+      if (nativeLocation == null) return null;
+      return Position(
+        latitude: nativeLocation.latitude,
+        longitude: nativeLocation.longitude,
+        timestamp: nativeLocation.timestamp,
+        accuracy: nativeLocation.accuracy,
+        altitude: nativeLocation.altitude,
+        heading: nativeLocation.bearing,
+        speed: nativeLocation.speed,
+        speedAccuracy: 0,
+        altitudeAccuracy: 0,
+        headingAccuracy: 0,
+      );
+    })();
+
+    if (!mounted || resolvedPosition == null) return;
+
+    setState(() {
+      _currentPosition = resolvedPosition;
+      _lastLat = resolvedPosition!.latitude;
+      _lastLng = resolvedPosition.longitude;
+    });
+
+    await _updateUserMarker(force: true);
+    _maybeRefreshActiveRouteForLocationChange(force: true);
+
+    if (!mounted || _mapController == null) return;
     _mapController!.animateCamera(
-      CameraUpdate.newLatLngZoom(LatLng(_currentPosition!.latitude, _currentPosition!.longitude), 15),
+      CameraUpdate.newLatLngZoom(
+        LatLng(resolvedPosition.latitude, resolvedPosition.longitude),
+        15,
+      ),
     );
   }
 
-  Widget _buildFilterChips(VendorProvider provider, AppColorsExtension colors, bool isDark) {
+  LatLng? _resolveCurrentLatLng() {
+    if (_currentPosition != null) {
+      return LatLng(_currentPosition!.latitude, _currentPosition!.longitude);
+    }
+
+    final locationProvider = context.read<NativeLocationProvider>();
+    if (_isValidLatLng(locationProvider.latitude, locationProvider.longitude)) {
+      return LatLng(locationProvider.latitude!, locationProvider.longitude!);
+    }
+
+    return null;
+  }
+
+  Future<void> _requestWalkingRoute({
+    required VendorModel vendor,
+    required LatLng origin,
+    required bool showLoading,
+    required bool clearExistingRoute,
+    required bool fitCamera,
+  }) async {
+    if (vendor.location == null) return;
+
+    final requestSerial = ++_routeRequestSerial;
+    _lastRouteRequestStartedAt = DateTime.now();
+    _lastRouteOrigin = origin;
+
+    if (mounted) {
+      setState(() {
+        _selectedVendorId = vendor.id;
+        if (clearExistingRoute) {
+          _activeRouteData = null;
+          _activeRoutePoints = const [];
+        }
+        _isRouteLoading = showLoading;
+      });
+    }
+    if (clearExistingRoute) {
+      _updateMarkers();
+    }
+
+    try {
+      final route = await _pickupRouteService.fetchWalkingRoute(
+        originLat: origin.latitude,
+        originLng: origin.longitude,
+        destinationLat: vendor.location!.lat,
+        destinationLng: vendor.location!.lng,
+      );
+
+      if (!mounted ||
+          requestSerial != _routeRequestSerial ||
+          _selectedVendorId != vendor.id) {
+        return;
+      }
+
+      final routePoints = _decodeRoutePoints(route.polyline);
+      if (routePoints.length < 2) {
+        throw Exception('Walking route was empty');
+      }
+
+      setState(() {
+        _activeRouteData = route;
+        _activeRoutePoints = routePoints;
+        _isRouteLoading = false;
+      });
+      await _updateMarkers();
+
+      if (fitCamera) {
+        _fitCameraToRoute(routePoints);
+      }
+    } catch (error) {
+      if (!mounted ||
+          requestSerial != _routeRequestSerial ||
+          _selectedVendorId != vendor.id) {
+        return;
+      }
+
+      setState(() {
+        _activeRouteData = null;
+        _activeRoutePoints = const [];
+        _isRouteLoading = false;
+      });
+      await _updateMarkers();
+
+      AppToastMessage.show(
+        context: context,
+        message: error.toString().replaceFirst('Exception: ', ''),
+        backgroundColor: context.appColors.error,
+      );
+    }
+  }
+
+  List<LatLng> _decodeRoutePoints(String encodedPolyline) {
+    final polylinePoints = PolylinePoints();
+    final decoded = polylinePoints.decodePolyline(encodedPolyline);
+    return decoded
+        .map((point) => LatLng(point.latitude, point.longitude))
+        .toList();
+  }
+
+  void _fitCameraToRoute(List<LatLng> points) {
+    if (_mapController == null || points.isEmpty) return;
+
+    double minLat = double.infinity;
+    double maxLat = -double.infinity;
+    double minLng = double.infinity;
+    double maxLng = -double.infinity;
+
+    for (final point in points) {
+      minLat = point.latitude < minLat ? point.latitude : minLat;
+      maxLat = point.latitude > maxLat ? point.latitude : maxLat;
+      minLng = point.longitude < minLng ? point.longitude : minLng;
+      maxLng = point.longitude > maxLng ? point.longitude : maxLng;
+    }
+
+    if (minLat == maxLat && minLng == maxLng) {
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(points.first, 16),
+      );
+      return;
+    }
+
+    const padding = 0.0012;
+    final bounds = LatLngBounds(
+      southwest: LatLng(minLat - padding, minLng - padding),
+      northeast: LatLng(maxLat + padding, maxLng + padding),
+    );
+    _mapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 80.w));
+  }
+
+  void _maybeRefreshActiveRouteForLocationChange({bool force = false}) {
+    final selectedVendor = _findVendorById(_selectedVendorId);
+    final origin = _resolveCurrentLatLng();
+
+    if (selectedVendor == null ||
+        selectedVendor.location == null ||
+        origin == null) {
+      return;
+    }
+
+    if (!force) {
+      if (_lastRouteOrigin == null || _lastRouteRequestStartedAt == null) {
+        return;
+      }
+
+      final movedDistance = Geolocator.distanceBetween(
+        _lastRouteOrigin!.latitude,
+        _lastRouteOrigin!.longitude,
+        origin.latitude,
+        origin.longitude,
+      );
+
+      if (movedDistance < _routeRefreshDistanceMeters) {
+        return;
+      }
+
+      final elapsed = DateTime.now().difference(_lastRouteRequestStartedAt!);
+      if (elapsed < _routeRefreshMinInterval) {
+        return;
+      }
+    }
+
+    _requestWalkingRoute(
+      vendor: selectedVendor,
+      origin: origin,
+      showLoading: false,
+      clearExistingRoute: false,
+      fitCamera: false,
+    );
+  }
+
+  void _clearActiveRoute({bool closeSheet = false}) {
+    final hadSelection =
+        _selectedVendorId != null ||
+        _activeRoutePoints.isNotEmpty ||
+        _isRouteLoading;
+    _routeRequestSerial++;
+    if (!mounted || !hadSelection) return;
+
+    setState(() {
+      _selectedVendorId = null;
+      _activeRouteData = null;
+      _activeRoutePoints = const [];
+      _isRouteLoading = false;
+      _lastRouteOrigin = null;
+      _lastRouteRequestStartedAt = null;
+    });
+
+    if (closeSheet && _sheetController != null) {
+      _sheetController?.close();
+      _sheetController = null;
+    }
+
+    _updateMarkers();
+  }
+
+  void _syncSelectionWithVisibleVendors() {
+    if (_selectedVendorId == null) return;
+    final stillVisible = _vendors.any(
+      (vendor) => vendor.id == _selectedVendorId,
+    );
+    if (!stillVisible) {
+      _clearActiveRoute(closeSheet: true);
+    }
+  }
+
+  String _formatRouteDistance(int distanceMeters) {
+    if (distanceMeters >= 1000) {
+      return '${(distanceMeters / 1000).toStringAsFixed(distanceMeters >= 10000 ? 0 : 1)} km';
+    }
+    return '$distanceMeters m';
+  }
+
+  String _formatRouteDuration(int durationSeconds) {
+    final totalMinutes = (durationSeconds / 60).ceil();
+    if (totalMinutes < 60) {
+      return '$totalMinutes min';
+    }
+
+    final hours = totalMinutes ~/ 60;
+    final minutes = totalMinutes % 60;
+    if (minutes == 0) {
+      return '$hours hr';
+    }
+    return '$hours hr $minutes min';
+  }
+
+  Widget _buildRouteChip(AppColorsExtension colors, bool isDark) {
+    final hasRoute = _activeRouteData != null;
+    final label = hasRoute
+        ? '${_formatRouteDuration(_activeRouteData!.durationSeconds)} • ${_formatRouteDistance(_activeRouteData!.distanceMeters)}'
+        : 'Finding walking route...';
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 11.h),
+      decoration: BoxDecoration(
+        color: colors.backgroundPrimary,
+        borderRadius: BorderRadius.circular(18.r),
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withAlpha(35)
+                : Colors.black.withAlpha(12),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 30.w,
+            height: 30.w,
+            decoration: BoxDecoration(
+              color: colors.accentOrange.withValues(alpha: 0.14),
+              shape: BoxShape.circle,
+            ),
+            child: _isRouteLoading && !hasRoute
+                ? Padding(
+                    padding: EdgeInsets.all(7.r),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        colors.accentOrange,
+                      ),
+                    ),
+                  )
+                : Icon(
+                    Icons.directions_walk_rounded,
+                    size: 18.sp,
+                    color: colors.accentOrange,
+                  ),
+          ),
+          SizedBox(width: 10.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Walking route',
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w700,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                SizedBox(height: 2.h),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11.5.sp,
+                    fontWeight: FontWeight.w500,
+                    color: colors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (hasRoute)
+            InkWell(
+              onTap: () => _clearActiveRoute(),
+              borderRadius: BorderRadius.circular(20.r),
+              child: Padding(
+                padding: EdgeInsets.all(4.r),
+                child: Icon(
+                  Icons.close_rounded,
+                  size: 18.sp,
+                  color: colors.textSecondary,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChips(
+    VendorProvider provider,
+    AppColorsExtension colors,
+    bool isDark,
+  ) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: EdgeInsets.symmetric(horizontal: 16.w),
@@ -750,14 +1190,17 @@ class _PickupMapState extends State<PickupMap> {
           _buildFilterChip(
             label: 'Near Me',
             isSelected: provider.maxDistance != null,
-            onTap: () => provider.setMaxDistance(provider.maxDistance == null ? 5.0 : null),
+            onTap: () => provider.setMaxDistance(
+              provider.maxDistance == null ? 5.0 : null,
+            ),
             colors: colors,
             isDark: isDark,
           ),
           _buildFilterChip(
             label: 'Top Rated',
             isSelected: provider.minRating != null,
-            onTap: () => provider.setMinRating(provider.minRating == null ? 4.5 : null),
+            onTap: () =>
+                provider.setMinRating(provider.minRating == null ? 4.5 : null),
             colors: colors,
             isDark: isDark,
           ),
@@ -771,14 +1214,16 @@ class _PickupMapState extends State<PickupMap> {
           _buildFilterChip(
             label: 'Budget',
             isSelected: provider.priceRange == 1,
-            onTap: () => provider.setPriceRange(provider.priceRange == 1 ? null : 1),
+            onTap: () =>
+                provider.setPriceRange(provider.priceRange == 1 ? null : 1),
             colors: colors,
             isDark: isDark,
           ),
           _buildFilterChip(
             label: 'Mid',
             isSelected: provider.priceRange == 2,
-            onTap: () => provider.setPriceRange(provider.priceRange == 2 ? null : 2),
+            onTap: () =>
+                provider.setPriceRange(provider.priceRange == 2 ? null : 2),
             colors: colors,
             isDark: isDark,
           ),
@@ -803,7 +1248,13 @@ class _PickupMapState extends State<PickupMap> {
           decoration: BoxDecoration(
             color: isSelected ? colors.accentOrange : colors.backgroundPrimary,
             borderRadius: BorderRadius.circular(20.r),
-            boxShadow: [BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 8, offset: const Offset(0, 2))],
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(10),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: Text(
             label,
@@ -827,7 +1278,10 @@ class _PickupMapState extends State<PickupMap> {
     if (vendorProvider.filteredVendors != _vendors) {
       _vendors = vendorProvider.filteredVendors;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _updateMarkers();
+        if (mounted) {
+          _syncSelectionWithVisibleVendors();
+          _updateMarkers();
+        }
       });
     }
 
@@ -839,13 +1293,19 @@ class _PickupMapState extends State<PickupMap> {
             child: GoogleMap(
               onMapCreated: _onMapCreated,
               onCameraMove: _onCameraMoveDebounced,
+              onTap: (_) => _clearActiveRoute(closeSheet: true),
               initialCameraPosition: CameraPosition(
                 target: _currentPosition != null
-                    ? LatLng(_currentPosition!.latitude, _currentPosition!.longitude)
+                    ? LatLng(
+                        _currentPosition!.latitude,
+                        _currentPosition!.longitude,
+                      )
                     : const LatLng(5.6037, -0.1870),
                 zoom: 13,
               ),
-              markers: _userMarker == null ? _vendorMarkers : <Marker>{..._vendorMarkers, _userMarker!},
+              markers: _userMarker == null
+                  ? _vendorMarkers
+                  : <Marker>{..._vendorMarkers, _userMarker!},
               rotateGesturesEnabled: false,
               scrollGesturesEnabled: true,
               zoomGesturesEnabled: true,
@@ -855,17 +1315,22 @@ class _PickupMapState extends State<PickupMap> {
               buildingsEnabled: false,
               liteModeEnabled: false,
               polylines: _polylines,
-              myLocationEnabled: true,
+              myLocationEnabled: false,
               myLocationButtonEnabled: false,
               zoomControlsEnabled: false,
               mapToolbarEnabled: false,
               compassEnabled: false,
               mapType: MapType.normal,
-              style: GrabGoMapStyles.forBrightness(Theme.of(context).brightness),
+              style: GrabGoMapStyles.forBrightness(
+                Theme.of(context).brightness,
+              ),
             ),
           ),
 
-          if (_isLoading) const Positioned.fill(child: IgnorePointer(child: PickupMapSkeleton())),
+          if (_isLoading)
+            const Positioned.fill(
+              child: IgnorePointer(child: PickupMapSkeleton()),
+            ),
 
           Positioned(
             top: MediaQuery.of(context).padding.top + 10.h,
@@ -884,7 +1349,11 @@ class _PickupMapState extends State<PickupMap> {
                       color: colors.backgroundPrimary,
                       borderRadius: BorderRadius.circular(30.r),
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 8, offset: const Offset(0, 2)),
+                        BoxShadow(
+                          color: Colors.black.withAlpha(10),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
                       ],
                     ),
 
@@ -895,12 +1364,19 @@ class _PickupMapState extends State<PickupMap> {
                           package: 'grab_go_shared',
                           width: 20.w,
                           height: 20.w,
-                          colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                          colorFilter: ColorFilter.mode(
+                            colors.textPrimary,
+                            BlendMode.srcIn,
+                          ),
                         ),
                         SizedBox(width: 12.w),
                         Text(
                           'Search stores and restaurants',
-                          style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.normal),
+                          style: TextStyle(
+                            color: colors.textSecondary,
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.normal,
+                          ),
                         ),
                       ],
                     ),
@@ -911,6 +1387,15 @@ class _PickupMapState extends State<PickupMap> {
                 _buildFilterChips(vendorProvider, colors, isDark),
 
                 SizedBox(height: 12.h),
+
+                if (_isRouteLoading || _activeRouteData != null)
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16.w),
+                    child: _buildRouteChip(colors, isDark),
+                  ),
+
+                if (_isRouteLoading || _activeRouteData != null)
+                  SizedBox(height: 12.h),
 
                 Padding(
                   padding: EdgeInsets.only(right: 16.w),
@@ -935,7 +1420,10 @@ class _PickupMapState extends State<PickupMap> {
             ),
           ),
 
-          if (_hasAttemptedVendorFetch && !_isLoading && _errorMessage == null && _vendors.isEmpty)
+          if (_hasAttemptedVendorFetch &&
+              !_isLoading &&
+              _errorMessage == null &&
+              _vendors.isEmpty)
             Positioned(
               left: 20.w,
               right: 20.w,
@@ -961,12 +1449,19 @@ class _PickupMapState extends State<PickupMap> {
                       children: [
                         Text(
                           'GrabGo is Not Here Yet',
-                          style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                          style: TextStyle(
+                            fontSize: 15.sp,
+                            fontWeight: FontWeight.w700,
+                            color: colors.textPrimary,
+                          ),
                         ),
                         SizedBox(height: 4.h),
                         Text(
                           "We haven't launched in this area yet.",
-                          style: TextStyle(fontSize: 12.5.sp, color: colors.textSecondary),
+                          style: TextStyle(
+                            fontSize: 12.5.sp,
+                            color: colors.textSecondary,
+                          ),
                         ),
                       ],
                     ),
@@ -977,7 +1472,11 @@ class _PickupMapState extends State<PickupMap> {
                       backgroundColor: colors.accentOrange,
                       borderRadius: KBorderSize.borderMedium,
                       buttonText: 'Change Location',
-                      textStyle: TextStyle(fontSize: 14.5.sp, color: Colors.white, fontWeight: FontWeight.w600),
+                      textStyle: TextStyle(
+                        fontSize: 14.5.sp,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -989,12 +1488,18 @@ class _PickupMapState extends State<PickupMap> {
               child: Container(
                 margin: EdgeInsets.symmetric(horizontal: 32.w),
                 padding: EdgeInsets.all(16.r),
-                decoration: BoxDecoration(color: colors.backgroundPrimary, borderRadius: BorderRadius.circular(12.r)),
+                decoration: BoxDecoration(
+                  color: colors.backgroundPrimary,
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(_errorMessage!, textAlign: TextAlign.center),
-                    TextButton(onPressed: _loadVendors, child: const Text('Retry')),
+                    TextButton(
+                      onPressed: _loadVendors,
+                      child: const Text('Retry'),
+                    ),
                   ],
                 ),
               ),
@@ -1019,7 +1524,9 @@ Widget _buildMapControlButton({
       shape: BoxShape.circle,
       boxShadow: [
         BoxShadow(
-          color: isDark ? Colors.black.withAlpha(30) : Colors.black.withAlpha(15),
+          color: isDark
+              ? Colors.black.withAlpha(30)
+              : Colors.black.withAlpha(15),
           blurRadius: 8,
           offset: const Offset(0, 2),
         ),

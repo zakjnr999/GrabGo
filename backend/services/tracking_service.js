@@ -1,4 +1,3 @@
-const { Client } = require('@googlemaps/google-maps-services-js');
 const geolib = require('geolib');
 const geofenceService = require('./geofence_service');
 const OrderTracking = require('../models/OrderTracking');
@@ -7,6 +6,7 @@ const socketService = require('./socket_service');
 const prisma = require('../config/prisma');
 const cache = require('../utils/cache');
 const mlClient = require('../utils/ml_client');
+const directionsService = require('./directions_service');
 
 const ORDER_TRACKING_ENTITY = 'order';
 const buildOrderTrackingQuery = (query = {}) =>
@@ -16,7 +16,6 @@ const buildOrderTrackingUpsertQuery = (orderId) => ({
     $or: [{ entityType: ORDER_TRACKING_ENTITY }, { entityType: { $exists: false } }]
 });
 
-const googleMapsClient = new Client({});
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
 // Configuration for Redis-based location caching
@@ -512,25 +511,21 @@ class TrackingService {
         try {
             if (!GOOGLE_MAPS_API_KEY) return null;
 
-            const response = await googleMapsClient.directions({
-                params: {
-                    origin: `${fromLat},${fromLng}`,
-                    destination: `${toCoordinates[1]},${toCoordinates[0]}`,
-                    mode: 'driving',
-                    key: GOOGLE_MAPS_API_KEY
-                }
+            const route = await directionsService.getRoute({
+                originLat: fromLat,
+                originLng: fromLng,
+                destinationLat: toCoordinates[1],
+                destinationLng: toCoordinates[0],
+                mode: 'driving',
             });
 
-            if (response.data.routes.length > 0) {
-                const route = response.data.routes[0];
-                return {
-                    polyline: route.overview_polyline.points,
-                    duration: route.legs[0].duration.value,
-                    distance: route.legs[0].distance.value
-                };
-            }
+            if (!route) return null;
 
-            return null;
+            return {
+                polyline: route.polyline,
+                duration: route.duration,
+                distance: route.distance,
+            };
         } catch (error) {
             console.error('Error getting directions:', error);
             return null;

@@ -10,10 +10,12 @@ import 'package:grab_go_customer/features/vendors/widgets/vendor_card.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
+import 'package:grab_go_customer/shared/widgets/food_item_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
 import 'package:provider/provider.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/shared/widgets/food_item_card.dart';
+import 'package:shimmer/shimmer.dart';
 
 class FavoritesPage extends StatefulWidget {
   const FavoritesPage({super.key});
@@ -22,8 +24,7 @@ class FavoritesPage extends StatefulWidget {
   State<FavoritesPage> createState() => _FavoritesPageState();
 }
 
-class _FavoritesPageState extends State<FavoritesPage>
-    with SingleTickerProviderStateMixin {
+class _FavoritesPageState extends State<FavoritesPage> with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   late AnimationController _searchAnimationController;
   final FocusNode _searchFocus = FocusNode();
@@ -31,23 +32,18 @@ class _FavoritesPageState extends State<FavoritesPage>
   final List<String> _favoriteTabs = ['My Items', 'Vendors'];
   String _searchQuery = '';
   bool _isSearchActive = false;
+  bool _showRefreshSkeleton = false;
 
   final ScrollController _scrollController = ScrollController();
-  final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(
-    0.0,
-  );
-  static const double _collapsedHeight =
-      140.0; // Increased to show tabs when collapsed
+  final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0.0);
+  static const double _collapsedHeight = 140.0; // Increased to show tabs when collapsed
   static const double _scrollThreshold = 100.0;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    _searchAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
+    _searchAnimationController = AnimationController(duration: const Duration(milliseconds: 300), vsync: this);
   }
 
   @override
@@ -94,6 +90,24 @@ class _FavoritesPageState extends State<FavoritesPage>
     }
   }
 
+  Future<void> _handleRefresh() async {
+    if (_showRefreshSkeleton) return;
+
+    setState(() {
+      _showRefreshSkeleton = true;
+    });
+
+    try {
+      await context.read<FavoritesProvider>().syncFromBackend(showLoading: true);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _showRefreshSkeleton = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
@@ -104,9 +118,7 @@ class _FavoritesPageState extends State<FavoritesPage>
       statusBarColor: colors.backgroundPrimary,
       statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       systemNavigationBarColor: colors.backgroundPrimary,
-      systemNavigationBarIconBrightness: isDark
-          ? Brightness.light
-          : Brightness.dark,
+      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
     );
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -124,57 +136,45 @@ class _FavoritesPageState extends State<FavoritesPage>
                       child: AppRefreshIndicator(
                         bgColor: colors.accentOrange,
                         iconPath: Assets.icons.heart,
-                        onRefresh: () =>
-                            context.read<FavoritesProvider>().syncFromBackend(),
+                        onRefresh: _handleRefresh,
                         child: Consumer<FavoritesProvider>(
                           builder: (context, favoritesProvider, child) {
+                            final isItemsTab = selectedTabIndex == 0;
+
+                            if (_showRefreshSkeleton) {
+                              return isItemsTab
+                                  ? _buildFavoritesItemSkeleton(colors, isDark, size)
+                                  : _buildFavoritesVendorSkeleton(colors, isDark, size);
+                            }
+
                             if (!favoritesProvider.hasAnyFavorites) {
                               return _buildEmptyState(colors, size);
                             }
 
-                            final isItemsTab = selectedTabIndex == 0;
                             final filteredItems = isItemsTab
                                 ? (_searchQuery.isEmpty
                                       ? favoritesProvider.favoriteItems.toList()
-                                      : favoritesProvider.searchFavorites(
-                                          _searchQuery,
-                                        ))
+                                      : favoritesProvider.searchFavorites(_searchQuery))
                                 : <FoodItem>[];
                             final filteredVendors = isItemsTab
                                 ? <FavoriteVendor>[]
                                 : (_searchQuery.isEmpty
                                       ? favoritesProvider.favoriteVendors
-                                      : favoritesProvider.searchFavoriteVendors(
-                                          _searchQuery,
-                                        ));
+                                      : favoritesProvider.searchFavoriteVendors(_searchQuery));
 
-                            final activeListIsEmpty = isItemsTab
-                                ? filteredItems.isEmpty
-                                : filteredVendors.isEmpty;
+                            final activeListIsEmpty = isItemsTab ? filteredItems.isEmpty : filteredVendors.isEmpty;
                             if (activeListIsEmpty) {
                               if (_searchQuery.isNotEmpty) {
                                 return _buildNoResultsState(colors, size);
                               }
-                              return _buildTabEmptyState(
-                                colors,
-                                size,
-                                isItemsTab: isItemsTab,
-                              );
+                              return _buildTabEmptyState(colors, size, isItemsTab: isItemsTab);
                             }
 
                             if (isItemsTab) {
-                              return _buildFavoritesList(
-                                colors,
-                                filteredItems,
-                                size,
-                              );
+                              return _buildFavoritesList(colors, filteredItems, size);
                             }
 
-                            return _buildFavoriteVendorsList(
-                              colors,
-                              filteredVendors,
-                              size,
-                            );
+                            return _buildFavoriteVendorsList(colors, filteredVendors, size);
                           },
                         ),
                       ),
@@ -183,12 +183,7 @@ class _FavoritesPageState extends State<FavoritesPage>
                 ),
 
                 // Collapsible Header
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: _buildCollapsibleFavoritesHeader(colors, size),
-                ),
+                Positioned(top: 0, left: 0, right: 0, child: _buildCollapsibleFavoritesHeader(colors, size)),
               ],
             ),
           ),
@@ -197,24 +192,16 @@ class _FavoritesPageState extends State<FavoritesPage>
     );
   }
 
-  Widget _buildCollapsibleFavoritesHeader(
-    AppColorsExtension colors,
-    Size size,
-  ) {
+  Widget _buildCollapsibleFavoritesHeader(AppColorsExtension colors, Size size) {
     final statusBarHeight = MediaQuery.of(context).padding.top;
     final dynamicCollapsedHeight = _collapsedHeight + statusBarHeight;
 
     return ValueListenableBuilder<double>(
       valueListenable: _scrollOffsetNotifier,
       builder: (context, scrollOffset, _) {
-        final collapseProgress = (scrollOffset / _scrollThreshold).clamp(
-          0.0,
-          1.0,
-        );
+        final collapseProgress = (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
         final expandedHeight = UmbrellaHeaderMetrics.expandedHeightFor(size);
-        final currentHeight =
-            expandedHeight -
-            ((expandedHeight - dynamicCollapsedHeight) * collapseProgress);
+        final currentHeight = expandedHeight - ((expandedHeight - dynamicCollapsedHeight) * collapseProgress);
         final contentOpacity = (1.0 - collapseProgress).clamp(0.0, 1.0);
 
         return SizedBox(
@@ -230,9 +217,7 @@ class _FavoritesPageState extends State<FavoritesPage>
               ),
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 200),
-                child: _isSearchActive
-                    ? _buildSearchBar(colors)
-                    : _buildStickyTabs(colors),
+                child: _isSearchActive ? _buildSearchBar(colors) : _buildStickyTabs(colors),
               ),
             ],
           ),
@@ -248,19 +233,11 @@ class _FavoritesPageState extends State<FavoritesPage>
       padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 10.h),
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
-        border: Border(
-          bottom: BorderSide(
-            color: colors.inputBorder.withValues(alpha: 0.5),
-            width: 1,
-          ),
-        ),
+        border: Border(bottom: BorderSide(color: colors.inputBorder.withValues(alpha: 0.5), width: 1)),
       ),
       child: Container(
         padding: EdgeInsets.all(3.r),
-        decoration: BoxDecoration(
-          color: colors.backgroundSecondary,
-          borderRadius: BorderRadius.circular(999.r),
-        ),
+        decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(999.r)),
         child: LayoutBuilder(
           builder: (context, constraints) {
             final tabWidth = constraints.maxWidth / _favoriteTabs.length;
@@ -274,10 +251,7 @@ class _FavoritesPageState extends State<FavoritesPage>
                   bottom: 0,
                   width: tabWidth,
                   child: Container(
-                    decoration: BoxDecoration(
-                      color: colors.accentOrange,
-                      borderRadius: BorderRadius.circular(999.r),
-                    ),
+                    decoration: BoxDecoration(color: colors.accentOrange, borderRadius: BorderRadius.circular(999.r)),
                   ),
                 ),
                 Row(
@@ -293,21 +267,14 @@ class _FavoritesPageState extends State<FavoritesPage>
                         },
                         behavior: HitTestBehavior.opaque,
                         child: Padding(
-                          padding: EdgeInsets.symmetric(
-                            vertical: 12.h,
-                            horizontal: 6.w,
-                          ),
+                          padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 6.w),
                           child: AnimatedDefaultTextStyle(
                             duration: const Duration(milliseconds: 220),
                             curve: Curves.easeOutCubic,
                             style: TextStyle(
-                              color: selected
-                                  ? Colors.white
-                                  : colors.textSecondary,
+                              color: selected ? Colors.white : colors.textSecondary,
                               fontSize: 11.sp,
-                              fontWeight: selected
-                                  ? FontWeight.w700
-                                  : FontWeight.w600,
+                              fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                               fontFamily: 'Lato',
                               package: 'grab_go_shared',
                             ),
@@ -340,11 +307,7 @@ class _FavoritesPageState extends State<FavoritesPage>
         padding: EdgeInsets.fromLTRB(20.w, statusBarHeight, 20.w, 10.h),
         child: Row(
           children: [
-            _buildHeaderButton(
-              icon: Assets.icons.navArrowLeft,
-              onTap: () => context.pop(),
-              colors: colors,
-            ),
+            _buildHeaderButton(icon: Assets.icons.navArrowLeft, onTap: () => context.pop(), colors: colors),
             SizedBox(width: 16.w),
             Expanded(
               child: Text(
@@ -403,10 +366,7 @@ class _FavoritesPageState extends State<FavoritesPage>
                     _handleClearAllFavorites();
                 }
               },
-              child: _buildHeaderButton(
-                icon: Assets.icons.moreVertical,
-                colors: colors,
-              ),
+              child: _buildHeaderButton(icon: Assets.icons.moreVertical, colors: colors),
             ),
           ],
         ),
@@ -423,10 +383,7 @@ class _FavoritesPageState extends State<FavoritesPage>
     return Container(
       height: 44,
       width: 44,
-      decoration: BoxDecoration(
-        color: colors.backgroundSecondary,
-        shape: BoxShape.circle,
-      ),
+      decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -437,10 +394,7 @@ class _FavoritesPageState extends State<FavoritesPage>
             child: SvgPicture.asset(
               icon,
               package: 'grab_go_shared',
-              colorFilter: ColorFilter.mode(
-                colors.textPrimary,
-                BlendMode.srcIn,
-              ),
+              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
             ),
           ),
         ),
@@ -452,10 +406,7 @@ class _FavoritesPageState extends State<FavoritesPage>
     return Container(
       key: const ValueKey('search'),
       margin: EdgeInsets.symmetric(horizontal: 20.w),
-      decoration: BoxDecoration(
-        color: colors.backgroundSecondary,
-        borderRadius: BorderRadius.circular(14.r),
-      ),
+      decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(14.r)),
       child: TextField(
         controller: _searchController,
         focusNode: _searchFocus,
@@ -464,11 +415,7 @@ class _FavoritesPageState extends State<FavoritesPage>
             _searchQuery = value;
           });
         },
-        style: TextStyle(
-          color: colors.textPrimary,
-          fontSize: 14.sp,
-          fontWeight: FontWeight.w500,
-        ),
+        style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
         cursorColor: Colors.white,
         decoration: InputDecoration(
           hintText: "Search your favorites...",
@@ -482,10 +429,7 @@ class _FavoritesPageState extends State<FavoritesPage>
             child: SvgPicture.asset(
               Assets.icons.search,
               package: 'grab_go_shared',
-              colorFilter: ColorFilter.mode(
-                colors.textPrimary,
-                BlendMode.srcIn,
-              ),
+              colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
             ),
           ),
           suffixIcon: _searchQuery.isNotEmpty
@@ -501,18 +445,12 @@ class _FavoritesPageState extends State<FavoritesPage>
                     height: 18.h,
                     width: 18.w,
                     package: "grab_go_shared",
-                    colorFilter: ColorFilter.mode(
-                      colors.textPrimary,
-                      BlendMode.srcIn,
-                    ),
+                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                   ),
                 )
               : null,
           border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: 16.w,
-            vertical: 12.h,
-          ),
+          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
         ),
       ),
     );
@@ -523,8 +461,7 @@ class _FavoritesPageState extends State<FavoritesPage>
       colors,
       size,
       title: "No Favorites Yet",
-      description:
-          "Start adding your favorite items by tapping the heart icon on any item",
+      description: "Start adding your favorite items by tapping the heart icon on any item",
     );
   }
 
@@ -544,11 +481,7 @@ class _FavoritesPageState extends State<FavoritesPage>
           children: [
             Text(
               "No Results Found",
-              style: TextStyle(
-                color: colors.textPrimary,
-                fontSize: 22.sp,
-                fontWeight: FontWeight.w800,
-              ),
+              style: TextStyle(color: colors.textPrimary, fontSize: 22.sp, fontWeight: FontWeight.w800),
             ),
 
             SizedBox(height: 10.h),
@@ -558,11 +491,7 @@ class _FavoritesPageState extends State<FavoritesPage>
               child: Text(
                 "Try searching with different keywords",
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: colors.textSecondary,
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: TextStyle(color: colors.textSecondary, fontSize: 14.sp, fontWeight: FontWeight.w500),
               ),
             ),
           ],
@@ -571,11 +500,7 @@ class _FavoritesPageState extends State<FavoritesPage>
     );
   }
 
-  Widget _buildTabEmptyState(
-    AppColorsExtension colors,
-    Size size, {
-    required bool isItemsTab,
-  }) {
+  Widget _buildTabEmptyState(AppColorsExtension colors, Size size, {required bool isItemsTab}) {
     return _buildCenteredFavoriteEmptyState(
       colors,
       size,
@@ -620,11 +545,7 @@ class _FavoritesPageState extends State<FavoritesPage>
                     Text(
                       title,
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: colors.textPrimary,
-                        fontSize: 20.sp,
-                        fontWeight: FontWeight.w800,
-                      ),
+                      style: TextStyle(color: colors.textPrimary, fontSize: 20.sp, fontWeight: FontWeight.w800),
                     ),
                     SizedBox(height: 12.h),
                     Padding(
@@ -650,11 +571,7 @@ class _FavoritesPageState extends State<FavoritesPage>
     );
   }
 
-  Widget _buildFavoritesList(
-    AppColorsExtension colors,
-    List<FoodItem> items,
-    Size size,
-  ) {
+  Widget _buildFavoritesList(AppColorsExtension colors, List<FoodItem> items, Size size) {
     return ListView.builder(
       controller: _scrollController,
       padding: EdgeInsets.only(
@@ -672,18 +589,11 @@ class _FavoritesPageState extends State<FavoritesPage>
     );
   }
 
-  Widget _buildFavoriteVendorsList(
-    AppColorsExtension colors,
-    List<FavoriteVendor> vendors,
-    Size size,
-  ) {
+  Widget _buildFavoriteVendorsList(AppColorsExtension colors, List<FavoriteVendor> vendors, Size size) {
     return ListView.builder(
       controller: _scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.only(
-        top: UmbrellaHeaderMetrics.contentPaddingFor(size),
-        bottom: 8.h,
-      ),
+      padding: EdgeInsets.only(top: UmbrellaHeaderMetrics.contentPaddingFor(size), bottom: 8.h),
       itemBuilder: (context, index) {
         final vendor = vendors[index];
         final vendorModel = _favoriteVendorToVendorModel(vendor);
@@ -692,10 +602,149 @@ class _FavoritesPageState extends State<FavoritesPage>
           onTap: () => context.push('/vendorDetails', extra: vendorModel),
           showDistance: false,
           showClosedOnImage: true,
+          highlightExclusiveBadge: true,
           margin: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
         );
       },
       itemCount: vendors.length,
+    );
+  }
+
+  Widget _buildFavoritesItemSkeleton(AppColorsExtension colors, bool isDark, Size size) {
+    return ListView(
+      controller: _scrollController,
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.only(
+        left: 16.w,
+        right: 16.w,
+        top: UmbrellaHeaderMetrics.contentPaddingFor(size),
+        bottom: 8.h,
+      ),
+      children: [
+        FoodItemSkeleton(
+          colors: colors,
+          isDark: isDark,
+          size: size,
+          margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 6.h),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFavoritesVendorSkeleton(AppColorsExtension colors, bool isDark, Size size) {
+    final skeletonColor = isDark ? Colors.grey.shade700 : Colors.grey.shade200;
+
+    Widget block({
+      double? width,
+      double? height,
+      BorderRadiusGeometry? borderRadius,
+      BoxShape shape = BoxShape.rectangle,
+    }) {
+      return Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: skeletonColor,
+          shape: shape,
+          borderRadius: shape == BoxShape.rectangle ? (borderRadius ?? BorderRadius.circular(6.r)) : null,
+        ),
+      );
+    }
+
+    return Shimmer.fromColors(
+      baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+      highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
+      child: ListView.builder(
+        controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.only(top: UmbrellaHeaderMetrics.contentPaddingFor(size), bottom: 8.h),
+        itemCount: 4,
+        itemBuilder: (context, index) {
+          return Container(
+            margin: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+              border: Border.all(color: skeletonColor.withValues(alpha: 0.5)),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Stack(
+                  children: [
+                    block(
+                      width: double.infinity,
+                      height: 120.h,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(KBorderSize.borderMedium),
+                        topRight: Radius.circular(KBorderSize.borderMedium),
+                        bottomLeft: Radius.circular(KBorderSize.borderRadius4),
+                        bottomRight: Radius.circular(KBorderSize.borderRadius4),
+                      ),
+                    ),
+                    Positioned(
+                      top: 10.h,
+                      left: 0,
+                      child: block(
+                        width: 74.w,
+                        height: 24.h,
+                        borderRadius: const BorderRadius.only(
+                          topRight: Radius.circular(KBorderSize.borderRadius8),
+                          bottomRight: Radius.circular(KBorderSize.borderRadius8),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 6.h,
+                      right: 6.w,
+                      child: block(width: 24.w, height: 24.w, shape: BoxShape.circle),
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: EdgeInsets.only(top: 10.r),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: block(width: double.infinity, height: 16.h),
+                          ),
+                          SizedBox(width: 12.w),
+                          block(width: 12.w, height: 12.w, shape: BoxShape.circle),
+                          SizedBox(width: 4.w),
+                          block(width: 52.w, height: 12.h),
+                        ],
+                      ),
+                      SizedBox(height: 6.h),
+                      Row(
+                        children: [
+                          block(width: 70.w, height: 12.h),
+                          SizedBox(width: 8.w),
+                          block(width: 3.w, height: 3.w, shape: BoxShape.circle),
+                          SizedBox(width: 8.w),
+                          block(width: 12.w, height: 12.w, shape: BoxShape.circle),
+                          SizedBox(width: 4.w),
+                          block(width: 44.w, height: 12.h),
+                        ],
+                      ),
+                      SizedBox(height: 8.h),
+                      Row(
+                        children: [
+                          block(width: 104.w, height: 12.h),
+                          const Spacer(),
+                          block(width: 110.w, height: 12.h),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -721,18 +770,14 @@ class _FavoritesPageState extends State<FavoritesPage>
       isVerified: favorite.isVerified,
       featured: favorite.featured,
       bannerImages: favorite.bannerImages,
-      openingHours: favorite.openingHours != null
-          ? OpeningHours.fromJson(favorite.openingHours!)
-          : null,
+      openingHours: favorite.openingHours != null ? OpeningHours.fromJson(favorite.openingHours!) : null,
       isGrabGoExclusiveActive: favorite.isGrabGoExclusiveActive,
       lastOnlineAt: favorite.lastOnlineAt,
       deliveryFee: favorite.deliveryFee,
       minOrder: favorite.minOrder,
       rating: favorite.rating,
       totalReviews: favorite.totalReviews,
-      categories: favorite.categories.isNotEmpty
-          ? favorite.categories
-          : [favorite.typeLabel],
+      categories: favorite.categories.isNotEmpty ? favorite.categories : [favorite.typeLabel],
       location: VendorLocation(
         lat: 0,
         lng: 0,
@@ -755,19 +800,12 @@ class _FavoritesPageState extends State<FavoritesPage>
       },
       trailing: Consumer<CartProvider>(
         builder: (context, cartProvider, child) {
-          final bool isInCart = cartProvider.hasItemInCart(
+          final bool isInCart = cartProvider.hasItemInCart(item, includeFoodCustomizations: true);
+          final bool isItemPending = cartProvider.isItemOperationPendingForDisplay(
             item,
             includeFoodCustomizations: true,
           );
-          final bool isItemPending = cartProvider
-              .isItemOperationPendingForDisplay(
-                item,
-                includeFoodCustomizations: true,
-              );
-          final itemForAction = cartProvider.resolveItemForCartAction(
-            item,
-            includeFoodCustomizations: true,
-          );
+          final itemForAction = cartProvider.resolveItemForCartAction(item, includeFoodCustomizations: true);
 
           return GestureDetector(
             onTap: () {
@@ -782,9 +820,7 @@ class _FavoritesPageState extends State<FavoritesPage>
               padding: EdgeInsets.all(8.r),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isInCart
-                    ? colors.accentOrange
-                    : colors.backgroundSecondary,
+                color: isInCart ? colors.accentOrange : colors.backgroundSecondary,
               ),
               child: isItemPending
                   ? SizedBox(
@@ -792,9 +828,7 @@ class _FavoritesPageState extends State<FavoritesPage>
                       height: 16.w,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          isInCart ? Colors.white : colors.accentOrange,
-                        ),
+                        valueColor: AlwaysStoppedAnimation<Color>(isInCart ? Colors.white : colors.accentOrange),
                       ),
                     )
                   : SvgPicture.asset(
@@ -802,10 +836,7 @@ class _FavoritesPageState extends State<FavoritesPage>
                       package: 'grab_go_shared',
                       height: 16.h,
                       width: 16.w,
-                      colorFilter: ColorFilter.mode(
-                        isInCart ? Colors.white : colors.textPrimary,
-                        BlendMode.srcIn,
-                      ),
+                      colorFilter: ColorFilter.mode(isInCart ? Colors.white : colors.textPrimary, BlendMode.srcIn),
                     ),
             ),
           );
@@ -840,25 +871,15 @@ class _FavoritesPageState extends State<FavoritesPage>
                 margin: EdgeInsets.only(top: 12.h, bottom: 8.h),
                 width: 40.w,
                 height: 4.h,
-                decoration: BoxDecoration(
-                  color: colors.inputBorder,
-                  borderRadius: BorderRadius.circular(2.r),
-                ),
+                decoration: BoxDecoration(color: colors.inputBorder, borderRadius: BorderRadius.circular(2.r)),
               ),
             ),
 
             Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: KSpacing.lg.w,
-                vertical: KSpacing.md.h,
-              ),
+              padding: EdgeInsets.symmetric(horizontal: KSpacing.lg.w, vertical: KSpacing.md.h),
               child: Text(
                 'Sort Favorites',
-                style: TextStyle(
-                  fontSize: 18.sp,
-                  fontWeight: FontWeight.w700,
-                  color: colors.textPrimary,
-                ),
+                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
               ),
             ),
 
@@ -944,16 +965,9 @@ class _FavoritesPageState extends State<FavoritesPage>
                         height: 24.h,
                         width: 24.w,
                         package: 'grab_go_shared',
-                        colorFilter: ColorFilter.mode(
-                          iconColor,
-                          BlendMode.srcIn,
-                        ),
+                        colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
                       )
-                    : Icon(
-                        icon ?? Icons.settings,
-                        size: 24.h,
-                        color: iconColor,
-                      ),
+                    : Icon(icon ?? Icons.settings, size: 24.h, color: iconColor),
               ),
             ),
             SizedBox(width: 12.w),
@@ -964,20 +978,12 @@ class _FavoritesPageState extends State<FavoritesPage>
                 children: [
                   Text(
                     title,
-                    style: TextStyle(
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w600,
-                      color: colors.textPrimary,
-                    ),
+                    style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
                   ),
                   SizedBox(height: 2.h),
                   Text(
                     subtitle,
-                    style: TextStyle(
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w400,
-                      color: colors.textSecondary,
-                    ),
+                    style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w400, color: colors.textSecondary),
                   ),
                 ],
               ),
@@ -987,10 +993,7 @@ class _FavoritesPageState extends State<FavoritesPage>
               package: "grab_go_shared",
               height: 18.h,
               width: 18.w,
-              colorFilter: ColorFilter.mode(
-                colors.textSecondary,
-                BlendMode.srcIn,
-              ),
+              colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
             ),
           ],
         ),
