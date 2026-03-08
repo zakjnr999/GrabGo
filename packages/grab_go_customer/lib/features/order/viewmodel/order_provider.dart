@@ -12,12 +12,68 @@ class OrderProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
+  bool _isGroupedOrder(Map<String, dynamic> order) {
+    return order['isGroupedOrder'] == true ||
+        order['groupId']?.toString().trim().isNotEmpty == true ||
+        order['checkoutSessionId']?.toString().trim().isNotEmpty == true;
+  }
+
+  bool _hasRenderableVendor(Map<String, dynamic> order) {
+    final candidates = [
+      (order['restaurant'] as Map?)?['restaurantName'],
+      (order['groceryStore'] as Map?)?['storeName'],
+      (order['pharmacyStore'] as Map?)?['storeName'],
+      (order['grabMartStore'] as Map?)?['storeName'],
+    ];
+
+    for (final candidate in candidates) {
+      final value = candidate?.toString().trim() ?? '';
+      if (value.isEmpty) continue;
+      final normalized = value.toLowerCase();
+      if (!normalized.startsWith('unknown ')) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  double _orderTotal(Map<String, dynamic> order) {
+    final value = order['totalAmount'] ?? order['total'];
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '') ?? 0.0;
+  }
+
+  List<Map<String, dynamic>> _sanitizeOrders(
+    List<Map<String, dynamic>> orders,
+  ) {
+    return orders
+        .where((order) {
+          if (_isGroupedOrder(order)) return true;
+
+          final rawItems = order['items'];
+          final hasItems = rawItems is List && rawItems.isNotEmpty;
+          final hasVendor = _hasRenderableVendor(order);
+          final total = _orderTotal(order);
+
+          // Hide broken placeholder rows such as:
+          // Unknown Restaurant / 0 items / GHS 0.00
+          if (!hasVendor && !hasItems && total <= 0.0) {
+            return false;
+          }
+
+          return true;
+        })
+        .toList(growable: false);
+  }
+
   Future<void> fetchOrders({bool forceRefresh = false}) async {
     // Check authentication first
     final userService = UserService();
     final token = await CacheService.getAuthToken();
 
     if (!userService.isLoggedIn) {
+      _orders = [];
       _error = 'Please log in to view your orders';
       _isLoading = false;
       notifyListeners();
@@ -25,6 +81,7 @@ class OrderProvider extends ChangeNotifier {
     }
 
     if (token == null || token.isEmpty) {
+      _orders = [];
       _error = 'Authentication required. Please log in again.';
       _isLoading = false;
       notifyListeners();
@@ -96,7 +153,8 @@ class OrderProvider extends ChangeNotifier {
 
       try {
         final orderService = OrderServiceWrapper();
-        _orders = await orderService.getUserOrders();
+        final fetchedOrders = await orderService.getUserOrders();
+        _orders = _sanitizeOrders(fetchedOrders);
 
         if (kDebugMode) {
           print('✅ Loaded ${_orders.length} orders from API');
@@ -139,16 +197,16 @@ class OrderProvider extends ChangeNotifier {
         print('🔄 Fetching fresh orders in background...');
       }
       final orderService = OrderServiceWrapper();
-      final freshOrders = await orderService.getUserOrders();
+      final freshOrders = _sanitizeOrders(await orderService.getUserOrders());
+      _orders = freshOrders;
+      _error = null;
 
-      if (freshOrders.isNotEmpty) {
-        _orders = freshOrders;
-        if (kDebugMode) {
-          print('✅ Updated ${_orders.length} orders from background fetch');
-        }
-        _saveOrdersToCacheAsync();
-        notifyListeners();
+      if (kDebugMode) {
+        print('✅ Updated ${_orders.length} orders from background fetch');
       }
+
+      _saveOrdersToCacheAsync();
+      notifyListeners();
     } catch (e) {
       if (kDebugMode) {
         print('Background order fetch error (ignored): $e');
@@ -160,6 +218,7 @@ class OrderProvider extends ChangeNotifier {
     // Check authentication first
     final userService = UserService();
     if (!userService.isLoggedIn) {
+      _orders = [];
       if (kDebugMode) {
         print('❌ User not logged in, cannot refresh orders');
       }
@@ -170,6 +229,7 @@ class OrderProvider extends ChangeNotifier {
 
     final token = await CacheService.getAuthToken();
     if (token == null || token.isEmpty) {
+      _orders = [];
       if (kDebugMode) {
         print('❌ No authentication token found for refresh');
       }
@@ -195,7 +255,7 @@ class OrderProvider extends ChangeNotifier {
         print('🔄 Refreshing orders...');
       }
       final orderService = OrderServiceWrapper();
-      _orders = await orderService.getUserOrders();
+      _orders = _sanitizeOrders(await orderService.getUserOrders());
 
       if (kDebugMode) {
         print('✅ Refreshed ${_orders.length} orders');
@@ -232,7 +292,7 @@ class OrderProvider extends ChangeNotifier {
       if (kDebugMode) {
         print('📦 Cache contains ${cachedOrders.length} orders');
       }
-      _orders = cachedOrders;
+      _orders = _sanitizeOrders(cachedOrders);
       if (kDebugMode) {
         print('✅ Successfully loaded ${_orders.length} orders from cache');
       }

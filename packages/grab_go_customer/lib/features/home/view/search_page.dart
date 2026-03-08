@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:math' as math;
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,102 +12,92 @@ import 'package:grab_go_customer/features/grabmart/model/grabmart_item.dart';
 import 'package:grab_go_customer/features/grabmart/viewmodel/grabmart_provider.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
 import 'package:grab_go_customer/features/groceries/viewmodel/grocery_provider.dart';
+import 'package:grab_go_customer/features/home/model/catalog_search_models.dart';
+import 'package:grab_go_customer/features/home/model/filter_model.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
+import 'package:grab_go_customer/features/home/repository/catalog_search_repository.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
 import 'package:grab_go_customer/features/pharmacy/model/pharmacy_item.dart';
 import 'package:grab_go_customer/features/pharmacy/viewmodel/pharmacy_provider.dart';
+import 'package:grab_go_customer/features/vendors/model/vendor_model.dart';
+import 'package:grab_go_customer/features/vendors/widgets/vendor_card.dart';
+import 'package:grab_go_customer/shared/viewmodels/native_location_provider.dart';
 import 'package:grab_go_customer/shared/viewmodels/service_provider.dart';
+import 'package:grab_go_customer/shared/widgets/filter_bottom_sheet.dart';
 import 'package:grab_go_customer/shared/widgets/food_item_card.dart';
 import 'package:grab_go_customer/shared/widgets/grocery_item_card.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:provider/provider.dart';
+import 'package:shimmer/shimmer.dart';
 
 class SearchPage extends StatefulWidget {
-  const SearchPage({super.key});
+  final String initialQuery;
+
+  const SearchPage({super.key, this.initialQuery = ''});
 
   @override
   State<SearchPage> createState() => _SearchPageState();
 }
 
-class _SearchCategoryEntry {
-  final String id;
-  final String name;
-  final String emoji;
-  final String serviceType;
-  final bool isFood;
-  final int itemCount;
+enum _SearchSortOption {
+  relevance('relevance', 'Best match'),
+  rating('rating', 'Top rated'),
+  fastest('fastest', 'Fastest'),
+  priceLow('price_low', 'Price low'),
+  priceHigh('price_high', 'Price high'),
+  newest('newest', 'Newest');
 
-  const _SearchCategoryEntry({
-    required this.id,
-    required this.name,
-    required this.emoji,
-    required this.serviceType,
-    required this.isFood,
-    required this.itemCount,
-  });
-}
+  final String apiValue;
+  final String label;
 
-class _SearchItemEntry {
-  final FoodItem displayItem;
-  final Object sourceItem;
-
-  const _SearchItemEntry({required this.displayItem, required this.sourceItem});
-}
-
-class _ScoredCategoryMatch {
-  final _SearchCategoryEntry category;
-  final double score;
-
-  const _ScoredCategoryMatch({required this.category, required this.score});
-}
-
-class _ScoredItemMatch {
-  final _SearchItemEntry item;
-  final double score;
-
-  const _ScoredItemMatch({required this.item, required this.score});
+  const _SearchSortOption(this.apiValue, this.label);
 }
 
 class _SearchPageState extends State<SearchPage> {
+  final CatalogSearchRepository _searchRepository = CatalogSearchRepository();
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
 
-  static const int _searchItemsPageSize = 12;
-  static const Duration _searchDebounceDuration = Duration(milliseconds: 280);
+  static const Duration _searchDebounceDuration = Duration(milliseconds: 320);
   static const List<String> _quickFilters = [
     'Fast delivery',
     'Under ₵20',
     'Top rated',
     'On sale',
   ];
-  static const Map<String, List<String>> _tokenSynonyms = {
-    'cheap': ['budget', 'affordable', 'low', 'discount'],
-    'budget': ['cheap', 'affordable', 'low'],
-    'fast': ['quick', 'express'],
-    'quick': ['fast', 'express'],
-    'sale': ['discount', 'deal', 'promo'],
-    'discount': ['sale', 'deal', 'promo'],
-    'medicine': ['drug', 'tablet', 'capsule', 'pharmacy'],
-    'grocery': ['groceries', 'foodstuff'],
-    'drink': ['beverage', 'juice', 'water', 'soda'],
-    'snack': ['snacks'],
-  };
 
-  List<String> _searchHistory = [];
-  String _searchQuery = '';
-  String? _activeQuickFilter;
-  int _visibleSearchItemCount = _searchItemsPageSize;
-  bool _isLoadingMoreSearchItems = false;
   Timer? _searchDebounceTimer;
+  String _searchQuery = '';
+  String? _activeQuickFilterLabel;
+  String _resolvedSearchKey = '';
+  int _requestSerial = 0;
+  bool _isSearching = false;
+  FilterModel _activeFilter = FilterModel();
+  _SearchSortOption _sortOption = _SearchSortOption.relevance;
+  CatalogSearchResponse? _searchResponse;
+  String? _searchError;
+  List<String> _searchHistory = [];
+  String? _lastServiceId;
 
   @override
   void initState() {
     super.initState();
     _loadSearchHistory();
+    final initialQuery = widget.initialQuery.trim();
+    if (initialQuery.isNotEmpty) {
+      _searchQuery = initialQuery;
+      _searchController.text = initialQuery;
+      _searchController.selection = TextSelection.collapsed(
+        offset: initialQuery.length,
+      );
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
+      if (!mounted) return;
+      if (initialQuery.isNotEmpty) {
+        _performSearch();
+      } else {
         _searchFocusNode.requestFocus();
       }
     });
@@ -122,9 +112,25 @@ class _SearchPageState extends State<SearchPage> {
     super.dispose();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final serviceId = context.read<ServiceProvider>().currentService.id;
+    if (_lastServiceId == null) {
+      _lastServiceId = serviceId;
+      return;
+    }
+    if (_lastServiceId != serviceId) {
+      _lastServiceId = serviceId;
+      _handleServiceChanged();
+    }
+  }
+
   void _loadSearchHistory() {
     _searchHistory = CacheService.getSearchHistory();
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _persistSearchTerm(String term) {
@@ -139,78 +145,6 @@ class _SearchPageState extends State<SearchPage> {
     _loadSearchHistory();
   }
 
-  void _onSearchChanged(String rawQuery) {
-    if (mounted) {
-      setState(() {});
-    }
-    _searchDebounceTimer?.cancel();
-    _searchDebounceTimer = Timer(_searchDebounceDuration, () {
-      if (!mounted) return;
-      _applySearchQuery(rawQuery);
-    });
-  }
-
-  void _applySearchQuery(String rawQuery) {
-    final nextQuery = rawQuery.trim();
-    if (nextQuery == _searchQuery) return;
-
-    setState(() {
-      _searchQuery = nextQuery;
-      if (_searchQuery.isNotEmpty) {
-        _activeQuickFilter = null;
-      }
-      _visibleSearchItemCount = _searchItemsPageSize;
-      _isLoadingMoreSearchItems = false;
-    });
-
-    if (_scrollController.hasClients) {
-      _scrollController.jumpTo(0);
-    }
-  }
-
-  void _setQuickFilter(String label) {
-    _searchDebounceTimer?.cancel();
-    _searchFocusNode.unfocus();
-    setState(() {
-      _activeQuickFilter = label;
-      _searchQuery = '';
-      _searchController.clear();
-      _visibleSearchItemCount = _searchItemsPageSize;
-      _isLoadingMoreSearchItems = false;
-    });
-
-    if (_scrollController.hasClients) {
-      _scrollController.jumpTo(0);
-    }
-  }
-
-  void _clearSearchInput() {
-    _searchDebounceTimer?.cancel();
-    _searchController.clear();
-    _applySearchQuery('');
-    _searchFocusNode.requestFocus();
-  }
-
-  bool _isCurrentServiceLoading(ServiceProvider serviceProvider) {
-    if (serviceProvider.isFoodService) {
-      final provider = Provider.of<FoodProvider>(context, listen: false);
-      return provider.isLoading;
-    }
-    if (serviceProvider.isGroceryService) {
-      final provider = Provider.of<GroceryProvider>(context, listen: false);
-      return provider.isLoadingItems || provider.isLoadingCategories;
-    }
-    if (serviceProvider.isPharmacyService) {
-      final provider = Provider.of<PharmacyProvider>(context, listen: false);
-      return provider.isLoadingItems || provider.isLoadingCategories;
-    }
-    if (serviceProvider.isStoresService) {
-      final provider = Provider.of<GrabMartProvider>(context, listen: false);
-      return provider.isLoadingItems || provider.isLoadingCategories;
-    }
-    return false;
-  }
-
   String _serviceLabel(ServiceProvider serviceProvider) {
     if (serviceProvider.isFoodService) return 'Food';
     if (serviceProvider.isGroceryService) return 'Groceries';
@@ -219,26 +153,456 @@ class _SearchPageState extends State<SearchPage> {
     return 'Items';
   }
 
+  String _serviceType(ServiceProvider serviceProvider) {
+    if (serviceProvider.isFoodService) return 'food';
+    if (serviceProvider.isGroceryService) return 'groceries';
+    if (serviceProvider.isPharmacyService) return 'pharmacy';
+    return 'convenience';
+  }
+
+  String _vendorLabel(ServiceProvider serviceProvider) {
+    if (serviceProvider.isFoodService) return 'Restaurants';
+    if (serviceProvider.isGroceryService) return 'Grocery Stores';
+    if (serviceProvider.isPharmacyService) return 'Pharmacies';
+    return 'Stores';
+  }
+
+  bool get _hasSearchContext =>
+      _searchQuery.trim().isNotEmpty || _activeFilter.isActive;
+
+  String _currentSearchKey() {
+    return jsonEncode({
+      'query': _searchQuery.trim(),
+      'sort': _sortOption.apiValue,
+      'filter': _activeFilter.toJson(),
+    });
+  }
+
+  void _onSearchChanged(String rawQuery) {
+    setState(() {});
+    _searchDebounceTimer?.cancel();
+    _searchDebounceTimer = Timer(_searchDebounceDuration, () {
+      if (!mounted) return;
+      _applySearchQuery(rawQuery);
+    });
+  }
+
+  void _applySearchQuery(
+    String rawQuery, {
+    bool persist = false,
+    bool immediate = false,
+  }) {
+    final nextQuery = rawQuery.trim();
+    if (nextQuery == _searchQuery && !immediate) return;
+
+    setState(() {
+      _searchQuery = nextQuery;
+      if (_searchQuery.isEmpty && !_activeFilter.isActive) {
+        _searchResponse = null;
+        _searchError = null;
+      }
+    });
+
+    if (persist && nextQuery.isNotEmpty) {
+      _persistSearchTerm(nextQuery);
+    }
+
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
+
+    if (_hasSearchContext) {
+      _performSearch();
+    }
+  }
+
+  void _applyQuickFilter(String label) {
+    _searchDebounceTimer?.cancel();
+    setState(() {
+      _activeQuickFilterLabel = label;
+      _activeFilter = switch (label) {
+        'Fast delivery' => FilterModel(fast: true),
+        'Under ₵20' => FilterModel(maxPrice: 20),
+        'Top rated' => FilterModel(minRating: 4.5),
+        'On sale' => FilterModel(onSale: true),
+        _ => FilterModel(),
+      };
+    });
+    _performSearch();
+  }
+
+  Future<void> _openFilterBottomSheet(ServiceProvider serviceProvider) async {
+    final categories = _filterCategoriesForService(serviceProvider);
+    final vendorNames = _filterVendorNames(serviceProvider);
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      useSafeArea: true,
+      builder: (_) => FilterBottomSheet(
+        initialFilter: _activeFilter,
+        categories: categories,
+        restaurants: vendorNames,
+        vendorLabel: _vendorLabel(serviceProvider),
+        isFood: serviceProvider.isFoodService,
+        onApply: (filter) {
+          setState(() {
+            _activeQuickFilterLabel = null;
+            _activeFilter = filter.copyWith();
+          });
+          if (_hasSearchContext) {
+            _performSearch();
+          }
+        },
+      ),
+    );
+  }
+
+  Future<void> _performSearch() async {
+    if (!_hasSearchContext) return;
+
+    final requestId = ++_requestSerial;
+    final serviceProvider = context.read<ServiceProvider>();
+    final locationProvider = context.read<NativeLocationProvider>();
+    final confirmedAddress = locationProvider.confirmedAddress;
+    final searchKey = _currentSearchKey();
+
+    setState(() {
+      _isSearching = true;
+      _searchError = null;
+    });
+
+    try {
+      final response = await _searchRepository.search(
+        serviceType: _serviceType(serviceProvider),
+        query: _searchQuery,
+        filter: _activeFilter,
+        sort: _sortOption.apiValue,
+        userLat: confirmedAddress?.latitude ?? locationProvider.latitude,
+        userLng: confirmedAddress?.longitude ?? locationProvider.longitude,
+      );
+
+      if (!mounted || requestId != _requestSerial) return;
+
+      setState(() {
+        _searchResponse = response;
+        _resolvedSearchKey = searchKey;
+        _searchError = null;
+        _isSearching = false;
+      });
+    } catch (error) {
+      if (!mounted || requestId != _requestSerial) return;
+      final message = _humanizeSearchError(error);
+      setState(() {
+        _searchResponse = null;
+        _resolvedSearchKey = searchKey;
+        _searchError = message;
+        _isSearching = false;
+      });
+      AppToastMessage.show(
+        context: context,
+        message: message,
+        backgroundColor: context.appColors.error,
+        maxLines: 3,
+      );
+    }
+  }
+
+  String _humanizeSearchError(Object error) {
+    final raw = error.toString().replaceFirst('Exception: ', '').trim();
+    if (raw.isEmpty) {
+      return 'Search is unavailable right now. Please try again.';
+    }
+    if (raw.toLowerCase().contains('failed host lookup') ||
+        raw.toLowerCase().contains('socketexception')) {
+      return 'No internet connection. Check your network and try again.';
+    }
+    return raw;
+  }
+
+  void _handleServiceChanged() {
+    _searchDebounceTimer?.cancel();
+    _requestSerial++;
+    setState(() {
+      _activeQuickFilterLabel = null;
+      _activeFilter = FilterModel();
+      _searchResponse = null;
+      _searchError = null;
+      _resolvedSearchKey = '';
+      _isSearching = false;
+    });
+    if (_searchQuery.trim().isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _performSearch();
+        }
+      });
+    }
+  }
+
+  void _selectSuggestion(String value) {
+    _searchController.text = value;
+    _searchController.selection = TextSelection.collapsed(offset: value.length);
+    _applySearchQuery(value, persist: true, immediate: true);
+    _searchFocusNode.requestFocus();
+  }
+
+  void _clearSearchInput() {
+    _searchDebounceTimer?.cancel();
+    _searchController.clear();
+    _applySearchQuery('', immediate: true);
+    _searchFocusNode.requestFocus();
+  }
+
+  void _clearFilters() {
+    setState(() {
+      _activeQuickFilterLabel = null;
+      _activeFilter = FilterModel();
+      if (_searchQuery.trim().isEmpty) {
+        _searchResponse = null;
+        _searchError = null;
+      }
+    });
+
+    if (_hasSearchContext) {
+      _performSearch();
+    }
+  }
+
+  List<FoodCategoryModel> _filterCategoriesForService(
+    ServiceProvider serviceProvider,
+  ) {
+    if (serviceProvider.isFoodService) {
+      return context.read<FoodProvider>().categories;
+    }
+    if (serviceProvider.isGroceryService) {
+      return context
+          .read<GroceryProvider>()
+          .categories
+          .map(
+            (category) => FoodCategoryModel(
+              id: category.id,
+              name: category.name,
+              description: '',
+              emoji: category.emoji,
+              isActive: true,
+              items: const [],
+            ),
+          )
+          .toList(growable: false);
+    }
+    if (serviceProvider.isPharmacyService) {
+      return context
+          .read<PharmacyProvider>()
+          .categories
+          .map(
+            (category) => FoodCategoryModel(
+              id: category.id,
+              name: category.name,
+              description: '',
+              emoji: category.emoji,
+              isActive: true,
+              items: const [],
+            ),
+          )
+          .toList(growable: false);
+    }
+    return context
+        .read<GrabMartProvider>()
+        .categories
+        .map(
+          (category) => FoodCategoryModel(
+            id: category.id,
+            name: category.name,
+            description: '',
+            emoji: category.emoji,
+            isActive: true,
+            items: const [],
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  List<String> _filterVendorNames(ServiceProvider serviceProvider) {
+    final names = <String>{};
+
+    if (serviceProvider.isFoodService) {
+      final provider = context.read<FoodProvider>();
+      for (final category in provider.categories) {
+        for (final item in category.items) {
+          if (item.sellerName.trim().isNotEmpty) {
+            names.add(item.sellerName.trim());
+          }
+        }
+      }
+      for (final vendor in provider.nearbyVendors) {
+        if (vendor.displayName.trim().isNotEmpty) {
+          names.add(vendor.displayName.trim());
+        }
+      }
+      for (final vendor in provider.exclusiveVendors) {
+        if (vendor.displayName.trim().isNotEmpty) {
+          names.add(vendor.displayName.trim());
+        }
+      }
+    } else if (serviceProvider.isGroceryService) {
+      for (final item in context.read<GroceryProvider>().items) {
+        if ((item.storeName ?? '').trim().isNotEmpty) {
+          names.add(item.storeName!.trim());
+        }
+      }
+    } else if (serviceProvider.isPharmacyService) {
+      for (final item in context.read<PharmacyProvider>().items) {
+        if ((item.storeName ?? '').trim().isNotEmpty) {
+          names.add(item.storeName!.trim());
+        }
+      }
+    } else {
+      for (final item in context.read<GrabMartProvider>().items) {
+        if ((item.storeName ?? '').trim().isNotEmpty) {
+          names.add(item.storeName!.trim());
+        }
+      }
+    }
+
+    final sorted = names.toList(growable: false)..sort();
+    return sorted;
+  }
+
+  List<CatalogSearchItemResult> _buildSuggestedItems(
+    ServiceProvider serviceProvider,
+  ) {
+    final items = <CatalogSearchItemResult>[];
+    final seen = <String>{};
+
+    if (serviceProvider.isFoodService) {
+      final provider = context.read<FoodProvider>();
+      for (final category in provider.categories) {
+        for (final item in category.items) {
+          final key = '${item.id}_${item.restaurantId}';
+          if (seen.add(key)) {
+            items.add(
+              CatalogSearchItemResult(
+                displayItem: item,
+                sourceItem: item,
+                serviceType: 'food',
+              ),
+            );
+          }
+        }
+      }
+    } else if (serviceProvider.isGroceryService) {
+      for (final item in context.read<GroceryProvider>().items) {
+        if (seen.add('grocery_${item.id}_${item.storeId}')) {
+          items.add(
+            CatalogSearchItemResult(
+              displayItem: item.toFoodItem(),
+              sourceItem: item,
+              serviceType: 'groceries',
+            ),
+          );
+        }
+      }
+    } else if (serviceProvider.isPharmacyService) {
+      for (final item in context.read<PharmacyProvider>().items) {
+        if (seen.add('pharmacy_${item.id}_${item.storeId}')) {
+          items.add(
+            CatalogSearchItemResult(
+              displayItem: item.toFoodItem(),
+              sourceItem: item,
+              serviceType: 'pharmacy',
+            ),
+          );
+        }
+      }
+    } else {
+      for (final item in context.read<GrabMartProvider>().items) {
+        if (seen.add('grabmart_${item.id}_${item.storeId}')) {
+          items.add(
+            CatalogSearchItemResult(
+              displayItem: item.toFoodItem(),
+              sourceItem: item,
+              serviceType: 'convenience',
+            ),
+          );
+        }
+      }
+    }
+
+    items.sort((a, b) {
+      final availabilityCompare = (b.displayItem.isAvailable ? 1 : 0).compareTo(
+        a.displayItem.isAvailable ? 1 : 0,
+      );
+      if (availabilityCompare != 0) return availabilityCompare;
+      final orderCompare = b.displayItem.orderCount.compareTo(
+        a.displayItem.orderCount,
+      );
+      if (orderCompare != 0) return orderCompare;
+      return b.displayItem.rating.compareTo(a.displayItem.rating);
+    });
+
+    return items.take(8).toList(growable: false);
+  }
+
+  List<FoodCategoryModel> _recoveryCategories(ServiceProvider serviceProvider) {
+    final categories = _filterCategoriesForService(serviceProvider);
+    if (serviceProvider.isFoodService) {
+      final sorted = [...categories]
+        ..sort((a, b) => b.items.length.compareTo(a.items.length));
+      return sorted.take(6).toList(growable: false);
+    }
+    return categories.take(6).toList(growable: false);
+  }
+
+  void _openCategory(
+    FoodCategoryModel category,
+    ServiceProvider serviceProvider,
+  ) {
+    context.push(
+      '/categoryItems/${category.id}',
+      extra: {
+        'categoryId': category.id,
+        'categoryName': category.name,
+        'categoryEmoji': category.emoji,
+        'serviceType': _serviceType(serviceProvider),
+        'isFood': serviceProvider.isFoodService,
+      },
+    );
+  }
+
+  void _openSearchCategory(CatalogSearchCategory category) {
+    context.push(
+      '/categoryItems/${category.id}',
+      extra: {
+        'categoryId': category.id,
+        'categoryName': category.name,
+        'categoryEmoji': category.emoji,
+        'serviceType': category.serviceType,
+        'isFood': category.isFood,
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.appColors;
-    final serviceProvider = Provider.of<ServiceProvider>(context);
-    final categoryMatches = _findCategoryMatches(serviceProvider);
-    final itemMatches = _findItemMatches(serviceProvider);
-    final visibleItemCount = math.min(
-      _visibleSearchItemCount,
-      itemMatches.length,
-    );
-    final visibleItemMatches = itemMatches
-        .take(visibleItemCount)
-        .toList(growable: false);
-    final hasQuery = _searchQuery.isNotEmpty;
-    final hasQuickFilter = _activeQuickFilter != null;
-    final hasSearchContext = hasQuery || hasQuickFilter;
-    final hasResults = categoryMatches.isNotEmpty || itemMatches.isNotEmpty;
-    final allItems = _collectSearchableItems(serviceProvider);
-    final suggestedItems = _buildSuggestedItems(allItems);
-    final isLoading = _isCurrentServiceLoading(serviceProvider);
+    final serviceProvider = context.watch<ServiceProvider>();
+    final suggestedItems = _buildSuggestedItems(serviceProvider);
+    final recoveryCategories = _recoveryCategories(serviceProvider);
+    final response = _searchResponse;
+    final vendors = response?.vendors ?? const <VendorModel>[];
+    final categories = response?.categories ?? const <CatalogSearchCategory>[];
+    final items = response?.items ?? const <CatalogSearchItemResult>[];
+    final suggestions =
+        response?.suggestions ?? const <CatalogSearchSuggestion>[];
+    final hasResults =
+        vendors.isNotEmpty || categories.isNotEmpty || items.isNotEmpty;
+    final showLoadingSkeleton =
+        _hasSearchContext &&
+        _isSearching &&
+        _currentSearchKey() != _resolvedSearchKey;
+    final totalMatches = vendors.length + categories.length + items.length;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final systemUiOverlayStyle = SystemUiOverlayStyle(
       statusBarColor: isDark ? colors.backgroundPrimary : colors.accentOrange,
@@ -259,114 +623,156 @@ class _SearchPageState extends State<SearchPage> {
             children: [
               _buildSearchHeader(colors, serviceProvider),
               Expanded(
-                child: NotificationListener<ScrollNotification>(
-                  onNotification: (notification) {
-                    if (!hasSearchContext) return false;
-                    if (notification.metrics.pixels >=
-                        notification.metrics.maxScrollExtent - 220) {
-                      _loadMoreSearchItems(itemMatches.length);
-                    }
-                    return false;
-                  },
-                  child: ListView(
-                    controller: _scrollController,
-                    padding: EdgeInsets.only(bottom: 28.h),
-                    children: [
-                      if (_activeQuickFilter != null)
-                        _buildSectionHeader(
-                          colors,
-                          _activeQuickFilter!,
-                          'Showing matches for this quick filter',
-                        )
-                      else if (_searchQuery.isNotEmpty)
-                        _buildSectionHeader(
-                          colors,
-                          'Results for "$_searchQuery"',
-                          '${itemMatches.length + categoryMatches.length} matches found',
-                          highlightedText: _searchQuery,
-                        )
-                      else
-                        _buildSectionHeader(
-                          colors,
-                          'Search ${_serviceLabel(serviceProvider)}',
-                          'Find items or categories',
-                        ),
-                      SizedBox(height: 12.h),
-                      if (!hasSearchContext) ...[
-                        _buildQuickFilters(colors),
-                        SizedBox(height: 20.h),
-                        if (_searchHistory.isNotEmpty) ...[
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 20.w),
-                            child: Row(
-                              children: [
-                                Text(
-                                  'Recent searches',
+                child: ListView(
+                  controller: _scrollController,
+                  padding: EdgeInsets.only(bottom: 28.h),
+                  children: [
+                    if (_hasSearchContext)
+                      _buildSectionHeader(
+                        colors,
+                        _searchQuery.isNotEmpty
+                            ? 'Results for "$_searchQuery"'
+                            : (_activeQuickFilterLabel ?? 'Filtered results'),
+                        _searchError != null
+                            ? _searchError!
+                            : '$totalMatches matches across vendors, items and categories',
+                        highlightedText: _searchQuery.isNotEmpty
+                            ? _searchQuery
+                            : null,
+                      )
+                    else
+                      _buildSectionHeader(
+                        colors,
+                        'Search ${_serviceLabel(serviceProvider)}',
+                        'Search vendors, items, categories and offers',
+                      ),
+                    SizedBox(height: 12.h),
+                    if (!_hasSearchContext) ...[
+                      _buildQuickFilters(colors),
+                      SizedBox(height: 20.h),
+                      if (_searchHistory.isNotEmpty) ...[
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 20.w),
+                          child: Row(
+                            children: [
+                              Text(
+                                'Recent searches',
+                                style: TextStyle(
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w700,
+                                  color: colors.textPrimary,
+                                ),
+                              ),
+                              const Spacer(),
+                              TextButton(
+                                onPressed: _clearSearchHistory,
+                                child: Text(
+                                  'Clear',
                                   style: TextStyle(
-                                    fontSize: 14.sp,
-                                    fontWeight: FontWeight.w700,
-                                    color: colors.textPrimary,
-                                  ),
-                                ),
-                                const Spacer(),
-                                TextButton(
-                                  onPressed: _clearSearchHistory,
-                                  child: Text(
-                                    'Clear',
-                                    style: TextStyle(
-                                      fontSize: 12.sp,
-                                      fontWeight: FontWeight.w600,
-                                      color: colors.accentOrange,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          SizedBox(height: 6.h),
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 20.w),
-                            child: Wrap(
-                              spacing: 8.w,
-                              runSpacing: 8.h,
-                              children: _searchHistory.map((term) {
-                                return ActionChip(
-                                  label: Text(term),
-                                  onPressed: () {
-                                    _searchController.text = term;
-                                    _searchController.selection =
-                                        TextSelection.collapsed(
-                                          offset: term.length,
-                                        );
-                                    _applySearchQuery(term);
-                                    _searchFocusNode.requestFocus();
-                                  },
-                                  backgroundColor: colors.backgroundSecondary,
-                                  labelStyle: TextStyle(
                                     fontSize: 12.sp,
-                                    color: colors.textPrimary,
                                     fontWeight: FontWeight.w600,
+                                    color: colors.accentOrange,
                                   ),
-                                  shape: RoundedRectangleBorder(
-                                    side: BorderSide(
-                                      color: colors.inputBorder.withValues(
-                                        alpha: 0.35,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 6.h),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 20.w),
+                          child: Wrap(
+                            spacing: 8.w,
+                            runSpacing: 8.h,
+                            children: _searchHistory
+                                .map((term) {
+                                  return ActionChip(
+                                    label: Text(term),
+                                    onPressed: () => _selectSuggestion(term),
+                                    backgroundColor: colors.backgroundSecondary,
+                                    labelStyle: TextStyle(
+                                      fontSize: 12.sp,
+                                      color: colors.textPrimary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      side: BorderSide(
+                                        color: colors.inputBorder.withValues(
+                                          alpha: 0.35,
+                                        ),
+                                      ),
+                                      borderRadius: BorderRadius.circular(
+                                        KBorderSize.border,
                                       ),
                                     ),
-                                    borderRadius: BorderRadius.circular(
-                                      KBorderSize.border,
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                            ),
+                                  );
+                                })
+                                .toList(growable: false),
                           ),
-                          SizedBox(height: 20.h),
-                        ],
+                        ),
+                        SizedBox(height: 20.h),
+                      ],
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 20.w),
+                        child: Text(
+                          'Suggested for you',
+                          style: TextStyle(
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w700,
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 8.h),
+                      if (suggestedItems.isEmpty)
+                        _buildEmptyState(
+                          colors,
+                          'No items available to suggest yet.',
+                        )
+                      else
+                        ...suggestedItems.map(
+                          (item) => _buildItemSearchResult(
+                            colors,
+                            item,
+                            persistQuery: false,
+                          ),
+                        ),
+                    ] else if (showLoadingSkeleton) ...[
+                      _buildSortControls(colors),
+                      SizedBox(height: 12.h),
+                      _buildSearchLoadingState(colors),
+                    ] else if (_searchError != null && !hasResults) ...[
+                      _buildSearchNoResultsState(
+                        colors,
+                        title: 'Search unavailable',
+                        message: _searchError!,
+                        serviceProvider: serviceProvider,
+                        suggestedItems: suggestedItems,
+                        recoveryCategories: recoveryCategories,
+                        showRetry: true,
+                      ),
+                    ] else if (!hasResults) ...[
+                      _buildSortControls(colors),
+                      SizedBox(height: 12.h),
+                      _buildSearchNoResultsState(
+                        colors,
+                        title: 'No matches found',
+                        message:
+                            'Try another term, clear filters, or explore nearby categories.',
+                        serviceProvider: serviceProvider,
+                        suggestedItems: suggestedItems,
+                        recoveryCategories: recoveryCategories,
+                        showRetry: false,
+                      ),
+                    ] else ...[
+                      _buildSortControls(colors),
+                      SizedBox(height: 12.h),
+                      if (suggestions.isNotEmpty &&
+                          _searchQuery.trim().isNotEmpty) ...[
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 20.w),
                           child: Text(
-                            'Suggested for you',
+                            'Suggestions',
                             style: TextStyle(
                               fontSize: 14.sp,
                               fontWeight: FontWeight.w700,
@@ -375,114 +781,82 @@ class _SearchPageState extends State<SearchPage> {
                           ),
                         ),
                         SizedBox(height: 8.h),
-                        if (isLoading && suggestedItems.isEmpty)
-                          Padding(
-                            padding: EdgeInsets.only(top: 18.h),
-                            child: Center(
-                              child: SizedBox(
-                                width: 22.w,
-                                height: 22.h,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    colors.accentOrange,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          )
-                        else if (suggestedItems.isEmpty)
-                          _buildEmptyState(
-                            colors,
-                            'No items available to suggest yet.',
-                          )
-                        else
-                          ...suggestedItems.map(
-                            (item) => _buildItemSearchResult(
-                              colors,
-                              item,
-                              persistQuery: false,
-                            ),
-                          ),
-                      ] else if (!hasResults) ...[
-                        _buildSearchNoResultsState(
-                          colors,
-                          'No matches found. Try another term or quick filter.',
+                        ...suggestions.map(
+                          (suggestion) =>
+                              _buildSuggestionTile(colors, suggestion),
                         ),
-                      ] else ...[
-                        if (categoryMatches.isNotEmpty) ...[
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 20.w),
-                            child: Text(
-                              'Categories',
-                              style: TextStyle(
-                                fontSize: 14.sp,
-                                fontWeight: FontWeight.w700,
-                                color: colors.textPrimary,
-                              ),
+                        SizedBox(height: 14.h),
+                      ],
+                      if (vendors.isNotEmpty) ...[
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 20.w),
+                          child: Text(
+                            _vendorLabel(serviceProvider),
+                            style: TextStyle(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w700,
+                              color: colors.textPrimary,
                             ),
                           ),
-                          SizedBox(height: 8.h),
-                          ...categoryMatches.map(
-                            (category) =>
-                                _buildCategorySearchResult(colors, category),
-                          ),
-                          SizedBox(height: 14.h),
-                        ],
-                        if (itemMatches.isNotEmpty) ...[
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 20.w),
-                            child: Text(
-                              'Items',
-                              style: TextStyle(
-                                fontSize: 14.sp,
-                                fontWeight: FontWeight.w700,
-                                color: colors.textPrimary,
-                              ),
+                        ),
+                        SizedBox(height: 8.h),
+                        ...vendors.map(
+                          (vendor) => VendorCard(
+                            vendor: vendor,
+                            onTap: () =>
+                                context.push('/vendorDetails', extra: vendor),
+                            showClosedOnImage: true,
+                            highlightExclusiveBadge: true,
+                            margin: EdgeInsets.symmetric(
+                              horizontal: 20.w,
+                              vertical: 6.h,
                             ),
                           ),
-                          SizedBox(height: 8.h),
-                          ...visibleItemMatches.map(
-                            (item) => _buildItemSearchResult(
-                              colors,
-                              item,
-                              persistQuery: true,
+                        ),
+                        SizedBox(height: 14.h),
+                      ],
+                      if (items.isNotEmpty) ...[
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 20.w),
+                          child: Text(
+                            'Items',
+                            style: TextStyle(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w700,
+                              color: colors.textPrimary,
                             ),
                           ),
-                          if (_isLoadingMoreSearchItems)
-                            Padding(
-                              padding: EdgeInsets.only(top: 8.h),
-                              child: Center(
-                                child: SizedBox(
-                                  width: 20.w,
-                                  height: 20.h,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      colors.accentOrange,
-                                    ),
-                                  ),
-                                ),
-                              ),
+                        ),
+                        SizedBox(height: 8.h),
+                        ...items.map(
+                          (item) => _buildItemSearchResult(
+                            colors,
+                            item,
+                            persistQuery: true,
+                          ),
+                        ),
+                        SizedBox(height: 14.h),
+                      ],
+                      if (categories.isNotEmpty) ...[
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 20.w),
+                          child: Text(
+                            'Categories',
+                            style: TextStyle(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w700,
+                              color: colors.textPrimary,
                             ),
-                          if (!_isLoadingMoreSearchItems &&
-                              visibleItemCount < itemMatches.length)
-                            Padding(
-                              padding: EdgeInsets.only(top: 8.h),
-                              child: Center(
-                                child: Text(
-                                  'Scroll to load more',
-                                  style: TextStyle(
-                                    fontSize: 12.sp,
-                                    color: colors.textSecondary,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
+                          ),
+                        ),
+                        SizedBox(height: 8.h),
+                        ...categories.map(
+                          (category) =>
+                              _buildCategorySearchResult(colors, category),
+                        ),
                       ],
                     ],
-                  ),
+                  ],
                 ),
               ),
             ],
@@ -492,550 +866,430 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  void _loadMoreSearchItems(int totalCount) {
-    if (_isLoadingMoreSearchItems) return;
-    if (_visibleSearchItemCount >= totalCount) return;
-
-    setState(() {
-      _isLoadingMoreSearchItems = true;
-    });
-
-    Future.delayed(const Duration(milliseconds: 120), () {
-      if (!mounted) return;
-      setState(() {
-        _visibleSearchItemCount = math.min(
-          _visibleSearchItemCount + _searchItemsPageSize,
-          totalCount,
-        );
-        _isLoadingMoreSearchItems = false;
-      });
-    });
-  }
-
-  List<_SearchItemEntry> _buildSuggestedItems(List<_SearchItemEntry> allItems) {
-    final sorted = [...allItems];
-    sorted.sort((a, b) {
-      final availabilityCompare = (b.displayItem.isAvailable ? 1 : 0).compareTo(
-        a.displayItem.isAvailable ? 1 : 0,
-      );
-      if (availabilityCompare != 0) return availabilityCompare;
-      final orderCompare = b.displayItem.orderCount.compareTo(
-        a.displayItem.orderCount,
-      );
-      if (orderCompare != 0) return orderCompare;
-      return b.displayItem.rating.compareTo(a.displayItem.rating);
-    });
-    return sorted.take(8).toList(growable: false);
-  }
-
-  List<_SearchItemEntry> _collectSearchableItems(
+  Widget _buildSearchHeader(
+    AppColorsExtension colors,
     ServiceProvider serviceProvider,
   ) {
-    if (serviceProvider.isFoodService) {
-      final provider = Provider.of<FoodProvider>(context, listen: false);
-      final items = <_SearchItemEntry>[];
-      final seen = <String>{};
-      for (final category in provider.categories) {
-        for (final item in category.items) {
-          final key = '${item.id}_${item.sellerId}';
-          if (seen.add(key)) {
-            items.add(_SearchItemEntry(displayItem: item, sourceItem: item));
-          }
-        }
-      }
-      return items;
-    }
-
-    if (serviceProvider.isGroceryService) {
-      final provider = Provider.of<GroceryProvider>(context, listen: false);
-      return provider.items
-          .map(
-            (item) => _SearchItemEntry(
-              displayItem: item.toFoodItem(),
-              sourceItem: item,
+    return Container(
+      color: colors.backgroundPrimary,
+      padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 10.h),
+      child: Row(
+        children: [
+          Container(
+            height: 44,
+            width: 44,
+            decoration: BoxDecoration(
+              color: colors.backgroundSecondary,
+              shape: BoxShape.circle,
             ),
-          )
-          .toList();
-    }
-
-    if (serviceProvider.isPharmacyService) {
-      final provider = Provider.of<PharmacyProvider>(context, listen: false);
-      return provider.items
-          .map(
-            (item) => _SearchItemEntry(
-              displayItem: item.toFoodItem(),
-              sourceItem: item,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => context.pop(),
+                customBorder: const CircleBorder(),
+                child: Padding(
+                  padding: EdgeInsets.all(10.r),
+                  child: SvgPicture.asset(
+                    Assets.icons.navArrowLeft,
+                    package: 'grab_go_shared',
+                    colorFilter: ColorFilter.mode(
+                      colors.textPrimary,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                ),
+              ),
             ),
-          )
-          .toList();
-    }
-
-    if (serviceProvider.isStoresService) {
-      final provider = Provider.of<GrabMartProvider>(context, listen: false);
-      return provider.items
-          .map(
-            (item) => _SearchItemEntry(
-              displayItem: item.toFoodItem(),
-              sourceItem: item,
+          ),
+          SizedBox(width: 10.w),
+          Expanded(
+            child: Container(
+              height: 44,
+              padding: EdgeInsets.symmetric(horizontal: 12.w),
+              decoration: BoxDecoration(
+                color: colors.backgroundSecondary,
+                borderRadius: BorderRadius.circular(KBorderSize.border),
+              ),
+              child: Row(
+                children: [
+                  SvgPicture.asset(
+                    Assets.icons.search,
+                    package: 'grab_go_shared',
+                    width: 18.w,
+                    height: 18.h,
+                    colorFilter: ColorFilter.mode(
+                      colors.textTertiary,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                  SizedBox(width: 8.w),
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      focusNode: _searchFocusNode,
+                      autofocus: true,
+                      onChanged: _onSearchChanged,
+                      onSubmitted: (value) => _applySearchQuery(
+                        value,
+                        persist: true,
+                        immediate: true,
+                      ),
+                      textInputAction: TextInputAction.search,
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      decoration: InputDecoration(
+                        isCollapsed: true,
+                        border: InputBorder.none,
+                        hintText:
+                            'Search ${_serviceLabel(serviceProvider).toLowerCase()}',
+                        hintStyle: TextStyle(
+                          color: colors.textTertiary,
+                          fontSize: 13.sp,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (_searchController.text.isNotEmpty)
+                    GestureDetector(
+                      onTap: _clearSearchInput,
+                      child: Icon(
+                        Icons.close,
+                        color: colors.textTertiary,
+                        size: 18.sp,
+                      ),
+                    ),
+                ],
+              ),
             ),
-          )
-          .toList();
-    }
-
-    return [];
-  }
-
-  List<_SearchCategoryEntry> _collectSearchableCategories(
-    ServiceProvider serviceProvider,
-  ) {
-    if (serviceProvider.isFoodService) {
-      final provider = Provider.of<FoodProvider>(context, listen: false);
-      return provider.categories
-          .where((category) => category.items.isNotEmpty)
-          .map(
-            (category) => _SearchCategoryEntry(
-              id: category.id,
-              name: category.name,
-              emoji: category.emoji,
-              serviceType: 'food',
-              isFood: true,
-              itemCount: category.items.length,
+          ),
+          SizedBox(width: 10.w),
+          GestureDetector(
+            onTap: () => _openFilterBottomSheet(serviceProvider),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  height: 44,
+                  width: 44,
+                  decoration: BoxDecoration(
+                    color: colors.backgroundSecondary,
+                    shape: BoxShape.circle,
+                  ),
+                  padding: EdgeInsets.all(12.r),
+                  child: SvgPicture.asset(
+                    Assets.icons.slidersHorizontal,
+                    package: 'grab_go_shared',
+                    colorFilter: ColorFilter.mode(
+                      colors.textPrimary,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                ),
+                if (_activeFilter.isActive)
+                  Positioned(
+                    right: 2.w,
+                    top: 2.h,
+                    child: Container(
+                      width: 10.w,
+                      height: 10.w,
+                      decoration: BoxDecoration(
+                        color: colors.accentOrange,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: colors.backgroundPrimary,
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
-          )
-          .toList();
-    }
-
-    if (serviceProvider.isGroceryService) {
-      final provider = Provider.of<GroceryProvider>(context, listen: false);
-      return provider.categories
-          .map(
-            (category) => _SearchCategoryEntry(
-              id: category.id,
-              name: category.name,
-              emoji: category.emoji,
-              serviceType: 'groceries',
-              isFood: false,
-              itemCount: provider.items
-                  .where((item) => item.categoryId == category.id)
-                  .length,
-            ),
-          )
-          .where((category) => category.itemCount > 0)
-          .toList();
-    }
-
-    if (serviceProvider.isPharmacyService) {
-      final provider = Provider.of<PharmacyProvider>(context, listen: false);
-      return provider.categories
-          .map(
-            (category) => _SearchCategoryEntry(
-              id: category.id,
-              name: category.name,
-              emoji: category.emoji,
-              serviceType: 'pharmacy',
-              isFood: false,
-              itemCount: provider.items
-                  .where((item) => item.categoryId == category.id)
-                  .length,
-            ),
-          )
-          .where((category) => category.itemCount > 0)
-          .toList();
-    }
-
-    if (serviceProvider.isStoresService) {
-      final provider = Provider.of<GrabMartProvider>(context, listen: false);
-      return provider.categories
-          .map(
-            (category) => _SearchCategoryEntry(
-              id: category.id,
-              name: category.name,
-              emoji: category.emoji,
-              serviceType: 'convenience',
-              isFood: false,
-              itemCount: provider.items
-                  .where((item) => item.categoryId == category.id)
-                  .length,
-            ),
-          )
-          .where((category) => category.itemCount > 0)
-          .toList();
-    }
-
-    return [];
-  }
-
-  List<_SearchCategoryEntry> _findCategoryMatches(
-    ServiceProvider serviceProvider,
-  ) {
-    if (_searchQuery.isEmpty || _activeQuickFilter != null) {
-      return [];
-    }
-
-    final normalizedQuery = _normalizeText(_searchQuery);
-    final queryTokens = _expandedQueryTokens(_searchQuery);
-    final scoredCategories = <_ScoredCategoryMatch>[];
-
-    for (final category in _collectSearchableCategories(serviceProvider)) {
-      final score = _scoreCategoryMatch(
-        category: category,
-        normalizedQuery: normalizedQuery,
-        queryTokens: queryTokens,
-      );
-      if (score > 0) {
-        scoredCategories.add(
-          _ScoredCategoryMatch(category: category, score: score),
-        );
-      }
-    }
-
-    scoredCategories.sort((a, b) => b.score.compareTo(a.score));
-    return scoredCategories
-        .take(12)
-        .map((match) => match.category)
-        .toList(growable: false);
-  }
-
-  List<_SearchItemEntry> _findItemMatches(ServiceProvider serviceProvider) {
-    final items = _collectSearchableItems(serviceProvider);
-
-    if (_activeQuickFilter != null) {
-      return _applyQuickFilter(items, _activeQuickFilter!);
-    }
-
-    if (_searchQuery.isEmpty) {
-      return [];
-    }
-
-    final normalizedQuery = _normalizeText(_searchQuery);
-    final queryTokens = _expandedQueryTokens(_searchQuery);
-    final numericQuery = _extractNumericValue(_searchQuery);
-    final categoryLookup = _buildCategoryNameLookup(serviceProvider);
-    final scoredMatches = <_ScoredItemMatch>[];
-
-    for (final item in items) {
-      final score = _scoreItemMatch(
-        item: item,
-        normalizedQuery: normalizedQuery,
-        queryTokens: queryTokens,
-        categoryName: categoryLookup[_itemCategoryId(item.sourceItem)],
-        numericQuery: numericQuery,
-      );
-      if (score > 0) {
-        scoredMatches.add(_ScoredItemMatch(item: item, score: score));
-      }
-    }
-
-    scoredMatches.sort((a, b) {
-      final scoreCompare = b.score.compareTo(a.score);
-      if (scoreCompare != 0) return scoreCompare;
-      return b.item.displayItem.orderCount.compareTo(
-        a.item.displayItem.orderCount,
-      );
-    });
-
-    return scoredMatches
-        .take(120)
-        .map((match) => match.item)
-        .toList(growable: false);
-  }
-
-  List<_SearchItemEntry> _applyQuickFilter(
-    List<_SearchItemEntry> items,
-    String filterLabel,
-  ) {
-    List<_SearchItemEntry> filtered;
-    switch (filterLabel) {
-      case 'Fast delivery':
-        filtered = items
-            .where(
-              (item) =>
-                  item.displayItem.deliveryTimeMinutes > 0 &&
-                  item.displayItem.deliveryTimeMinutes <= 30,
-            )
-            .toList();
-        break;
-      case 'Under ₵20':
-        filtered = items.where((item) => item.displayItem.price <= 20).toList();
-        break;
-      case 'Top rated':
-        filtered = items
-            .where((item) => item.displayItem.rating >= 4.5)
-            .toList();
-        break;
-      case 'On sale':
-        filtered = items
-            .where((item) => item.displayItem.discountPercentage > 0)
-            .toList();
-        break;
-      default:
-        filtered = items;
-        break;
-    }
-
-    filtered.sort(
-      (a, b) => b.displayItem.orderCount.compareTo(a.displayItem.orderCount),
+          ),
+        ],
+      ),
     );
-    return filtered;
   }
 
-  String _normalizeText(String value) {
-    return value
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9\s]'), ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
-  }
-
-  List<String> _expandedQueryTokens(String query) {
-    final normalized = _normalizeText(query);
-    if (normalized.isEmpty) return const [];
-
-    final expanded = <String>{};
-    for (final token in normalized.split(' ')) {
-      if (token.isEmpty) continue;
-      expanded.add(token);
-      final synonyms = _tokenSynonyms[token];
-      if (synonyms != null) {
-        expanded.addAll(
-          synonyms.map(_normalizeText).where((value) => value.isNotEmpty),
-        );
-      }
-    }
-    return expanded.toList(growable: false);
-  }
-
-  String _firstWord(String text) {
-    final normalized = _normalizeText(text);
-    if (normalized.isEmpty) return '';
-    return normalized.split(' ').first;
-  }
-
-  Set<String> _bigrams(String input) {
-    final normalized = _normalizeText(input).replaceAll(' ', '');
-    if (normalized.isEmpty) return const {};
-    if (normalized.length == 1) return {normalized};
-
-    final grams = <String>{};
-    for (var i = 0; i < normalized.length - 1; i++) {
-      grams.add(normalized.substring(i, i + 2));
-    }
-    return grams;
-  }
-
-  double _diceCoefficient(String a, String b) {
-    final gramsA = _bigrams(a);
-    final gramsB = _bigrams(b);
-    if (gramsA.isEmpty || gramsB.isEmpty) return 0;
-
-    final intersection = gramsA.intersection(gramsB).length.toDouble();
-    return (2 * intersection) / (gramsA.length + gramsB.length);
-  }
-
-  bool _startsWithAnyToken(String target, List<String> tokens) {
-    if (target.isEmpty || tokens.isEmpty) return false;
-    final words = target.split(' ');
-    for (final token in tokens) {
-      if (token.length < 2) continue;
-      if (words.any((word) => word.startsWith(token))) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  bool _containsAllTokens(String target, List<String> tokens) {
-    if (target.isEmpty || tokens.isEmpty) return false;
-    for (final token in tokens) {
-      if (token.length < 2) continue;
-      if (!target.contains(token)) return false;
-    }
-    return true;
-  }
-
-  double _scoreCategoryMatch({
-    required _SearchCategoryEntry category,
-    required String normalizedQuery,
-    required List<String> queryTokens,
+  Widget _buildSectionHeader(
+    AppColorsExtension colors,
+    String title,
+    String subtitle, {
+    String? highlightedText,
   }) {
-    if (normalizedQuery.isEmpty) return 0;
-    final name = _normalizeText(category.name);
-    if (name.isEmpty) return 0;
-
-    var score = 0.0;
-    if (name == normalizedQuery) score += 220;
-    if (name.startsWith(normalizedQuery)) score += 150;
-    if (name.contains(normalizedQuery)) score += 120;
-    if (_startsWithAnyToken(name, queryTokens)) score += 45;
-    if (_containsAllTokens(name, queryTokens)) score += 35;
-
-    final similarity = _diceCoefficient(normalizedQuery, name);
-    if (similarity >= 0.45) {
-      score += similarity * 60;
-    }
-
-    score += math.min(category.itemCount.toDouble(), 50) * 0.4;
-    return score >= 40 ? score : 0;
+    final titleStyle = TextStyle(
+      fontSize: 18.sp,
+      fontFamily: 'Lato',
+      package: 'grab_go_shared',
+      fontWeight: FontWeight.w700,
+      color: colors.textPrimary,
+    );
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 20.w),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          RichText(
+            text: TextSpan(
+              style: titleStyle,
+              children: _buildHighlightedTitleSpans(
+                title: title,
+                highlightedText: highlightedText,
+                baseStyle: titleStyle,
+                highlightColor: colors.accentOrange,
+              ),
+            ),
+          ),
+          SizedBox(height: 4.h),
+          Text(
+            subtitle,
+            style: TextStyle(fontSize: 13.sp, color: colors.textSecondary),
+          ),
+        ],
+      ),
+    );
   }
 
-  double _scoreItemMatch({
-    required _SearchItemEntry item,
-    required String normalizedQuery,
-    required List<String> queryTokens,
-    required String? categoryName,
-    required double? numericQuery,
+  List<InlineSpan> _buildHighlightedTitleSpans({
+    required String title,
+    required String? highlightedText,
+    required TextStyle baseStyle,
+    required Color highlightColor,
   }) {
-    if (normalizedQuery.isEmpty) return 0;
+    final query = highlightedText?.trim() ?? '';
+    if (query.isEmpty) return [TextSpan(text: title, style: baseStyle)];
 
-    final display = item.displayItem;
-    final name = _normalizeText(display.name);
-    final description = _normalizeText(display.description);
-    final seller = _normalizeText(display.sellerName);
-    final category = _normalizeText(categoryName ?? '');
-    final tags = _normalizeText(display.dietaryTags.join(' '));
-    final searchable = '$name $description $seller $category $tags';
+    final lowerTitle = title.toLowerCase();
+    final lowerQuery = query.toLowerCase();
+    final start = lowerTitle.indexOf(lowerQuery);
+    if (start < 0) return [TextSpan(text: title, style: baseStyle)];
 
-    var score = 0.0;
-    var hasQuerySignal = false;
-    if (name == normalizedQuery) {
-      score += 260;
-      hasQuerySignal = true;
-    }
-    if (name.startsWith(normalizedQuery)) {
-      score += 180;
-      hasQuerySignal = true;
-    }
-    if (name.contains(normalizedQuery)) {
-      score += 145;
-      hasQuerySignal = true;
-    }
-    if (seller.contains(normalizedQuery)) {
-      score += 100;
-      hasQuerySignal = true;
-    }
-    if (category.contains(normalizedQuery)) {
-      score += 95;
-      hasQuerySignal = true;
-    }
-    if (description.contains(normalizedQuery)) {
-      score += 75;
-      hasQuerySignal = true;
-    }
-    if (tags.contains(normalizedQuery)) {
-      score += 60;
-      hasQuerySignal = true;
-    }
-
-    if (_containsAllTokens(searchable, queryTokens)) {
-      score += 70;
-      hasQuerySignal = true;
-    } else if (_startsWithAnyToken(name, queryTokens)) {
-      score += 45;
-      hasQuerySignal = true;
-    } else if (_startsWithAnyToken(searchable, queryTokens)) {
-      score += 25;
-      hasQuerySignal = true;
-    }
-
-    if (normalizedQuery.length >= 3) {
-      final similarity = _diceCoefficient(normalizedQuery, name);
-      if (similarity >= 0.42) {
-        score += similarity * 55;
-        hasQuerySignal = true;
-      }
-    }
-
-    final queryFirstWord = _firstWord(normalizedQuery);
-    if (queryFirstWord.length >= 2 && seller.startsWith(queryFirstWord)) {
-      score += 25;
-      hasQuerySignal = true;
-    }
-
-    if (numericQuery != null) {
-      final priceDelta = (display.price - numericQuery).abs();
-      if (priceDelta <= 1) {
-        score += 45;
-      } else if (display.price <= numericQuery) {
-        score += 22;
-      }
-    }
-
-    if (!hasQuerySignal && numericQuery == null) {
-      return 0;
-    }
-
-    if (display.isAvailable) score += 10;
-    score += math.min(display.orderCount.toDouble(), 100) * 0.25;
-
-    return score >= 35 ? score : 0;
+    final end = start + query.length;
+    return [
+      if (start > 0)
+        TextSpan(text: title.substring(0, start), style: baseStyle),
+      TextSpan(
+        text: title.substring(start, end),
+        style: baseStyle.copyWith(color: highlightColor),
+      ),
+      if (end < title.length)
+        TextSpan(text: title.substring(end), style: baseStyle),
+    ];
   }
 
-  Map<String, String> _buildCategoryNameLookup(
-    ServiceProvider serviceProvider,
+  Widget _buildQuickFilters(AppColorsExtension colors) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 20.w),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Quick filters',
+            style: TextStyle(
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w700,
+              color: colors.textPrimary,
+            ),
+          ),
+          SizedBox(height: 10.h),
+          Wrap(
+            spacing: 8.w,
+            runSpacing: 8.h,
+            children: _quickFilters
+                .map((label) {
+                  final isActive = _activeQuickFilterLabel == label;
+                  return ActionChip(
+                    label: Text(label),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 8.w,
+                      vertical: 6.h,
+                    ),
+                    onPressed: () => _applyQuickFilter(label),
+                    backgroundColor: isActive
+                        ? colors.accentOrange
+                        : colors.backgroundSecondary,
+                    labelStyle: TextStyle(
+                      fontSize: 12.sp,
+                      color: isActive ? Colors.white : colors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      side: BorderSide(
+                        color: isActive
+                            ? colors.accentOrange
+                            : colors.inputBorder.withValues(alpha: 0.35),
+                      ),
+                      borderRadius: BorderRadius.circular(KBorderSize.border),
+                    ),
+                  );
+                })
+                .toList(growable: false),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSortControls(AppColorsExtension colors) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20.w),
+          child: Row(
+            children: [
+              Text(
+                'Sort by',
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w700,
+                  color: colors.textPrimary,
+                ),
+              ),
+              const Spacer(),
+              if (_activeFilter.isActive)
+                TextButton(
+                  onPressed: _clearFilters,
+                  child: Text(
+                    'Clear filters',
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w700,
+                      color: colors.accentOrange,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        SizedBox(height: 8.h),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: EdgeInsets.symmetric(horizontal: 20.w),
+          child: Row(
+            children: _SearchSortOption.values
+                .map((option) {
+                  final isSelected = _sortOption == option;
+                  return Padding(
+                    padding: EdgeInsets.only(right: 8.w),
+                    child: ChoiceChip(
+                      label: Text(option.label),
+                      selected: isSelected,
+                      onSelected: (_) {
+                        if (_sortOption == option) return;
+                        setState(() {
+                          _sortOption = option;
+                        });
+                        if (_hasSearchContext) {
+                          _performSearch();
+                        }
+                      },
+                      selectedColor: colors.accentOrange,
+                      backgroundColor: colors.backgroundSecondary,
+                      labelStyle: TextStyle(
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w600,
+                        color: isSelected ? Colors.white : colors.textPrimary,
+                      ),
+                      side: BorderSide(
+                        color: isSelected
+                            ? colors.accentOrange
+                            : colors.inputBorder.withValues(alpha: 0.35),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(KBorderSize.border),
+                      ),
+                    ),
+                  );
+                })
+                .toList(growable: false),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSuggestionTile(
+    AppColorsExtension colors,
+    CatalogSearchSuggestion suggestion,
   ) {
-    if (serviceProvider.isFoodService) {
-      final provider = Provider.of<FoodProvider>(context, listen: false);
-      return {
-        for (final category in provider.categories) category.id: category.name,
-      };
-    }
-
-    if (serviceProvider.isGroceryService) {
-      final provider = Provider.of<GroceryProvider>(context, listen: false);
-      return {
-        for (final category in provider.categories) category.id: category.name,
-      };
-    }
-
-    if (serviceProvider.isPharmacyService) {
-      final provider = Provider.of<PharmacyProvider>(context, listen: false);
-      return {
-        for (final category in provider.categories) category.id: category.name,
-      };
-    }
-
-    if (serviceProvider.isStoresService) {
-      final provider = Provider.of<GrabMartProvider>(context, listen: false);
-      return {
-        for (final category in provider.categories) category.id: category.name,
-      };
-    }
-
-    return const {};
-  }
-
-  String? _itemCategoryId(Object sourceItem) {
-    if (sourceItem is GroceryItem) return sourceItem.categoryId;
-    if (sourceItem is PharmacyItem) return sourceItem.categoryId;
-    if (sourceItem is GrabMartItem) return sourceItem.categoryId;
-    return null;
-  }
-
-  double? _extractNumericValue(String query) {
-    final match = RegExp(r'\d+(\.\d+)?').firstMatch(query);
-    if (match == null) return null;
-    return double.tryParse(match.group(0) ?? '');
-  }
-
-  void _openCategoryFromSearch(_SearchCategoryEntry category) {
-    context.push(
-      '/categoryItems/${category.id}',
-      extra: {
-        'categoryId': category.id,
-        'categoryName': category.name,
-        'categoryEmoji': category.emoji,
-        'serviceType': category.serviceType,
-        'isFood': category.isFood,
-      },
+    return GestureDetector(
+      onTap: () => _selectSuggestion(suggestion.value),
+      child: Container(
+        margin: EdgeInsets.symmetric(horizontal: 20.w, vertical: 5.h),
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
+        decoration: BoxDecoration(
+          color: colors.backgroundPrimary,
+          borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+          border: Border.all(
+            color: colors.inputBorder.withValues(alpha: 0.3),
+            width: 0.5,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 34.w,
+              height: 34.w,
+              decoration: BoxDecoration(
+                color: colors.accentOrange.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+                Icons.north_west_rounded,
+                color: colors.accentOrange,
+                size: 18.sp,
+              ),
+            ),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    suggestion.value,
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w700,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  if (suggestion.subtitle.trim().isNotEmpty) ...[
+                    SizedBox(height: 4.h),
+                    Text(
+                      suggestion.subtitle,
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            Text(
+              suggestion.type.toUpperCase(),
+              style: TextStyle(
+                fontSize: 10.sp,
+                fontWeight: FontWeight.w700,
+                color: colors.textTertiary,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   Widget _buildCategorySearchResult(
     AppColorsExtension colors,
-    _SearchCategoryEntry category,
+    CatalogSearchCategory category,
   ) {
     return GestureDetector(
-      onTap: () => _openCategoryFromSearch(category),
+      onTap: () => _openSearchCategory(category),
       child: Container(
         margin: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
         decoration: BoxDecoration(
@@ -1109,7 +1363,7 @@ class _SearchPageState extends State<SearchPage> {
 
   Widget _buildItemSearchResult(
     AppColorsExtension colors,
-    _SearchItemEntry item, {
+    CatalogSearchItemResult item, {
     required bool persistQuery,
   }) {
     final source = item.sourceItem;
@@ -1287,215 +1541,6 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Widget _buildSearchHeader(
-    AppColorsExtension colors,
-    ServiceProvider serviceProvider,
-  ) {
-    return Container(
-      color: colors.backgroundPrimary,
-      padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 10.h),
-      child: Row(
-        children: [
-          Container(
-            height: 44,
-            width: 44,
-            decoration: BoxDecoration(
-              color: colors.backgroundSecondary,
-              shape: BoxShape.circle,
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => context.pop(),
-                customBorder: const CircleBorder(),
-                child: Padding(
-                  padding: EdgeInsets.all(10.r),
-                  child: SvgPicture.asset(
-                    Assets.icons.navArrowLeft,
-                    package: 'grab_go_shared',
-                    colorFilter: ColorFilter.mode(
-                      colors.textPrimary,
-                      BlendMode.srcIn,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          SizedBox(width: 10.w),
-          Expanded(
-            child: Container(
-              height: 44,
-              padding: EdgeInsets.symmetric(horizontal: 12.w),
-              decoration: BoxDecoration(
-                color: colors.backgroundSecondary,
-                borderRadius: BorderRadius.circular(KBorderSize.border),
-              ),
-              child: Row(
-                children: [
-                  SvgPicture.asset(
-                    Assets.icons.search,
-                    package: 'grab_go_shared',
-                    width: 18.w,
-                    height: 18.h,
-                    colorFilter: ColorFilter.mode(
-                      colors.textTertiary,
-                      BlendMode.srcIn,
-                    ),
-                  ),
-                  SizedBox(width: 8.w),
-                  Expanded(
-                    child: TextField(
-                      controller: _searchController,
-                      focusNode: _searchFocusNode,
-                      autofocus: true,
-                      onChanged: _onSearchChanged,
-                      onSubmitted: (value) => _persistSearchTerm(value),
-                      textInputAction: TextInputAction.search,
-                      style: TextStyle(
-                        color: colors.textPrimary,
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      decoration: InputDecoration(
-                        isCollapsed: true,
-                        border: InputBorder.none,
-                        hintText:
-                            'Search ${_serviceLabel(serviceProvider).toLowerCase()}',
-                        hintStyle: TextStyle(
-                          color: colors.textTertiary,
-                          fontSize: 13.sp,
-                        ),
-                      ),
-                    ),
-                  ),
-                  if (_searchController.text.isNotEmpty)
-                    GestureDetector(
-                      onTap: _clearSearchInput,
-                      child: Icon(
-                        Icons.close,
-                        color: colors.textTertiary,
-                        size: 18.sp,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(
-    AppColorsExtension colors,
-    String title,
-    String subtitle, {
-    String? highlightedText,
-  }) {
-    final titleStyle = TextStyle(
-      fontSize: 18.sp,
-      fontFamily: 'Lato',
-      package: 'grab_go_shared',
-      fontWeight: FontWeight.w700,
-      color: colors.textPrimary,
-    );
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20.w),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          RichText(
-            text: TextSpan(
-              style: titleStyle,
-              children: _buildHighlightedTitleSpans(
-                title: title,
-                highlightedText: highlightedText,
-                baseStyle: titleStyle,
-                highlightColor: colors.accentOrange,
-              ),
-            ),
-          ),
-          SizedBox(height: 4.h),
-          Text(
-            subtitle,
-            style: TextStyle(fontSize: 13.sp, color: colors.textSecondary),
-          ),
-        ],
-      ),
-    );
-  }
-
-  List<InlineSpan> _buildHighlightedTitleSpans({
-    required String title,
-    required String? highlightedText,
-    required TextStyle baseStyle,
-    required Color highlightColor,
-  }) {
-    final query = highlightedText?.trim() ?? '';
-    if (query.isEmpty) return [TextSpan(text: title, style: baseStyle)];
-
-    final lowerTitle = title.toLowerCase();
-    final lowerQuery = query.toLowerCase();
-    final start = lowerTitle.indexOf(lowerQuery);
-    if (start < 0) return [TextSpan(text: title, style: baseStyle)];
-
-    final end = start + query.length;
-    return [
-      if (start > 0)
-        TextSpan(text: title.substring(0, start), style: baseStyle),
-      TextSpan(
-        text: title.substring(start, end),
-        style: baseStyle.copyWith(color: highlightColor),
-      ),
-      if (end < title.length)
-        TextSpan(text: title.substring(end), style: baseStyle),
-    ];
-  }
-
-  Widget _buildQuickFilters(AppColorsExtension colors) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20.w),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Quick filters',
-            style: TextStyle(
-              fontSize: 14.sp,
-              fontWeight: FontWeight.w700,
-              color: colors.textPrimary,
-            ),
-          ),
-          SizedBox(height: 10.h),
-          Wrap(
-            spacing: 8.w,
-            runSpacing: 2.h,
-            children: _quickFilters.map((label) {
-              return ActionChip(
-                label: Text(label),
-                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
-                onPressed: () => _setQuickFilter(label),
-                backgroundColor: colors.backgroundSecondary,
-                labelStyle: TextStyle(
-                  fontSize: 12.sp,
-                  color: colors.textPrimary,
-                  fontWeight: FontWeight.w600,
-                ),
-                shape: RoundedRectangleBorder(
-                  side: BorderSide(
-                    color: colors.inputBorder.withValues(alpha: 0.35),
-                  ),
-                  borderRadius: BorderRadius.circular(KBorderSize.border),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildEmptyState(AppColorsExtension colors, String message) {
     return Container(
       padding: EdgeInsets.all(40.r),
@@ -1518,30 +1563,241 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Widget _buildSearchNoResultsState(AppColorsExtension colors, String message) {
-    final minHeight = (MediaQuery.sizeOf(context).height * 0.58)
-        .clamp(300.0, 520.0)
-        .toDouble();
-    return Container(
-      constraints: BoxConstraints(minHeight: minHeight),
-      alignment: Alignment.center,
-      padding: EdgeInsets.symmetric(horizontal: 40.w, vertical: 12.h),
+  Widget _buildSearchNoResultsState(
+    AppColorsExtension colors, {
+    required String title,
+    required String message,
+    required ServiceProvider serviceProvider,
+    required List<CatalogSearchItemResult> suggestedItems,
+    required List<FoodCategoryModel> recoveryCategories,
+    required bool showRetry,
+  }) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 20.w),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SvgPicture.asset(
-            Assets.icons.emptySearchIcon,
-            package: 'grab_go_shared',
-            width: 180.w,
-            height: 180.h,
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 24.h),
+            decoration: BoxDecoration(
+              color: colors.backgroundPrimary,
+              borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+              border: Border.all(
+                color: colors.inputBorder.withValues(alpha: 0.25),
+              ),
+            ),
+            child: Column(
+              children: [
+                SvgPicture.asset(
+                  Assets.icons.emptySearchIcon,
+                  package: 'grab_go_shared',
+                  width: 160.w,
+                  height: 160.h,
+                ),
+                SizedBox(height: 12.h),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 18.sp,
+                    fontWeight: FontWeight.w700,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                SizedBox(height: 8.h),
+                Text(
+                  message,
+                  style: TextStyle(
+                    fontSize: 13.sp,
+                    color: colors.textSecondary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 16.h),
+                Wrap(
+                  spacing: 8.w,
+                  runSpacing: 8.h,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    if (showRetry)
+                      AppButton(
+                        onPressed: _performSearch,
+                        backgroundColor: colors.accentOrange,
+                        borderRadius: KBorderSize.borderRadius15,
+                        buttonText: 'Retry',
+                        width: 116.w,
+                        height: 42.h,
+                        textStyle: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13.sp,
+                        ),
+                      ),
+                    if (_activeFilter.isActive)
+                      AppButton(
+                        onPressed: _clearFilters,
+                        backgroundColor: colors.backgroundSecondary,
+                        borderRadius: KBorderSize.borderRadius15,
+                        buttonText: 'Clear filters',
+                        width: 124.w,
+                        height: 42.h,
+                        textStyle: TextStyle(
+                          color: colors.textPrimary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13.sp,
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          SizedBox(height: 16.h),
-          Text(
-            message,
-            style: TextStyle(fontSize: 14.sp, color: colors.textSecondary),
-            textAlign: TextAlign.center,
-          ),
+          if (recoveryCategories.isNotEmpty) ...[
+            SizedBox(height: 20.h),
+            Text(
+              'Try these categories',
+              style: TextStyle(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w700,
+                color: colors.textPrimary,
+              ),
+            ),
+            SizedBox(height: 10.h),
+            Wrap(
+              spacing: 8.w,
+              runSpacing: 8.h,
+              children: recoveryCategories
+                  .map((category) {
+                    return ActionChip(
+                      label: Text(
+                        category.emoji.isNotEmpty
+                            ? '${category.emoji} ${category.name}'
+                            : category.name,
+                      ),
+                      onPressed: () => _openCategory(category, serviceProvider),
+                      backgroundColor: colors.backgroundSecondary,
+                      labelStyle: TextStyle(
+                        fontSize: 12.sp,
+                        color: colors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        side: BorderSide(
+                          color: colors.inputBorder.withValues(alpha: 0.35),
+                        ),
+                        borderRadius: BorderRadius.circular(KBorderSize.border),
+                      ),
+                    );
+                  })
+                  .toList(growable: false),
+            ),
+          ],
+          if (suggestedItems.isNotEmpty) ...[
+            SizedBox(height: 20.h),
+            Text(
+              'Popular right now',
+              style: TextStyle(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w700,
+                color: colors.textPrimary,
+              ),
+            ),
+            SizedBox(height: 8.h),
+            ...suggestedItems
+                .take(4)
+                .map(
+                  (item) =>
+                      _buildItemSearchResult(colors, item, persistQuery: false),
+                ),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildSearchLoadingState(AppColorsExtension colors) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 20.w),
+      child: Column(
+        children: List.generate(4, (index) {
+          final showImage = index == 0;
+          return Container(
+            margin: EdgeInsets.only(bottom: 14.h),
+            padding: EdgeInsets.all(12.r),
+            decoration: BoxDecoration(
+              color: colors.backgroundPrimary,
+              borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+              border: Border.all(
+                color: colors.inputBorder.withValues(alpha: 0.18),
+              ),
+            ),
+            child: Shimmer.fromColors(
+              baseColor: isDark
+                  ? colors.backgroundSecondary.withValues(alpha: 0.8)
+                  : colors.inputBorder.withValues(alpha: 0.35),
+              highlightColor: isDark
+                  ? colors.backgroundSecondary.withValues(alpha: 0.45)
+                  : colors.backgroundPrimary,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (showImage) ...[
+                    Container(
+                      height: 118.h,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(
+                          KBorderSize.borderMedium,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 12.h),
+                  ],
+                  _buildShimmerBox(width: 180.w, height: 16.h, radius: 6.r),
+                  SizedBox(height: 10.h),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildShimmerBox(
+                          width: double.infinity,
+                          height: 12.h,
+                          radius: 6.r,
+                        ),
+                      ),
+                      SizedBox(width: 12.w),
+                      _buildShimmerBox(width: 64.w, height: 12.h, radius: 6.r),
+                    ],
+                  ),
+                  SizedBox(height: 12.h),
+                  Row(
+                    children: [
+                      _buildShimmerBox(width: 96.w, height: 12.h, radius: 6.r),
+                      SizedBox(width: 12.w),
+                      _buildShimmerBox(width: 88.w, height: 12.h, radius: 6.r),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildShimmerBox({
+    required double width,
+    required double height,
+    required double radius,
+  }) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(radius),
       ),
     );
   }

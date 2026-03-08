@@ -132,7 +132,7 @@ class _ItemRatingState extends State<ItemRating> {
       AppToastMessage.show(
         context: context,
         message: 'Thanks for rating ${widget.itemName}.',
-        backgroundColor: colors.accentGreen,
+        backgroundColor: colors.accentOrange,
       );
       await _finish(_itemRating);
     } catch (e) {
@@ -187,65 +187,71 @@ class _ItemRatingState extends State<ItemRating> {
                 ),
               ),
             Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(20.w, widget.embedded ? 12.h : 20.h, 20.w, 20.h),
-                child: Column(
-                  children: [
-                    _buildItemRatingSection(
-                      title: 'How was ${widget.itemName}?',
-                      starDescription: _getItemRatingDescription(_itemRating),
-                      image: widget.itemImage,
-                      size: size,
-                      rating: _itemRating,
-                      onRatingChanged: (rating) {
-                        setState(() {
-                          _itemRating = rating;
-                          _selectedComment.clear();
-                        });
-                      },
-                      colors: colors,
-                    ),
-                    SizedBox(height: KSpacing.lg25.h),
-                    if (_itemRating > 0)
-                      AnimatedSize(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeOut,
-                        child: Wrap(
-                          spacing: 8.w,
-                          runSpacing: 8.h,
-                          children: [
-                            ...feedbackChips.asMap().entries.map((entry) {
-                              final index = entry.key;
-                              final chip = entry.value;
-                              return TweenAnimationBuilder<double>(
-                                duration: Duration(milliseconds: 200 + (index * 50)),
-                                tween: Tween(begin: 0.0, end: 1.0),
-                                curve: Curves.easeOut,
-                                builder: (context, value, child) {
-                                  return Opacity(
-                                    opacity: value,
-                                    child: Transform.translate(offset: Offset(0, 10 * (1 - value)), child: child),
-                                  );
-                                },
-                                child: _buildCommentChip(chip, colors),
-                              );
-                            }),
-                            TweenAnimationBuilder<double>(
-                              duration: Duration(milliseconds: 200 + (feedbackChips.length * 50)),
-                              tween: Tween(begin: 0.0, end: 1.0),
-                              curve: Curves.easeOut,
-                              builder: (context, value, child) {
-                                return Opacity(
-                                  opacity: value,
-                                  child: Transform.translate(offset: Offset(0, 10 * (1 - value)), child: child),
-                                );
-                              },
-                              child: _buildCustomCommentChip(colors),
-                            ),
-                          ],
+              child: LayoutBuilder(
+                builder: (context, constraints) => SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(20.w, widget.embedded ? 12.h : 20.h, 20.w, 20.h),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildItemRatingSection(
+                          title: 'How was ${widget.itemName}?',
+                          starDescription: _getItemRatingDescription(_itemRating),
+                          image: widget.itemImage,
+                          size: size,
+                          rating: _itemRating,
+                          onRatingChanged: (rating) {
+                            setState(() {
+                              _itemRating = rating;
+                              _selectedComment.clear();
+                            });
+                          },
+                          colors: colors,
                         ),
-                      ),
-                  ],
+                        SizedBox(height: KSpacing.lg25.h),
+                        if (_itemRating > 0)
+                          AnimatedSize(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeOut,
+                            child: Wrap(
+                              spacing: 8.w,
+                              runSpacing: 8.h,
+                              children: [
+                                ...feedbackChips.asMap().entries.map((entry) {
+                                  final index = entry.key;
+                                  final chip = entry.value;
+                                  return TweenAnimationBuilder<double>(
+                                    duration: Duration(milliseconds: 200 + (index * 50)),
+                                    tween: Tween(begin: 0.0, end: 1.0),
+                                    curve: Curves.easeOut,
+                                    builder: (context, value, child) {
+                                      return Opacity(
+                                        opacity: value,
+                                        child: Transform.translate(offset: Offset(0, 10 * (1 - value)), child: child),
+                                      );
+                                    },
+                                    child: _buildCommentChip(chip, colors),
+                                  );
+                                }),
+                                TweenAnimationBuilder<double>(
+                                  duration: Duration(milliseconds: 200 + (feedbackChips.length * 50)),
+                                  tween: Tween(begin: 0.0, end: 1.0),
+                                  curve: Curves.easeOut,
+                                  builder: (context, value, child) {
+                                    return Opacity(
+                                      opacity: value,
+                                      child: Transform.translate(offset: Offset(0, 10 * (1 - value)), child: child),
+                                    );
+                                  },
+                                  child: _buildCustomCommentChip(colors),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),

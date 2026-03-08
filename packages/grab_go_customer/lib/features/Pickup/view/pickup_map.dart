@@ -13,12 +13,16 @@ import 'package:grab_go_customer/features/Pickup/widgets/vendor_details_bottom_s
 import 'package:grab_go_customer/features/vendors/model/vendor_model.dart';
 import 'package:grab_go_customer/features/vendors/model/vendor_type.dart';
 import 'package:grab_go_customer/features/vendors/viewmodel/vendor_provider.dart';
+import 'package:grab_go_customer/shared/services/connectivity_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_shared/shared/widgets/custom_map_markers.dart';
 import 'package:grab_go_customer/shared/viewmodels/native_location_provider.dart';
+import 'package:grab_go_customer/shared/widgets/no_internet_screen.dart';
 import 'package:grab_go_customer/shared/widgets/pickup_map_skeleton.dart';
 import 'package:provider/provider.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PickupMap extends StatefulWidget {
   const PickupMap({super.key});
@@ -30,7 +34,9 @@ class PickupMap extends StatefulWidget {
 class _PickupMapState extends State<PickupMap> {
   static const String _markerStyleVersion = 'v3';
   static const double _routeRefreshDistanceMeters = 30;
+  static const int _nearbyRouteDistanceThresholdMeters = 120;
   static const Duration _routeRefreshMinInterval = Duration(seconds: 8);
+  static const int _maxMarkerCacheEntries = 96;
   GoogleMapController? _mapController;
   List<VendorModel> _vendors = [];
   List<VendorCluster> _clusters = [];
@@ -39,6 +45,7 @@ class _PickupMapState extends State<PickupMap> {
   String? _selectedVendorId;
   String? _errorMessage;
   bool _hasAttemptedVendorFetch = false;
+  bool _hasNoInternet = false;
   Position? _currentPosition;
   StreamSubscription<Position>? _positionSubscription;
   Set<Marker> _vendorMarkers = {};
@@ -58,9 +65,18 @@ class _PickupMapState extends State<PickupMap> {
   PickupRouteData? _activeRouteData;
   List<LatLng> _activeRoutePoints = const [];
   bool _isRouteLoading = false;
+  String? _routeStatusMessage;
   DateTime? _lastRouteRequestStartedAt;
   LatLng? _lastRouteOrigin;
   int _routeRequestSerial = 0;
+
+  void _putMarkerInCache(String key, BitmapDescriptor icon) {
+    if (_markerCache.length >= _maxMarkerCacheEntries &&
+        !_markerCache.containsKey(key)) {
+      _markerCache.remove(_markerCache.keys.first);
+    }
+    _markerCache[key] = icon;
+  }
 
   Color _colorForVendorType(VendorType type, AppColorsExtension colors) {
     switch (type) {
@@ -115,6 +131,35 @@ class _PickupMapState extends State<PickupMap> {
     if (lat.isNaN || lng.isNaN) return false;
     if (lat.abs() > 90 || lng.abs() > 180) return false;
     return true;
+  }
+
+  bool _looksLikeConnectivityFailure(String? message) {
+    final value = (message ?? '').toLowerCase();
+    return value.contains('socketexception') ||
+        value.contains('failed host lookup') ||
+        value.contains('connection refused') ||
+        value.contains('network is unreachable') ||
+        value.contains('timed out') ||
+        value.contains('connection reset');
+  }
+
+  Future<void> _handleVendorLoadFailure(Object error) async {
+    final message = error.toString();
+    final looksOffline = _looksLikeConnectivityFailure(message);
+    final hasInternet = looksOffline
+        ? false
+        : await ConnectivityService.hasInternetConnection();
+
+    if (!mounted) return;
+
+    setState(() {
+      _hasNoInternet = !hasInternet;
+      _errorMessage = hasInternet
+          ? 'Unable to load pickup vendors right now.'
+          : null;
+      _isLoading = false;
+      _hasAttemptedVendorFetch = true;
+    });
   }
 
   @override
@@ -257,6 +302,7 @@ class _PickupMapState extends State<PickupMap> {
     final vendorProvider = Provider.of<VendorProvider>(context, listen: false);
     setState(() {
       _isLoading = true;
+      _hasNoInternet = false;
       _errorMessage = null;
       _hasAttemptedVendorFetch = true;
     });
@@ -274,10 +320,7 @@ class _PickupMapState extends State<PickupMap> {
       if (!mounted) return;
 
       if (vendorProvider.error != null) {
-        setState(() {
-          _errorMessage = vendorProvider.error;
-          _isLoading = false;
-        });
+        await _handleVendorLoadFailure(vendorProvider.error!);
         return;
       }
 
@@ -292,11 +335,7 @@ class _PickupMapState extends State<PickupMap> {
       await _updateMarkers();
       _fitCameraToMarkers();
     } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = 'Failed to load vendors: $e';
-        _isLoading = false;
-      });
+      await _handleVendorLoadFailure(e);
     }
   }
 
@@ -424,7 +463,7 @@ class _PickupMapState extends State<PickupMap> {
           final clusterIconAsset = _iconAssetForVendorType(dominantType);
           final clusterFallbackIcon = _fallbackIconForVendorType(dominantType);
           final cacheKey =
-              'cluster_tap_pin_${_markerStyleVersion}_${cluster.vendors.length}_${dominantType.name}_${cluster.center.latitude}_${cluster.center.longitude}';
+              'cluster_tap_pin_${_markerStyleVersion}_${dominantType.name}';
 
           BitmapDescriptor markerIcon;
           if (_markerCache.containsKey(cacheKey)) {
@@ -435,7 +474,7 @@ class _PickupMapState extends State<PickupMap> {
               iconAsset: clusterIconAsset,
               fallbackIcon: clusterFallbackIcon,
             );
-            _markerCache[cacheKey] = markerIcon;
+            _putMarkerInCache(cacheKey, markerIcon);
           }
           vendorMarkers.add(
             Marker(
@@ -517,7 +556,7 @@ class _PickupMapState extends State<PickupMap> {
         size: 120,
         primaryColor: colors.accentOrange,
       );
-      _markerCache[userCacheKey] = userIcon;
+      _putMarkerInCache(userCacheKey, userIcon);
     }
 
     if (!mounted) return;
@@ -557,7 +596,7 @@ class _PickupMapState extends State<PickupMap> {
           iconAsset: iconAsset,
           fallbackIcon: fallbackIcon,
         );
-        _markerCache[cacheKey] = markerIcon;
+        _putMarkerInCache(cacheKey, markerIcon);
       } catch (e) {
         // Error creating marker for vendor
         markerIcon = BitmapDescriptor.defaultMarker;
@@ -851,6 +890,7 @@ class _PickupMapState extends State<PickupMap> {
           _activeRouteData = null;
           _activeRoutePoints = const [];
         }
+        _routeStatusMessage = null;
         _isRouteLoading = showLoading;
       });
     }
@@ -880,6 +920,7 @@ class _PickupMapState extends State<PickupMap> {
       setState(() {
         _activeRouteData = route;
         _activeRoutePoints = routePoints;
+        _routeStatusMessage = null;
         _isRouteLoading = false;
       });
       await _updateMarkers();
@@ -894,16 +935,18 @@ class _PickupMapState extends State<PickupMap> {
         return;
       }
 
+      final message = _normalizeRouteError(error);
       setState(() {
         _activeRouteData = null;
         _activeRoutePoints = const [];
+        _routeStatusMessage = message;
         _isRouteLoading = false;
       });
       await _updateMarkers();
 
       AppToastMessage.show(
         context: context,
-        message: error.toString().replaceFirst('Exception: ', ''),
+        message: message,
         backgroundColor: context.appColors.error,
       );
     }
@@ -1000,6 +1043,7 @@ class _PickupMapState extends State<PickupMap> {
       _selectedVendorId = null;
       _activeRouteData = null;
       _activeRoutePoints = const [];
+      _routeStatusMessage = null;
       _isRouteLoading = false;
       _lastRouteOrigin = null;
       _lastRouteRequestStartedAt = null;
@@ -1044,18 +1088,97 @@ class _PickupMapState extends State<PickupMap> {
     return '$hours hr $minutes min';
   }
 
+  String _normalizeRouteError(Object error) {
+    var message = error.toString().trim();
+    const exceptionPrefix = 'Exception: ';
+    const routePrefix = 'Failed to load walking route: ';
+
+    if (message.startsWith(exceptionPrefix)) {
+      message = message.substring(exceptionPrefix.length).trim();
+    }
+    if (message.startsWith(routePrefix)) {
+      message = message.substring(routePrefix.length).trim();
+    }
+    if (message.isEmpty) {
+      return 'Unable to load walking route right now.';
+    }
+    return message;
+  }
+
+  bool get _hasNearbyRoute =>
+      _activeRouteData != null &&
+      _activeRouteData!.distanceMeters <= _nearbyRouteDistanceThresholdMeters;
+
+  bool get _shouldShowRouteChip =>
+      _isRouteLoading ||
+      _activeRouteData != null ||
+      (_routeStatusMessage != null && _routeStatusMessage!.trim().isNotEmpty);
+
+  Future<void> _openExternalMaps() async {
+    final selectedVendor = _findVendorById(_selectedVendorId);
+    if (selectedVendor?.location == null) return;
+
+    final origin = _resolveCurrentLatLng();
+    final query = <String, String>{
+      'api': '1',
+      'destination':
+          '${selectedVendor!.location!.lat},${selectedVendor.location!.lng}',
+      'travelmode': 'walking',
+    };
+    if (origin != null) {
+      query['origin'] = '${origin.latitude},${origin.longitude}';
+    }
+
+    final url = Uri.https('www.google.com', '/maps/dir/', query);
+
+    try {
+      final launched = await launchUrl(
+        url,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched && mounted) {
+        AppToastMessage.show(
+          context: context,
+          message: 'Unable to open maps right now. Please try again.',
+          backgroundColor: context.appColors.error,
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      AppToastMessage.show(
+        context: context,
+        message: 'Unable to open maps right now. Please try again.',
+        backgroundColor: context.appColors.error,
+      );
+    }
+  }
+
   Widget _buildRouteChip(AppColorsExtension colors, bool isDark) {
     final hasRoute = _activeRouteData != null;
-    final label = hasRoute
-        ? '${_formatRouteDuration(_activeRouteData!.durationSeconds)} • ${_formatRouteDistance(_activeRouteData!.distanceMeters)}'
-        : 'Finding walking route...';
+    final hasIssue =
+        !hasRoute &&
+        !_isRouteLoading &&
+        _routeStatusMessage != null &&
+        _routeStatusMessage!.trim().isNotEmpty;
+    final title = _isRouteLoading
+        ? 'Finding walking route'
+        : hasRoute
+        ? (_hasNearbyRoute ? 'Vendor nearby' : 'Walking route')
+        : 'Walking route unavailable';
+    final label = _isRouteLoading
+        ? null
+        : hasRoute
+        ? (_hasNearbyRoute
+              ? 'About ${_formatRouteDistance(_activeRouteData!.distanceMeters)} away'
+              : '${_formatRouteDuration(_activeRouteData!.durationSeconds)} • ${_formatRouteDistance(_activeRouteData!.distanceMeters)}')
+        : _routeStatusMessage!;
 
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 11.h),
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
-        borderRadius: BorderRadius.circular(18.r),
+        borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
         boxShadow: [
           BoxShadow(
             color: isDark
@@ -1071,62 +1194,103 @@ class _PickupMapState extends State<PickupMap> {
           Container(
             width: 30.w,
             height: 30.w,
+            padding: EdgeInsets.all(6.w),
             decoration: BoxDecoration(
-              color: colors.accentOrange.withValues(alpha: 0.14),
+              color: hasIssue
+                  ? colors.error.withValues(alpha: 0.12)
+                  : colors.accentOrange.withValues(alpha: 0.14),
               shape: BoxShape.circle,
             ),
-            child: _isRouteLoading && !hasRoute
-                ? Padding(
-                    padding: EdgeInsets.all(7.r),
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        colors.accentOrange,
-                      ),
-                    ),
-                  )
-                : Icon(
-                    Icons.directions_walk_rounded,
-                    size: 18.sp,
-                    color: colors.accentOrange,
-                  ),
+            child: SvgPicture.asset(
+              Assets.icons.running,
+              package: 'grab_go_shared',
+              height: 18.h,
+              width: 18.h,
+              colorFilter: ColorFilter.mode(
+                hasIssue ? colors.error : colors.accentOrange,
+                BlendMode.srcIn,
+              ),
+            ),
           ),
           SizedBox(width: 10.w),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Walking route',
-                  style: TextStyle(
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w700,
-                    color: colors.textPrimary,
+            child: _isRouteLoading
+                ? Shimmer.fromColors(
+                    baseColor: colors.border.withValues(alpha: 0.6),
+                    highlightColor: colors.backgroundSecondary,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 118.w,
+                          height: 11.h,
+                          decoration: BoxDecoration(
+                            color: colors.backgroundSecondary,
+                            borderRadius: BorderRadius.circular(999.r),
+                          ),
+                        ),
+                        SizedBox(height: 6.h),
+                        Container(
+                          width: 172.w,
+                          height: 10.h,
+                          decoration: BoxDecoration(
+                            color: colors.backgroundSecondary,
+                            borderRadius: BorderRadius.circular(999.r),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w700,
+                          color: colors.textPrimary,
+                        ),
+                      ),
+                      SizedBox(height: 2.h),
+                      Text(
+                        label!,
+                        style: TextStyle(
+                          fontSize: 11.5.sp,
+                          fontWeight: FontWeight.w500,
+                          color: hasIssue ? colors.error : colors.textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                SizedBox(height: 2.h),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 11.5.sp,
-                    fontWeight: FontWeight.w500,
-                    color: colors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
           ),
-          if (hasRoute)
-            InkWell(
-              onTap: () => _clearActiveRoute(),
-              borderRadius: BorderRadius.circular(20.r),
-              child: Padding(
-                padding: EdgeInsets.all(4.r),
-                child: Icon(
-                  Icons.close_rounded,
-                  size: 18.sp,
-                  color: colors.textSecondary,
+          if (!_isRouteLoading)
+            IconButton(
+              onPressed: _openExternalMaps,
+              icon: SvgPicture.asset(
+                Assets.icons.map,
+                package: 'grab_go_shared',
+                height: 18.h,
+                width: 18.h,
+                colorFilter: ColorFilter.mode(
+                  colors.textSecondary,
+                  BlendMode.srcIn,
+                ),
+              ),
+            ),
+          if (!_isRouteLoading)
+            IconButton(
+              onPressed: _clearActiveRoute,
+              icon: SvgPicture.asset(
+                Assets.icons.xmark,
+                package: 'grab_go_shared',
+                height: 18.h,
+                width: 18.h,
+                colorFilter: ColorFilter.mode(
+                  colors.textSecondary,
+                  BlendMode.srcIn,
                 ),
               ),
             ),
@@ -1275,6 +1439,13 @@ class _PickupMapState extends State<PickupMap> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final colors = context.appColors;
 
+    if (_hasNoInternet && !_isLoading) {
+      return Scaffold(
+        backgroundColor: colors.backgroundPrimary,
+        body: NoInternetScreen(onRetry: _loadVendors),
+      );
+    }
+
     if (vendorProvider.filteredVendors != _vendors) {
       _vendors = vendorProvider.filteredVendors;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1388,19 +1559,18 @@ class _PickupMapState extends State<PickupMap> {
 
                 SizedBox(height: 12.h),
 
-                if (_isRouteLoading || _activeRouteData != null)
+                if (_shouldShowRouteChip)
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16.w),
                     child: _buildRouteChip(colors, isDark),
                   ),
 
-                if (_isRouteLoading || _activeRouteData != null)
-                  SizedBox(height: 12.h),
+                if (_shouldShowRouteChip) SizedBox(height: 12.h),
 
                 Padding(
                   padding: EdgeInsets.only(right: 16.w),
                   child: _buildMapControlButton(
-                    icon: Assets.icons.sendDiagonal,
+                    icon: Assets.icons.crosshair,
                     onTap: _centerOnUser,
                     colors: colors,
                     isDark: isDark,

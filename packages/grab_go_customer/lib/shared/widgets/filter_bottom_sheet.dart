@@ -12,6 +12,7 @@ class FilterBottomSheet extends StatefulWidget {
   final List<String> restaurants;
   final Function(FilterModel) onApply;
   final bool isFood;
+  final String? vendorLabel;
 
   const FilterBottomSheet({
     super.key,
@@ -20,13 +21,15 @@ class FilterBottomSheet extends StatefulWidget {
     required this.restaurants,
     required this.onApply,
     this.isFood = true,
+    this.vendorLabel,
   });
 
   @override
   State<FilterBottomSheet> createState() => _FilterBottomSheetState();
 }
 
-class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTickerProviderStateMixin {
+class _FilterBottomSheetState extends State<FilterBottomSheet>
+    with SingleTickerProviderStateMixin {
   late FilterModel _filter;
   late AnimationController _animationController;
   late Animation<Offset> _slideAnimation;
@@ -44,10 +47,13 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
       reverseDuration: const Duration(milliseconds: 250),
     );
 
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 1),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic));
+    _slideAnimation = Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
@@ -70,11 +76,20 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
   }
 
   void _cleanupStaleFilterData() {
-    final validCategoryIds = widget.categories.map((cat) => cat.id).where((id) => id.isNotEmpty).toSet();
-    _filter.selectedCategories.removeWhere((id) => !validCategoryIds.contains(id));
+    final validCategoryIds = widget.categories
+        .map((cat) => cat.id)
+        .where((id) => id.isNotEmpty)
+        .toSet();
+    _filter.selectedCategories.removeWhere(
+      (id) => !validCategoryIds.contains(id),
+    );
 
-    final validRestaurants = widget.restaurants.where((r) => r.isNotEmpty).toSet();
-    _filter.selectedRestaurants.removeWhere((restaurant) => !validRestaurants.contains(restaurant));
+    final validRestaurants = widget.restaurants
+        .where((r) => r.isNotEmpty)
+        .toSet();
+    _filter.selectedRestaurants.removeWhere(
+      (restaurant) => !validRestaurants.contains(restaurant),
+    );
   }
 
   void _handleDismiss() {
@@ -94,7 +109,10 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
       constraints: BoxConstraints(maxHeight: size.height * 0.9),
       decoration: BoxDecoration(
         color: colors.backgroundPrimary,
-        borderRadius: BorderRadius.only(topLeft: Radius.circular(20.r), topRight: Radius.circular(20.r)),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(20.r),
+          topRight: Radius.circular(20.r),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.2),
@@ -114,13 +132,20 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
               mainAxisSize: MainAxisSize.min,
               children: [
                 Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 20.w,
+                    vertical: 16.h,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         'Filter Your Search',
-                        style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                        style: TextStyle(
+                          fontSize: 18.sp,
+                          fontWeight: FontWeight.w700,
+                          color: colors.textPrimary,
+                        ),
                       ),
                       GestureDetector(
                         onTap: _handleDismiss,
@@ -135,7 +160,10 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                             package: 'grab_go_shared',
                             height: 16.h,
                             width: 16.w,
-                            colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
+                            colorFilter: ColorFilter.mode(
+                              colors.textPrimary,
+                              BlendMode.srcIn,
+                            ),
                           ),
                         ),
                       ),
@@ -184,7 +212,11 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
 
                         SizedBox(height: 20.h),
 
-                        _buildSectionHeader(widget.isFood ? 'Restaurants' : "Grocery Stores", colors),
+                        _buildSectionHeader(
+                          widget.vendorLabel ??
+                              (widget.isFood ? 'Restaurants' : 'Stores'),
+                          colors,
+                        ),
                         _buildRestaurantsFilter(colors, size),
 
                         SizedBox(height: 20.h),
@@ -214,7 +246,11 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                           backgroundColor: colors.backgroundSecondary,
                           borderRadius: KBorderSize.borderRadius15,
                           buttonText: "Clear All",
-                          textStyle: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w700, fontSize: 15.sp),
+                          textStyle: TextStyle(
+                            color: colors.textPrimary,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15.sp,
+                          ),
                         ),
                       ),
                       SizedBox(width: 12.w),
@@ -232,7 +268,11 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                           backgroundColor: colors.accentOrange,
                           borderRadius: KBorderSize.borderRadius15,
                           buttonText: "Apply Filter",
-                          textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15.sp),
+                          textStyle: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15.sp,
+                          ),
                         ),
                       ),
                     ],
@@ -262,7 +302,9 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
         children: quickFilters.map((filter) {
           final isSelected = filter['value'] as bool;
           return SizedBox(
-            width: (MediaQuery.of(context).size.width - 56.w) / 2, // 2 columns with spacing
+            width:
+                (MediaQuery.of(context).size.width - 56.w) /
+                2, // 2 columns with spacing
             child: GestureDetector(
               onTap: () {
                 setState(() {
@@ -286,7 +328,12 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                 decoration: BoxDecoration(
                   color: isSelected ? colors.accentOrange : Colors.transparent,
-                  border: Border.all(color: isSelected ? colors.accentOrange : colors.inputBorder, width: 1.5),
+                  border: Border.all(
+                    color: isSelected
+                        ? colors.accentOrange
+                        : colors.inputBorder,
+                    width: 1.5,
+                  ),
                   borderRadius: BorderRadius.circular(8.r),
                 ),
                 child: Row(
@@ -297,15 +344,25 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                       height: 16.h,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: isSelected ? colors.backgroundPrimary : colors.inputBorder, width: 2),
-                        color: isSelected ? colors.backgroundPrimary : Colors.transparent,
+                        border: Border.all(
+                          color: isSelected
+                              ? colors.backgroundPrimary
+                              : colors.inputBorder,
+                          width: 2,
+                        ),
+                        color: isSelected
+                            ? colors.backgroundPrimary
+                            : Colors.transparent,
                       ),
                       child: isSelected
                           ? Center(
                               child: Container(
                                 width: 8.w,
                                 height: 8.h,
-                                decoration: BoxDecoration(shape: BoxShape.circle, color: colors.accentOrange),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: colors.accentOrange,
+                                ),
                               ),
                             )
                           : null,
@@ -316,7 +373,9 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                       style: TextStyle(
                         fontSize: 12.sp,
                         fontWeight: FontWeight.w600,
-                        color: isSelected ? colors.backgroundPrimary : colors.textPrimary,
+                        color: isSelected
+                            ? colors.backgroundPrimary
+                            : colors.textPrimary,
                       ),
                     ),
                   ],
@@ -330,7 +389,12 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
   }
 
   Widget _buildDeliveryTimeFilter(AppColorsExtension colors) {
-    final deliveryTimes = ['Under 20 min', '20-30 min', '30-45 min', 'Any Time'];
+    final deliveryTimes = [
+      'Under 20 min',
+      '20-30 min',
+      '30-45 min',
+      'Any Time',
+    ];
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 20.w),
@@ -351,7 +415,12 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                 decoration: BoxDecoration(
                   color: isSelected ? colors.accentOrange : Colors.transparent,
-                  border: Border.all(color: isSelected ? colors.accentOrange : colors.inputBorder, width: 1.5),
+                  border: Border.all(
+                    color: isSelected
+                        ? colors.accentOrange
+                        : colors.inputBorder,
+                    width: 1.5,
+                  ),
                   borderRadius: BorderRadius.circular(8.r),
                 ),
                 child: Row(
@@ -362,15 +431,25 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                       height: 16.h,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: isSelected ? colors.backgroundPrimary : colors.inputBorder, width: 2),
-                        color: isSelected ? colors.backgroundPrimary : Colors.transparent,
+                        border: Border.all(
+                          color: isSelected
+                              ? colors.backgroundPrimary
+                              : colors.inputBorder,
+                          width: 2,
+                        ),
+                        color: isSelected
+                            ? colors.backgroundPrimary
+                            : Colors.transparent,
                       ),
                       child: isSelected
                           ? Center(
                               child: Container(
                                 width: 8.w,
                                 height: 8.h,
-                                decoration: BoxDecoration(shape: BoxShape.circle, color: colors.accentOrange),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: colors.accentOrange,
+                                ),
                               ),
                             )
                           : null,
@@ -381,7 +460,9 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                       style: TextStyle(
                         fontSize: 12.sp,
                         fontWeight: FontWeight.w600,
-                        color: isSelected ? colors.backgroundPrimary : colors.textPrimary,
+                        color: isSelected
+                            ? colors.backgroundPrimary
+                            : colors.textPrimary,
                       ),
                     ),
                   ],
@@ -416,7 +497,12 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                 decoration: BoxDecoration(
                   color: isSelected ? colors.accentOrange : Colors.transparent,
-                  border: Border.all(color: isSelected ? colors.accentOrange : colors.inputBorder, width: 1.5),
+                  border: Border.all(
+                    color: isSelected
+                        ? colors.accentOrange
+                        : colors.inputBorder,
+                    width: 1.5,
+                  ),
                   borderRadius: BorderRadius.circular(8.r),
                 ),
                 child: Row(
@@ -427,15 +513,25 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                       height: 16.h,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: isSelected ? colors.backgroundPrimary : colors.inputBorder, width: 2),
-                        color: isSelected ? colors.backgroundPrimary : Colors.transparent,
+                        border: Border.all(
+                          color: isSelected
+                              ? colors.backgroundPrimary
+                              : colors.inputBorder,
+                          width: 2,
+                        ),
+                        color: isSelected
+                            ? colors.backgroundPrimary
+                            : Colors.transparent,
                       ),
                       child: isSelected
                           ? Center(
                               child: Container(
                                 width: 8.w,
                                 height: 8.h,
-                                decoration: BoxDecoration(shape: BoxShape.circle, color: colors.accentOrange),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: colors.accentOrange,
+                                ),
                               ),
                             )
                           : null,
@@ -446,7 +542,9 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                       style: TextStyle(
                         fontSize: 12.sp,
                         fontWeight: FontWeight.w600,
-                        color: isSelected ? colors.backgroundPrimary : colors.textPrimary,
+                        color: isSelected
+                            ? colors.backgroundPrimary
+                            : colors.textPrimary,
                       ),
                     ),
                   ],
@@ -481,7 +579,12 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                 decoration: BoxDecoration(
                   color: isSelected ? colors.accentOrange : Colors.transparent,
-                  border: Border.all(color: isSelected ? colors.accentOrange : colors.inputBorder, width: 1.5),
+                  border: Border.all(
+                    color: isSelected
+                        ? colors.accentOrange
+                        : colors.inputBorder,
+                    width: 1.5,
+                  ),
                   borderRadius: BorderRadius.circular(8.r),
                 ),
                 child: Row(
@@ -492,15 +595,25 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                       height: 16.h,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: isSelected ? colors.backgroundPrimary : colors.inputBorder, width: 2),
-                        color: isSelected ? colors.backgroundPrimary : Colors.transparent,
+                        border: Border.all(
+                          color: isSelected
+                              ? colors.backgroundPrimary
+                              : colors.inputBorder,
+                          width: 2,
+                        ),
+                        color: isSelected
+                            ? colors.backgroundPrimary
+                            : Colors.transparent,
                       ),
                       child: isSelected
                           ? Center(
                               child: Container(
                                 width: 8.w,
                                 height: 8.h,
-                                decoration: BoxDecoration(shape: BoxShape.circle, color: colors.accentOrange),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: colors.accentOrange,
+                                ),
                               ),
                             )
                           : null,
@@ -511,7 +624,9 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                       style: TextStyle(
                         fontSize: 12.sp,
                         fontWeight: FontWeight.w600,
-                        color: isSelected ? colors.backgroundPrimary : colors.textPrimary,
+                        color: isSelected
+                            ? colors.backgroundPrimary
+                            : colors.textPrimary,
                       ),
                     ),
                   ],
@@ -531,7 +646,11 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
         alignment: Alignment.centerLeft,
         child: Text(
           title,
-          style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+          style: TextStyle(
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w600,
+            color: colors.textPrimary,
+          ),
         ),
       ),
     );
@@ -550,7 +669,8 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
     for (var filter in priceFilters) {
       final filterMin = (filter['min'] as num).toDouble();
       final filterMax = (filter['max'] as num).toDouble();
-      if ((_filter.minPrice - filterMin).abs() < 0.01 && (_filter.maxPrice - filterMax).abs() < 0.01) {
+      if ((_filter.minPrice - filterMin).abs() < 0.01 &&
+          (_filter.maxPrice - filterMax).abs() < 0.01) {
         currentPriceFilter = filter['key'];
         break;
       }
@@ -573,9 +693,13 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                 decoration: BoxDecoration(
-                  color: currentPriceFilter == filter['key'] ? colors.accentOrange : Colors.transparent,
+                  color: currentPriceFilter == filter['key']
+                      ? colors.accentOrange
+                      : Colors.transparent,
                   border: Border.all(
-                    color: currentPriceFilter == filter['key'] ? colors.accentOrange : colors.inputBorder,
+                    color: currentPriceFilter == filter['key']
+                        ? colors.accentOrange
+                        : colors.inputBorder,
                     width: 1.5,
                   ),
                   borderRadius: BorderRadius.circular(8.r),
@@ -587,9 +711,13 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                       height: 16.h,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: currentPriceFilter == filter['key'] ? colors.backgroundPrimary : Colors.transparent,
+                        color: currentPriceFilter == filter['key']
+                            ? colors.backgroundPrimary
+                            : Colors.transparent,
                         border: Border.all(
-                          color: currentPriceFilter == filter['key'] ? colors.backgroundPrimary : colors.inputBorder,
+                          color: currentPriceFilter == filter['key']
+                              ? colors.backgroundPrimary
+                              : colors.inputBorder,
                           width: 2,
                         ),
                       ),
@@ -598,7 +726,10 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                               child: Container(
                                 width: 8.w,
                                 height: 8.h,
-                                decoration: BoxDecoration(shape: BoxShape.circle, color: colors.accentOrange),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: colors.accentOrange,
+                                ),
                               ),
                             )
                           : null,
@@ -609,7 +740,9 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                       style: TextStyle(
                         fontSize: 12.sp,
                         fontWeight: FontWeight.w600,
-                        color: currentPriceFilter == filter['key'] ? colors.backgroundPrimary : colors.textPrimary,
+                        color: currentPriceFilter == filter['key']
+                            ? colors.backgroundPrimary
+                            : colors.textPrimary,
                       ),
                     ),
                   ],
@@ -632,15 +765,21 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
             GestureDetector(
               onTap: () {
                 setState(() {
-                  _filter.minRating = (_filter.minRating == rating) ? null : rating;
+                  _filter.minRating = (_filter.minRating == rating)
+                      ? null
+                      : rating;
                 });
               },
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                 decoration: BoxDecoration(
-                  color: _filter.minRating == rating ? colors.accentOrange : Colors.transparent,
+                  color: _filter.minRating == rating
+                      ? colors.accentOrange
+                      : Colors.transparent,
                   border: Border.all(
-                    color: _filter.minRating == rating ? colors.accentOrange : colors.inputBorder,
+                    color: _filter.minRating == rating
+                        ? colors.accentOrange
+                        : colors.inputBorder,
                     width: 1.5,
                   ),
                   borderRadius: BorderRadius.circular(8.r),
@@ -652,9 +791,13 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                       height: 16.h,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: _filter.minRating == rating ? colors.backgroundPrimary : Colors.transparent,
+                        color: _filter.minRating == rating
+                            ? colors.backgroundPrimary
+                            : Colors.transparent,
                         border: Border.all(
-                          color: _filter.minRating == rating ? colors.backgroundPrimary : colors.inputBorder,
+                          color: _filter.minRating == rating
+                              ? colors.backgroundPrimary
+                              : colors.inputBorder,
                           width: 2,
                         ),
                       ),
@@ -663,7 +806,10 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                               child: Container(
                                 width: 8.w,
                                 height: 8.h,
-                                decoration: BoxDecoration(shape: BoxShape.circle, color: colors.accentOrange),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: colors.accentOrange,
+                                ),
                               ),
                             )
                           : null,
@@ -674,7 +820,9 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                       style: TextStyle(
                         fontSize: 12.sp,
                         fontWeight: FontWeight.w600,
-                        color: _filter.minRating == rating ? colors.backgroundPrimary : colors.textPrimary,
+                        color: _filter.minRating == rating
+                            ? colors.backgroundPrimary
+                            : colors.textPrimary,
                       ),
                     ),
                     SizedBox(width: 4.w),
@@ -684,7 +832,9 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                       height: 14.h,
                       width: 14.w,
                       colorFilter: ColorFilter.mode(
-                        _filter.minRating == rating ? colors.backgroundPrimary : colors.textPrimary,
+                        _filter.minRating == rating
+                            ? colors.backgroundPrimary
+                            : colors.textPrimary,
                         BlendMode.srcIn,
                       ),
                     ),
@@ -729,9 +879,13 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
                 decoration: BoxDecoration(
-                  color: _filter.selectedCategories.contains(category.id) ? colors.accentOrange : Colors.transparent,
+                  color: _filter.selectedCategories.contains(category.id)
+                      ? colors.accentOrange
+                      : Colors.transparent,
                   border: Border.all(
-                    color: _filter.selectedCategories.contains(category.id) ? colors.accentOrange : colors.inputBorder,
+                    color: _filter.selectedCategories.contains(category.id)
+                        ? colors.accentOrange
+                        : colors.inputBorder,
                     width: 1.5,
                   ),
                   borderRadius: BorderRadius.circular(8.r),
@@ -747,7 +901,8 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                             ? colors.backgroundPrimary
                             : Colors.transparent,
                         border: Border.all(
-                          color: _filter.selectedCategories.contains(category.id)
+                          color:
+                              _filter.selectedCategories.contains(category.id)
                               ? colors.backgroundPrimary
                               : colors.inputBorder,
                           width: 2,
@@ -758,7 +913,10 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                               child: Container(
                                 width: 8.w,
                                 height: 8.h,
-                                decoration: BoxDecoration(shape: BoxShape.circle, color: colors.accentOrange),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: colors.accentOrange,
+                                ),
                               ),
                             )
                           : null,
@@ -814,12 +972,18 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                   });
                 },
                 child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 12.w,
+                    vertical: 8.h,
+                  ),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: _filter.selectedRestaurants.contains(restaurant)
                           ? [colors.accentOrange, colors.accentOrange]
-                          : [colors.backgroundPrimary, colors.backgroundPrimary],
+                          : [
+                              colors.backgroundPrimary,
+                              colors.backgroundPrimary,
+                            ],
                     ),
                     border: Border.all(
                       color: _filter.selectedRestaurants.contains(restaurant)
@@ -837,12 +1001,14 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: _filter.selectedRestaurants.contains(restaurant)
+                            color:
+                                _filter.selectedRestaurants.contains(restaurant)
                                 ? colors.backgroundPrimary
                                 : colors.inputBorder,
                             width: 2,
                           ),
-                          color: _filter.selectedRestaurants.contains(restaurant)
+                          color:
+                              _filter.selectedRestaurants.contains(restaurant)
                               ? colors.backgroundPrimary
                               : Colors.transparent,
                         ),
@@ -851,7 +1017,10 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                                 child: Container(
                                   width: 8.w,
                                   height: 8.h,
-                                  decoration: BoxDecoration(shape: BoxShape.circle, color: colors.accentOrange),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: colors.accentOrange,
+                                  ),
                                 ),
                               )
                             : null,
@@ -862,7 +1031,8 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> with SingleTicker
                         style: TextStyle(
                           fontSize: 13.sp,
                           fontWeight: FontWeight.w500,
-                          color: _filter.selectedRestaurants.contains(restaurant)
+                          color:
+                              _filter.selectedRestaurants.contains(restaurant)
                               ? colors.backgroundPrimary
                               : colors.textPrimary,
                         ),

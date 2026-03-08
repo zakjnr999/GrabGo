@@ -1151,7 +1151,7 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (context, state) {
         return CustomTransitionPage(
           key: state.pageKey,
-          child: const SearchPage(),
+          child: SearchPage(initialQuery: state.uri.queryParameters['q'] ?? ''),
           transitionDuration: const Duration(milliseconds: 400),
           reverseTransitionDuration: const Duration(milliseconds: 400),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {

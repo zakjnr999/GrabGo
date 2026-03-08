@@ -755,6 +755,7 @@ app.use("/api/payments", require("./routes/payments"));
 app.use("/api/fraud", require("./routes/fraud"));
 app.use("/api/admin/fraud", require("./routes/admin_fraud"));
 app.use("/api/home", require("./routes/home"));
+app.use("/api/search", require("./routes/search"));
 app.use("/api/categories", require("./routes/categories"));
 app.use("/api/foods", require("./routes/foods"));
 app.use("/api/groceries", require("./routes/groceries"));
