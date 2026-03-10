@@ -1,6 +1,9 @@
 const cron = require('node-cron');
 const { processMealNudges, resetWeeklyCounters } = require('../services/meal_nudge_service');
 const cache = require('../utils/cache');
+const { createScopedLogger } = require('../utils/logger');
+
+const console = createScopedLogger('meal_nudges_job');
 
 const initializeMealNudges = (io) => {
     console.log('📅 Initializing meal-time nudge jobs...');

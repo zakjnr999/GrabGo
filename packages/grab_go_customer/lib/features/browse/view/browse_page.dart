@@ -31,9 +31,7 @@ class BrowsePage extends StatefulWidget {
 
 class _BrowsePageState extends State<BrowsePage> {
   final ScrollController _scrollController = ScrollController();
-  final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(
-    0.0,
-  );
+  final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0.0);
   static const double _collapsedHeight = 70.0;
   static const double _scrollThreshold = 150.0;
 
@@ -66,8 +64,7 @@ class _BrowsePageState extends State<BrowsePage> {
   }
 
   Future<void> _removeRecentSearch(String term) async {
-    final updatedSearches = List<String>.from(_recentSearches)
-      ..removeWhere((entry) => entry == term);
+    final updatedSearches = List<String>.from(_recentSearches)..removeWhere((entry) => entry == term);
     await CacheService.saveSearchHistory(updatedSearches);
     _loadRecentSearches();
   }
@@ -82,10 +79,7 @@ class _BrowsePageState extends State<BrowsePage> {
     if (normalized.isNotEmpty) {
       _persistRecentSearch(normalized);
     }
-    final route = Uri(
-      path: '/search',
-      queryParameters: normalized.isNotEmpty ? {'q': normalized} : null,
-    ).toString();
+    final route = Uri(path: '/search', queryParameters: normalized.isNotEmpty ? {'q': normalized} : null).toString();
     context.push(route);
   }
 
@@ -116,34 +110,20 @@ class _BrowsePageState extends State<BrowsePage> {
       statusBarColor: colors.accentOrange,
       statusBarIconBrightness: Brightness.light,
       systemNavigationBarColor: colors.backgroundPrimary,
-      systemNavigationBarIconBrightness: isDark
-          ? Brightness.light
-          : Brightness.dark,
+      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
     );
     final content = AppRefreshIndicator(
       bgColor: colors.accentOrange,
       iconPath: Assets.icons.search,
       onRefresh: () async {
         if (serviceProvider.isFoodService) {
-          await Provider.of<FoodProvider>(
-            context,
-            listen: false,
-          ).fetchCategories();
+          await Provider.of<FoodProvider>(context, listen: false).fetchCategories();
         } else if (serviceProvider.isGroceryService) {
-          await Provider.of<GroceryProvider>(
-            context,
-            listen: false,
-          ).fetchCategories();
+          await Provider.of<GroceryProvider>(context, listen: false).fetchCategories();
         } else if (serviceProvider.isPharmacyService) {
-          await Provider.of<PharmacyProvider>(
-            context,
-            listen: false,
-          ).fetchCategories();
+          await Provider.of<PharmacyProvider>(context, listen: false).fetchCategories();
         } else if (serviceProvider.isStoresService) {
-          await Provider.of<GrabMartProvider>(
-            context,
-            listen: false,
-          ).fetchCategories();
+          await Provider.of<GrabMartProvider>(context, listen: false).fetchCategories();
         }
       },
       child: _buildContent(colors, isDark, serviceProvider, size, padding.top),
@@ -158,12 +138,7 @@ class _BrowsePageState extends State<BrowsePage> {
           child: Stack(
             children: [
               content,
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: _buildCollapsibleHeader(colors, size, padding),
-              ),
+              Positioned(top: 0, left: 0, right: 0, child: _buildCollapsibleHeader(colors, size, padding)),
             ],
           ),
         ),
@@ -171,22 +146,13 @@ class _BrowsePageState extends State<BrowsePage> {
     );
   }
 
-  Widget _buildCollapsibleHeader(
-    AppColorsExtension colors,
-    Size size,
-    EdgeInsets padding,
-  ) {
+  Widget _buildCollapsibleHeader(AppColorsExtension colors, Size size, EdgeInsets padding) {
     return ValueListenableBuilder<double>(
       valueListenable: _scrollOffsetNotifier,
       builder: (context, scrollOffset, _) {
-        final collapseProgress = (scrollOffset / _scrollThreshold).clamp(
-          0.0,
-          1.0,
-        );
+        final collapseProgress = (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
         final expandedHeight = UmbrellaHeaderMetrics.expandedHeightFor(size);
-        final currentHeight =
-            expandedHeight -
-            ((expandedHeight - _collapsedHeight) * collapseProgress);
+        final currentHeight = expandedHeight - ((expandedHeight - _collapsedHeight) * collapseProgress);
         final contentOpacity = (1.0 - collapseProgress).clamp(0.0, 1.0);
 
         return SizedBox(
@@ -209,19 +175,12 @@ class _BrowsePageState extends State<BrowsePage> {
                         children: [
                           Text(
                             'Browse',
-                            style: TextStyle(
-                              fontSize: 24.sp,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
+                            style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.w700, color: Colors.white),
                           ),
                           SizedBox(height: 4.h),
                           Text(
                             'Discover trending items',
-                            style: TextStyle(
-                              fontSize: 14.sp,
-                              color: Colors.white.withValues(alpha: 0.8),
-                            ),
+                            style: TextStyle(fontSize: 14.sp, color: Colors.white.withValues(alpha: 0.8)),
                           ),
                         ],
                       ),
@@ -233,10 +192,7 @@ class _BrowsePageState extends State<BrowsePage> {
                         package: 'grab_go_shared',
                         width: 20.w,
                         height: 20.h,
-                        colorFilter: const ColorFilter.mode(
-                          Colors.white,
-                          BlendMode.srcIn,
-                        ),
+                        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                       ),
                     ),
                   ],
@@ -258,17 +214,12 @@ class _BrowsePageState extends State<BrowsePage> {
   ) {
     final foodProvider = Provider.of<FoodProvider>(context);
     final bool isFoodUnavailable =
-        !foodProvider.isLoading &&
-        foodProvider.categories.isEmpty &&
-        foodProvider.hasAttemptedFetch;
+        !foodProvider.isLoading && foodProvider.categories.isEmpty && foodProvider.hasAttemptedFetch;
 
     if (isFoodUnavailable) {
       return ListView(
         controller: _scrollController,
-        padding: EdgeInsets.only(
-          top: _contentTopPadding(size, topInset),
-          bottom: 32.h,
-        ),
+        padding: EdgeInsets.only(top: _contentTopPadding(size, topInset), bottom: 32.h),
         children: const [AreaUnavailableScreen(isAreaUnavailable: true)],
       );
     }
@@ -279,20 +230,11 @@ class _BrowsePageState extends State<BrowsePage> {
           if (provider.isLoading) {
             return ListView(
               controller: _scrollController,
-              padding: EdgeInsets.only(
-                top: _contentTopPadding(size, topInset),
-                bottom: 32.h,
-              ),
+              padding: EdgeInsets.only(top: _contentTopPadding(size, topInset), bottom: 32.h),
               children: const [BrowsePageSkeleton()],
             );
           }
-          return _buildLoadedContent(
-            colors,
-            isDark,
-            serviceProvider,
-            size,
-            topInset,
-          );
+          return _buildLoadedContent(colors, isDark, serviceProvider, size, topInset);
         },
       );
     } else if (serviceProvider.isGroceryService) {
@@ -301,20 +243,11 @@ class _BrowsePageState extends State<BrowsePage> {
           if (provider.isLoadingItems || provider.isLoadingCategories) {
             return ListView(
               controller: _scrollController,
-              padding: EdgeInsets.only(
-                top: _contentTopPadding(size, topInset),
-                bottom: 32.h,
-              ),
+              padding: EdgeInsets.only(top: _contentTopPadding(size, topInset), bottom: 32.h),
               children: const [BrowsePageSkeleton()],
             );
           }
-          return _buildLoadedContent(
-            colors,
-            isDark,
-            serviceProvider,
-            size,
-            topInset,
-          );
+          return _buildLoadedContent(colors, isDark, serviceProvider, size, topInset);
         },
       );
     } else if (serviceProvider.isPharmacyService) {
@@ -323,20 +256,11 @@ class _BrowsePageState extends State<BrowsePage> {
           if (provider.isLoadingItems || provider.isLoadingCategories) {
             return ListView(
               controller: _scrollController,
-              padding: EdgeInsets.only(
-                top: _contentTopPadding(size, topInset),
-                bottom: 32.h,
-              ),
+              padding: EdgeInsets.only(top: _contentTopPadding(size, topInset), bottom: 32.h),
               children: const [BrowsePageSkeleton()],
             );
           }
-          return _buildLoadedContent(
-            colors,
-            isDark,
-            serviceProvider,
-            size,
-            topInset,
-          );
+          return _buildLoadedContent(colors, isDark, serviceProvider, size, topInset);
         },
       );
     } else if (serviceProvider.isStoresService) {
@@ -345,20 +269,11 @@ class _BrowsePageState extends State<BrowsePage> {
           if (provider.isLoadingItems || provider.isLoadingCategories) {
             return ListView(
               controller: _scrollController,
-              padding: EdgeInsets.only(
-                top: _contentTopPadding(size, topInset),
-                bottom: 32.h,
-              ),
+              padding: EdgeInsets.only(top: _contentTopPadding(size, topInset), bottom: 32.h),
               children: const [BrowsePageSkeleton()],
             );
           }
-          return _buildLoadedContent(
-            colors,
-            isDark,
-            serviceProvider,
-            size,
-            topInset,
-          );
+          return _buildLoadedContent(colors, isDark, serviceProvider, size, topInset);
         },
       );
     }
@@ -375,10 +290,7 @@ class _BrowsePageState extends State<BrowsePage> {
   ) {
     return ListView(
       controller: _scrollController,
-      padding: EdgeInsets.only(
-        top: _contentTopPadding(size, topInset),
-        bottom: 32.h,
-      ),
+      padding: EdgeInsets.only(top: _contentTopPadding(size, topInset), bottom: 32.h),
       children: [
         _buildSectionHeader(colors, 'Top Categories', 'Browse by category'),
         SizedBox(height: 12.h),
@@ -386,11 +298,7 @@ class _BrowsePageState extends State<BrowsePage> {
 
         SizedBox(height: KSpacing.lg.h),
 
-        _buildSectionHeader(
-          colors,
-          'Trending Dishes',
-          'Tap the search icon to explore a dish',
-        ),
+        _buildSectionHeader(colors, 'Trending Dishes', 'Tap the search icon to explore a dish'),
         SizedBox(height: 12.h),
         _buildTrendingList(colors, isDark, serviceProvider),
 
@@ -419,10 +327,7 @@ class _BrowsePageState extends State<BrowsePage> {
                       SizedBox(height: 4.h),
                       Text(
                         'Pick up where you left off',
-                        style: TextStyle(
-                          fontSize: 13.sp,
-                          color: colors.textSecondary,
-                        ),
+                        style: TextStyle(fontSize: 13.sp, color: colors.textSecondary),
                       ),
                     ],
                   ),
@@ -433,11 +338,7 @@ class _BrowsePageState extends State<BrowsePage> {
                     padding: EdgeInsets.only(top: 2.h, left: 12.w),
                     child: Text(
                       'Clear all',
-                      style: TextStyle(
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w700,
-                        color: colors.accentOrange,
-                      ),
+                      style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: colors.accentOrange),
                     ),
                   ),
                 ),
@@ -451,12 +352,7 @@ class _BrowsePageState extends State<BrowsePage> {
     );
   }
 
-  Widget _buildSectionHeader(
-    AppColorsExtension colors,
-    String title,
-    String subtitle, {
-    String? highlightedText,
-  }) {
+  Widget _buildSectionHeader(AppColorsExtension colors, String title, String subtitle, {String? highlightedText}) {
     final titleStyle = TextStyle(
       fontSize: 18.sp,
       fontFamily: 'Lato',
@@ -506,22 +402,16 @@ class _BrowsePageState extends State<BrowsePage> {
 
     final end = start + query.length;
     return [
-      if (start > 0)
-        TextSpan(text: title.substring(0, start), style: baseStyle),
+      if (start > 0) TextSpan(text: title.substring(0, start), style: baseStyle),
       TextSpan(
         text: title.substring(start, end),
         style: baseStyle.copyWith(color: highlightColor),
       ),
-      if (end < title.length)
-        TextSpan(text: title.substring(end), style: baseStyle),
+      if (end < title.length) TextSpan(text: title.substring(end), style: baseStyle),
     ];
   }
 
-  Widget _buildTrendingList(
-    AppColorsExtension colors,
-    bool isDark,
-    ServiceProvider serviceProvider,
-  ) {
+  Widget _buildTrendingList(AppColorsExtension colors, bool isDark, ServiceProvider serviceProvider) {
     if (serviceProvider.isFoodService) {
       return Consumer<FoodProvider>(
         builder: (context, provider, _) {
@@ -643,12 +533,7 @@ class _BrowsePageState extends State<BrowsePage> {
     return const SizedBox.shrink();
   }
 
-  Widget _buildTrendingItem(
-    AppColorsExtension colors,
-    String name,
-    String subtitle,
-    VoidCallback onTap,
-  ) {
+  Widget _buildTrendingItem(AppColorsExtension colors, String name, String subtitle, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -666,10 +551,7 @@ class _BrowsePageState extends State<BrowsePage> {
                 package: 'grab_go_shared',
                 width: 22.w,
                 height: 22.h,
-                colorFilter: ColorFilter.mode(
-                  colors.textSecondary,
-                  BlendMode.srcIn,
-                ),
+                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
               ),
             ),
             SizedBox(width: 10.w),
@@ -679,21 +561,14 @@ class _BrowsePageState extends State<BrowsePage> {
                 children: [
                   Text(
                     name,
-                    style: TextStyle(
-                      fontSize: 15.sp,
-                      fontWeight: FontWeight.w600,
-                      color: colors.textPrimary,
-                    ),
+                    style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   SizedBox(height: 4.h),
                   Text(
                     subtitle,
-                    style: TextStyle(
-                      fontSize: 12.sp,
-                      color: colors.textSecondary,
-                    ),
+                    style: TextStyle(fontSize: 12.sp, color: colors.textSecondary),
                   ),
                 ],
               ),
@@ -704,11 +579,7 @@ class _BrowsePageState extends State<BrowsePage> {
     );
   }
 
-  Widget _buildCategoriesList(
-    AppColorsExtension colors,
-    bool isDark,
-    ServiceProvider serviceProvider,
-  ) {
+  Widget _buildCategoriesList(AppColorsExtension colors, bool isDark, ServiceProvider serviceProvider) {
     if (serviceProvider.isFoodService) {
       return Consumer<FoodProvider>(
         builder: (context, provider, _) {
@@ -716,9 +587,7 @@ class _BrowsePageState extends State<BrowsePage> {
             return const SizedBox.shrink();
           }
 
-          final categories = provider.categories
-              .where((cat) => cat.items.isNotEmpty)
-              .toList();
+          final categories = provider.categories.where((cat) => cat.items.isNotEmpty).toList();
           categories.sort((a, b) => b.items.length.compareTo(a.items.length));
 
           if (categories.isEmpty) {
@@ -751,19 +620,13 @@ class _BrowsePageState extends State<BrowsePage> {
           }
 
           final categories = provider.categories.where((cat) {
-            final count = provider.items
-                .where((item) => item.categoryId == cat.id)
-                .length;
+            final count = provider.items.where((item) => item.categoryId == cat.id).length;
             return count > 0;
           }).toList();
 
           categories.sort((a, b) {
-            final countA = provider.items
-                .where((item) => item.categoryId == a.id)
-                .length;
-            final countB = provider.items
-                .where((item) => item.categoryId == b.id)
-                .length;
+            final countA = provider.items.where((item) => item.categoryId == a.id).length;
+            final countB = provider.items.where((item) => item.categoryId == b.id).length;
             return countB.compareTo(countA);
           });
 
@@ -797,19 +660,13 @@ class _BrowsePageState extends State<BrowsePage> {
           }
 
           final categories = provider.categories.where((cat) {
-            final count = provider.items
-                .where((item) => item.categoryId == cat.id)
-                .length;
+            final count = provider.items.where((item) => item.categoryId == cat.id).length;
             return count > 0;
           }).toList();
 
           categories.sort((a, b) {
-            final countA = provider.items
-                .where((item) => item.categoryId == a.id)
-                .length;
-            final countB = provider.items
-                .where((item) => item.categoryId == b.id)
-                .length;
+            final countA = provider.items.where((item) => item.categoryId == a.id).length;
+            final countB = provider.items.where((item) => item.categoryId == b.id).length;
             return countB.compareTo(countA);
           });
 
@@ -843,19 +700,13 @@ class _BrowsePageState extends State<BrowsePage> {
           }
 
           final categories = provider.categories.where((cat) {
-            final count = provider.items
-                .where((item) => item.categoryId == cat.id)
-                .length;
+            final count = provider.items.where((item) => item.categoryId == cat.id).length;
             return count > 0;
           }).toList();
 
           categories.sort((a, b) {
-            final countA = provider.items
-                .where((item) => item.categoryId == a.id)
-                .length;
-            final countB = provider.items
-                .where((item) => item.categoryId == b.id)
-                .length;
+            final countA = provider.items.where((item) => item.categoryId == a.id).length;
+            final countB = provider.items.where((item) => item.categoryId == b.id).length;
             return countB.compareTo(countA);
           });
 
@@ -894,7 +745,7 @@ class _BrowsePageState extends State<BrowsePage> {
     required AppColorsExtension colors,
   }) {
     return SizedBox(
-      height: 116.h,
+      height: 110.h,
       child: ListView.builder(
         padding: EdgeInsets.symmetric(horizontal: 20.w),
         scrollDirection: Axis.horizontal,
@@ -905,22 +756,17 @@ class _BrowsePageState extends State<BrowsePage> {
           return GestureDetector(
             onTap: () => onTap(category),
             child: Padding(
-              padding: EdgeInsets.only(
-                right: index == categories.length - 1 ? 0 : 16.w,
-              ),
+              padding: EdgeInsets.only(right: index == categories.length - 1 ? 0 : 16.w),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    padding: EdgeInsets.all(20.r),
+                    padding: EdgeInsets.all(18.r),
                     decoration: BoxDecoration(
                       color: colors.accentOrange.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: Text(
-                      getEmoji(category),
-                      style: TextStyle(fontSize: 28.sp),
-                    ),
+                    child: Text(getEmoji(category), style: TextStyle(fontSize: 28.sp)),
                   ),
                   SizedBox(height: 8.h),
                   Text(
@@ -963,21 +809,14 @@ class _BrowsePageState extends State<BrowsePage> {
                     package: 'grab_go_shared',
                     width: 22.w,
                     height: 22.h,
-                    colorFilter: ColorFilter.mode(
-                      colors.textSecondary,
-                      BlendMode.srcIn,
-                    ),
+                    colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                   ),
                 ),
                 SizedBox(width: 10.w),
                 Expanded(
                   child: Text(
                     term,
-                    style: TextStyle(
-                      fontSize: 15.sp,
-                      fontWeight: FontWeight.w600,
-                      color: colors.textPrimary,
-                    ),
+                    style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -986,15 +825,8 @@ class _BrowsePageState extends State<BrowsePage> {
                   onTap: () => _removeRecentSearch(term),
                   behavior: HitTestBehavior.opaque,
                   child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 4.w,
-                      vertical: 4.h,
-                    ),
-                    child: Icon(
-                      Icons.close,
-                      size: 18.sp,
-                      color: colors.textSecondary,
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 4.h),
+                    child: Icon(Icons.close, size: 18.sp, color: colors.textSecondary),
                   ),
                 ),
               ],
@@ -1010,11 +842,7 @@ class _BrowsePageState extends State<BrowsePage> {
       padding: EdgeInsets.all(40.r),
       child: Column(
         children: [
-          Icon(
-            Icons.search_off,
-            size: 48.sp,
-            color: colors.textSecondary.withValues(alpha: 0.5),
-          ),
+          Icon(Icons.search_off, size: 48.sp, color: colors.textSecondary.withValues(alpha: 0.5)),
           SizedBox(height: 16.h),
           Text(
             message,

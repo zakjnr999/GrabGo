@@ -12,9 +12,11 @@
 const cron = require('node-cron');
 const cache = require('../utils/cache');
 const { processWeeklyAutoPayouts } = require('../services/rider_payout_service');
+const { createScopedLogger } = require('../utils/logger');
 
 const JOB_LOCK_KEY = 'lock:weekly-payout';
 const JOB_LOCK_TTL = 600; // 10 min
+const console = createScopedLogger('rider_weekly_payout_job');
 
 const scheduleWeeklyPayout = () => {
   // Every Monday at 06:00 UTC (Africa/Accra = UTC+0)

@@ -1,4 +1,5 @@
 const cache = require('../utils/cache');
+const logger = require('../utils/logger');
 
 const cacheMiddleware = (keyPrefix, ttl = 300, isPersonalized = false) => {
     return async (req, res, next) => {
@@ -21,18 +22,18 @@ const cacheMiddleware = (keyPrefix, ttl = 300, isPersonalized = false) => {
             const cachedData = await cache.get(cacheKey);
 
             if (cachedData) {
-                console.log(`✅ [Cache HIT] ${cacheKey}`);
+                logger.debug('cache_hit', { cacheKey });
                 return res.json(cachedData);
             }
 
-            console.log(`❌ [Cache MISS] ${cacheKey}`);
+            logger.debug('cache_miss', { cacheKey });
 
             const originalJson = res.json.bind(res);
 
             res.json = (data) => {
                 if (data && data.success !== false) {
                     cache.set(cacheKey, data, ttl).catch(err => {
-                        console.error('[Cache] Set error:', err.message);
+                        logger.error('cache_set_failed', { cacheKey, error: err });
                     });
                 }
                 return originalJson(data);
@@ -40,7 +41,7 @@ const cacheMiddleware = (keyPrefix, ttl = 300, isPersonalized = false) => {
 
             next();
         } catch (error) {
-            console.error('[Cache Middleware] Error:', error.message);
+            logger.error('cache_middleware_failed', { error });
             next();
         }
     };
@@ -51,11 +52,11 @@ const invalidateCache = async (patterns) => {
         for (const pattern of patterns) {
             const deleted = await cache.delByPattern(`*:${pattern}:*`);
             if (deleted > 0) {
-                console.log(`🗑️  [Cache] Invalidated ${deleted} keys matching ${pattern}`);
+                logger.info('cache_invalidated', { pattern, deleted });
             }
         }
     } catch (error) {
-        console.error('[Cache] Invalidation error:', error.message);
+        logger.error('cache_invalidation_failed', { error });
     }
 };
 

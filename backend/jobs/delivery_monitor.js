@@ -4,6 +4,9 @@ const { sendToUser } = require('../services/fcm_service');
 const socketService = require('../services/socket_service');
 const trackingService = require('../services/tracking_service');
 const cache = require('../utils/cache');
+const { createScopedLogger } = require('../utils/logger');
+
+const console = createScopedLogger('delivery_monitor_job');
 
 const initializeDeliveryMonitor = () => {
     console.log('⏱️ Initializing delivery monitor...');

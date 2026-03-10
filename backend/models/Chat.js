@@ -78,6 +78,5 @@ const chatSchema = new mongoose.Schema(
 
 chatSchema.index({ customerId: 1 });
 chatSchema.index({ riderId: 1 });
-chatSchema.index({ orderId: 1 });
 
 module.exports = mongoose.model("Chat", chatSchema);

@@ -3,8 +3,10 @@ const prisma = require("../config/prisma");
 const { protect, authorize } = require("../middleware/auth");
 const { cacheMiddleware } = require("../middleware/cache");
 const cache = require("../utils/cache");
+const { createScopedLogger } = require("../utils/logger");
 
 const router = express.Router();
+const console = createScopedLogger("promotions_route");
 
 /**
  * @route   GET /api/promotions/banners/all
@@ -26,8 +28,7 @@ router.get("/banners/all", protect, authorize("admin"), async (req, res) => {
         console.error("Get all banners error:", error);
         res.status(500).json({
             success: false,
-            message: "Server error",
-            error: error.message
+            message: "Server error"
         });
     }
 });
@@ -65,8 +66,7 @@ router.get("/banners", cacheMiddleware(cache.CACHE_KEYS.FOOD_BANNERS, 600), asyn
         console.error("Get banners error:", error);
         res.status(500).json({
             success: false,
-            message: "Server error",
-            error: error.message
+            message: "Server error"
         });
     }
 });
@@ -109,8 +109,7 @@ router.post("/banners", protect, authorize("admin"), async (req, res) => {
         console.error("Create banner error:", error);
         res.status(500).json({
             success: false,
-            message: "Server error",
-            error: error.message
+            message: "Server error"
         });
     }
 });
@@ -148,8 +147,7 @@ router.put("/banners/:id", protect, authorize("admin"), async (req, res) => {
         console.error("Update banner error:", error);
         res.status(500).json({
             success: false,
-            message: "Server error",
-            error: error.message
+            message: "Server error"
         });
     }
 });
@@ -173,8 +171,7 @@ router.delete("/banners/:id", protect, authorize("admin"), async (req, res) => {
         console.error("Delete banner error:", error);
         res.status(500).json({
             success: false,
-            message: "Server error",
-            error: error.message
+            message: "Server error"
         });
     }
 });

@@ -1,7 +1,9 @@
 const { publishOutboxBatch } = require('../services/fraud/fraud_event_service');
+const { createScopedLogger } = require('../utils/logger');
 
 let intervalRef = null;
 let isRunning = false;
+const console = createScopedLogger('fraud_outbox_worker');
 
 const startFraudOutboxWorker = () => {
   if (intervalRef) return;

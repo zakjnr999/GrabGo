@@ -3,6 +3,9 @@ const cache = require("../utils/cache");
 const DispatchRetryTask = require("../models/DispatchRetryTask");
 const dispatchService = require("../services/dispatch_service");
 const dispatchRetryService = require("../services/dispatch_retry_service");
+const { createScopedLogger } = require("../utils/logger");
+
+const console = createScopedLogger("dispatch_retry_queue_job");
 
 const parsePositiveIntEnv = (name, fallback, { min = 1, max = Number.MAX_SAFE_INTEGER } = {}) => {
   const parsed = Number.parseInt(String(process.env[name]), 10);

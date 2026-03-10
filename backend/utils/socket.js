@@ -4,6 +4,8 @@
  * Provides global access to the Socket.IO instance without circular dependencies.
  * The server.js file initializes the io instance, and routes can access it via getIO().
  */
+const { createScopedLogger } = require('./logger');
+const console = createScopedLogger('socket_singleton');
 
 let io = null;
 
@@ -13,11 +15,11 @@ let io = null;
  */
 const initIO = (socketIO) => {
     if (io) {
-        console.warn('⚠️ Socket.IO instance already initialized');
+        console.warn('socket_io_instance_already_initialized');
         return;
     }
     io = socketIO;
-    console.log('✅ Socket.IO singleton initialized');
+    console.info('socket_io_singleton_initialized');
 };
 
 /**
@@ -26,7 +28,7 @@ const initIO = (socketIO) => {
  */
 const getIO = () => {
     if (!io) {
-        console.warn('⚠️ Socket.IO instance not yet initialized');
+        console.warn('socket_io_instance_not_yet_initialized');
     }
     return io;
 };

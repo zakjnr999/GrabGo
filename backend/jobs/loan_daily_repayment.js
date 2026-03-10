@@ -1,10 +1,12 @@
 const cron = require('node-cron');
 const cache = require('../utils/cache');
 const { processDailyLoanRepayments } = require('../services/rider_loan_service');
+const { createScopedLogger } = require('../utils/logger');
 
 const JOB_NAME = 'loan_daily_repayment';
 const LOCK_KEY = `lock:${JOB_NAME}`;
 const LOCK_TTL = 120; // 2 min
+const console = createScopedLogger('loan_daily_repayment_job');
 
 /**
  * Daily loan repayment job.

@@ -1,6 +1,7 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { protect, authorize } = require('../middleware/auth');
+const { createScopedLogger } = require('../utils/logger');
 const prisma = require('../config/prisma');
 const { promoApplyRateLimit } = require('../middleware/fraud_rate_limit');
 const {
@@ -20,6 +21,37 @@ const {
 } = require('../services/promo_service');
 
 const router = express.Router();
+const console = createScopedLogger('promo_route');
+
+const getPromoErrorStatus = (error, fallbackStatus = 500) => {
+    const explicitStatus = Number(error?.status);
+    if (Number.isInteger(explicitStatus) && explicitStatus >= 400 && explicitStatus < 600) {
+        return explicitStatus;
+    }
+
+    const message = String(error?.message || '').toLowerCase();
+    if (
+        message.includes('invalid') ||
+        message.includes('required') ||
+        message.includes('already exists') ||
+        message.includes('not found') ||
+        message.includes('inactive') ||
+        message.includes('usage limit')
+    ) {
+        return 400;
+    }
+
+    return fallbackStatus;
+};
+
+const sendPromoError = (res, error, fallbackMessage, fallbackStatus = 500) => {
+    const status = getPromoErrorStatus(error, fallbackStatus);
+    const message = status >= 500 ? fallbackMessage : String(error?.message || fallbackMessage);
+    return res.status(status).json({
+        success: false,
+        error: message,
+    });
+};
 
 /**
  * @route   POST /api/promo/validate-public
@@ -103,11 +135,8 @@ router.post('/validate-public', [
             message: promo.firstOrderOnly ? creditMessage : creditMessage
         });
     } catch (error) {
-        console.error('Error validating promo code (public):', error.message);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to validate promo code'
-        });
+        console.error('Error validating promo code (public):', error);
+        return sendPromoError(res, error, 'Failed to validate promo code');
     }
 });
 
@@ -156,11 +185,8 @@ router.post('/validate', protect, [
             });
         }
     } catch (error) {
-        console.error('Error validating promo code:', error.message);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to validate promo code'
-        });
+        console.error('Error validating promo code:', error);
+        return sendPromoError(res, error, 'Failed to validate promo code');
     }
 });
 
@@ -182,11 +208,8 @@ router.get('/my-codes', protect, async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Error fetching my promo codes:', error.message);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to fetch promo codes'
-        });
+        console.error('Error fetching my promo codes:', error);
+        return sendPromoError(res, error, 'Failed to fetch promo codes');
     }
 });
 
@@ -259,11 +282,8 @@ router.post('/apply', protect, promoApplyRateLimit, [
             });
         }
     } catch (error) {
-        console.error('Error applying promo code:', error.message);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to apply promo code'
-        });
+        console.error('Error applying promo code:', error);
+        return sendPromoError(res, error, 'Failed to apply promo code');
     }
 });
 
@@ -280,11 +300,8 @@ router.get('/available', protect, async (req, res) => {
             data: codes
         });
     } catch (error) {
-        console.error('Error fetching available promo codes:', error.message);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to fetch promo codes'
-        });
+        console.error('Error fetching available promo codes:', error);
+        return sendPromoError(res, error, 'Failed to fetch promo codes');
     }
 });
 
@@ -319,11 +336,8 @@ router.post('/create', protect, authorize('admin'), [
             message: 'Promo code created successfully'
         });
     } catch (error) {
-        console.error('Error creating promo code:', error.message);
-        res.status(400).json({
-            success: false,
-            error: error.message
-        });
+        console.error('Error creating promo code:', error);
+        return sendPromoError(res, error, 'Failed to create promo code', 400);
     }
 });
 
@@ -340,11 +354,8 @@ router.get('/admin/list', protect, authorize('admin'), async (req, res) => {
             data: codes
         });
     } catch (error) {
-        console.error('Error fetching all promo codes:', error.message);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to fetch promo codes'
-        });
+        console.error('Error fetching all promo codes:', error);
+        return sendPromoError(res, error, 'Failed to fetch promo codes');
     }
 });
 
@@ -368,11 +379,8 @@ router.delete('/:code', protect, authorize('admin'), async (req, res) => {
             });
         }
     } catch (error) {
-        console.error('Error deactivating promo code:', error.message);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to deactivate promo code'
-        });
+        console.error('Error deactivating promo code:', error);
+        return sendPromoError(res, error, 'Failed to deactivate promo code');
     }
 });
 

@@ -1,8 +1,25 @@
 const express = require("express");
 const router = express.Router();
 const { protect, authorize } = require("../middleware/auth");
+const { createScopedLogger } = require("../utils/logger");
 const creditService = require("../services/credit_service");
 const { body, validationResult } = require("express-validator");
+const console = createScopedLogger("credits_route");
+
+const sendCreditsError = (res, error, fallbackMessage, fallbackStatus = 500) => {
+  const explicitStatus = Number(error?.status);
+  const status =
+    Number.isInteger(explicitStatus) && explicitStatus >= 400 && explicitStatus < 600
+      ? explicitStatus
+      : fallbackStatus;
+
+  const message = status >= 500 ? fallbackMessage : String(error?.message || fallbackMessage);
+
+  return res.status(status).json({
+    success: false,
+    message,
+  });
+};
 
 /**
  * @route   GET /api/credits/balance
@@ -23,11 +40,7 @@ router.get("/balance", protect, async (req, res) => {
     });
   } catch (error) {
     console.error("Get credit balance error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to get credit balance",
-      error: error.message,
-    });
+    return sendCreditsError(res, error, "Failed to get credit balance");
   }
 });
 
@@ -68,11 +81,7 @@ router.get("/transactions", protect, async (req, res) => {
     });
   } catch (error) {
     console.error("Get credit transactions error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to get credit transactions",
-      error: error.message,
-    });
+    return sendCreditsError(res, error, "Failed to get credit transactions");
   }
 });
 
@@ -112,11 +121,7 @@ router.post(
       });
     } catch (error) {
       console.error("Calculate credit application error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to calculate credit application",
-        error: error.message,
-      });
+      return sendCreditsError(res, error, "Failed to calculate credit application");
     }
   }
 );
@@ -153,11 +158,7 @@ router.get("/admin/user/:userId", protect, authorize("admin"), async (req, res) 
     });
   } catch (error) {
     console.error("Admin get user credits error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to get user credits",
-      error: error.message,
-    });
+    return sendCreditsError(res, error, "Failed to get user credits");
   }
 });
 
@@ -202,11 +203,7 @@ router.post(
       });
     } catch (error) {
       console.error("Admin grant credits error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to grant credits",
-        error: error.message,
-      });
+      return sendCreditsError(res, error, "Failed to grant credits");
     }
   }
 );
@@ -253,18 +250,14 @@ router.post(
     } catch (error) {
       console.error("Admin deduct credits error:", error);
 
-      if (error.message.includes("Insufficient")) {
+      if (String(error?.message || "").includes("Insufficient")) {
         return res.status(400).json({
           success: false,
-          message: error.message,
+          message: String(error.message),
         });
       }
 
-      res.status(500).json({
-        success: false,
-        message: "Failed to deduct credits",
-        error: error.message,
-      });
+      return sendCreditsError(res, error, "Failed to deduct credits");
     }
   }
 );
@@ -291,11 +284,7 @@ router.post("/admin/recalculate/:userId", protect, authorize("admin"), async (re
     });
   } catch (error) {
     console.error("Recalculate balance error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to recalculate balance",
-      error: error.message,
-    });
+    return sendCreditsError(res, error, "Failed to recalculate balance");
   }
 });
 

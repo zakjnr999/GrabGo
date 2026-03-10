@@ -1,5 +1,6 @@
 const express = require('express');
 const { Prisma } = require('@prisma/client');
+const { createScopedLogger } = require('../utils/logger');
 const router = express.Router();
 const prisma = require('../config/prisma');
 const { protect } = require('../middleware/auth');
@@ -11,6 +12,7 @@ const {
     isGrabGoExclusiveActive,
     applyActiveExclusiveWhere,
 } = require('../utils/grabgo_exclusive');
+const console = createScopedLogger('groceries_route');
 
 /**
  * Helper to format grocery store for frontend compatibility
@@ -158,7 +160,6 @@ router.get("/stores", cacheMiddleware(cache.CACHE_KEYS.GROCERY + ':stores', 300)
         res.status(500).json({
             success: false,
             message: "Server error",
-            error: error.message
         });
     }
 });
@@ -189,7 +190,7 @@ router.get("/nearby", cacheMiddleware(cache.CACHE_KEYS.GROCERY + ':nearby', 180)
 
         // Raw query for PostGIS distance calculation and filtering
         const nearbyStores = await prisma.$queryRaw`
-            SELECT *, 
+            SELECT *,
             ST_Distance(
                 ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography,
                 ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography
@@ -220,7 +221,6 @@ router.get("/nearby", cacheMiddleware(cache.CACHE_KEYS.GROCERY + ':nearby', 180)
         res.status(500).json({
             success: false,
             message: "Server error",
-            error: error.message
         });
     }
 });
@@ -263,7 +263,6 @@ router.get("/stores/:id", async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Server error",
-            error: error.message
         });
     }
 });
@@ -359,7 +358,6 @@ router.get("/categories", cacheMiddleware(cache.CACHE_KEYS.GROCERY + ':categorie
         res.status(500).json({
             success: false,
             message: "Server error",
-            error: error.message
         });
     }
 });
@@ -479,7 +477,6 @@ router.get("/items", async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Server error",
-            error: error.message
         });
     }
 });
@@ -531,7 +528,6 @@ router.get("/items/:id", async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Server error",
-            error: error.message
         });
     }
 });
@@ -592,7 +588,6 @@ router.get("/search", async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Server error",
-            error: error.message
         });
     }
 });
@@ -692,7 +687,6 @@ router.get("/deals", async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Server error",
-            error: error.message
         });
     }
 });
@@ -962,7 +956,6 @@ router.get(
             return res.status(500).json({
                 success: false,
                 message: 'Server error',
-                error: error.message
             });
         }
     }
@@ -996,7 +989,6 @@ router.get("/stores/:id/items", async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Server error",
-            error: error.message
         });
     }
 });
@@ -1093,7 +1085,6 @@ router.get("/store-specials", async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Server error',
-            error: error.message
         });
     }
 });
@@ -1202,8 +1193,7 @@ router.get("/order-history", protect, async (req, res) => {
         console.error('Error fetching grocery order history:', error);
         res.status(500).json({
             success: false,
-            error: 'Failed to fetch order history',
-            message: error.message
+            error: 'Failed to fetch order history'
         });
     }
 });
@@ -1302,7 +1292,6 @@ router.get("/popular", async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Server error",
-            error: error.message
         });
     }
 });
@@ -1356,7 +1345,6 @@ router.get("/top-rated", async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Server error",
-            error: error.message
         });
     }
 });

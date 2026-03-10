@@ -1,5 +1,6 @@
 const express = require('express');
 const { searchCatalog } = require('../services/catalog_search_service');
+const logger = require('../utils/logger');
 
 const router = express.Router();
 const SUPPORTED_SERVICE_TYPES = new Set([
@@ -31,7 +32,7 @@ router.get('/catalog', async (req, res) => {
       data,
     });
   } catch (error) {
-    console.error('Catalog search error:', error);
+    logger.error('catalog_search_failed', { error });
     return res.status(500).json({
       success: false,
       message: 'Failed to search catalog',

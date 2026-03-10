@@ -6,6 +6,9 @@ const { createNotification } = require("../services/notification_service");
 const { getIO } = require("../utils/socket");
 const featureFlags = require("../config/feature_flags");
 const { createOrderAudit } = require("../services/pickup_order_service");
+const { createScopedLogger } = require("../utils/logger");
+
+const console = createScopedLogger("scheduled_order_release_job");
 
 const parsePositiveIntEnv = (name, fallback, { min = 1, max = Number.MAX_SAFE_INTEGER } = {}) => {
   const parsed = Number.parseInt(String(process.env[name]), 10);

@@ -9,8 +9,10 @@ const {
   parcelDeliveryCodeRateLimit,
 } = require('../middleware/fraud_rate_limit');
 const parcelService = require('../services/parcel_service');
+const { createScopedLogger } = require('../utils/logger');
 
 const router = express.Router();
+const console = createScopedLogger('parcel_route');
 
 const handleParcelError = (res, error, fallbackMessage = 'Server error') => {
   if (error?.status && error?.code) {
@@ -27,7 +29,6 @@ const handleParcelError = (res, error, fallbackMessage = 'Server error') => {
   return res.status(500).json({
     success: false,
     message: fallbackMessage,
-    error: error?.message || 'Unexpected error',
   });
 };
 

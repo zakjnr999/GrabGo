@@ -1,6 +1,7 @@
 const express = require("express");
 const { Prisma } = require("@prisma/client");
 const { body, validationResult } = require("express-validator");
+const { createScopedLogger } = require("../utils/logger");
 const prisma = require("../config/prisma");
 const { protect, verifyApiKey, admin } = require("../middleware/auth");
 const {
@@ -16,6 +17,7 @@ const {
 } = require("../utils/grabgo_exclusive");
 
 const router = express.Router();
+const console = createScopedLogger("restaurants_route");
 
 const formatOpeningHours = (openingHours) => {
   if (!Array.isArray(openingHours)) return null;
@@ -199,7 +201,6 @@ router.get("/", async (req, res, next) => {
     res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message,
     });
   }
 });
@@ -348,7 +349,6 @@ router.post(
       res.status(500).json({
         success: false,
         message: "Server error",
-        error: error.message,
       });
     }
   }
@@ -440,7 +440,6 @@ router.get("/stores", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message,
     });
   }
 });
@@ -524,7 +523,6 @@ router.get("/stores/:id", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message,
     });
   }
 });
@@ -673,7 +671,6 @@ router.get("/search", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message,
     });
   }
 });
@@ -758,7 +755,6 @@ router.get("/nearby", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message,
     });
   }
 });
@@ -780,7 +776,6 @@ router.get("/categories", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message,
     });
   }
 });
@@ -818,7 +813,6 @@ router.get("/items", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message,
     });
   }
 });
@@ -917,7 +911,6 @@ router.put("/:restaurantId", protect, admin, verifyApiKey, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message,
     });
   }
 });
@@ -1001,7 +994,6 @@ router.get("/:restaurantId", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message,
     });
   }
 });

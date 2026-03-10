@@ -3,6 +3,7 @@ const { protect } = require('../middleware/auth');
 const { cacheMiddleware } = require('../middleware/cache');
 const cache = require('../utils/cache');
 const { fetchFoodHomeFeed } = require('../services/home_feed_service');
+const logger = require('../utils/logger');
 
 const router = express.Router();
 
@@ -32,11 +33,10 @@ router.get(
         data: feed,
       });
     } catch (error) {
-      console.error('Get home food feed error:', error);
+      logger.error('home_food_feed_failed', { error });
       res.status(500).json({
         success: false,
         message: 'Server error',
-        error: error.message,
       });
     }
   },

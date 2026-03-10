@@ -2,6 +2,9 @@ const { randomUUID } = require('crypto');
 const { sendCallNotification } = require('./fcm_service');
 const cache = require('../utils/cache');
 const prisma = require('../config/prisma');
+const { createScopedLogger } = require('../utils/logger');
+
+const console = createScopedLogger('webrtc_signaling_service');
 
 const TERMINAL_ORDER_STATUSES = new Set(['delivered', 'cancelled']);
 const VOICE_CALL_TYPE = 'audio';

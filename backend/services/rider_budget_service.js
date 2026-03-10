@@ -1,5 +1,7 @@
 const prisma = require('../config/prisma');
 const { getDailyWindowKey, getWeeklyWindowKey } = require('./rider_quest_engine');
+const { createScopedLogger } = require('../utils/logger');
+const console = createScopedLogger('rider_budget_service');
 
 // ── Default Budget Caps (GHS) ──
 // Can be overridden via env: BUDGET_CAP_DAILY, BUDGET_CAP_WEEKLY, BUDGET_CAP_MONTHLY

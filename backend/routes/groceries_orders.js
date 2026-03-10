@@ -3,6 +3,8 @@ const router = express.Router();
 const Order = require('../models/Order');
 const GroceryItem = require('../models/GroceryItem');
 const { protect } = require('../middleware/auth');
+const { createScopedLogger } = require('../utils/logger');
+const console = createScopedLogger('groceries_orders_route');
 
 /**
  * @route   GET /api/groceries/order-history
@@ -86,8 +88,7 @@ router.get('/order-history', protect, async (req, res) => {
         console.error('Error fetching grocery order history:', error);
         res.status(500).json({
             success: false,
-            error: 'Failed to fetch order history',
-            message: error.message
+            error: 'Failed to fetch order history'
         });
     }
 });

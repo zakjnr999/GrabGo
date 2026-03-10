@@ -1,5 +1,8 @@
 const prisma = require('../config/prisma');
 const { createNotification } = require('./notification_service');
+const { createScopedLogger } = require('../utils/logger');
+
+const console = createScopedLogger('meal_nudge_service');
 
 /**
  * Meal-Time Nudge Service

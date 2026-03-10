@@ -1,4 +1,6 @@
 const DeliveryAnalytics = require('../models/DeliveryAnalytics');
+const { createScopedLogger } = require('../utils/logger');
+const console = createScopedLogger('delivery_analytics_service');
 
 /**
  * Records a delivery analytics entry when an order is completed.

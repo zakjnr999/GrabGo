@@ -1,3 +1,6 @@
+const path = require("path");
+require("dotenv").config({ path: path.resolve(__dirname, ".env") });
+
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -15,17 +18,67 @@ const { apiGlobalRateLimit } = require("./middleware/fraud_rate_limit");
 const { verifyEmailService } = require("./utils/emailService");
 const cache = require("./utils/cache");
 const { hashIdentifier } = require("./services/fraud/fraud_context");
-require("dotenv").config();
-
-// Connect to MongoDB for NoSQL data (Hybrid Architecture)
-connectMongoDB();
+const logger = require("./utils/logger");
+const metrics = require("./utils/metrics");
+const { bootstrapDependencies, getReadinessReport } = require("./bootstrap/dependencies");
+const {
+  startBackgroundJobs,
+  stopBackgroundJobs,
+  areBackgroundJobsRunning,
+} = require("./bootstrap/background_jobs");
 
 const app = express();
 const server = http.createServer(app);
 
+const parseAllowedOrigins = () => {
+  const configuredOrigins = (process.env.ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  if (configuredOrigins.length > 0) {
+    return configuredOrigins;
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("ALLOWED_ORIGINS is required in production");
+  }
+
+  return [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+  ];
+};
+
+const allowedOrigins = parseAllowedOrigins();
+const isAllowedOrigin = (origin) => !origin || allowedOrigins.includes(origin);
+const corsOriginHandler = (origin, callback) => {
+  if (isAllowedOrigin(origin)) {
+    return callback(null, true);
+  }
+
+  return callback(new Error("Not allowed by CORS"));
+};
+
+const safeServerMessagePatterns = [
+  /^server error$/i,
+  /^internal server error$/i,
+  /^failed to\b/i,
+  /^unable to\b/i,
+  /^.*unavailable.*$/i,
+  /^.*not available.*$/i,
+];
+
+const shouldRunBackgroundJobs = process.env.RUN_BACKGROUND_JOBS !== "false";
+let roomCleanupIntervalId = null;
+
 const io = new Server(server, {
   cors: {
-    origin: process.env.ALLOWED_ORIGINS?.split(",") || "*",
+    origin: corsOriginHandler,
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -37,8 +90,7 @@ app.set('io', io);
 
 // Initialize WebRTC signaling
 const webrtcSignaling = new WebRTCSignalingService(io);
-
-console.log("✅ WebRTC signaling service initialized");
+logger.info("webrtc_signaling_initialized");
 
 // Initialize socket service for tracking
 const socketService = require('./services/socket_service');
@@ -190,7 +242,6 @@ io.use(async (socket, next) => {
   }
 });
 
-module.exports = { app, io };
 
 io.on("connection", (socket) => {
   console.log("🔌 New WebSocket connection", socket.id);
@@ -668,7 +719,7 @@ io.on("connection", (socket) => {
       console.error(`Error responding to reservation: ${error.message}`);
       socket.emit('reservation:response', {
         success: false,
-        error: error.message
+        error: 'Failed to respond to reservation'
       });
     }
   });
@@ -700,36 +751,102 @@ io.on("connection", (socket) => {
       socket.emit('reservation:active', { reservation });
     } catch (error) {
       console.error(`Error getting active reservation: ${error.message}`);
-      socket.emit('reservation:active', { reservation: null, error: error.message });
+      socket.emit('reservation:active', {
+        reservation: null,
+        error: 'Failed to fetch active reservation',
+      });
     }
   });
 });
 
-// SECURITY: Periodic cleanup of empty rooms (every hour)
-setInterval(() => {
-  const rooms = io.sockets.adapter.rooms;
-  let cleanedCount = 0;
+const startRoomCleanupLoop = () => {
+  if (roomCleanupIntervalId) return;
 
-  rooms.forEach((sockets, roomName) => {
-    // Clean up user notification rooms with no connections
-    if (roomName.startsWith('user:') && sockets.size === 0) {
-      rooms.delete(roomName);
-      cleanedCount++;
+  roomCleanupIntervalId = setInterval(() => {
+    const rooms = io.sockets.adapter.rooms;
+    let cleanedCount = 0;
+
+    rooms.forEach((sockets, roomName) => {
+      // Clean up user notification rooms with no connections
+      if (roomName.startsWith('user:') && sockets.size === 0) {
+        rooms.delete(roomName);
+        cleanedCount++;
+      }
+    });
+
+    if (cleanedCount > 0) {
+      logger.info("socket_room_cleanup_completed", { cleanedCount });
     }
-  });
+  }, 3600000);
+};
 
-  if (cleanedCount > 0) {
-    console.log(`🧹 Periodic cleanup: removed ${cleanedCount} empty notification rooms`);
-  }
-}, 3600000); // Every hour
+const stopRoomCleanupLoop = () => {
+  if (!roomCleanupIntervalId) return;
+  clearInterval(roomCleanupIntervalId);
+  roomCleanupIntervalId = null;
+};
 
 // Middleware
 app.use(helmet());
 app.use(compression());
-app.use(morgan("dev"));
+app.use((req, res, next) => {
+  const requestStartedAt = process.hrtime.bigint();
+  req.id = req.headers["x-request-id"] || `req_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  res.setHeader("X-Request-Id", req.id);
+
+  const originalJson = res.json.bind(res);
+  res.json = (payload) => {
+    if (payload && typeof payload === "object" && !Array.isArray(payload) && res.statusCode >= 500) {
+      const sanitizedPayload = { ...payload };
+      delete sanitizedPayload.error;
+
+      if (typeof sanitizedPayload.message === "string") {
+        if (!safeServerMessagePatterns.some((pattern) => pattern.test(sanitizedPayload.message))) {
+          sanitizedPayload.message = "Internal server error";
+        }
+      } else if (sanitizedPayload.success === false) {
+        sanitizedPayload.message = "Internal server error";
+      }
+
+      return originalJson(sanitizedPayload);
+    }
+
+    return originalJson(payload);
+  };
+
+  res.on("finish", () => {
+    const durationMs = Number(process.hrtime.bigint() - requestStartedAt) / 1e6;
+    const route =
+      req.route?.path && req.baseUrl
+        ? `${req.baseUrl}${req.route.path}`
+        : req.route?.path || req.baseUrl || "unmatched";
+
+    metrics.observeHttpRequest({
+      method: req.method,
+      route,
+      status: res.statusCode,
+      durationMs,
+    });
+  });
+
+  next();
+});
+app.use(
+  morgan((tokens, req, res) => JSON.stringify({
+    time: new Date().toISOString(),
+    level: "info",
+    message: "http_request",
+    requestId: req.id,
+    method: tokens.method(req, res),
+    url: tokens.url(req, res),
+    status: Number(tokens.status(req, res) || 0),
+    responseTimeMs: Number(tokens["response-time"](req, res) || 0),
+    contentLength: Number(tokens.res(req, res, "content-length") || 0),
+  }))
+);
 app.use(
   cors({
-    origin: process.env.ALLOWED_ORIGINS?.split(",") || "*",
+    origin: corsOriginHandler,
     credentials: true,
   })
 );
@@ -739,6 +856,19 @@ app.use("/api/subscriptions/webhook", express.raw({ type: "application/json" }))
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use("/api", apiGlobalRateLimit);
+
+app.get("/api/metrics", async (req, res) => {
+  try {
+    const report = await getReadinessReport();
+    metrics.setDependencyHealth(report.dependencies);
+    metrics.setBackgroundJobsEnabled(areBackgroundJobsRunning());
+    res.setHeader("Content-Type", "text/plain; version=0.0.4; charset=utf-8");
+    return res.status(200).send(metrics.renderMetrics());
+  } catch (error) {
+    logger.error("metrics_render_failed", { error });
+    return res.status(500).type("text/plain").send("Internal server error\n");
+  }
+});
 
 // Serve uploaded files
 app.use("/uploads", express.static("uploads"));
@@ -773,7 +903,9 @@ app.use("/api/favorites", require("./routes/favorites"));
 app.use("/api/promo", require("./routes/promo"));
 app.use("/api/pickup", require("./routes/pickup"));
 app.use("/api/parcel", require("./routes/parcel"));
-app.use("/api/test", require("./routes/test"));
+if (process.env.ENABLE_TEST_ROUTES === "true" || process.env.NODE_ENV !== "production") {
+  app.use("/api/test", require("./routes/test"));
+}
 app.use("/api/tracking", require("./routes/tracking_routes"));
 app.use("/api/credits", require("./routes/credits"));
 app.use("/api/subscriptions", require("./routes/subscriptions"));
@@ -782,9 +914,18 @@ app.use('/api/calls', callRoutes);
 
 app.set('webrtcSignaling', webrtcSignaling);
 
-// Health check
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", message: "GrabGo API is running" });
+app.get("/api/health/live", (req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
+app.get("/api/health/ready", async (req, res) => {
+  const report = await getReadinessReport();
+  return res.status(report.status === "ok" ? 200 : 503).json(report);
+});
+
+app.get("/api/health", async (req, res) => {
+  const report = await getReadinessReport();
+  return res.status(report.status === "ok" ? 200 : 503).json(report);
 });
 
 // Email health check
@@ -803,6 +944,7 @@ app.get("/api/health/email", async (req, res) => {
     status: "error",
     service: "smtp",
     ...result,
+    message: "Email service unavailable",
   });
 });
 
@@ -813,143 +955,84 @@ app.use((req, res) => {
 
 // Error handler
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  logger.error("express_unhandled_error", {
+    requestId: req.id,
+    method: req.method,
+    path: req.originalUrl,
+    error: err,
+  });
   res.status(err.status || 500).json({
     success: false,
-    message: err.message || "Internal server error",
+    message: err.status && err.status < 500 ? err.message : "Internal server error",
     ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
   });
 });
 
-// Import cron jobs
-const { scheduleReferralCleanup } = require("./jobs/referralCleanup");
-const { initializeScheduler } = require("./jobs/notification_scheduler");
-const { initializeCartAbandonmentJob } = require("./jobs/cart_abandonment");
-const { initializeMealNudges } = require("./jobs/meal_nudges");
-const { initializeEngagementNudges } = require("./jobs/engagement_nudges");
-const reservationExpiryJob = require("./jobs/reservation_expiry");
-const { runAutoOfflineJob } = require("./jobs/rider_auto_offline");
-const { initializeDeliveryMonitor } = require("./jobs/delivery_monitor");
-const { initializePickupAcceptTimeoutJob } = require("./jobs/pickup_accept_timeout");
-const { initializePickupReadyExpiryJob } = require("./jobs/pickup_ready_expiry");
-const { initializeScheduledOrderReleaseJob } = require("./jobs/scheduled_order_release");
-const dispatchRetryQueueJob = require("./jobs/dispatch_retry_queue");
-const { startFraudOutboxWorker, stopFraudOutboxWorker } = require("./jobs/fraud_outbox_worker");
-const {
-  startFraudFeatureRecomputeJob,
-  stopFraudFeatureRecomputeJob,
-} = require("./jobs/fraud_feature_recompute");
-const { fraudPolicyService } = require("./services/fraud");
 const featureFlags = require("./config/feature_flags");
-const { scheduleRiderPartnerRecalc } = require("./jobs/rider_partner_recalc");
-const { scheduleIncentiveBudgetApproval } = require("./jobs/incentive_budget_approval");
-const { scheduleWeeklyPayout } = require("./jobs/rider_weekly_payout");
-const { scheduleLoanDailyRepayment } = require("./jobs/loan_daily_repayment");
-
-// Initialize Redis cache (optional - falls back to memory cache)
-cache.initRedis();
-fraudPolicyService.ensureDefaultPolicy().catch((error) => {
-  console.error("[Fraud] Default policy bootstrap failed:", error.message);
-});
-
-// Schedule referral cleanup cron job (runs daily at 2:00 AM)
-scheduleReferralCleanup();
-
-// Initialize notification scheduler (runs every minute)
-initializeScheduler(io);
-
-// Initialize cart abandonment job (runs every 30 minutes)
-initializeCartAbandonmentJob(io);
-
-// Initialize meal-time nudges (breakfast, lunch, dinner)
-initializeMealNudges(io);
-
-// Initialize engagement nudges (favorites, reorder, re-engagement)
-initializeEngagementNudges(io);
-
-// Initialize order reservation expiry job (runs every 2 seconds)
-reservationExpiryJob.start();
-
-// Initialize dispatch retry queue worker (handles durable re-dispatch for unassigned orders)
-dispatchRetryQueueJob.start();
-
-// Initialize delivery monitor (runs every minute - warns riders, notifies customers)
-initializeDeliveryMonitor();
-
-// Initialize pickup lifecycle jobs (runs every minute)
-initializePickupAcceptTimeoutJob(io);
-initializePickupReadyExpiryJob(io);
-initializeScheduledOrderReleaseJob(io);
-if (featureFlags.isFraudEnabled && featureFlags.isFraudOutboxWorkerEnabled) {
-  startFraudOutboxWorker();
-  startFraudFeatureRecomputeJob();
-}
-
-// Schedule rider auto-offline job (runs every 5 minutes)
-setInterval(() => {
-  runAutoOfflineJob().catch(err => console.error('Auto-offline job error:', err));
-}, 5 * 60 * 1000);
-// Run once at startup after a delay
-setTimeout(() => {
-  runAutoOfflineJob().catch(err => console.error('Auto-offline job startup error:', err));
-}, 10000);
-
-// Schedule rider partner score recalculation (daily at 02:00 Africa/Accra)
-if (featureFlags.isRiderPartnerSystemEnabled || featureFlags.isRiderPartnerShadowMode) {
-  scheduleRiderPartnerRecalc();
-}
-
-// Schedule incentive budget approval (every 5 minutes)
-if (featureFlags.isRiderIncentivesEnabled) {
-  scheduleIncentiveBudgetApproval();
-}
-
-// Schedule weekly auto-payout (Monday 06:00 Africa/Accra)
-if (featureFlags.isRiderIncentivesEnabled) {
-  scheduleWeeklyPayout();
-}
-
-// Schedule daily loan repayments (04:00 Africa/Accra)
-scheduleLoanDailyRepayment();
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📡 API available at http://localhost:${PORT}/api`);
-  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    console.log("⚠️  Email service (SMTP) not fully configured");
+const startServer = async () => {
+  await bootstrapDependencies();
+  if (shouldRunBackgroundJobs) {
+    startBackgroundJobs({ io });
+  } else {
+    logger.info("background_jobs_disabled_for_api_process");
   }
-  if (!process.env.SENDGRID_API_KEY && !process.env.EMAIL_PASS) {
-    console.log("⚠️  SendGrid not configured (used only for legacy email-to-SMS)");
-  }
-});
+  startRoomCleanupLoop();
+
+  return new Promise((resolve) => {
+    server.listen(PORT, () => {
+      logger.info("server_started", {
+        port: PORT,
+        apiBaseUrl: `http://localhost:${PORT}/api`,
+      });
+      if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+        logger.warn("smtp_not_fully_configured");
+      }
+      if (!process.env.SENDGRID_API_KEY && !process.env.EMAIL_PASS) {
+        logger.warn("sendgrid_not_configured");
+      }
+      resolve(server);
+    });
+  });
+};
 
 // Graceful shutdown
 const shutdown = async () => {
-  console.log("🛑 Shutting down server...");
+  logger.info("server_shutdown_started");
   try {
-    if (featureFlags.isFraudEnabled && featureFlags.isFraudOutboxWorkerEnabled) {
-      stopFraudOutboxWorker();
-      stopFraudFeatureRecomputeJob();
+    stopBackgroundJobs();
+    stopRoomCleanupLoop();
+    if (typeof connectMongoDB.close === "function") {
+      await connectMongoDB.close();
     }
     if (cache && typeof cache.close === 'function') {
       await cache.close();
     }
   } catch (err) {
-    console.error("Error closing cache:", err.message);
+    logger.error("server_shutdown_cleanup_error", { error: err });
   }
 
   server.close(() => {
-    console.log("🏁 Server closed");
+    logger.info("server_shutdown_complete");
     process.exit(0);
   });
 
   // Force exit if server.close() takes too long
   setTimeout(() => {
-    console.error("⚠️ Forcefully shutting down...");
+    logger.error("server_force_shutdown");
     process.exit(1);
   }, 5000);
 };
 
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
+
+module.exports = { app, io, server, startServer };
+
+if (require.main === module) {
+  startServer().catch((error) => {
+    logger.error("server_startup_failed", { error });
+    process.exit(1);
+  });
+}

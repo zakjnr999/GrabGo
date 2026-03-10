@@ -2,6 +2,9 @@ const cron = require('node-cron');
 const { findAbandonedCarts } = require('../services/cart_service');
 const { createNotification } = require('../services/notification_service');
 const cache = require('../utils/cache');
+const { createScopedLogger } = require('../utils/logger');
+
+const console = createScopedLogger('cart_abandonment_job');
 
 let isProcessing = false;
 

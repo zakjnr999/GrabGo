@@ -1,6 +1,9 @@
 const prisma = require('../config/prisma');
 const { sendToUser } = require('./fcm_service');
 const { createNotification } = require('./notification_service');
+const { createScopedLogger } = require('../utils/logger');
+
+const console = createScopedLogger('favorites_nudge_service');
 
 /**
  * Favorites Nudge Service

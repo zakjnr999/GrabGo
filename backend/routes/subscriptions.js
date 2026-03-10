@@ -18,8 +18,12 @@ const { protect } = require('../middleware/auth');
 const paystackService = require('../services/paystack_service');
 const subscriptionService = require('../services/subscription_service');
 const featureFlags = require('../config/feature_flags');
+const logger = require('../utils/logger');
 
 const router = express.Router();
+
+const getErrorMessage = (error) =>
+  typeof error?.message === 'string' ? error.message : '';
 
 // ── GET /plans — List available subscription plans ──────────────────────────
 router.get('/plans', async (req, res) => {
@@ -31,7 +35,7 @@ router.get('/plans', async (req, res) => {
     const plans = subscriptionService.getPlans();
     return res.json({ success: true, data: plans });
   } catch (error) {
-    console.error('[SUBSCRIPTION] Error fetching plans:', error);
+    logger.error('subscription_plans_fetch_failed', { error });
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 });
@@ -75,7 +79,7 @@ router.get('/me', protect, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('[SUBSCRIPTION] Error fetching subscription:', error);
+    logger.error('subscription_current_fetch_failed', { error });
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 });
@@ -117,13 +121,14 @@ router.post(
         data: result,
       });
     } catch (error) {
-      console.error('[SUBSCRIPTION] Error subscribing:', error);
+      logger.error('subscription_subscribe_failed', { error });
+      const errorMessage = getErrorMessage(error);
 
-      if (error.message.includes('already have') || error.message.includes('Invalid')) {
-        return res.status(400).json({ success: false, message: error.message });
+      if (errorMessage.includes('already have') || errorMessage.includes('Invalid')) {
+        return res.status(400).json({ success: false, message: errorMessage });
       }
 
-      return res.status(500).json({ success: false, message: 'Server error', error: error.message });
+      return res.status(500).json({ success: false, message: 'Server error' });
     }
   }
 );
@@ -148,10 +153,11 @@ router.post(
         data: result,
       });
     } catch (error) {
-      console.error('[SUBSCRIPTION] Error cancelling:', error);
+      logger.error('subscription_cancel_failed', { error });
+      const errorMessage = getErrorMessage(error);
 
-      if (error.message.includes('No active subscription')) {
-        return res.status(404).json({ success: false, message: error.message });
+      if (errorMessage.includes('No active subscription')) {
+        return res.status(404).json({ success: false, message: errorMessage });
       }
 
       return res.status(500).json({ success: false, message: 'Server error' });
@@ -200,19 +206,20 @@ router.post(
         data: result,
       });
     } catch (error) {
-      console.error('[SUBSCRIPTION] Error confirming payment:', error);
+      logger.error('subscription_confirm_payment_failed', { error });
+      const errorMessage = getErrorMessage(error);
 
-      if (error.message.includes('not found')) {
-        return res.status(404).json({ success: false, message: error.message });
+      if (errorMessage.includes('not found')) {
+        return res.status(404).json({ success: false, message: errorMessage });
       }
-      if (error.message.includes('Not authorized')) {
-        return res.status(403).json({ success: false, message: error.message });
+      if (errorMessage.includes('Not authorized')) {
+        return res.status(403).json({ success: false, message: errorMessage });
       }
-      if (error.message.includes('required')) {
-        return res.status(400).json({ success: false, message: error.message });
+      if (errorMessage.includes('required')) {
+        return res.status(400).json({ success: false, message: errorMessage });
       }
 
-      return res.status(500).json({ success: false, message: 'Server error', error: error.message });
+      return res.status(500).json({ success: false, message: 'Server error' });
     }
   }
 );
@@ -231,7 +238,7 @@ router.get(
 
       return res.json({ success: true, data: result });
     } catch (error) {
-      console.error('[SUBSCRIPTION] Error previewing benefits:', error);
+      logger.error('subscription_benefits_preview_failed', { error });
       return res.status(500).json({ success: false, message: 'Server error' });
     }
   }
@@ -257,24 +264,24 @@ router.post('/webhook', async (req, res) => {
     const isValid = paystackService.verifyWebhookSignature(rawBody, signature);
 
     if (!isValid) {
-      console.warn('⚠️ [SUBSCRIPTION] Invalid webhook signature');
+      logger.warn('subscription_webhook_invalid_signature');
       return res.status(401).json({ success: false, message: 'Invalid signature' });
     }
 
     const event = payload?.event;
-    console.log(`📩 [SUBSCRIPTION] Webhook received: ${event}`);
+    logger.info('subscription_webhook_received', { event });
 
     // Route to subscription handler
     const result = await subscriptionService.handleWebhook(event, payload);
 
     if (result) {
-      console.log(`✅ [SUBSCRIPTION] Webhook processed: ${event}`);
+      logger.info('subscription_webhook_processed', { event });
     }
 
     // Always return 200 to Paystack
     return res.status(200).json({ success: true });
   } catch (error) {
-    console.error('[SUBSCRIPTION] Webhook error:', error);
+    logger.error('subscription_webhook_failed', { error });
     // Return 200 anyway to prevent Paystack from retrying
     return res.status(200).json({ success: true });
   }
@@ -290,7 +297,7 @@ router.get('/stats', protect, async (req, res) => {
     const stats = await subscriptionService.getSubscriptionStats();
     return res.json({ success: true, data: stats });
   } catch (error) {
-    console.error('[SUBSCRIPTION] Error fetching stats:', error);
+    logger.error('subscription_stats_fetch_failed', { error });
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 });

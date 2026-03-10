@@ -13,6 +13,9 @@ const prisma = require('../config/prisma');
 const paystackService = require('./paystack_service');
 const featureFlags = require('../config/feature_flags');
 const axios = require('axios');
+const { createScopedLogger } = require('../utils/logger');
+
+const console = createScopedLogger('subscription_service');
 
 // ── Plan Configuration ──────────────────────────────────────────────────────
 const PLANS = {

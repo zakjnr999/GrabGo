@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const deliveryAnalyticsSchema = new mongoose.Schema({
-    orderId: { type: String, required: true, index: true }, // References PostgreSQL Order ID
+    orderId: { type: String, required: true }, // References PostgreSQL Order ID
     riderId: { type: String, required: true, index: true }, // References PostgreSQL User ID
 
     // Order classification (for multi-entity score engine)

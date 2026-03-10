@@ -16,6 +16,10 @@ const socketService = require('./socket_service');
 const { sendToUser } = require('./fcm_service');
 const featureFlags = require('../config/feature_flags');
 const { DISPATCH_PRIORITY_BONUS } = require('./rider_score_engine');
+const { createScopedLogger } = require('../utils/logger');
+const metrics = require('../utils/metrics');
+
+const console = createScopedLogger('dispatch_service');
 
 const ORDER_RESERVATION_ENTITY = 'order';
 const buildOrderReservationQuery = (query = {}) =>
@@ -288,6 +292,19 @@ const buildOnTimeStatsMap = async (riderIds, minDeliveries = 20) => {
  */
 async function dispatchOrder(orderId) {
     console.log(`\n🚀 [Dispatch] Starting dispatch for order: ${orderId}`);
+    const dispatchStartedAt = process.hrtime.bigint();
+    const observeDispatchResult = (result) => {
+        const durationMs = Number(process.hrtime.bigint() - dispatchStartedAt) / 1e6;
+        metrics.recordDispatchEvent({ result, durationMs });
+    };
+    const fail = (error, extra = {}, result = 'failure') => {
+        observeDispatchResult(result);
+        return { success: false, error, ...extra };
+    };
+    const succeed = (payload) => {
+        observeDispatchResult('success');
+        return payload;
+    };
     
     try {
         // 1. Fetch order with all necessary details
@@ -305,24 +322,24 @@ async function dispatchOrder(orderId) {
 
         if (!order) {
             console.log(`❌ [Dispatch] Order not found: ${orderId}`);
-            return { success: false, error: 'Order not found' };
+            return fail('Order not found', {}, 'not_found');
         }
 
         if (order.fulfillmentMode === 'pickup') {
             console.log(`⛔ [Dispatch] Skipping pickup order: ${orderId}`);
-            return { success: false, error: 'Pickup orders are not dispatchable' };
+            return fail('Pickup orders are not dispatchable', {}, 'skipped_pickup');
         }
 
         // Check if order already has a rider
         if (order.riderId) {
             console.log(`⚠️ [Dispatch] Order already has rider: ${order.riderId}`);
-            return { success: false, error: 'Order already assigned to a rider' };
+            return fail('Order already assigned to a rider', {}, 'already_assigned');
         }
 
         // Check if order payment is confirmed
         if (!DISPATCHABLE_PAYMENT_STATUSES.has(order.paymentStatus)) {
             console.log(`⚠️ [Dispatch] Order payment not dispatchable: ${order.paymentStatus}`);
-            return { success: false, error: `Order payment status "${order.paymentStatus}" is not dispatchable` };
+            return fail(`Order payment status "${order.paymentStatus}" is not dispatchable`, {}, 'payment_not_dispatchable');
         }
 
         // Check if order is in dispatchable status
@@ -333,22 +350,18 @@ async function dispatchOrder(orderId) {
             !isCodOrder;
         if (!DISPATCHABLE_STATUSES.has(order.status) && !isConfirmedPredispatch) {
             console.log(`⚠️ [Dispatch] Order status not dispatchable: ${order.status}`);
-            return { success: false, error: `Order status "${order.status}" is not dispatchable` };
+            return fail(`Order status "${order.status}" is not dispatchable`, {}, 'status_not_dispatchable');
         }
         if (isCodOrder && order.status === 'confirmed') {
             console.log(`⏳ [Dispatch] COD order ${order.orderNumber} waiting for vendor prep before dispatch`);
-            return { success: false, error: 'COD order not dispatchable at confirmed status' };
+            return fail('COD order not dispatchable at confirmed status', {}, 'cod_not_dispatchable');
         }
 
         // 2. Check for existing active reservation
         const existingReservation = await OrderReservation.getActiveForOrder(orderId, ORDER_RESERVATION_ENTITY);
         if (existingReservation) {
             console.log(`⚠️ [Dispatch] Order already has active reservation for rider: ${existingReservation.riderId}`);
-            return { 
-                success: false, 
-                error: 'Order already has active reservation',
-                reservation: existingReservation
-            };
+            return fail('Order already has active reservation', { reservation: existingReservation }, 'already_reserved');
         }
 
         // 3. Get previous attempts for this order
@@ -359,7 +372,7 @@ async function dispatchOrder(orderId) {
 
         if (attemptNumber > CONFIG.MAX_ATTEMPTS) {
             console.log(`❌ [Dispatch] Max attempts reached for order: ${orderId}`);
-            return { success: false, error: 'Max dispatch attempts reached', attemptNumber };
+            return fail('Max dispatch attempts reached', { attemptNumber }, 'max_attempts_reached');
         }
 
         // Get list of riders who already declined/expired for this order
@@ -375,7 +388,7 @@ async function dispatchOrder(orderId) {
         
         if (eligibleRiders.length === 0) {
             console.log(`❌ [Dispatch] No eligible riders found for order: ${orderId}`);
-            return { success: false, error: 'No eligible riders available' };
+            return fail('No eligible riders available', {}, 'no_eligible_riders');
         }
 
         console.log(`📊 [Dispatch] Found ${eligibleRiders.length} eligible riders`);
@@ -388,8 +401,7 @@ async function dispatchOrder(orderId) {
                     `(nearest=${decision.nearestRiderTravelMinutes ?? 'n/a'}m, remainingPrep=${decision.remainingPrepMinutes ?? 'n/a'}m, threshold=${decision.thresholdMinutes ?? 'n/a'}m)`
                 );
                 return {
-                    success: false,
-                    error: decision.reason,
+                    ...fail(decision.reason, {}, 'predispatch_deferred'),
                     code: 'PREDISPATCH_DEFERRED',
                     meta: decision,
                 };
@@ -420,18 +432,18 @@ async function dispatchOrder(orderId) {
 
         console.log(`✅ [Dispatch] Reservation created for rider ${topRider.rider.username} (attempt ${attemptNumber})`);
 
-        return {
+        return succeed({
             success: true,
             reservation,
             attemptNumber,
             riderId: topRider.rider.id,
             riderName: topRider.rider.username,
             expiresAt: reservation.expiresAt
-        };
+        });
 
     } catch (error) {
         console.error(`❌ [Dispatch] Error dispatching order ${orderId}:`, error);
-        return { success: false, error: error.message };
+        return fail(error.message, {}, 'failure');
     }
 }
 

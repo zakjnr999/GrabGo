@@ -3,6 +3,9 @@ const dispatchRetryService = require('../services/dispatch_retry_service');
 const socketService = require('../services/socket_service');
 const OrderReservation = require('../models/OrderReservation');
 const cache = require('../utils/cache');
+const { createScopedLogger } = require('../utils/logger');
+
+const console = createScopedLogger('reservation_expiry_job');
 
 const ORDER_RESERVATION_ENTITY = 'order';
 const buildOrderReservationQuery = (query = {}) =>

@@ -2,6 +2,8 @@ const prisma = require('../config/prisma');
 const featureFlags = require('../config/feature_flags');
 const { LEVEL_MULTIPLIERS } = require('./rider_score_engine');
 const { getWeeklyWindowKey } = require('./rider_quest_engine');
+const { createScopedLogger } = require('../utils/logger');
+const console = createScopedLogger('rider_payout_service');
 
 // ── Withdrawal Policy by Partner Level ──
 // Free instant withdrawal quotas per week, and instant withdrawal fee

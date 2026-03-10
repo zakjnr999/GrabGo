@@ -6,6 +6,9 @@ const dispatchService = require('./dispatch_service');
 const { createOrderAudit } = require('./pickup_order_service');
 const { getUserCartGroups } = require('./cart_service');
 const { calculateCartGroupsPricing } = require('./pricing_service');
+const { createScopedLogger } = require('../utils/logger');
+
+const console = createScopedLogger('checkout_session_service');
 
 const roundCurrency = (value) => Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
 

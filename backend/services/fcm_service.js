@@ -1,6 +1,10 @@
 const admin = require('firebase-admin');
 const prisma = require('../config/prisma');
 const { validateFCMToken, validatePlatform, validateDeviceId } = require('../utils/validation');
+const { createScopedLogger } = require('../utils/logger');
+const metrics = require('../utils/metrics');
+
+const console = createScopedLogger('fcm_service');
 
 // Text truncation limits (shared with notification_service.js)
 const TRUNCATION_LIMITS = {
@@ -198,6 +202,7 @@ const removeToken = async (userId, token) => {
 const sendToUser = async (userId, notification, data = {}) => {
     if (!firebaseInitialized) {
         console.warn('Firebase not initialized, skipping push notification');
+        metrics.recordNotificationEvent({ channel: 'push', result: 'skipped' });
         return { success: false, reason: 'firebase_not_initialized' };
     }
 
@@ -211,6 +216,7 @@ const sendToUser = async (userId, notification, data = {}) => {
         });
 
         if (!user || !user.fcmTokens || user.fcmTokens.length === 0) {
+            metrics.recordNotificationEvent({ channel: 'push', result: 'skipped' });
             return { success: false, reason: 'no_tokens' };
         }
 
@@ -244,6 +250,7 @@ const sendToUser = async (userId, notification, data = {}) => {
 
         const settingKey = settingsMap[data.type];
         if (settingKey && user.notificationSettings && !user.notificationSettings[settingKey]) {
+            metrics.recordNotificationEvent({ channel: 'push', result: 'skipped' });
             return { success: false, reason: 'notifications_disabled' };
         }
 
@@ -316,6 +323,7 @@ const sendToUser = async (userId, notification, data = {}) => {
             const finalSize = JSON.stringify(message).length;
             if (finalSize > FCM_PAYLOAD_LIMIT) {
                 console.error(`❌ FCM payload still too large after truncation (${finalSize} bytes)`);
+                metrics.recordNotificationEvent({ channel: 'push', result: 'failure' });
                 return { success: false, reason: 'payload_too_large' };
             }
         }
@@ -353,6 +361,10 @@ const sendToUser = async (userId, notification, data = {}) => {
         }
 
         console.log(`Push notification sent to user ${userId}: ${response.successCount}/${tokens.length} succeeded`);
+        metrics.recordNotificationEvent({
+            channel: 'push',
+            result: response.successCount > 0 ? 'success' : 'failure'
+        });
 
         return {
             success: response.successCount > 0,
@@ -361,6 +373,7 @@ const sendToUser = async (userId, notification, data = {}) => {
         };
     } catch (error) {
         console.error('Error sending push notification:', error.message);
+        metrics.recordNotificationEvent({ channel: 'push', result: 'failure' });
         return { success: false, reason: 'send_error', error: error.message };
     }
 };

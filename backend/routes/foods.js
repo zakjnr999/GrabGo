@@ -2,6 +2,7 @@ const express = require("express");
 const { body, validationResult } = require("express-validator");
 const prisma = require("../config/prisma");
 const { protect } = require("../middleware/auth");
+const { createScopedLogger } = require("../utils/logger");
 const {
   uploadSingle,
   getFileUrl,
@@ -13,6 +14,7 @@ const mlClient = require("../utils/ml_client");
 const { validateFoodCustomizationConfig } = require("../services/food_customization_service");
 
 const router = express.Router();
+const console = createScopedLogger("foods_route");
 
 const { FOOD_INCLUDE_RELATIONS, formatFoodResponse } = require('../utils/food_helpers');
 
@@ -109,7 +111,6 @@ router.get("/", cacheMiddleware(cache.CACHE_KEYS.FOOD_CATEGORIES, 300), async (r
     res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message,
     });
   }
 });
@@ -186,8 +187,7 @@ router.get("/deals", cacheMiddleware(cache.CACHE_KEYS.FOOD_DEALS, 120), async (r
     console.error("Get deals error:", error);
     res.status(500).json({
       success: false,
-      message: "Server error",
-      error: error.message
+      message: "Server error"
     });
   }
 });
@@ -390,7 +390,7 @@ router.get("/recommended", (req, res, next) => {
   } catch (error) {
     console.error("Get recommended items error:", error);
     console.error("Error stack:", error.stack);
-    res.status(500).json({ success: false, message: "Server error", error: error.message });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
@@ -464,8 +464,7 @@ router.get("/popular", cacheMiddleware(cache.CACHE_KEYS.FOOD_POPULAR, 300), asyn
     console.error("Get popular items error:", error);
     res.status(500).json({
       success: false,
-      message: "Server error",
-      error: error.message
+      message: "Server error"
     });
   }
 });
@@ -544,8 +543,7 @@ router.get("/top-rated", cacheMiddleware(cache.CACHE_KEYS.FOOD_TOP_RATED, 600), 
     console.error("Get top rated items error:", error);
     res.status(500).json({
       success: false,
-      message: "Server error",
-      error: error.message
+      message: "Server error"
     });
   }
 });
@@ -694,8 +692,7 @@ router.get("/order-history", protect, cacheMiddleware(cache.CACHE_KEYS.FOOD_ITEM
     console.error('Get food order history error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: error.message
+      message: 'Server error'
     });
   }
 });
@@ -838,7 +835,6 @@ router.post(
       res.status(500).json({
         success: false,
         message: "Server error",
-        error: error.message,
       });
     }
   }
@@ -876,7 +872,6 @@ router.get("/:foodId", cacheMiddleware(cache.CACHE_KEYS.FOOD_ITEM, 600), async (
     res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message,
     });
   }
 });
@@ -995,7 +990,6 @@ router.put(
       res.status(500).json({
         success: false,
         message: "Server error",
-        error: error.message,
       });
     }
   });

@@ -3,8 +3,10 @@ const { protect } = require('../middleware/auth');
 const { createNotification } = require('../services/notification_service');
 const { getIO } = require('../utils/socket');
 const { sendBrandedPreviewEmail } = require('../utils/emailService');
+const { createScopedLogger } = require('../utils/logger');
 
 const router = express.Router();
+const console = createScopedLogger('test_route');
 
 /**
  * @route   POST /api/test/notification-public/:userId
@@ -84,8 +86,7 @@ router.post('/notification-public/:userId', async (req, res) => {
         console.error('Test notification error:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to send test notification',
-            error: error.message
+            message: 'Failed to send test notification'
         });
     }
 });
@@ -133,8 +134,7 @@ router.post('/notification', protect, async (req, res) => {
         console.error('Test notification error:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to send test notification',
-            error: error.message
+            message: 'Failed to send test notification'
         });
     }
 });
@@ -210,8 +210,7 @@ router.post('/order-notification', protect, async (req, res) => {
         console.error('Test order notification error:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to send test notification',
-            error: error.message
+            message: 'Failed to send test notification'
         });
     }
 });
@@ -260,8 +259,7 @@ router.post('/email-preview', protect, async (req, res) => {
         console.error('Preview email test error:', error);
         return res.status(500).json({
             success: false,
-            message: 'Failed to send preview email',
-            error: error.message
+            message: 'Failed to send preview email'
         });
     }
 });
@@ -310,8 +308,7 @@ router.post('/referral-notification', protect, async (req, res) => {
         console.error('Test referral notification error:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to send test notification',
-            error: error.message
+            message: 'Failed to send test notification'
         });
     }
 });

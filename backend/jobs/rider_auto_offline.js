@@ -2,10 +2,12 @@ const RiderStatus = require('../models/RiderStatus');
 const OrderReservation = require('../models/OrderReservation');
 const socketService = require('../services/socket_service');
 const { sendToUser } = require('../services/fcm_service');
+const { createScopedLogger } = require('../utils/logger');
 
 const ORDER_RESERVATION_ENTITY_MATCH = {
   $or: [{ entityType: 'order' }, { entityType: { $exists: false } }]
 };
+const console = createScopedLogger('rider_auto_offline_job');
 
 const CONFIG = {
   INACTIVITY_THRESHOLD_MS: 30 * 60 * 1000,

@@ -12,6 +12,9 @@ const {
     getUserCartGroups,
 } = require('../services/cart_service');
 const featureFlags = require('../config/feature_flags');
+const { createScopedLogger } = require('../utils/logger');
+
+const console = createScopedLogger('cart_route');
 
 const parseBoolean = (value) => {
     if (typeof value === 'boolean') return value;
@@ -29,6 +32,8 @@ const normalizePromoCode = (value) => {
     const normalized = String(value).trim().toUpperCase();
     return normalized.length > 0 ? normalized : null;
 };
+
+const getErrorMessage = (error) => String(error?.message || '');
 
 /**
  * @route   GET /api/cart/groups
@@ -75,7 +80,6 @@ router.get('/groups', protect, async (req, res) => {
         return res.status(500).json({
             success: false,
             message: 'Failed to fetch grouped cart',
-            error: error.message,
         });
     }
 });
@@ -145,8 +149,7 @@ router.get('/', protect, async (req, res) => {
         console.error('Error fetching cart:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to fetch cart',
-            error: error.message
+            message: 'Failed to fetch cart'
         });
     }
 });
@@ -217,25 +220,26 @@ router.post('/add', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Error adding to cart:', error);
+        const errorMessage = getErrorMessage(error);
 
         // Fix #8: Distinguish error types
-        if (error.message.includes('not found') ||
-            error.message.includes('unavailable') ||
-            error.message.includes('inactive') ||
-            error.message.includes('closed') ||
-            error.message.includes('accepting orders') ||
-            error.message.includes('portion') ||
-            error.message.includes('preference option') ||
-            error.message.includes('customization') ||
-            error.message.includes('out of stock') ||
-            error.message.includes('not enough stock') ||
-            error.message.includes('insufficient stock') ||
-            error.message.includes('Quantity must be') ||
-            error.message.includes('Maximum quantity') ||
-            error.message.includes('Invalid')) {
+        if (errorMessage.includes('not found') ||
+            errorMessage.includes('unavailable') ||
+            errorMessage.includes('inactive') ||
+            errorMessage.includes('closed') ||
+            errorMessage.includes('accepting orders') ||
+            errorMessage.includes('portion') ||
+            errorMessage.includes('preference option') ||
+            errorMessage.includes('customization') ||
+            errorMessage.includes('out of stock') ||
+            errorMessage.includes('not enough stock') ||
+            errorMessage.includes('insufficient stock') ||
+            errorMessage.includes('Quantity must be') ||
+            errorMessage.includes('Maximum quantity') ||
+            errorMessage.includes('Invalid')) {
             return res.status(400).json({
                 success: false,
-                message: error.message
+                message: errorMessage
             });
         }
 
@@ -282,12 +286,13 @@ router.patch('/update/:itemId', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Error updating cart:', error);
+        const errorMessage = getErrorMessage(error);
 
         // Fix #8: Distinguish error types
-        if (error.message.includes('not found') || error.message.includes('Invalid')) {
+        if (errorMessage.includes('not found') || errorMessage.includes('Invalid')) {
             return res.status(400).json({
                 success: false,
-                message: error.message
+                message: errorMessage
             });
         }
 
@@ -325,12 +330,13 @@ router.delete('/remove/:itemId', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Error removing from cart:', error);
+        const errorMessage = getErrorMessage(error);
 
         // Fix #8: Distinguish error types
-        if (error.message.includes('not found')) {
+        if (errorMessage.includes('not found')) {
             return res.status(400).json({
                 success: false,
-                message: error.message
+                message: errorMessage
             });
         }
 
@@ -367,12 +373,13 @@ router.delete('/clear', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Error clearing cart:', error);
+        const errorMessage = getErrorMessage(error);
 
         // Fix #8: Distinguish error types
-        if (error.message.includes('not found')) {
+        if (errorMessage.includes('not found')) {
             return res.status(400).json({
                 success: false,
-                message: error.message
+                message: errorMessage
             });
         }
 

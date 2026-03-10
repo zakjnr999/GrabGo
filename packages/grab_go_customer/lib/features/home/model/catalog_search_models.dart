@@ -9,11 +9,7 @@ class CatalogSearchSuggestion {
   final String type;
   final String subtitle;
 
-  const CatalogSearchSuggestion({
-    required this.value,
-    required this.type,
-    required this.subtitle,
-  });
+  const CatalogSearchSuggestion({required this.value, required this.type, required this.subtitle});
 
   factory CatalogSearchSuggestion.fromJson(Map<String, dynamic> json) {
     return CatalogSearchSuggestion(
@@ -53,14 +49,7 @@ class CatalogSearchCategory {
   }
 
   FoodCategoryModel toFilterCategory() {
-    return FoodCategoryModel(
-      id: id,
-      name: name,
-      description: '',
-      emoji: emoji,
-      isActive: true,
-      items: const [],
-    );
+    return FoodCategoryModel(id: id, name: name, description: '', emoji: emoji, isActive: true, items: const []);
   }
 }
 
@@ -69,46 +58,23 @@ class CatalogSearchItemResult {
   final Object sourceItem;
   final String serviceType;
 
-  const CatalogSearchItemResult({
-    required this.displayItem,
-    required this.sourceItem,
-    required this.serviceType,
-  });
+  const CatalogSearchItemResult({required this.displayItem, required this.sourceItem, required this.serviceType});
 
-  static CatalogSearchItemResult fromJson(
-    Map<String, dynamic> json, {
-    required String serviceType,
-  }) {
+  static CatalogSearchItemResult fromJson(Map<String, dynamic> json, {required String serviceType}) {
     switch (serviceType) {
       case 'groceries':
         final item = GroceryItem.fromJson(json);
-        return CatalogSearchItemResult(
-          displayItem: item.toFoodItem(),
-          sourceItem: item,
-          serviceType: serviceType,
-        );
+        return CatalogSearchItemResult(displayItem: item.toFoodItem(), sourceItem: item, serviceType: serviceType);
       case 'pharmacy':
         final item = PharmacyItem.fromJson(json);
-        return CatalogSearchItemResult(
-          displayItem: item.toFoodItem(),
-          sourceItem: item,
-          serviceType: serviceType,
-        );
+        return CatalogSearchItemResult(displayItem: item.toFoodItem(), sourceItem: item, serviceType: serviceType);
       case 'convenience':
         final item = GrabMartItem.fromJson(json);
-        return CatalogSearchItemResult(
-          displayItem: item.toFoodItem(),
-          sourceItem: item,
-          serviceType: serviceType,
-        );
+        return CatalogSearchItemResult(displayItem: item.toFoodItem(), sourceItem: item, serviceType: serviceType);
       case 'food':
       default:
         final item = FoodItem.fromJson(json);
-        return CatalogSearchItemResult(
-          displayItem: item,
-          sourceItem: item,
-          serviceType: 'food',
-        );
+        return CatalogSearchItemResult(displayItem: item, sourceItem: item, serviceType: 'food');
     }
   }
 }
@@ -130,10 +96,7 @@ class CatalogSearchResponse {
     this.fetchedAt,
   });
 
-  factory CatalogSearchResponse.fromJson(
-    Map<String, dynamic> json, {
-    required String serviceType,
-  }) {
+  factory CatalogSearchResponse.fromJson(Map<String, dynamic> json, {required String serviceType}) {
     final categoriesJson = (json['categories'] as List<dynamic>? ?? const []);
     final vendorsJson = (json['vendors'] as List<dynamic>? ?? const []);
     final itemsJson = (json['items'] as List<dynamic>? ?? const []);
@@ -142,39 +105,22 @@ class CatalogSearchResponse {
     return CatalogSearchResponse(
       categories: categoriesJson
           .whereType<Map>()
-          .map(
-            (entry) => CatalogSearchCategory.fromJson(
-              Map<String, dynamic>.from(entry),
-            ),
-          )
+          .map((entry) => CatalogSearchCategory.fromJson(Map<String, dynamic>.from(entry)))
           .toList(growable: false),
       vendors: vendorsJson
           .whereType<Map>()
-          .map(
-            (entry) => VendorModel.fromJson(Map<String, dynamic>.from(entry)),
-          )
+          .map((entry) => VendorModel.fromJson(Map<String, dynamic>.from(entry)))
           .toList(growable: false),
       items: itemsJson
           .whereType<Map>()
-          .map(
-            (entry) => CatalogSearchItemResult.fromJson(
-              Map<String, dynamic>.from(entry),
-              serviceType: serviceType,
-            ),
-          )
+          .map((entry) => CatalogSearchItemResult.fromJson(Map<String, dynamic>.from(entry), serviceType: serviceType))
           .toList(growable: false),
       suggestions: suggestionsJson
           .whereType<Map>()
-          .map(
-            (entry) => CatalogSearchSuggestion.fromJson(
-              Map<String, dynamic>.from(entry),
-            ),
-          )
+          .map((entry) => CatalogSearchSuggestion.fromJson(Map<String, dynamic>.from(entry)))
           .toList(growable: false),
       sort: json['sort']?.toString() ?? 'relevance',
-      fetchedAt: json['fetchedAt'] != null
-          ? DateTime.tryParse(json['fetchedAt'].toString())
-          : null,
+      fetchedAt: json['fetchedAt'] != null ? DateTime.tryParse(json['fetchedAt'].toString()) : null,
     );
   }
 }

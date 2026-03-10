@@ -3,6 +3,7 @@ const router = express.Router();
 const trackingService = require('../services/tracking_service');
 const prisma = require('../config/prisma');
 const { protect } = require('../middleware/auth');
+const { createScopedLogger } = require('../utils/logger');
 const {
     trackingInitializeRateLimit,
     trackingLocationRateLimit,
@@ -14,6 +15,7 @@ const {
     fraudDecisionService,
     applyFraudDecision,
 } = require('../services/fraud');
+const console = createScopedLogger('tracking_route');
 const TRACKING_STATUSES = new Set(['preparing', 'picked_up', 'in_transit', 'nearby', 'delivered', 'cancelled']);
 const TERMINAL_TRACKING_STATUSES = new Set(['delivered', 'cancelled']);
 const NON_AUTHORITATIVE_LIFECYCLE_STATUSES = new Set(['confirmed', 'ready', 'on_the_way']);
@@ -133,6 +135,15 @@ const mapErrorStatus = (error) => {
     return 500;
 };
 
+const sendTrackingError = (res, error, fallbackMessage = 'Server error') => {
+    const status = mapErrorStatus(error);
+    console.error('Tracking route error:', error);
+    return res.status(status).json({
+        success: false,
+        message: status >= 500 ? fallbackMessage : String(error?.message || fallbackMessage),
+    });
+};
+
 // Initialize tracking (called when rider accepts order)
 router.post('/initialize', protect, trackingInitializeRateLimit, async (req, res) => {
     try {
@@ -223,10 +234,7 @@ router.post('/initialize', protect, trackingInitializeRateLimit, async (req, res
             data: tracking
         });
     } catch (error) {
-        res.status(mapErrorStatus(error)).json({
-            success: false,
-            message: error.message
-        });
+        return sendTrackingError(res, error);
     }
 });
 
@@ -353,10 +361,7 @@ router.post('/location', protect, trackingLocationRateLimit, async (req, res) =>
             }
         });
     } catch (error) {
-        res.status(mapErrorStatus(error)).json({
-            success: false,
-            message: error.message
-        });
+        return sendTrackingError(res, error);
     }
 });
 
@@ -460,10 +465,7 @@ router.patch('/status', protect, trackingStatusRateLimit, async (req, res) => {
             data: tracking
         });
     } catch (error) {
-        res.status(mapErrorStatus(error)).json({
-            success: false,
-            message: error.message
-        });
+        return sendTrackingError(res, error);
     }
 });
 
@@ -500,10 +502,7 @@ router.get('/:orderId', protect, async (req, res) => {
             data: tracking
         });
     } catch (error) {
-        res.status(mapErrorStatus(error)).json({
-            success: false,
-            message: error.message
-        });
+        return sendTrackingError(res, error);
     }
 });
 

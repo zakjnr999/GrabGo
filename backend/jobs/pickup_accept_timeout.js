@@ -6,6 +6,9 @@ const { createNotification } = require("../services/notification_service");
 const { getIO } = require("../utils/socket");
 const featureFlags = require("../config/feature_flags");
 const { cancelPickupOrder } = require("../services/pickup_order_service");
+const { createScopedLogger } = require("../utils/logger");
+
+const console = createScopedLogger("pickup_accept_timeout_job");
 
 const PICKUP_ACCEPT_TIMEOUT_MINUTES = Number(process.env.PICKUP_ACCEPT_TIMEOUT_MINUTES || 10);
 

@@ -35,8 +35,10 @@ const {
   fraudDecisionService,
   applyFraudDecision,
 } = require("../services/fraud");
+const { createScopedLogger } = require("../utils/logger");
 
 const router = express.Router();
+const console = createScopedLogger("auth_route");
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -92,6 +94,12 @@ const applySignupPromoCredits = async (userId, promoCode) => {
 
   return { applied: true, amount };
 };
+
+const sendInternalError = (res, publicMessage = "Server error") =>
+  res.status(500).json({
+    success: false,
+    message: publicMessage,
+  });
 
 // @route   POST /api/users
 // @desc    Register a new user (regular or Google)
@@ -298,11 +306,7 @@ router.post("/", signupRateLimit, async (req, res) => {
     });
   } catch (error) {
     console.error("Register error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error during registration",
-      error: error.message,
-    });
+    sendInternalError(res, "Server error during registration");
   }
 });
 
@@ -445,11 +449,7 @@ router.post("/login", loginRateLimit, async (req, res) => {
     });
   } catch (error) {
     console.error("Login error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error during login",
-      error: error.message,
-    });
+    sendInternalError(res, "Server error during login");
   }
 });
 
@@ -535,11 +535,7 @@ router.put(
       });
     } catch (error) {
       console.error("Update user error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Server error",
-        error: error.message,
-      });
+      sendInternalError(res);
     }
   }
 );
@@ -614,11 +610,7 @@ router.put(
       });
     } catch (error) {
       console.error("Upload profile error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Server error",
-        error: error.message,
-      });
+      sendInternalError(res);
     }
   }
 );
@@ -634,11 +626,7 @@ router.get("/me", protect, async (req, res) => {
     });
   } catch (error) {
     console.error("Get current user error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    sendInternalError(res);
   }
 });
 
@@ -662,11 +650,7 @@ router.get("/:userId", protect, async (req, res) => {
     });
   } catch (error) {
     console.error("Get user error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    sendInternalError(res);
   }
 });
 
@@ -739,11 +723,7 @@ router.post(
       });
     } catch (error) {
       console.error("Verify email error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Server error",
-        error: error.message,
-      });
+      sendInternalError(res);
     }
   }
 );
@@ -816,11 +796,7 @@ router.post(
       });
     } catch (error) {
       console.error("Resend verification error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Server error",
-        error: error.message,
-      });
+      sendInternalError(res);
     }
   }
 );
@@ -886,11 +862,7 @@ router.post("/send-verification", protect, emailVerificationRateLimit, async (re
     });
   } catch (error) {
     console.error("Send verification error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    sendInternalError(res);
   }
 });
 
@@ -967,11 +939,7 @@ router.post("/send-phone-otp", phoneOtpSendRateLimit, async (req, res) => {
     });
   } catch (error) {
     console.error("Send phone OTP error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    sendInternalError(res);
   }
 });
 
@@ -1040,11 +1008,7 @@ router.post("/verify-phone-otp", phoneOtpVerifyRateLimit, async (req, res) => {
     });
   } catch (error) {
     console.error("Verify phone OTP error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    sendInternalError(res);
   }
 });
 
@@ -1108,11 +1072,7 @@ router.post("/resend-phone-otp", phoneOtpSendRateLimit, async (req, res) => {
     });
   } catch (error) {
     console.error("Resend phone OTP error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    sendInternalError(res);
   }
 });
 
@@ -1150,11 +1110,7 @@ router.post("/fcm-token", protect, async (req, res) => {
     }
   } catch (error) {
     console.error("FCM token registration error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    sendInternalError(res);
   }
 });
 
@@ -1180,11 +1136,7 @@ router.delete("/fcm-token", protect, async (req, res) => {
     });
   } catch (error) {
     console.error("FCM token removal error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    sendInternalError(res);
   }
 });
 
@@ -1247,11 +1199,7 @@ router.put("/notification-settings", protect, async (req, res) => {
     });
   } catch (error) {
     console.error("Update notification settings error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    sendInternalError(res);
   }
 });
 
@@ -1297,11 +1245,7 @@ router.post("/test-notification", protect, async (req, res) => {
     });
   } catch (error) {
     console.error("Test notification error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    sendInternalError(res);
   }
 });
 
@@ -1326,11 +1270,7 @@ router.get("/fcm-tokens", protect, async (req, res) => {
     });
   } catch (error) {
     console.error("Get FCM tokens error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    sendInternalError(res);
   }
 });
 

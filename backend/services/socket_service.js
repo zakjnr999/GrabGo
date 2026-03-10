@@ -1,3 +1,6 @@
+const { createScopedLogger } = require('../utils/logger');
+const console = createScopedLogger('socket_service');
+
 class SocketService {
     constructor() {
         this.io = null;
@@ -7,7 +10,7 @@ class SocketService {
 
     initialize(io) {
         this.io = io;
-        console.log('✅ Socket service initialized');
+        console.info('socket_service_initialized');
     }
 
     addUserSocket(userId, socketId) {
@@ -24,7 +27,7 @@ class SocketService {
             this.riderSockets.set(riderIdStr, new Set());
         }
         this.riderSockets.get(riderIdStr).add(socketId);
-        console.log(`🚴 Rider ${riderId} connected (socket: ${socketId})`);
+        console.info('rider_socket_connected', { riderId, socketId });
     }
 
     removeRiderSocket(riderId, socketId) {
@@ -51,9 +54,9 @@ class SocketService {
 
         const room = this.io.sockets?.adapter?.rooms?.get(userRoom);
         if (room && room.size > 0) {
-            console.log(`📡 Emitted '${event}' to user room: ${userRoom} (${room.size} connections)`);
+            console.info('socket_event_emitted_to_user_room', { event, userRoom, connectionCount: room.size });
         } else {
-            console.warn(`⚠️  User ${userId} has no active socket room listeners for '${event}'`);
+            console.warn('socket_user_room_listener_missing', { userId, event });
         }
     }
 
@@ -63,7 +66,7 @@ class SocketService {
             sockets.forEach(socketId => {
                 this.io.to(socketId).emit(event, data);
             });
-            console.log(`🚴 Emitted '${event}' to rider ${riderId} (${sockets.size} devices)`);
+            console.info('socket_event_emitted_to_rider', { event, riderId, deviceCount: sockets.size });
         } else {
             this.emitToUserRoom(riderId, event, data);
         }
@@ -71,25 +74,25 @@ class SocketService {
 
     joinOrderRoom(socket, orderId) {
         socket.join(`order:${orderId}`);
-        console.log(`User joined order room: order:${orderId}`);
+        console.info('socket_joined_order_room', { orderId });
     }
 
     leaveOrderRoom(socket, orderId) {
         socket.leave(`order:${orderId}`);
-        console.log(`User left order room: order:${orderId}`);
+        console.info('socket_left_order_room', { orderId });
     }
 
     emitToOrder(orderId, event, data) {
         if (this.io) {
             this.io.to(`order:${orderId}`).emit(event, data);
-            console.log(`📡 Broadcast '${event}' to order room: order:${orderId}`);
+            console.info('socket_event_broadcast_to_order_room', { event, orderId });
         }
     }
 
     emitToUserRoom(userId, event, data) {
         if (this.io) {
             this.io.to(`user:${userId}`).emit(event, data);
-            console.log(`📡 Emitted '${event}' to user room: user:${userId}`);
+            console.info('socket_event_emitted_to_user_room_fallback', { event, userId });
         }
     }
 
@@ -108,7 +111,11 @@ class SocketService {
         };
         
         this.emitToUserRoom(riderId, 'order_reserved', payload);
-        console.log(`🚴 Sent order_reserved to rider ${riderId} for order ${reservation.orderNumber}`);
+        console.info('reservation_notification_sent', {
+            riderId,
+            reservationId: reservation._id?.toString() || reservation.id,
+            orderNumber: reservation.orderNumber,
+        });
     }
 
     notifyReservationCancelled(riderId, reservationId, orderId, reason) {
@@ -120,7 +127,7 @@ class SocketService {
         };
         
         this.emitToUserRoom(riderId, 'reservation_cancelled', payload);
-        console.log(`🚴 Sent reservation_cancelled to rider ${riderId}`);
+        console.info('reservation_cancelled_notification_sent', { riderId, reservationId });
     }
 
     notifyReservationExpired(riderId, reservationId, orderId) {
@@ -131,7 +138,7 @@ class SocketService {
         };
         
         this.emitToUserRoom(riderId, 'reservation_expired', payload);
-        console.log(`🚴 Sent reservation_expired to rider ${riderId}`);
+        console.info('reservation_expired_notification_sent', { riderId, reservationId });
     }
 
     broadcastOrderTaken(orderId, acceptedByRiderId) {
@@ -141,7 +148,7 @@ class SocketService {
                 acceptedByRiderId,
                 timestamp: new Date().toISOString()
             });
-            console.log(`📢 Broadcast order_taken for order ${orderId}`);
+            console.info('order_taken_broadcast_sent', { orderId, acceptedByRiderId });
         }
     }
 }

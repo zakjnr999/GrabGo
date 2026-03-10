@@ -1,6 +1,7 @@
 const express = require("express");
 const { protect } = require("../middleware/auth");
 const { chatMessageRateLimit, chatMediaRateLimit } = require("../middleware/fraud_rate_limit");
+const { createScopedLogger } = require("../utils/logger");
 const { getIO } = require("../utils/socket");
 const { uploadAudioSingle, uploadAudioToCloudinary, uploadChatImages, uploadChatImagesToCloudinary } = require("../middleware/upload");
 const ChatService = require("../services/chat_service");
@@ -8,6 +9,36 @@ const Chat = require("../models/Chat");
 const ChatMessage = require("../models/ChatMessage");
 
 const router = express.Router();
+const console = createScopedLogger("chats_route");
+
+const getChatErrorStatus = (error, fallbackStatus = 500) => {
+  const explicitStatus = Number(error?.status);
+  if (Number.isInteger(explicitStatus) && explicitStatus >= 400 && explicitStatus < 600) {
+    return explicitStatus;
+  }
+
+  switch (String(error?.message || "")) {
+    case "Unauthorized":
+      return 403;
+    case "Chat not found":
+    case "Message not found":
+      return 404;
+    case "Message has no images":
+      return 400;
+    default:
+      return fallbackStatus;
+  }
+};
+
+const sendChatError = (res, error, fallbackMessage, fallbackStatus = 500) => {
+  const status = getChatErrorStatus(error, fallbackStatus);
+  const safeMessage = status >= 500 ? fallbackMessage : String(error?.message || fallbackMessage);
+
+  return res.status(status).json({
+    success: false,
+    message: safeMessage,
+  });
+};
 
 /**
  * @route   GET /api/chats
@@ -19,7 +50,7 @@ router.get("/", protect, async (req, res) => {
     res.json({ success: true, message: "Chats retrieved successfully", data });
   } catch (error) {
     console.error("Get chats error:", error);
-    res.status(500).json({ success: false, message: "Server error", error: error.message });
+    return sendChatError(res, error, "Server error");
   }
 });
 
@@ -43,11 +74,14 @@ router.get("/:chatId", protect, async (req, res) => {
     res.json({ success: true, message: "Chat retrieved successfully", data });
   } catch (error) {
     console.error("Get chat error:", error);
-    res.status(error.message === 'Unauthorized' ? 403 : 500).json({
-      success: false,
-      message: error.message === 'Chat not found' ? "Chat not found" : "Server error",
-      error: error.message
-    });
+    if (String(error?.message || "") === "Chat not found") {
+      return res.status(404).json({
+        success: false,
+        message: "Chat not found",
+      });
+    }
+
+    return sendChatError(res, error, "Server error");
   }
 });
 
@@ -88,7 +122,7 @@ router.post("/:chatId/messages", protect, chatMessageRateLimit, async (req, res)
     });
   } catch (error) {
     console.error("Send message error:", error);
-    res.status(500).json({ success: false, message: "Server error", error: error.message });
+    return sendChatError(res, error, "Server error");
   }
 });
 
@@ -116,7 +150,7 @@ router.post("/:chatId/voice-message", protect, chatMediaRateLimit, uploadAudioSi
     res.status(201).json({ success: true, message: "Voice message sent successfully", data: { chatId, message: savedMessage } });
   } catch (error) {
     console.error("Send voice message error:", error);
-    res.status(500).json({ success: false, message: "Server error", error: error.message });
+    return sendChatError(res, error, "Server error");
   }
 });
 
@@ -154,7 +188,7 @@ router.post("/:chatId/image-message", protect, chatMediaRateLimit, uploadChatIma
     res.status(201).json({ success: true, message: "Image message sent successfully", data: { chatId, message: savedMessage } });
   } catch (error) {
     console.error("Send image message error:", error);
-    res.status(500).json({ success: false, message: "Server error", error: error.message });
+    return sendChatError(res, error, "Server error");
   }
 });
 
@@ -185,7 +219,7 @@ router.delete("/:chatId/messages/:messageId", protect, async (req, res) => {
     res.json({ success: true, message: "Message deleted successfully", data: { chatId, messageId } });
   } catch (error) {
     console.error("Delete message error:", error);
-    res.status(500).json({ success: false, message: "Server error", error: error.message });
+    return sendChatError(res, error, "Server error");
   }
 });
 
@@ -234,7 +268,7 @@ router.put("/:chatId/messages/:messageId", protect, async (req, res) => {
     res.json({ success: true, message: "Message edited successfully", data: { chatId, messageId, text: message.text, isEdited: true } });
   } catch (error) {
     console.error("Edit message error:", error);
-    res.status(500).json({ success: false, message: "Server error", error: error.message });
+    return sendChatError(res, error, "Server error");
   }
 });
 
@@ -270,7 +304,7 @@ router.post("/:chatId/messages/:messageId/delete-images", protect, async (req, r
     });
   } catch (error) {
     console.error("Delete images error:", error);
-    res.status(error.message === 'Unauthorized' ? 403 : 500).json({ success: false, message: error.message, error: error.message });
+    return sendChatError(res, error, "Server error");
   }
 });
 

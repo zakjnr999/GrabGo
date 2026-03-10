@@ -2,8 +2,10 @@ const express = require('express');
 const cache = require('../utils/cache');
 const directionsService = require('../services/directions_service');
 const { pickupRouteRateLimit } = require('../middleware/fraud_rate_limit');
+const { createScopedLogger } = require('../utils/logger');
 
 const router = express.Router();
+const console = createScopedLogger('pickup_route');
 
 const parseCoordinate = (value) => {
     if (value === null || value === undefined || value === '') return null;
@@ -94,7 +96,7 @@ router.get('/route', pickupRouteRateLimit, async (req, res) => {
             data: payload,
         });
     } catch (error) {
-        console.error('[pickup.route] Failed to fetch walking route:', error.message);
+        console.error('Failed to fetch walking route:', error);
         return res.status(500).json({
             success: false,
             message: 'Failed to fetch walking route',

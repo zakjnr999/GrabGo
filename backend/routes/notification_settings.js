@@ -1,7 +1,22 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
+const { createScopedLogger } = require('../utils/logger');
 const prisma = require('../config/prisma');
+const console = createScopedLogger('notification_settings_route');
+
+const sendNotificationSettingsError = (res, error, fallbackMessage, fallbackStatus = 500) => {
+    const explicitStatus = Number(error?.status);
+    const status =
+        Number.isInteger(explicitStatus) && explicitStatus >= 400 && explicitStatus < 600
+            ? explicitStatus
+            : fallbackStatus;
+
+    return res.status(status).json({
+        success: false,
+        message: status >= 500 ? fallbackMessage : String(error?.message || fallbackMessage),
+    });
+};
 
 /**
  * @route   GET /api/users/settings/notifications
@@ -42,11 +57,7 @@ router.get('/settings/notifications', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching notification settings:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch notification settings',
-            error: error.message
-        });
+        return sendNotificationSettingsError(res, error, 'Failed to fetch notification settings');
     }
 });
 
@@ -117,11 +128,7 @@ router.patch('/settings/notifications', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Error updating notification settings:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to update notification settings',
-            error: error.message
-        });
+        return sendNotificationSettingsError(res, error, 'Failed to update notification settings');
     }
 });
 

@@ -1,5 +1,7 @@
 const prisma = require('../config/prisma');
 const featureFlags = require('../config/feature_flags');
+const { createScopedLogger } = require('../utils/logger');
+const console = createScopedLogger('rider_loan_service');
 
 // ── Loan eligibility by partner level ──
 const LOAN_POLICY = {

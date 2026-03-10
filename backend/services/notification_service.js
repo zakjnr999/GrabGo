@@ -1,6 +1,10 @@
 const Notification = require('../models/Notification');
 const { sendToUser } = require('./fcm_service');
 const { checkRateLimit, validateNotificationInput } = require('../utils/validation');
+const { createScopedLogger } = require('../utils/logger');
+const metrics = require('../utils/metrics');
+
+const console = createScopedLogger('notification_service');
 
 // Grouping configuration
 const GROUPING_CONFIG = {
@@ -65,6 +69,7 @@ const createNotification = async (
         const withinRateLimit = await checkRateLimit(userId, type);
         if (!withinRateLimit) {
             console.warn(`⚠️ Rate limit exceeded for user ${userId}, type ${type}`);
+            metrics.recordNotificationEvent({ channel: 'in_app', result: 'skipped' });
             return null;
         }
 
@@ -94,6 +99,7 @@ const createNotification = async (
         };
 
         const notification = await Notification.create(notificationData);
+        metrics.recordNotificationEvent({ channel: 'in_app', result: 'success' });
 
         console.log(`📬 In-app notification created in MongoDB for user ${userId}: ${type}`);
 
@@ -124,6 +130,7 @@ const createNotification = async (
         return notification;
     } catch (error) {
         console.error('❌ Error creating notification:', error);
+        metrics.recordNotificationEvent({ channel: 'in_app', result: 'failure' });
         return null;
     }
 };

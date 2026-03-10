@@ -15,8 +15,10 @@ const {
   fraudPolicyService,
   fraudChallengeService,
 } = require('../services/fraud');
+const { createScopedLogger } = require('../utils/logger');
 
 const router = express.Router();
+const console = createScopedLogger('fraud_route');
 const hasFraudChallengeDelegate = () =>
   Boolean(prisma?.fraudChallenge && typeof prisma.fraudChallenge.updateMany === 'function');
 
@@ -331,9 +333,10 @@ router.post(
         },
       });
     } catch (error) {
+      console.error('Payment re-auth verification error:', error);
       return res.status(400).json({
         success: false,
-        message: error.message || 'Payment re-auth verification failed',
+        message: 'Payment re-auth verification failed',
       });
     }
   }

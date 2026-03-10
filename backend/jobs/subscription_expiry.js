@@ -9,6 +9,9 @@
  */
 
 const { expireStaleSubscriptions } = require('../services/subscription_service');
+const { createScopedLogger } = require('../utils/logger');
+
+const console = createScopedLogger('subscription_expiry_job');
 
 const run = async () => {
   console.log('🕐 [SUBSCRIPTION_EXPIRY] Starting expiry check...');

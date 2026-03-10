@@ -1,6 +1,8 @@
 const prisma = require('../config/prisma');
+const { createScopedLogger } = require('../utils/logger');
 
 const roundCurrency = (value) => Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
+const console = createScopedLogger('promo_service');
 
 /**
  * Promo Code Service

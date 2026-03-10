@@ -1,6 +1,8 @@
 const RiderStatus = require('../models/RiderStatus');
 const DeliveryAnalytics = require('../models/DeliveryAnalytics');
 const prisma = require('../config/prisma');
+const { createScopedLogger } = require('../utils/logger');
+const console = createScopedLogger('rider_metrics_sync_service');
 
 /**
  * Syncs RiderStatus.metrics (MongoDB) with authoritative data after each

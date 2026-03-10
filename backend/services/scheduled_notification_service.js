@@ -1,5 +1,8 @@
 const prisma = require('../config/prisma');
 const { createNotification } = require('./notification_service');
+const { createScopedLogger } = require('../utils/logger');
+
+const console = createScopedLogger('scheduled_notification_service');
 
 /**
  * Scheduled Notification Service

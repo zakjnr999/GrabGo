@@ -2,8 +2,10 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const prisma = require('../config/prisma');
 const { protect, admin } = require('../middleware/auth');
+const { createScopedLogger } = require('../utils/logger');
 
 const router = express.Router();
+const console = createScopedLogger('categories_route');
 
 // GET /api/categories - Get all active categories
 router.get('/', async (req, res) => {
@@ -73,8 +75,7 @@ router.get('/', async (req, res) => {
     console.error('Get categories error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: error.message
+      message: 'Server error'
     });
   }
 });
@@ -115,8 +116,7 @@ router.post('/', protect, admin, [
     console.error('Create category error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: error.message
+      message: 'Server error'
     });
   }
 });
@@ -154,8 +154,7 @@ router.get('/:categoryId', async (req, res) => {
     console.error('Get category error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error',
-      error: error.message
+      message: 'Server error'
     });
   }
 });

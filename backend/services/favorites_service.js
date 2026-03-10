@@ -2,6 +2,9 @@ const prisma = require('../config/prisma');
 const { normalizeRatingResponse } = require('../utils/rating_calculator');
 const { isGrabGoExclusiveActive } = require('../utils/grabgo_exclusive');
 const { isRestaurantOpen } = require('../utils/restaurant');
+const { createScopedLogger } = require('../utils/logger');
+
+const console = createScopedLogger('favorites_service');
 
 const DAY_MAP = {
   0: 'sunday',

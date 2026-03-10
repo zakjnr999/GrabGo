@@ -3,10 +3,12 @@ const cache = require('../utils/cache');
 const featureFlags = require('../config/feature_flags');
 const { approvePendingIncentives, closeExpiredBudgetWindows } = require('../services/rider_budget_service');
 const { expireStaleQuests } = require('../services/rider_quest_engine');
+const { createScopedLogger } = require('../utils/logger');
 
 const JOB_NAME = 'incentive_budget_approval';
 const LOCK_KEY = `job:${JOB_NAME}`;
 const LOCK_TTL_SECONDS = 60;
+const console = createScopedLogger('incentive_budget_approval_job');
 
 let isRunning = false;
 

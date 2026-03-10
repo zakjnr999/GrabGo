@@ -5,6 +5,9 @@ const { validateLocationParams, getBoundingBox, filterVendorsByDistance } = requ
 const { isRestaurantOpen } = require('../utils/restaurant');
 const { normalizeRatingResponse } = require('../utils/rating_calculator');
 const { isGrabGoExclusiveActive } = require('../utils/grabgo_exclusive');
+const { createScopedLogger } = require('../utils/logger');
+
+const console = createScopedLogger('home_feed_service');
 
 const HOME_SECTION_LIMIT = 10;
 const HOME_RECOMMENDED_LIMIT = 20;

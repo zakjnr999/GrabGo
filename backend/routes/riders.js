@@ -9,6 +9,10 @@ const dispatchRetryService = require("../services/dispatch_retry_service");
 const { sendOrderNotification } = require("../services/fcm_service");
 const { createNotification } = require("../services/notification_service");
 const { getIO } = require("../utils/socket");
+const { createScopedLogger } = require("../utils/logger");
+const { createRidersRouteHelpers } = require("./support/riders_route_helpers");
+const { createRiderAvailableOrdersHelpers } = require("./support/rider_available_orders_helpers");
+const { createRiderOrderAcceptanceHelpers } = require("./support/rider_order_acceptance_helpers");
 const OrderReservation = require("../models/OrderReservation");
 const {
   ACTION_TYPES,
@@ -38,196 +42,57 @@ const {
   getLoanDetail,
 } = require("../services/rider_loan_service");
 
-const ORDER_RESERVATION_ENTITY = "order";
-const buildOrderReservationQuery = (query = {}) =>
-  OrderReservation.buildEntityQuery(ORDER_RESERVATION_ENTITY, query);
-
+const console = createScopedLogger("riders_route");
 const router = express.Router();
-
-/**
- * Helper to update rider wallet balance
- */
-const updateWalletBalance = async (userId) => {
-  const wallet = await prisma.riderWallet.findUnique({
-    where: { userId }
-  });
-
-  if (!wallet) return null;
-
-  const transactions = await prisma.transaction.findMany({
-    where: {
-      walletId: wallet.id,
-      status: "completed"
-    }
-  });
-
-  const totals = transactions.reduce((acc, tx) => {
-    if (["delivery", "tip", "bonus", "incentive"].includes(tx.type)) {
-      acc.earnings += tx.amount;
-    } else if (tx.type === "withdrawal") {
-      acc.withdrawals += tx.amount;
-    } else if (tx.type === "penalty") {
-      // Loan repayments store negative amounts; sum their absolute values as deductions
-      acc.deductions += Math.abs(tx.amount);
-    }
-    return acc;
-  }, { earnings: 0, withdrawals: 0, deductions: 0 });
-
-  const pendingWithdrawalsSum = await prisma.transaction.aggregate({
-    where: {
-      walletId: wallet.id,
-      type: "withdrawal",
-      status: "pending"
-    },
-    _sum: { amount: true }
-  });
-
-  return await prisma.riderWallet.update({
-    where: { id: wallet.id },
-    data: {
-      totalEarnings: totals.earnings,
-      totalWithdrawals: totals.withdrawals,
-      pendingWithdrawals: pendingWithdrawalsSum._sum.amount || 0,
-      balance: totals.earnings - totals.withdrawals - totals.deductions,
-      updatedAt: new Date()
-    }
-  });
-};
-
-const firstDefined = (...values) =>
-  values.find((value) => value !== null && value !== undefined);
-
-const parseCoordinate = (value) => {
-  if (value === null || value === undefined || value === "") return null;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-};
-
-const isValidLatitude = (value) => Number.isFinite(value) && value >= -90 && value <= 90;
-const isValidLongitude = (value) => Number.isFinite(value) && value >= -180 && value <= 180;
-const hasValidCoordinatePair = (latitude, longitude) =>
-  isValidLatitude(latitude) && isValidLongitude(longitude);
-
-const safeDispatchRetrySideEffect = async (label, operation) => {
-  try {
-    return await operation();
-  } catch (error) {
-    console.error(`[DispatchRetry] ${label} error:`, error.message);
-    return null;
-  }
-};
-
-const getPickupLocation = (order) => ({
-  latitude: firstDefined(
-    order?.restaurant?.latitude,
-    order?.groceryStore?.latitude,
-    order?.pharmacyStore?.latitude,
-    order?.grabMartStore?.latitude
-  ),
-  longitude: firstDefined(
-    order?.restaurant?.longitude,
-    order?.groceryStore?.longitude,
-    order?.pharmacyStore?.longitude,
-    order?.grabMartStore?.longitude
-  )
+const {
+  sendRiderError,
+  ORDER_RESERVATION_ENTITY,
+  buildOrderReservationQuery,
+  updateWalletBalance,
+  firstDefined,
+  parseCoordinate,
+  isValidLatitude,
+  isValidLongitude,
+  hasValidCoordinatePair,
+  safeDispatchRetrySideEffect,
+  getPickupLocation,
+  getVendorIdFromOrder,
+  getVendorPrepTime,
+  ACTIVE_DELIVERY_STATUSES,
+  findActiveDeliveryOrderForRider,
+  notifyCustomerRiderAssignment,
+  reconcileRiderDispatchState,
+  sanitizeOrderForRider,
+} = createRidersRouteHelpers({
+  prisma,
+  OrderReservation,
+  sendOrderNotification,
+  createNotification,
+  getIO,
+  logger: console,
 });
-
-const getVendorIdFromOrder = (order) =>
-  firstDefined(order?.restaurantId, order?.groceryStoreId, order?.pharmacyStoreId, order?.grabMartStoreId);
-
-const getVendorPrepTime = (order) =>
-  firstDefined(
-    order?.restaurant?.averagePreparationTime,
-    order?.groceryStore?.averagePreparationTime,
-    order?.pharmacyStore?.averagePreparationTime
-  ) || 15;
-
-const ACTIVE_DELIVERY_STATUSES = ["confirmed", "preparing", "ready", "picked_up", "on_the_way"];
-
-const findActiveDeliveryOrderForRider = async (riderId) =>
-  prisma.order.findFirst({
-    where: {
-      riderId,
-      fulfillmentMode: "delivery",
-      status: { in: ACTIVE_DELIVERY_STATUSES },
-    },
-    orderBy: { updatedAt: "desc" },
-    select: { id: true, status: true },
-  });
-
-/**
- * Send customer-facing notification when rider is assigned.
- * Sends push + in-app (with sendPush=false on in-app to avoid double push).
- */
-const notifyCustomerRiderAssignment = async (order, rider = null, io = null) => {
-  try {
-    if (!order?.customerId || !order?.id || !order?.orderNumber) return;
-
-    const riderName =
-      rider?.username ||
-      order?.rider?.username ||
-      "A rider";
-    const statusToNotify = order.status === "picked_up" ? "picked_up" : (order.status || "confirmed");
-    const message =
-      statusToNotify === "picked_up"
-        ? `${riderName} is picking up your order!`
-        : `${riderName} has been assigned to your order.`;
-    const titleEmoji = statusToNotify === "picked_up" ? "🚴" : "✅";
-
-    await sendOrderNotification(
-      order.customerId,
-      order.id,
-      order.orderNumber,
-      statusToNotify,
-      message
-    );
-
-    const ioInstance = io || getIO();
-    if (ioInstance) {
-      await createNotification(
-        order.customerId,
-        "order",
-        `${titleEmoji} Order #${order.orderNumber}`,
-        message,
-        {
-          orderId: order.id,
-          orderNumber: order.orderNumber,
-          status: statusToNotify,
-          riderId: order.riderId,
-          route: `/orders/${order.id}`,
-        },
-        ioInstance,
-        { sendPush: false }
-      );
-    }
-  } catch (error) {
-    console.error("Customer rider-assignment notification error:", error.message);
-  }
-};
-
-const reconcileRiderDispatchState = async (riderId, riderProfile) => {
-  const isApproved = riderProfile?.verificationStatus === "approved";
-  const activeOrder = await findActiveDeliveryOrderForRider(riderId);
-
-  return {
-    isApproved,
-    isOnDelivery: Boolean(activeOrder),
-    currentOrderId: activeOrder?.id ?? null,
-    vehicleType: riderProfile?.vehicleType || null,
-  };
-};
-
-const SENSITIVE_ORDER_FIELDS = new Set(["pickupOtpHash", "deliveryCodeHash", "deliveryCodeEncrypted"]);
-const sanitizeOrderForRider = (payload) => {
-  if (Array.isArray(payload)) return payload.map((entry) => sanitizeOrderForRider(entry));
-  if (!payload || typeof payload !== "object") return payload;
-
-  const sanitized = { ...payload };
-  for (const field of SENSITIVE_ORDER_FIELDS) {
-    delete sanitized[field];
-  }
-  return sanitized;
-};
+const {
+  attachAvailableOrderEarnings,
+  filterAvailableOrdersForRiderLocation,
+  buildAvailableOrderStatistics,
+} = createRiderAvailableOrdersHelpers({
+  featureFlags,
+  getPickupLocation,
+  logger: console,
+});
+const { finalizeAcceptedOrderAssignment } = createRiderOrderAcceptanceHelpers({
+  prisma,
+  getPickupLocation,
+  parseCoordinate,
+  hasValidCoordinatePair,
+  getVendorPrepTime,
+  getVendorIdFromOrder,
+  notifyCustomerRiderAssignment,
+  safeDispatchRetrySideEffect,
+  dispatchRetryService,
+  getIO,
+  logger: console,
+});
 
 router.get(
   "/available-orders",
@@ -373,95 +238,19 @@ router.get(
         take: 50
       });
 
-      // Calculate rider earnings for each order
-      const { calculateRiderEarnings, calculateDistance } = require('../utils/riderEarningsCalculator');
-
-      const ordersWithEarnings = availableOrders.map(order => {
-        const earnings = calculateRiderEarnings(order, 0); // No tip yet
-
-        return {
-          ...order,
-          distance: earnings.distance,
-          riderEarnings: earnings.riderEarnings,
-          earningsBreakdown: {
-            baseFee: earnings.riderBaseFee,
-            distanceFee: earnings.riderDistanceFee,
-            tip: earnings.riderTip,
-            platformFee: earnings.platformFee,
-            total: earnings.riderEarnings
-          }
-        };
+      const ordersWithEarnings = attachAvailableOrderEarnings(availableOrders);
+      const {
+        filteredOrders,
+        filterApplied,
+        expandedRadius,
+        radius,
+      } = filterAvailableOrdersForRiderLocation(ordersWithEarnings, req.query);
+      const statistics = buildAvailableOrderStatistics({
+        filteredOrders,
+        filterApplied,
+        expandedRadius,
+        radius,
       });
-
-      // Location-based filtering (optional)
-      const riderLat = parseFloat(req.query.lat);
-      const riderLon = parseFloat(req.query.lon);
-      const maxRadiusKm = featureFlags.riderAvailableMaxRadiusKm || 20;
-      let radius = parseFloat(req.query.radius);
-      if (!Number.isFinite(radius) || radius <= 0) {
-        radius = 10; // Default 10 km
-      }
-      radius = Math.min(radius, maxRadiusKm);
-
-      let filteredOrders = ordersWithEarnings;
-      let filterApplied = false;
-      let expandedRadius = false;
-
-      if (!isNaN(riderLat) && !isNaN(riderLon)) {
-        filterApplied = true;
-
-        // Calculate distance from rider to each restaurant/store
-        const ordersWithRiderDistance = ordersWithEarnings.map(order => {
-          const pickupLocation = getPickupLocation(order);
-
-          const distanceToPickup = calculateDistance(
-            riderLat,
-            riderLon,
-            pickupLocation.latitude,
-            pickupLocation.longitude
-          );
-
-          return {
-            ...order,
-            distanceToPickup: distanceToPickup
-          };
-        });
-
-        // Filter by radius
-        filteredOrders = ordersWithRiderDistance.filter(order => order.distanceToPickup <= radius);
-
-        // Smart radius expansion if too few orders
-        while (filteredOrders.length < 5 && radius < maxRadiusKm) {
-          const nextRadius = Math.min(radius + 5, maxRadiusKm);
-          if (nextRadius <= radius) break;
-          radius = nextRadius;
-          filteredOrders = ordersWithRiderDistance.filter(order => order.distanceToPickup <= radius);
-          expandedRadius = true;
-        }
-
-        // Sort by distance to pickup (closest first)
-        filteredOrders.sort((a, b) => a.distanceToPickup - b.distanceToPickup);
-
-        console.log(`📍 Filtered ${filteredOrders.length} orders within ${radius} km of rider`);
-      }
-
-      // Calculate aggregate statistics
-      const statistics = {
-        totalOrders: filteredOrders.length,
-        totalDropPoints: filteredOrders.length,
-        totalEarnings: parseFloat(filteredOrders.reduce((sum, o) => sum + (o.riderEarnings || 0), 0).toFixed(2)),
-        totalTips: parseFloat(filteredOrders.reduce((sum, o) => sum + (o.earningsBreakdown?.tip || 0), 0).toFixed(2)),
-        totalDistance: parseFloat(filteredOrders.reduce((sum, o) => sum + (o.distance || 0), 0).toFixed(2)),
-        averageEarningsPerOrder: filteredOrders.length > 0
-          ? parseFloat((filteredOrders.reduce((sum, o) => sum + (o.riderEarnings || 0), 0) / filteredOrders.length).toFixed(2))
-          : 0,
-        averageDistance: filteredOrders.length > 0
-          ? parseFloat((filteredOrders.reduce((sum, o) => sum + (o.distance || 0), 0) / filteredOrders.length).toFixed(2))
-          : 0,
-        filterApplied: filterApplied,
-        radius: radius,
-        expandedRadius: expandedRadius
-      };
 
       res.json({
         success: true,
@@ -476,7 +265,6 @@ router.get(
       res.status(500).json({
         success: false,
         message: "Server error",
-        error: error.message,
       });
     }
   }
@@ -531,7 +319,6 @@ router.get(
       res.status(500).json({
         success: false,
         message: "Server error",
-        error: error.message
       });
     }
   }
@@ -666,151 +453,12 @@ router.post(
         });
       }
 
-      // Calculate rider earnings and lock them in
-      const { calculateRiderEarnings } = require('../utils/riderEarningsCalculator');
-
-      const fullOrder = await prisma.order.findUnique({
-        where: { id: orderId },
-        include: {
-          restaurant: { select: { restaurantName: true, latitude: true, longitude: true } },
-          groceryStore: { select: { storeName: true, latitude: true, longitude: true } },
-          pharmacyStore: { select: { storeName: true, latitude: true, longitude: true } },
-          grabMartStore: { select: { storeName: true, latitude: true, longitude: true } }
-        }
+      const { updatedOrder, deliveryWindow } = await finalizeAcceptedOrderAssignment({
+        orderId,
+        riderId,
+        currentStatus: order.status,
+        retryLabel: "mark retry resolved after reservation accept",
       });
-
-      const earnings = calculateRiderEarnings(fullOrder, 0);
-
-      const updatedOrder = await prisma.order.update({
-        where: { id: orderId },
-        data: {
-          riderId: riderId,
-          status: order.status === "ready" ? "picked_up" : order.status,
-          riderBaseFee: earnings.riderBaseFee,
-          riderDistanceFee: earnings.riderDistanceFee,
-          riderTip: earnings.riderTip,
-          platformFee: earnings.platformFee,
-          riderEarnings: earnings.riderEarnings
-        },
-        include: {
-          items: { select: { id: true, name: true, quantity: true, price: true } },
-          customer: { select: { username: true, email: true, phone: true, profilePicture: true } },
-          restaurant: { select: { restaurantName: true, logo: true, address: true, latitude: true, longitude: true, averagePreparationTime: true } },
-          groceryStore: { select: { storeName: true, logo: true, address: true, latitude: true, longitude: true } },
-          pharmacyStore: { select: { storeName: true, logo: true, address: true, latitude: true, longitude: true } },
-          grabMartStore: { select: { storeName: true, logo: true, address: true, latitude: true, longitude: true } },
-          rider: { select: { username: true, email: true, phone: true } }
-        }
-      });
-
-      // Create chat between customer and rider
-      try {
-        const existingChat = await prisma.chat.findUnique({
-          where: { orderId: updatedOrder.id }
-        });
-
-        if (!existingChat) {
-          await prisma.chat.create({
-            data: {
-              orderId: updatedOrder.id,
-              customerId: updatedOrder.customerId,
-              riderId: updatedOrder.riderId,
-            }
-          });
-        }
-      } catch (chatError) {
-        console.error("Ensure chat for accepted order error:", chatError);
-      }
-
-      // Initialize tracking
-      try {
-        const OrderTracking = require('../models/OrderTracking');
-        const trackingService = require('../services/tracking_service');
-
-        await OrderTracking.findOneAndDelete(
-          OrderTracking.buildEntityQuery("order", { orderId: updatedOrder.id })
-        );
-
-        const pickupLocation = getPickupLocation(updatedOrder);
-        const pickupLat = parseCoordinate(pickupLocation.latitude);
-        const pickupLon = parseCoordinate(pickupLocation.longitude);
-        const deliveryLat = parseCoordinate(updatedOrder.deliveryLatitude);
-        const deliveryLon = parseCoordinate(updatedOrder.deliveryLongitude);
-
-        if (hasValidCoordinatePair(pickupLat, pickupLon) && hasValidCoordinatePair(deliveryLat, deliveryLon)) {
-          await trackingService.initializeTracking(
-            updatedOrder.id,
-            riderId,
-            updatedOrder.customerId,
-            { latitude: pickupLat, longitude: pickupLon },
-            { latitude: deliveryLat, longitude: deliveryLon }
-          );
-        }
-      } catch (trackingError) {
-        console.error("Initialize tracking error:", trackingError);
-      }
-
-      // Calculate delivery window ETA
-      let deliveryWindow = null;
-      try {
-        const RiderStatus = require('../models/RiderStatus');
-        const trackingService = require('../services/tracking_service');
-
-        const riderStatus = await RiderStatus.findOne({ riderId });
-
-        if (riderStatus?.location?.coordinates) {
-          const pickupLocation = getPickupLocation(updatedOrder);
-          const pickupLat = parseCoordinate(pickupLocation.latitude);
-          const pickupLon = parseCoordinate(pickupLocation.longitude);
-          const deliveryLat = parseCoordinate(updatedOrder.deliveryLatitude);
-          const deliveryLon = parseCoordinate(updatedOrder.deliveryLongitude);
-
-          // Get vendor prep time
-          const vendorPrepTime = getVendorPrepTime(updatedOrder);
-
-          if (hasValidCoordinatePair(pickupLat, pickupLon) && hasValidCoordinatePair(deliveryLat, deliveryLon)) {
-            deliveryWindow = await trackingService.calculateInitialDeliveryWindow(
-              { latitude: riderStatus.location.coordinates[1], longitude: riderStatus.location.coordinates[0] },
-              { latitude: pickupLat, longitude: pickupLon },
-              { latitude: deliveryLat, longitude: deliveryLon },
-              updatedOrder.status,
-              vendorPrepTime,
-              riderId,
-              getVendorIdFromOrder(updatedOrder),
-              updatedOrder.items.length,
-              updatedOrder.id
-            );
-
-            // Update order with delivery window
-            await prisma.order.update({
-              where: { id: updatedOrder.id },
-              data: {
-                deliveryWindowMin: deliveryWindow.minMinutes,
-                deliveryWindowMax: deliveryWindow.maxMinutes,
-                expectedDelivery: deliveryWindow.expectedDeliveryTime,
-                initialETASeconds: deliveryWindow.initialETASeconds,
-                riderAssignedAt: new Date()
-              }
-            });
-
-            console.log(`📊 Delivery window set for order ${updatedOrder.id}: ${deliveryWindow.deliveryWindowText}`);
-          }
-        }
-      } catch (etaError) {
-        console.error("Calculate delivery window error:", etaError);
-      }
-
-      // Mark rider as on delivery so they don't get more orders dispatched
-      try {
-        const RiderStatus = require('../models/RiderStatus');
-        await RiderStatus.findOneAndUpdate(
-          { riderId },
-          { $set: { isOnDelivery: true, currentOrderId: updatedOrder.id } }
-        );
-        console.log(`📍 Marked rider ${riderId} as on delivery`);
-      } catch (statusError) {
-        console.error("Update rider delivery status error:", statusError);
-      }
 
       // Notify customer
       const socketService = require('../services/socket_service');
@@ -830,12 +478,6 @@ router.post(
         } : null
       });
 
-      await notifyCustomerRiderAssignment(updatedOrder, updatedOrder.rider, getIO());
-      await safeDispatchRetrySideEffect(
-        `mark retry resolved after reservation accept (${updatedOrder.id})`,
-        () => dispatchRetryService.markRetryResolved(updatedOrder.id, "rider_accepted_order")
-      );
-
       // Broadcast that order is taken
       socketService.broadcastOrderTaken(orderId, riderId);
 
@@ -850,7 +492,6 @@ router.post(
       res.status(500).json({
         success: false,
         message: "Server error",
-        error: error.message
       });
     }
   }
@@ -919,7 +560,6 @@ router.post(
       res.status(500).json({
         success: false,
         message: "Server error",
-        error: error.message
       });
     }
   }
@@ -974,7 +614,6 @@ router.get(
       res.status(500).json({
         success: false,
         message: "Server error",
-        error: error.message
       });
     }
   }
@@ -1083,7 +722,6 @@ router.post(
       res.status(500).json({
         success: false,
         message: "Failed to go online",
-        error: error.message
       });
     }
   }
@@ -1117,7 +755,6 @@ router.post(
       res.status(500).json({
         success: false,
         message: "Failed to go offline",
-        error: error.message
       });
     }
   }
@@ -1204,7 +841,6 @@ router.put(
       return res.status(500).json({
         success: false,
         message: "Failed to update parcel opt-in status",
-        error: error.message,
       });
     }
   }
@@ -1305,7 +941,6 @@ router.get(
       res.status(500).json({
         success: false,
         message: "Failed to check online status",
-        error: error.message
       });
     }
   }
@@ -1378,7 +1013,6 @@ router.post(
       res.status(500).json({
         success: false,
         message: "Failed to update location",
-        error: error.message
       });
     }
   }
@@ -1455,7 +1089,6 @@ router.get(
       res.status(500).json({
         success: false,
         message: "Failed to get debug status",
-        error: error.message
       });
     }
   }
@@ -1544,7 +1177,6 @@ router.post(
       res.status(500).json({
         success: false,
         message: "Server error",
-        error: error.message
       });
     }
   }
@@ -1650,244 +1282,12 @@ router.post(
         console.log(`✅ Reservation ${activeReservation._id} marked as accepted`);
       }
 
-      // Calculate rider earnings and lock them in
-      const { calculateRiderEarnings } = require('../utils/riderEarningsCalculator');
-
-      // Fetch full order with restaurant/store info for calculation
-      const fullOrder = await prisma.order.findUnique({
-        where: { id: orderId },
-        include: {
-          restaurant: {
-            select: {
-              restaurantName: true,
-              latitude: true,
-              longitude: true
-            }
-          },
-          groceryStore: {
-            select: {
-              storeName: true,
-              latitude: true,
-              longitude: true
-            }
-          },
-          pharmacyStore: {
-            select: {
-              storeName: true,
-              latitude: true,
-              longitude: true
-            }
-          },
-          grabMartStore: {
-            select: {
-              storeName: true,
-              latitude: true,
-              longitude: true
-            }
-          }
-        }
+      const { updatedOrder } = await finalizeAcceptedOrderAssignment({
+        orderId,
+        riderId,
+        currentStatus: order.status,
+        retryLabel: "mark retry resolved after direct accept",
       });
-
-      const earnings = calculateRiderEarnings(fullOrder, 0);
-
-      console.log('💰 Locking in earnings for order:', fullOrder.orderNumber);
-      console.log('   Distance:', earnings.distance, 'km');
-      console.log('   Rider will earn: GHS', earnings.riderEarnings);
-
-      const updatedOrder = await prisma.order.update({
-        where: { id: orderId },
-        data: {
-          riderId: req.user.id,
-          status: order.status === "ready" ? "picked_up" : order.status,
-          // Lock in the calculated earnings
-          riderBaseFee: earnings.riderBaseFee,
-          riderDistanceFee: earnings.riderDistanceFee,
-          riderTip: earnings.riderTip,
-          platformFee: earnings.platformFee,
-          riderEarnings: earnings.riderEarnings
-        },
-        include: {
-          items: {
-            select: {
-              id: true,
-              name: true,
-              quantity: true,
-              price: true
-            }
-          },
-          customer: {
-            select: {
-              username: true,
-              email: true,
-              phone: true,
-              profilePicture: true
-            }
-          },
-          restaurant: {
-            select: {
-              restaurantName: true,
-              logo: true,
-              address: true,
-              latitude: true,
-              longitude: true,
-              averagePreparationTime: true
-            }
-          },
-          groceryStore: {
-            select: {
-              storeName: true,
-              logo: true,
-              address: true,
-              latitude: true,
-              longitude: true
-            }
-          },
-          pharmacyStore: {
-            select: {
-              storeName: true,
-              logo: true,
-              address: true,
-              latitude: true,
-              longitude: true
-            }
-          },
-          grabMartStore: {
-            select: {
-              storeName: true,
-              logo: true,
-              address: true,
-              latitude: true,
-              longitude: true
-            }
-          },
-          rider: { select: { username: true, email: true, phone: true } }
-        }
-      });
-
-      // Ensure chat exists between customer and rider for this order
-      try {
-        const existingChat = await prisma.chat.findUnique({
-          where: { orderId: updatedOrder.id }
-        });
-
-        if (!existingChat) {
-          await prisma.chat.create({
-            data: {
-              orderId: updatedOrder.id,
-              customerId: updatedOrder.customerId,
-              riderId: updatedOrder.riderId,
-            }
-          });
-        }
-      } catch (chatError) {
-        console.error("Ensure chat for accepted order error:", chatError);
-      }
-
-
-      // Initialize tracking for the order
-      try {
-        const OrderTracking = require('../models/OrderTracking');
-        const trackingService = require('../services/tracking_service');
-
-        // Delete any existing tracking (in case order was previously cancelled)
-        await OrderTracking.findOneAndDelete(
-          OrderTracking.buildEntityQuery("order", { orderId: updatedOrder.id })
-        );
-
-        const pickupLocation = getPickupLocation(updatedOrder);
-        const pickupLat = parseCoordinate(pickupLocation.latitude);
-        const pickupLon = parseCoordinate(pickupLocation.longitude);
-        const deliveryLat = parseCoordinate(updatedOrder.deliveryLatitude);
-        const deliveryLon = parseCoordinate(updatedOrder.deliveryLongitude);
-
-        if (!hasValidCoordinatePair(pickupLat, pickupLon) || !hasValidCoordinatePair(deliveryLat, deliveryLon)) {
-          throw new Error("Invalid pickup/destination coordinates for tracking initialization");
-        }
-
-        // Initialize fresh tracking
-        await trackingService.initializeTracking(
-          updatedOrder.id,
-          updatedOrder.riderId,
-          updatedOrder.customerId,
-          { latitude: pickupLat, longitude: pickupLon },
-          {
-            latitude: deliveryLat,
-            longitude: deliveryLon
-          }
-        );
-        console.log(`📍 Tracking initialized for order ${updatedOrder.id}`);
-      } catch (trackingError) {
-        console.error("Initialize tracking for accepted order error:", trackingError);
-        // Don't fail the order acceptance if tracking init fails
-      }
-
-      // Calculate delivery window ETA
-      let deliveryWindow = null;
-      try {
-        const RiderStatus = require('../models/RiderStatus');
-        const trackingService = require('../services/tracking_service');
-
-        const riderStatus = await RiderStatus.findOne({ riderId: req.user.id });
-
-        if (riderStatus?.location?.coordinates) {
-          const pickupLocation = getPickupLocation(updatedOrder);
-          const pickupLat = parseCoordinate(pickupLocation.latitude);
-          const pickupLon = parseCoordinate(pickupLocation.longitude);
-          const deliveryLat = parseCoordinate(updatedOrder.deliveryLatitude);
-          const deliveryLon = parseCoordinate(updatedOrder.deliveryLongitude);
-
-          // Get vendor prep time
-          const vendorPrepTime = getVendorPrepTime(updatedOrder);
-
-          if (hasValidCoordinatePair(pickupLat, pickupLon) && hasValidCoordinatePair(deliveryLat, deliveryLon)) {
-            deliveryWindow = await trackingService.calculateInitialDeliveryWindow(
-              { latitude: riderStatus.location.coordinates[1], longitude: riderStatus.location.coordinates[0] },
-              { latitude: pickupLat, longitude: pickupLon },
-              { latitude: deliveryLat, longitude: deliveryLon },
-              updatedOrder.status,
-              vendorPrepTime,
-              riderId,
-              getVendorIdFromOrder(updatedOrder),
-              updatedOrder.items.length,
-              updatedOrder.id
-            );
-
-            // Update order with delivery window
-            await prisma.order.update({
-              where: { id: updatedOrder.id },
-              data: {
-                deliveryWindowMin: deliveryWindow.minMinutes,
-                deliveryWindowMax: deliveryWindow.maxMinutes,
-                expectedDelivery: deliveryWindow.expectedDeliveryTime,
-                initialETASeconds: deliveryWindow.initialETASeconds,
-                riderAssignedAt: new Date()
-              }
-            });
-
-            console.log(`📊 Delivery window set for order ${updatedOrder.id}: ${deliveryWindow.deliveryWindowText}`);
-          }
-        }
-      } catch (etaError) {
-        console.error("Calculate delivery window error:", etaError);
-      }
-
-      // Mark rider as on delivery so they don't get more orders dispatched
-      try {
-        const RiderStatus = require('../models/RiderStatus');
-        await RiderStatus.findOneAndUpdate(
-          { riderId: req.user.id },
-          { $set: { isOnDelivery: true, currentOrderId: updatedOrder.id } }
-        );
-        console.log(`📍 Marked rider ${req.user.id} as on delivery`);
-      } catch (statusError) {
-        console.error("Update rider delivery status error:", statusError);
-      }
-
-      await notifyCustomerRiderAssignment(updatedOrder, updatedOrder.rider, getIO());
-      await safeDispatchRetrySideEffect(
-        `mark retry resolved after direct accept (${updatedOrder.id})`,
-        () => dispatchRetryService.markRetryResolved(updatedOrder.id, "rider_accepted_order")
-      );
 
       res.json({
         success: true,
@@ -1899,7 +1299,6 @@ router.post(
       res.status(500).json({
         success: false,
         message: "Server error",
-        error: error.message,
       });
     }
   }
@@ -2077,7 +1476,6 @@ router.post(
       res.status(500).json({
         success: false,
         message: "Server error",
-        error: error.message,
       });
     }
   }
@@ -2112,7 +1510,6 @@ router.get("/wallet", protect, authorize("rider"), async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message,
     });
   }
 });
@@ -2189,7 +1586,6 @@ router.get("/earnings", protect, authorize("rider"), async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message,
     });
   }
 });
@@ -2247,7 +1643,6 @@ router.get("/transactions", protect, authorize("rider"), async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message,
     });
   }
 });
@@ -2398,7 +1793,6 @@ router.post(
       res.status(500).json({
         success: false,
         message: "Server error",
-        error: error.message,
       });
     }
   }
@@ -2462,7 +1856,6 @@ router.put(
       res.status(500).json({
         success: false,
         message: "Server error",
-        error: error.message,
       });
     }
   }
@@ -2606,7 +1999,6 @@ router.post(
       res.status(500).json({
         success: false,
         message: "Server error",
-        error: error.message,
       });
     }
   }
@@ -2678,7 +2070,6 @@ router.get("/verification", protect, authorize("rider"), async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message,
     });
   }
 });
@@ -2820,7 +2211,6 @@ router.put(
       res.status(500).json({
         success: false,
         message: "Server error",
-        error: error.message,
       });
     }
   }
@@ -2887,7 +2277,6 @@ router.post(
       res.status(500).json({
         success: false,
         message: "Server error",
-        error: error.message,
       });
     }
   }
@@ -2957,7 +2346,6 @@ router.put(
       res.status(500).json({
         success: false,
         message: "Server error",
-        error: error.message,
       });
     }
   }
@@ -2999,7 +2387,7 @@ router.post("/test/delivery-warning", protect, authorize("rider"), async (req, r
     });
   } catch (error) {
     console.error("Test delivery warning error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendRiderError(res, error, "Server error");
   }
 });
 
@@ -3040,7 +2428,7 @@ router.post("/test/delivery-late", protect, authorize("rider"), async (req, res)
     });
   } catch (error) {
     console.error("Test delivery late error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendRiderError(res, error, "Server error");
   }
 });
 
@@ -3073,7 +2461,7 @@ router.post("/test/delivery-late-rider", protect, authorize("rider"), async (req
     });
   } catch (error) {
     console.error("Test delivery late rider error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendRiderError(res, error, "Server error");
   }
 });
 
@@ -3171,7 +2559,7 @@ router.post("/orders/:orderId/delay-reason", protect, authorize("rider"), async 
     });
   } catch (error) {
     console.error("Submit delay reason error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendRiderError(res, error, "Server error");
   }
 });
 
@@ -3219,7 +2607,7 @@ router.get("/orders/:orderId/delay-reason", protect, authorize("rider"), async (
     });
   } catch (error) {
     console.error("Get delay reason error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendRiderError(res, error, "Server error");
   }
 });
 
@@ -3242,7 +2630,7 @@ router.get("/partner-profile", protect, authorize("rider"), async (req, res) => 
     res.json({ success: true, data: dashboard });
   } catch (error) {
     console.error("Partner profile error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendRiderError(res, error, "Server error");
   }
 });
 
@@ -3265,7 +2653,7 @@ router.get("/partner-profile/score-breakdown", protect, authorize("rider", "admi
     res.json({ success: true, data: breakdown });
   } catch (error) {
     console.error("Score breakdown error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendRiderError(res, error, "Server error");
   }
 });
 
@@ -3289,7 +2677,7 @@ router.get("/partner-profile/history", protect, authorize("rider", "admin"), asy
     res.json({ success: true, data: history });
   } catch (error) {
     console.error("Level history error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendRiderError(res, error, "Server error");
   }
 });
 
@@ -3333,7 +2721,7 @@ router.post("/partner-profile/recalculate", protect, authorize("admin"), async (
     });
   } catch (error) {
     console.error("Partner recalculation error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendRiderError(res, error, "Server error");
   }
 });
 
@@ -3352,7 +2740,7 @@ router.get("/partner-profile/admin/distribution", protect, authorize("admin"), a
     res.json({ success: true, data: distribution });
   } catch (error) {
     console.error("Level distribution error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendRiderError(res, error, "Server error");
   }
 });
 
@@ -3382,7 +2770,7 @@ router.get("/quests", protect, authorize("rider"), async (req, res) => {
     res.json({ success: true, data: dashboard });
   } catch (error) {
     console.error("Quest dashboard error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendRiderError(res, error, "Server error");
   }
 });
 
@@ -3408,7 +2796,7 @@ router.get("/streaks", protect, authorize("rider"), async (req, res) => {
     res.json({ success: true, data: dashboard });
   } catch (error) {
     console.error("Streak dashboard error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendRiderError(res, error, "Server error");
   }
 });
 
@@ -3434,7 +2822,7 @@ router.get("/milestones", protect, authorize("rider"), async (req, res) => {
     res.json({ success: true, data: dashboard });
   } catch (error) {
     console.error("Milestone dashboard error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendRiderError(res, error, "Server error");
   }
 });
 
@@ -3454,7 +2842,7 @@ router.get("/incentives", protect, authorize("rider"), async (req, res) => {
     res.json({ success: true, data: summary });
   } catch (error) {
     console.error("Incentive summary error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendRiderError(res, error, "Server error");
   }
 });
 
@@ -3471,7 +2859,7 @@ router.get("/incentives/admin/:riderId", protect, authorize("admin"), async (req
     res.json({ success: true, data: summary });
   } catch (error) {
     console.error("Admin incentive summary error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendRiderError(res, error, "Server error");
   }
 });
 
@@ -3490,7 +2878,7 @@ router.get("/peak-hours/status", protect, authorize("rider"), async (req, res) =
     res.json({ success: true, data: status });
   } catch (error) {
     console.error("Peak hour status error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendRiderError(res, error, "Server error");
   }
 });
 
@@ -3509,7 +2897,7 @@ router.get("/peak-hours/schedule", protect, authorize("rider"), async (req, res)
     res.json({ success: true, data: schedule });
   } catch (error) {
     console.error("Peak hour schedule error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendRiderError(res, error, "Server error");
   }
 });
 
@@ -3532,7 +2920,7 @@ router.get("/budget/admin/dashboard", protect, authorize("admin"), async (req, r
     res.json({ success: true, data: dashboard });
   } catch (error) {
     console.error("Budget dashboard error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendRiderError(res, error, "Server error");
   }
 });
 
@@ -3563,7 +2951,7 @@ router.put("/budget/admin/cap", protect, authorize("admin"), async (req, res) =>
     res.json({ success: true, data: updated });
   } catch (error) {
     console.error("Budget cap update error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendRiderError(res, error, "Server error");
   }
 });
 
@@ -3584,7 +2972,7 @@ router.post("/budget/admin/approve-now", protect, authorize("admin"), async (req
     res.json({ success: true, data: result });
   } catch (error) {
     console.error("Manual budget approval error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendRiderError(res, error, "Server error");
   }
 });
 
@@ -3607,7 +2995,7 @@ router.get("/wallet/withdrawal-policy", protect, authorize("rider"), async (req,
     res.json({ success: true, data: policy });
   } catch (error) {
     console.error("Withdrawal policy error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendRiderError(res, error, "Server error");
   }
 });
 
@@ -3630,7 +3018,7 @@ router.get("/wallet/payout-history", protect, authorize("rider"), async (req, re
     res.json({ success: true, data: payouts });
   } catch (error) {
     console.error("Payout history error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendRiderError(res, error, "Server error");
   }
 });
 
@@ -3665,7 +3053,7 @@ router.get("/wallet/incentive-balance", protect, authorize("rider"), async (req,
     });
   } catch (error) {
     console.error("Incentive balance error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendRiderError(res, error, "Server error");
   }
 });
 
@@ -3684,7 +3072,7 @@ router.get("/loan/eligibility", protect, authorize("rider"), async (req, res) =>
     res.json({ success: true, data: eligibility });
   } catch (error) {
     console.error("Loan eligibility error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendRiderError(res, error, "Server error");
   }
 });
 
@@ -3727,10 +3115,10 @@ router.post(
       });
     } catch (error) {
       console.error("Loan apply error:", error);
-      const status = error.message.includes("not eligible") || error.message.includes("Maximum") || error.message.includes("Minimum")
+      const status = String(error?.message || "").includes("not eligible") || String(error?.message || "").includes("Maximum") || String(error?.message || "").includes("Minimum")
         ? 400
         : 500;
-      res.status(status).json({ success: false, message: error.message });
+      return sendRiderError(res, error, "Server error", status);
     }
   }
 );
@@ -3756,7 +3144,7 @@ router.get("/loan/history", protect, authorize("rider"), async (req, res) => {
     });
   } catch (error) {
     console.error("Loan history error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendRiderError(res, error, "Server error");
   }
 });
 
@@ -3771,8 +3159,8 @@ router.get("/loan/:loanId", protect, authorize("rider"), async (req, res) => {
     res.json({ success: true, data: loan });
   } catch (error) {
     console.error("Loan detail error:", error);
-    const status = error.message === "Loan not found." ? 404 : 500;
-    res.status(status).json({ success: false, message: error.message });
+    const status = String(error?.message || "") === "Loan not found." ? 404 : 500;
+    return sendRiderError(res, error, "Server error", status);
   }
 });
 

@@ -2,9 +2,23 @@ const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
 const { callTurnCredentialsRateLimit } = require('../middleware/fraud_rate_limit');
+const { createScopedLogger } = require('../utils/logger');
 const { getTurnCredentials } = require('../services/turn_credentials_service');
 
 const VOICE_CALL_TYPE = 'audio';
+const console = createScopedLogger('calls_route');
+
+const sendCallsError = (res, error, fallbackMessage, fallbackStatus = 500) => {
+  const explicitStatus = Number(error?.status);
+  const status =
+    Number.isInteger(explicitStatus) && explicitStatus >= 400 && explicitStatus < 600
+      ? explicitStatus
+      : fallbackStatus;
+
+  return res.status(status).json({
+    error: status >= 500 ? fallbackMessage : String(error?.message || fallbackMessage),
+  });
+};
 
 // Get short-lived TURN credentials for WebRTC voice calls.
 router.get('/turn-credentials', protect, callTurnCredentialsRateLimit, async (req, res) => {
@@ -18,10 +32,7 @@ router.get('/turn-credentials', protect, callTurnCredentialsRateLimit, async (re
     });
   } catch (error) {
     console.error('Error retrieving TURN credentials:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to retrieve TURN credentials',
-    });
+    return sendCallsError(res, error, 'Failed to retrieve TURN credentials');
   }
 });
 
@@ -57,7 +68,7 @@ router.get('/:callId', protect, async (req, res) => {
     });
   } catch (error) {
     console.error('Error retrieving call details:', error);
-    res.status(500).json({ error: error.message });
+    return sendCallsError(res, error, 'Failed to retrieve call details');
   }
 });
 

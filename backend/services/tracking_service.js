@@ -7,6 +7,9 @@ const prisma = require('../config/prisma');
 const cache = require('../utils/cache');
 const mlClient = require('../utils/ml_client');
 const directionsService = require('./directions_service');
+const { createScopedLogger } = require('../utils/logger');
+
+const console = createScopedLogger('tracking_service');
 
 const ORDER_TRACKING_ENTITY = 'order';
 const buildOrderTrackingQuery = (query = {}) =>

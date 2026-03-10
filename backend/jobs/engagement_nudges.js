@@ -2,6 +2,9 @@ const cron = require('node-cron');
 const { processFavoritesNudges } = require('../services/favorites_nudge_service');
 const { processReorderSuggestions } = require('../services/reorder_suggestion_service');
 const cache = require('../utils/cache');
+const { createScopedLogger } = require('../utils/logger');
+
+const console = createScopedLogger('engagement_nudges_job');
 
 const initializeEngagementNudges = (io) => {
     console.log('📅 Initializing engagement nudge jobs...');

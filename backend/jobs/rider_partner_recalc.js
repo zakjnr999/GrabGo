@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const prisma = require('../config/prisma');
 const cache = require('../utils/cache');
 const featureFlags = require('../config/feature_flags');
+const { createScopedLogger } = require('../utils/logger');
 const {
   evaluateRiderPartnerLevel,
 } = require('../services/rider_score_engine');
@@ -10,6 +11,7 @@ const JOB_NAME = 'rider_partner_recalc';
 const LOCK_KEY = `job:${JOB_NAME}`;
 const LOCK_TTL_SECONDS = 600; // 10-minute lock — generous for large rider pools
 const BATCH_SIZE = 50; // Number of riders to process in parallel per batch
+const console = createScopedLogger('rider_partner_recalc_job');
 
 let isRunning = false;
 

@@ -4,6 +4,8 @@ const { incrementQuestProgress, expireStaleQuests, getWindowKey } = require('./r
 const { processDeliveryForStreak } = require('./rider_streak_engine');
 const { incrementMilestoneProgress } = require('./rider_milestone_engine');
 const { processPeakHourBonus } = require('./rider_peak_hour_service');
+const { createScopedLogger } = require('../utils/logger');
+const console = createScopedLogger('rider_incentive_orchestrator');
 
 /**
  * Incentive Orchestrator

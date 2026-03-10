@@ -11,6 +11,8 @@
 
 const { createNotification } = require('./notification_service');
 const { getIO } = require('../utils/socket');
+const { createScopedLogger } = require('../utils/logger');
+const console = createScopedLogger('rider_incentive_notifications');
 
 // ── helpers ─────────────────────────────────────────────────────────
 

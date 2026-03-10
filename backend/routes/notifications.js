@@ -4,6 +4,12 @@ const { protect } = require('../middleware/auth');
 const NotificationService = require('../services/notification_service');
 const mongoose = require('mongoose');
 const cache = require('../utils/cache');
+const { createScopedLogger } = require('../utils/logger');
+
+const console = createScopedLogger('notifications_route');
+
+const sendInternalError = (res, publicMessage) =>
+    res.status(500).json({ success: false, message: publicMessage });
 
 // @route   GET /api/notifications
 // @desc    Get user notifications with pagination (MongoDB)
@@ -37,7 +43,7 @@ router.get('/', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Get notifications error:', error);
-        res.status(500).json({ success: false, message: 'Failed to fetch notifications', error: error.message });
+        sendInternalError(res, 'Failed to fetch notifications');
     }
 });
 
@@ -48,7 +54,7 @@ router.get('/unread-count', protect, async (req, res) => {
         res.json({ success: true, count });
     } catch (error) {
         console.error('Get unread count error:', error);
-        res.status(500).json({ success: false, message: 'Failed to get unread count', error: error.message });
+        sendInternalError(res, 'Failed to get unread count');
     }
 });
 
@@ -62,7 +68,7 @@ router.patch('/:id/read', protect, async (req, res) => {
         res.json({ success: true, message: 'Notification marked as read' });
     } catch (error) {
         console.error('Mark as read error:', error);
-        res.status(500).json({ success: false, message: 'Failed to mark notification as read', error: error.message });
+        sendInternalError(res, 'Failed to mark notification as read');
     }
 });
 
@@ -73,7 +79,7 @@ router.patch('/read-all', protect, async (req, res) => {
         res.json({ success: true, message: 'All notifications marked as read' });
     } catch (error) {
         console.error('Mark all as read error:', error);
-        res.status(500).json({ success: false, message: 'Failed to mark all as read', error: error.message });
+        sendInternalError(res, 'Failed to mark all as read');
     }
 });
 
@@ -84,7 +90,7 @@ router.delete('/', protect, async (req, res) => {
         res.json({ success: true, message: 'All notifications cleared' });
     } catch (error) {
         console.error('Clear notifications error:', error);
-        res.status(500).json({ success: false, message: 'Failed to clear notifications', error: error.message });
+        sendInternalError(res, 'Failed to clear notifications');
     }
 });
 
@@ -106,7 +112,6 @@ router.get('/health', async (req, res) => {
         health.database = 'healthy';
     } catch (e) {
         health.database = 'unhealthy';
-        health.databaseError = e.message;
     }
 
     try {
@@ -137,7 +142,6 @@ router.get('/health', async (req, res) => {
         health.cache = 'error';
         health.redis = 'error';
         health.lock = 'error';
-        health.cacheError = e.message;
     }
 
     const isHealthy = health.database === 'healthy' && health.firebase === 'healthy' && health.socketio === 'healthy';

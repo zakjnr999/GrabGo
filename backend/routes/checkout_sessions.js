@@ -5,6 +5,8 @@ const prisma = require('../config/prisma');
 const { invalidateCache } = require('../middleware/cache');
 const { paymentAttemptRateLimit } = require('../middleware/fraud_rate_limit');
 const cache = require('../utils/cache');
+const logger = require('../utils/logger');
+const metrics = require('../utils/metrics');
 const {
   ACTION_TYPES,
   buildFraudContextFromRequest,
@@ -28,8 +30,9 @@ const invalidateFoodOrderHistoryCaches = async () => {
   ]);
 };
 
-const handleCheckoutSessionError = (res, error) => {
+const handleCheckoutSessionError = (res, error, action = 'unknown') => {
   if (error instanceof CheckoutSessionError) {
+    metrics.recordCheckoutSessionEvent({ action, result: error.code || 'business_error' });
     return res.status(error.status || 400).json({
       success: false,
       message: error.message,
@@ -38,11 +41,11 @@ const handleCheckoutSessionError = (res, error) => {
     });
   }
 
-  console.error('Checkout session route error:', error);
+  logger.error('checkout_session_route_failed', { error });
+  metrics.recordCheckoutSessionEvent({ action, result: 'failure' });
   return res.status(500).json({
     success: false,
     message: 'Server error',
-    error: error.message,
   });
 };
 
@@ -99,6 +102,7 @@ router.post(
         customer: req.user,
         payload: req.body,
       });
+      metrics.recordCheckoutSessionEvent({ action: 'create', result: 'success' });
 
       return res.status(201).json({
         success: true,
@@ -110,7 +114,7 @@ router.post(
         },
       });
     } catch (error) {
-      return handleCheckoutSessionError(res, error);
+      return handleCheckoutSessionError(res, error, 'create');
     }
   }
 );
@@ -128,6 +132,10 @@ router.post('/:sessionId/paystack/initialize', protect, paymentAttemptRateLimit,
       sessionId: req.params.sessionId,
       customer: req.user,
     });
+    metrics.recordCheckoutSessionEvent({
+      action: 'initialize_payment',
+      result: result.alreadyPaid ? 'already_paid' : 'success',
+    });
 
     return res.json({
       success: true,
@@ -142,7 +150,7 @@ router.post('/:sessionId/paystack/initialize', protect, paymentAttemptRateLimit,
       },
     });
   } catch (error) {
-    return handleCheckoutSessionError(res, error);
+    return handleCheckoutSessionError(res, error, 'initialize_payment');
   }
 });
 
@@ -236,6 +244,10 @@ router.post(
         reference: req.body.reference,
         provider: req.body.provider,
       });
+      metrics.recordCheckoutSessionEvent({
+        action: 'confirm_payment',
+        result: result.alreadyConfirmed ? 'already_confirmed' : 'success',
+      });
 
       await invalidateFoodOrderHistoryCaches().catch((cacheError) => {
         console.error('Food order-history cache invalidation error:', cacheError.message);
@@ -257,7 +269,7 @@ router.post(
         },
       });
     } catch (error) {
-      return handleCheckoutSessionError(res, error);
+      return handleCheckoutSessionError(res, error, 'confirm_payment');
     }
   }
 );

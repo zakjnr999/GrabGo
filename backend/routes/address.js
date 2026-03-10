@@ -9,6 +9,9 @@ const {
     setDefaultAddress,
 } = require('../services/address_service');
 const { body, validationResult } = require('express-validator');
+const { createScopedLogger } = require('../utils/logger');
+
+const console = createScopedLogger('address_route');
 
 const validateAddress = [
     body('latitude').isFloat({ min: -90, max: 90 }).withMessage('Invalid latitude'),
@@ -29,6 +32,21 @@ const validateAddress = [
     }
 ];
 
+const getAddressErrorStatus = (error) => {
+    const message = String(error?.message || '').toLowerCase();
+    if (message.includes('not found')) return 404;
+    if (message.includes('default')) return 400;
+    return 500;
+};
+
+const sendAddressError = (res, error, fallbackMessage) => {
+    const status = getAddressErrorStatus(error);
+    return res.status(status).json({
+        success: false,
+        message: status >= 500 ? fallbackMessage : (error?.message || fallbackMessage),
+    });
+};
+
 /**
  * @route   GET /api/addresses
  * @desc    Get all user addresses
@@ -42,10 +60,8 @@ router.get('/', protect, async (req, res) => {
             data: addresses,
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message || 'Failed to fetch addresses',
-        });
+        console.error('Fetch addresses error:', error);
+        sendAddressError(res, error, 'Failed to fetch addresses');
     }
 });
 
@@ -63,10 +79,8 @@ router.post('/', protect, validateAddress, async (req, res) => {
             data: address,
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message || 'Failed to add address',
-        });
+        console.error('Add address error:', error);
+        sendAddressError(res, error, 'Failed to add address');
     }
 });
 
@@ -84,10 +98,8 @@ router.patch('/:id', protect, validateAddress, async (req, res) => {
             data: address,
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message || 'Failed to update address',
-        });
+        console.error('Update address error:', error);
+        sendAddressError(res, error, 'Failed to update address');
     }
 });
 
@@ -105,10 +117,8 @@ router.patch('/:id/default', protect, async (req, res) => {
             data: address,
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message || 'Failed to set default address',
-        });
+        console.error('Set default address error:', error);
+        sendAddressError(res, error, 'Failed to set default address');
     }
 });
 
@@ -125,10 +135,8 @@ router.delete('/:id', protect, async (req, res) => {
             message: 'Address deleted successfully',
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message || 'Failed to delete address',
-        });
+        console.error('Delete address error:', error);
+        sendAddressError(res, error, 'Failed to delete address');
     }
 });
 

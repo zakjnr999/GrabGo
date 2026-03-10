@@ -5,6 +5,7 @@
 
 const Redis = require('ioredis');
 const NodeCache = require('node-cache');
+const logger = require('./logger');
 
 // Cache configuration
 const CACHE_CONFIG = {
@@ -27,11 +28,11 @@ let useRedis = false;
  * Initialize Redis connection
  * Call this on server startup
  */
-const initRedis = () => {
+const initRedis = async () => {
     const redisUrl = process.env.REDIS_URL;
 
     if (!redisUrl) {
-        console.log('[Cache] No REDIS_URL found, using in-memory cache');
+        logger.warn('cache_redis_url_missing_using_memory');
         return false;
     }
 
@@ -43,30 +44,31 @@ const initRedis = () => {
             lazyConnect: true,
         });
         redisClient.on('connect', () => {
-            console.log('[Cache] Redis connected successfully');
+            logger.info('cache_redis_connected');
             useRedis = true;
         });
 
         redisClient.on('error', (err) => {
-            console.error('[Cache] Redis error:', err.message);
+            logger.error('cache_redis_error', { error: err });
             // Fall back to memory cache on error
             useRedis = false;
         });
 
         redisClient.on('close', () => {
-            console.log('[Cache] Redis connection closed');
+            logger.warn('cache_redis_connection_closed');
             useRedis = false;
         });
 
-        // Attempt connection
-        redisClient.connect().catch((err) => {
-            console.error('[Cache] Redis connection failed:', err.message);
+        try {
+            await redisClient.connect();
+        } catch (err) {
+            logger.error('cache_redis_connection_failed', { error: err });
             useRedis = false;
-        });
+        }
 
         return true;
     } catch (error) {
-        console.error('[Cache] Failed to initialize Redis:', error.message);
+        logger.error('cache_redis_init_failed', { error });
         return false;
     }
 };

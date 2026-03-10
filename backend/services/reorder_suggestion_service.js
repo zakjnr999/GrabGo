@@ -1,6 +1,9 @@
 const prisma = require('../config/prisma');
 const { sendToUser } = require('./fcm_service');
 const { createNotification } = require('./notification_service');
+const { createScopedLogger } = require('../utils/logger');
+
+const console = createScopedLogger('reorder_suggestion_service');
 
 /**
  * Reorder Suggestion Service

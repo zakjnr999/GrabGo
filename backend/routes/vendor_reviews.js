@@ -7,6 +7,8 @@ const {
   moderateVendorReview,
   reportVendorReview,
 } = require("../services/vendor_rating_service");
+const logger = require("../utils/logger");
+const metrics = require("../utils/metrics");
 
 const router = express.Router();
 
@@ -52,6 +54,7 @@ router.get(
         page: req.query.page,
         limit: req.query.limit,
       });
+      metrics.recordReviewEvent({ reviewType: "vendor", action: "fetch", result: "success" });
 
       return res.json({
         success: true,
@@ -60,6 +63,11 @@ router.get(
       });
     } catch (error) {
       if (error instanceof VendorRatingError) {
+        metrics.recordReviewEvent({
+          reviewType: "vendor",
+          action: "fetch",
+          result: error.code || "business_error",
+        });
         return res.status(error.statusCode || 400).json({
           success: false,
           message: error.message,
@@ -67,11 +75,11 @@ router.get(
         });
       }
 
-      console.error("Get vendor reviews error:", error);
+      logger.error("vendor_reviews_fetch_failed", { error });
+      metrics.recordReviewEvent({ reviewType: "vendor", action: "fetch", result: "failure" });
       return res.status(500).json({
         success: false,
         message: "Server error",
-        error: error.message,
       });
     }
   }
@@ -117,6 +125,7 @@ router.post(
         reason: req.body.reason,
         details: req.body.details,
       });
+      metrics.recordReviewEvent({ reviewType: "vendor", action: "report", result: "success" });
 
       return res.status(201).json({
         success: true,
@@ -125,6 +134,11 @@ router.post(
       });
     } catch (error) {
       if (error instanceof VendorRatingError) {
+        metrics.recordReviewEvent({
+          reviewType: "vendor",
+          action: "report",
+          result: error.code || "business_error",
+        });
         return res.status(error.statusCode || 400).json({
           success: false,
           message: error.message,
@@ -132,11 +146,11 @@ router.post(
         });
       }
 
-      console.error("Report vendor review error:", error);
+      logger.error("vendor_review_report_failed", { error });
+      metrics.recordReviewEvent({ reviewType: "vendor", action: "report", result: "failure" });
       return res.status(500).json({
         success: false,
         message: "Server error",
-        error: error.message,
       });
     }
   }
@@ -176,6 +190,7 @@ router.patch(
         isHidden: req.body.isHidden,
         hiddenReason: req.body.hiddenReason,
       });
+      metrics.recordReviewEvent({ reviewType: "vendor", action: "moderate", result: "success" });
 
       return res.json({
         success: true,
@@ -186,6 +201,11 @@ router.patch(
       });
     } catch (error) {
       if (error instanceof VendorRatingError) {
+        metrics.recordReviewEvent({
+          reviewType: "vendor",
+          action: "moderate",
+          result: error.code || "business_error",
+        });
         return res.status(error.statusCode || 400).json({
           success: false,
           message: error.message,
@@ -193,11 +213,11 @@ router.patch(
         });
       }
 
-      console.error("Moderate vendor review error:", error);
+      logger.error("vendor_review_moderation_failed", { error });
+      metrics.recordReviewEvent({ reviewType: "vendor", action: "moderate", result: "failure" });
       return res.status(500).json({
         success: false,
         message: "Server error",
-        error: error.message,
       });
     }
   }

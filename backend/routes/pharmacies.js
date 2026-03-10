@@ -1,5 +1,6 @@
 const express = require('express');
 const { Prisma } = require('@prisma/client');
+const { createScopedLogger } = require('../utils/logger');
 const router = express.Router();
 const prisma = require('../config/prisma');
 const { protect } = require('../middleware/auth');
@@ -11,6 +12,7 @@ const {
     isGrabGoExclusiveActive,
     applyActiveExclusiveWhere,
 } = require('../utils/grabgo_exclusive');
+const console = createScopedLogger('pharmacies_route');
 
 /**
  * Helper to format Pharmacy store for frontend compatibility
@@ -159,7 +161,6 @@ router.get("/stores", cacheMiddleware(cache.CACHE_KEYS.PHARMACY + ':stores', 300
         res.status(500).json({
             success: false,
             message: "Server error",
-            error: error.message
         });
     }
 });
@@ -216,7 +217,6 @@ router.get("/search", async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Server error",
-            error: error.message
         });
     }
 });
@@ -249,7 +249,6 @@ router.get("/emergency", async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Server error",
-            error: error.message
         });
     }
 });
@@ -346,7 +345,6 @@ router.get("/categories", cacheMiddleware(cache.CACHE_KEYS.PHARMACY + ':categori
         res.status(500).json({
             success: false,
             message: "Server error",
-            error: error.message
         });
     }
 });
@@ -458,7 +456,6 @@ router.get("/items", async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Server error",
-            error: error.message
         });
     }
 });
@@ -728,7 +725,6 @@ router.get(
             return res.status(500).json({
                 success: false,
                 message: 'Server error',
-                error: error.message
             });
         }
     }
@@ -762,7 +758,6 @@ router.get("/24-hours", async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Server error",
-            error: error.message
         });
     }
 });
@@ -823,7 +818,6 @@ router.get("/nearby", cacheMiddleware(cache.CACHE_KEYS.PHARMACY + ':nearby', 180
         res.status(500).json({
             success: false,
             message: "Server error",
-            error: error.message
         });
     }
 });
@@ -866,7 +860,6 @@ router.get("/stores/:id", async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Server error",
-            error: error.message
         });
     }
 });

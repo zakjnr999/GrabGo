@@ -1,5 +1,7 @@
 const axios = require('axios');
 const cache = require('../utils/cache');
+const { createScopedLogger } = require('../utils/logger');
+const console = createScopedLogger('turn_credentials_service');
 
 const CACHE_KEY = 'grabgo:webrtc:turn-credentials';
 const CACHE_TTL_SECONDS = 60 * 5;

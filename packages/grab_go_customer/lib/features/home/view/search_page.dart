@@ -61,12 +61,7 @@ class _SearchPageState extends State<SearchPage> {
   final ScrollController _scrollController = ScrollController();
 
   static const Duration _searchDebounceDuration = Duration(milliseconds: 320);
-  static const List<String> _quickFilters = [
-    'Fast delivery',
-    'Under ₵20',
-    'Top rated',
-    'On sale',
-  ];
+  static const List<String> _quickFilters = ['Fast delivery', 'Under ₵20', 'Top rated', 'On sale'];
 
   Timer? _searchDebounceTimer;
   String _searchQuery = '';
@@ -89,9 +84,7 @@ class _SearchPageState extends State<SearchPage> {
     if (initialQuery.isNotEmpty) {
       _searchQuery = initialQuery;
       _searchController.text = initialQuery;
-      _searchController.selection = TextSelection.collapsed(
-        offset: initialQuery.length,
-      );
+      _searchController.selection = TextSelection.collapsed(offset: initialQuery.length);
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -167,15 +160,10 @@ class _SearchPageState extends State<SearchPage> {
     return 'Stores';
   }
 
-  bool get _hasSearchContext =>
-      _searchQuery.trim().isNotEmpty || _activeFilter.isActive;
+  bool get _hasSearchContext => _searchQuery.trim().isNotEmpty || _activeFilter.isActive;
 
   String _currentSearchKey() {
-    return jsonEncode({
-      'query': _searchQuery.trim(),
-      'sort': _sortOption.apiValue,
-      'filter': _activeFilter.toJson(),
-    });
+    return jsonEncode({'query': _searchQuery.trim(), 'sort': _sortOption.apiValue, 'filter': _activeFilter.toJson()});
   }
 
   void _onSearchChanged(String rawQuery) {
@@ -187,11 +175,7 @@ class _SearchPageState extends State<SearchPage> {
     });
   }
 
-  void _applySearchQuery(
-    String rawQuery, {
-    bool persist = false,
-    bool immediate = false,
-  }) {
+  void _applySearchQuery(String rawQuery, {bool persist = false, bool immediate = false}) {
     final nextQuery = rawQuery.trim();
     if (nextQuery == _searchQuery && !immediate) return;
 
@@ -300,12 +284,7 @@ class _SearchPageState extends State<SearchPage> {
         _searchError = message;
         _isSearching = false;
       });
-      AppToastMessage.show(
-        context: context,
-        message: message,
-        backgroundColor: context.appColors.error,
-        maxLines: 3,
-      );
+      AppToastMessage.show(context: context, message: message, backgroundColor: context.appColors.error, maxLines: 3);
     }
   }
 
@@ -314,8 +293,7 @@ class _SearchPageState extends State<SearchPage> {
     if (raw.isEmpty) {
       return 'Search is unavailable right now. Please try again.';
     }
-    if (raw.toLowerCase().contains('failed host lookup') ||
-        raw.toLowerCase().contains('socketexception')) {
+    if (raw.toLowerCase().contains('failed host lookup') || raw.toLowerCase().contains('socketexception')) {
       return 'No internet connection. Check your network and try again.';
     }
     return raw;
@@ -370,9 +348,7 @@ class _SearchPageState extends State<SearchPage> {
     }
   }
 
-  List<FoodCategoryModel> _filterCategoriesForService(
-    ServiceProvider serviceProvider,
-  ) {
+  List<FoodCategoryModel> _filterCategoriesForService(ServiceProvider serviceProvider) {
     if (serviceProvider.isFoodService) {
       return context.read<FoodProvider>().categories;
     }
@@ -470,9 +446,7 @@ class _SearchPageState extends State<SearchPage> {
     return sorted;
   }
 
-  List<CatalogSearchItemResult> _buildSuggestedItems(
-    ServiceProvider serviceProvider,
-  ) {
+  List<CatalogSearchItemResult> _buildSuggestedItems(ServiceProvider serviceProvider) {
     final items = <CatalogSearchItemResult>[];
     final seen = <String>{};
 
@@ -482,13 +456,7 @@ class _SearchPageState extends State<SearchPage> {
         for (final item in category.items) {
           final key = '${item.id}_${item.restaurantId}';
           if (seen.add(key)) {
-            items.add(
-              CatalogSearchItemResult(
-                displayItem: item,
-                sourceItem: item,
-                serviceType: 'food',
-              ),
-            );
+            items.add(CatalogSearchItemResult(displayItem: item, sourceItem: item, serviceType: 'food'));
           }
         }
       }
@@ -496,48 +464,30 @@ class _SearchPageState extends State<SearchPage> {
       for (final item in context.read<GroceryProvider>().items) {
         if (seen.add('grocery_${item.id}_${item.storeId}')) {
           items.add(
-            CatalogSearchItemResult(
-              displayItem: item.toFoodItem(),
-              sourceItem: item,
-              serviceType: 'groceries',
-            ),
+            CatalogSearchItemResult(displayItem: item.toFoodItem(), sourceItem: item, serviceType: 'groceries'),
           );
         }
       }
     } else if (serviceProvider.isPharmacyService) {
       for (final item in context.read<PharmacyProvider>().items) {
         if (seen.add('pharmacy_${item.id}_${item.storeId}')) {
-          items.add(
-            CatalogSearchItemResult(
-              displayItem: item.toFoodItem(),
-              sourceItem: item,
-              serviceType: 'pharmacy',
-            ),
-          );
+          items.add(CatalogSearchItemResult(displayItem: item.toFoodItem(), sourceItem: item, serviceType: 'pharmacy'));
         }
       }
     } else {
       for (final item in context.read<GrabMartProvider>().items) {
         if (seen.add('grabmart_${item.id}_${item.storeId}')) {
           items.add(
-            CatalogSearchItemResult(
-              displayItem: item.toFoodItem(),
-              sourceItem: item,
-              serviceType: 'convenience',
-            ),
+            CatalogSearchItemResult(displayItem: item.toFoodItem(), sourceItem: item, serviceType: 'convenience'),
           );
         }
       }
     }
 
     items.sort((a, b) {
-      final availabilityCompare = (b.displayItem.isAvailable ? 1 : 0).compareTo(
-        a.displayItem.isAvailable ? 1 : 0,
-      );
+      final availabilityCompare = (b.displayItem.isAvailable ? 1 : 0).compareTo(a.displayItem.isAvailable ? 1 : 0);
       if (availabilityCompare != 0) return availabilityCompare;
-      final orderCompare = b.displayItem.orderCount.compareTo(
-        a.displayItem.orderCount,
-      );
+      final orderCompare = b.displayItem.orderCount.compareTo(a.displayItem.orderCount);
       if (orderCompare != 0) return orderCompare;
       return b.displayItem.rating.compareTo(a.displayItem.rating);
     });
@@ -548,17 +498,13 @@ class _SearchPageState extends State<SearchPage> {
   List<FoodCategoryModel> _recoveryCategories(ServiceProvider serviceProvider) {
     final categories = _filterCategoriesForService(serviceProvider);
     if (serviceProvider.isFoodService) {
-      final sorted = [...categories]
-        ..sort((a, b) => b.items.length.compareTo(a.items.length));
+      final sorted = [...categories]..sort((a, b) => b.items.length.compareTo(a.items.length));
       return sorted.take(6).toList(growable: false);
     }
     return categories.take(6).toList(growable: false);
   }
 
-  void _openCategory(
-    FoodCategoryModel category,
-    ServiceProvider serviceProvider,
-  ) {
+  void _openCategory(FoodCategoryModel category, ServiceProvider serviceProvider) {
     context.push(
       '/categoryItems/${category.id}',
       extra: {
@@ -594,23 +540,16 @@ class _SearchPageState extends State<SearchPage> {
     final vendors = response?.vendors ?? const <VendorModel>[];
     final categories = response?.categories ?? const <CatalogSearchCategory>[];
     final items = response?.items ?? const <CatalogSearchItemResult>[];
-    final suggestions =
-        response?.suggestions ?? const <CatalogSearchSuggestion>[];
-    final hasResults =
-        vendors.isNotEmpty || categories.isNotEmpty || items.isNotEmpty;
-    final showLoadingSkeleton =
-        _hasSearchContext &&
-        _isSearching &&
-        _currentSearchKey() != _resolvedSearchKey;
+    final suggestions = response?.suggestions ?? const <CatalogSearchSuggestion>[];
+    final hasResults = vendors.isNotEmpty || categories.isNotEmpty || items.isNotEmpty;
+    final showLoadingSkeleton = _hasSearchContext && _isSearching && _currentSearchKey() != _resolvedSearchKey;
     final totalMatches = vendors.length + categories.length + items.length;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final systemUiOverlayStyle = SystemUiOverlayStyle(
       statusBarColor: isDark ? colors.backgroundPrimary : colors.accentOrange,
       statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       systemNavigationBarColor: colors.backgroundPrimary,
-      systemNavigationBarIconBrightness: isDark
-          ? Brightness.light
-          : Brightness.dark,
+      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
     );
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -636,9 +575,7 @@ class _SearchPageState extends State<SearchPage> {
                         _searchError != null
                             ? _searchError!
                             : '$totalMatches matches across vendors, items and categories',
-                        highlightedText: _searchQuery.isNotEmpty
-                            ? _searchQuery
-                            : null,
+                        highlightedText: _searchQuery.isNotEmpty ? _searchQuery : null,
                       )
                     else
                       _buildSectionHeader(
@@ -696,14 +633,8 @@ class _SearchPageState extends State<SearchPage> {
                                       fontWeight: FontWeight.w600,
                                     ),
                                     shape: RoundedRectangleBorder(
-                                      side: BorderSide(
-                                        color: colors.inputBorder.withValues(
-                                          alpha: 0.35,
-                                        ),
-                                      ),
-                                      borderRadius: BorderRadius.circular(
-                                        KBorderSize.border,
-                                      ),
+                                      side: BorderSide(color: colors.inputBorder.withValues(alpha: 0.35)),
+                                      borderRadius: BorderRadius.circular(KBorderSize.border),
                                     ),
                                   );
                                 })
@@ -716,27 +647,14 @@ class _SearchPageState extends State<SearchPage> {
                         padding: EdgeInsets.symmetric(horizontal: 20.w),
                         child: Text(
                           'Suggested for you',
-                          style: TextStyle(
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w700,
-                            color: colors.textPrimary,
-                          ),
+                          style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
                         ),
                       ),
                       SizedBox(height: 8.h),
                       if (suggestedItems.isEmpty)
-                        _buildEmptyState(
-                          colors,
-                          'No items available to suggest yet.',
-                        )
+                        _buildEmptyState(colors, 'No items available to suggest yet.')
                       else
-                        ...suggestedItems.map(
-                          (item) => _buildItemSearchResult(
-                            colors,
-                            item,
-                            persistQuery: false,
-                          ),
-                        ),
+                        ...suggestedItems.map((item) => _buildItemSearchResult(colors, item, persistQuery: false)),
                     ] else if (showLoadingSkeleton) ...[
                       _buildSortControls(colors),
                       SizedBox(height: 12.h),
@@ -757,8 +675,7 @@ class _SearchPageState extends State<SearchPage> {
                       _buildSearchNoResultsState(
                         colors,
                         title: 'No matches found',
-                        message:
-                            'Try another term, clear filters, or explore nearby categories.',
+                        message: 'Try another term, clear filters, or explore nearby categories.',
                         serviceProvider: serviceProvider,
                         suggestedItems: suggestedItems,
                         recoveryCategories: recoveryCategories,
@@ -767,24 +684,16 @@ class _SearchPageState extends State<SearchPage> {
                     ] else ...[
                       _buildSortControls(colors),
                       SizedBox(height: 12.h),
-                      if (suggestions.isNotEmpty &&
-                          _searchQuery.trim().isNotEmpty) ...[
+                      if (suggestions.isNotEmpty && _searchQuery.trim().isNotEmpty) ...[
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 20.w),
                           child: Text(
                             'Suggestions',
-                            style: TextStyle(
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w700,
-                              color: colors.textPrimary,
-                            ),
+                            style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
                           ),
                         ),
                         SizedBox(height: 8.h),
-                        ...suggestions.map(
-                          (suggestion) =>
-                              _buildSuggestionTile(colors, suggestion),
-                        ),
+                        ...suggestions.map((suggestion) => _buildSuggestionTile(colors, suggestion)),
                         SizedBox(height: 14.h),
                       ],
                       if (vendors.isNotEmpty) ...[
@@ -792,25 +701,17 @@ class _SearchPageState extends State<SearchPage> {
                           padding: EdgeInsets.symmetric(horizontal: 20.w),
                           child: Text(
                             _vendorLabel(serviceProvider),
-                            style: TextStyle(
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w700,
-                              color: colors.textPrimary,
-                            ),
+                            style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
                           ),
                         ),
                         SizedBox(height: 8.h),
                         ...vendors.map(
                           (vendor) => VendorCard(
                             vendor: vendor,
-                            onTap: () =>
-                                context.push('/vendorDetails', extra: vendor),
+                            onTap: () => context.push('/vendorDetails', extra: vendor),
                             showClosedOnImage: true,
                             highlightExclusiveBadge: true,
-                            margin: EdgeInsets.symmetric(
-                              horizontal: 20.w,
-                              vertical: 6.h,
-                            ),
+                            margin: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
                           ),
                         ),
                         SizedBox(height: 14.h),
@@ -820,21 +721,11 @@ class _SearchPageState extends State<SearchPage> {
                           padding: EdgeInsets.symmetric(horizontal: 20.w),
                           child: Text(
                             'Items',
-                            style: TextStyle(
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w700,
-                              color: colors.textPrimary,
-                            ),
+                            style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
                           ),
                         ),
                         SizedBox(height: 8.h),
-                        ...items.map(
-                          (item) => _buildItemSearchResult(
-                            colors,
-                            item,
-                            persistQuery: true,
-                          ),
-                        ),
+                        ...items.map((item) => _buildItemSearchResult(colors, item, persistQuery: true)),
                         SizedBox(height: 14.h),
                       ],
                       if (categories.isNotEmpty) ...[
@@ -842,18 +733,11 @@ class _SearchPageState extends State<SearchPage> {
                           padding: EdgeInsets.symmetric(horizontal: 20.w),
                           child: Text(
                             'Categories',
-                            style: TextStyle(
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w700,
-                              color: colors.textPrimary,
-                            ),
+                            style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
                           ),
                         ),
                         SizedBox(height: 8.h),
-                        ...categories.map(
-                          (category) =>
-                              _buildCategorySearchResult(colors, category),
-                        ),
+                        ...categories.map((category) => _buildCategorySearchResult(colors, category)),
                       ],
                     ],
                   ],
@@ -866,10 +750,7 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Widget _buildSearchHeader(
-    AppColorsExtension colors,
-    ServiceProvider serviceProvider,
-  ) {
+  Widget _buildSearchHeader(AppColorsExtension colors, ServiceProvider serviceProvider) {
     return Container(
       color: colors.backgroundPrimary,
       padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 10.h),
@@ -878,10 +759,7 @@ class _SearchPageState extends State<SearchPage> {
           Container(
             height: 44,
             width: 44,
-            decoration: BoxDecoration(
-              color: colors.backgroundSecondary,
-              shape: BoxShape.circle,
-            ),
+            decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
             child: Material(
               color: Colors.transparent,
               child: InkWell(
@@ -892,10 +770,7 @@ class _SearchPageState extends State<SearchPage> {
                   child: SvgPicture.asset(
                     Assets.icons.navArrowLeft,
                     package: 'grab_go_shared',
-                    colorFilter: ColorFilter.mode(
-                      colors.textPrimary,
-                      BlendMode.srcIn,
-                    ),
+                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                   ),
                 ),
               ),
@@ -917,10 +792,7 @@ class _SearchPageState extends State<SearchPage> {
                     package: 'grab_go_shared',
                     width: 18.w,
                     height: 18.h,
-                    colorFilter: ColorFilter.mode(
-                      colors.textTertiary,
-                      BlendMode.srcIn,
-                    ),
+                    colorFilter: ColorFilter.mode(colors.textTertiary, BlendMode.srcIn),
                   ),
                   SizedBox(width: 8.w),
                   Expanded(
@@ -929,37 +801,21 @@ class _SearchPageState extends State<SearchPage> {
                       focusNode: _searchFocusNode,
                       autofocus: true,
                       onChanged: _onSearchChanged,
-                      onSubmitted: (value) => _applySearchQuery(
-                        value,
-                        persist: true,
-                        immediate: true,
-                      ),
+                      onSubmitted: (value) => _applySearchQuery(value, persist: true, immediate: true),
                       textInputAction: TextInputAction.search,
-                      style: TextStyle(
-                        color: colors.textPrimary,
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w500),
                       decoration: InputDecoration(
                         isCollapsed: true,
                         border: InputBorder.none,
-                        hintText:
-                            'Search ${_serviceLabel(serviceProvider).toLowerCase()}',
-                        hintStyle: TextStyle(
-                          color: colors.textTertiary,
-                          fontSize: 13.sp,
-                        ),
+                        hintText: 'Search ${_serviceLabel(serviceProvider).toLowerCase()}',
+                        hintStyle: TextStyle(color: colors.textTertiary, fontSize: 13.sp),
                       ),
                     ),
                   ),
                   if (_searchController.text.isNotEmpty)
                     GestureDetector(
                       onTap: _clearSearchInput,
-                      child: Icon(
-                        Icons.close,
-                        color: colors.textTertiary,
-                        size: 18.sp,
-                      ),
+                      child: Icon(Icons.close, color: colors.textTertiary, size: 18.sp),
                     ),
                 ],
               ),
@@ -974,18 +830,12 @@ class _SearchPageState extends State<SearchPage> {
                 Container(
                   height: 44,
                   width: 44,
-                  decoration: BoxDecoration(
-                    color: colors.backgroundSecondary,
-                    shape: BoxShape.circle,
-                  ),
+                  decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
                   padding: EdgeInsets.all(12.r),
                   child: SvgPicture.asset(
                     Assets.icons.slidersHorizontal,
                     package: 'grab_go_shared',
-                    colorFilter: ColorFilter.mode(
-                      colors.textPrimary,
-                      BlendMode.srcIn,
-                    ),
+                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                   ),
                 ),
                 if (_activeFilter.isActive)
@@ -998,10 +848,7 @@ class _SearchPageState extends State<SearchPage> {
                       decoration: BoxDecoration(
                         color: colors.accentOrange,
                         shape: BoxShape.circle,
-                        border: Border.all(
-                          color: colors.backgroundPrimary,
-                          width: 1.5,
-                        ),
+                        border: Border.all(color: colors.backgroundPrimary, width: 1.5),
                       ),
                     ),
                   ),
@@ -1013,12 +860,7 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Widget _buildSectionHeader(
-    AppColorsExtension colors,
-    String title,
-    String subtitle, {
-    String? highlightedText,
-  }) {
+  Widget _buildSectionHeader(AppColorsExtension colors, String title, String subtitle, {String? highlightedText}) {
     final titleStyle = TextStyle(
       fontSize: 18.sp,
       fontFamily: 'Lato',
@@ -1068,14 +910,12 @@ class _SearchPageState extends State<SearchPage> {
 
     final end = start + query.length;
     return [
-      if (start > 0)
-        TextSpan(text: title.substring(0, start), style: baseStyle),
+      if (start > 0) TextSpan(text: title.substring(0, start), style: baseStyle),
       TextSpan(
         text: title.substring(start, end),
         style: baseStyle.copyWith(color: highlightColor),
       ),
-      if (end < title.length)
-        TextSpan(text: title.substring(end), style: baseStyle),
+      if (end < title.length) TextSpan(text: title.substring(end), style: baseStyle),
     ];
   }
 
@@ -1087,11 +927,7 @@ class _SearchPageState extends State<SearchPage> {
         children: [
           Text(
             'Quick filters',
-            style: TextStyle(
-              fontSize: 14.sp,
-              fontWeight: FontWeight.w700,
-              color: colors.textPrimary,
-            ),
+            style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
           ),
           SizedBox(height: 10.h),
           Wrap(
@@ -1102,14 +938,9 @@ class _SearchPageState extends State<SearchPage> {
                   final isActive = _activeQuickFilterLabel == label;
                   return ActionChip(
                     label: Text(label),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 8.w,
-                      vertical: 6.h,
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
                     onPressed: () => _applyQuickFilter(label),
-                    backgroundColor: isActive
-                        ? colors.accentOrange
-                        : colors.backgroundSecondary,
+                    backgroundColor: isActive ? colors.accentOrange : colors.backgroundSecondary,
                     labelStyle: TextStyle(
                       fontSize: 12.sp,
                       color: isActive ? Colors.white : colors.textPrimary,
@@ -1117,9 +948,7 @@ class _SearchPageState extends State<SearchPage> {
                     ),
                     shape: RoundedRectangleBorder(
                       side: BorderSide(
-                        color: isActive
-                            ? colors.accentOrange
-                            : colors.inputBorder.withValues(alpha: 0.35),
+                        color: isActive ? colors.accentOrange : colors.inputBorder.withValues(alpha: 0.35),
                       ),
                       borderRadius: BorderRadius.circular(KBorderSize.border),
                     ),
@@ -1142,11 +971,7 @@ class _SearchPageState extends State<SearchPage> {
             children: [
               Text(
                 'Sort by',
-                style: TextStyle(
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w700,
-                  color: colors.textPrimary,
-                ),
+                style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
               ),
               const Spacer(),
               if (_activeFilter.isActive)
@@ -1154,11 +979,7 @@ class _SearchPageState extends State<SearchPage> {
                   onPressed: _clearFilters,
                   child: Text(
                     'Clear filters',
-                    style: TextStyle(
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w700,
-                      color: colors.accentOrange,
-                    ),
+                    style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: colors.accentOrange),
                   ),
                 ),
             ],
@@ -1194,13 +1015,9 @@ class _SearchPageState extends State<SearchPage> {
                         color: isSelected ? Colors.white : colors.textPrimary,
                       ),
                       side: BorderSide(
-                        color: isSelected
-                            ? colors.accentOrange
-                            : colors.inputBorder.withValues(alpha: 0.35),
+                        color: isSelected ? colors.accentOrange : colors.inputBorder.withValues(alpha: 0.35),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(KBorderSize.border),
-                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.border)),
                     ),
                   );
                 })
@@ -1211,38 +1028,23 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Widget _buildSuggestionTile(
-    AppColorsExtension colors,
-    CatalogSearchSuggestion suggestion,
-  ) {
+  Widget _buildSuggestionTile(AppColorsExtension colors, CatalogSearchSuggestion suggestion) {
     return GestureDetector(
       onTap: () => _selectSuggestion(suggestion.value),
       child: Container(
-        margin: EdgeInsets.symmetric(horizontal: 20.w, vertical: 5.h),
-        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
+        margin: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-          border: Border.all(
-            color: colors.inputBorder.withValues(alpha: 0.3),
-            width: 0.5,
-          ),
         ),
         child: Row(
           children: [
             Container(
-              width: 34.w,
-              height: 34.w,
-              decoration: BoxDecoration(
-                color: colors.accentOrange.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(color: colors.accentOrange.withValues(alpha: 0.12), shape: BoxShape.circle),
               alignment: Alignment.center,
-              child: Icon(
-                Icons.north_west_rounded,
-                color: colors.accentOrange,
-                size: 18.sp,
-              ),
+              child: Icon(Icons.north_west_rounded, color: colors.accentOrange, size: 18.sp),
             ),
             SizedBox(width: 12.w),
             Expanded(
@@ -1251,20 +1053,13 @@ class _SearchPageState extends State<SearchPage> {
                 children: [
                   Text(
                     suggestion.value,
-                    style: TextStyle(
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w700,
-                      color: colors.textPrimary,
-                    ),
+                    style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
                   ),
                   if (suggestion.subtitle.trim().isNotEmpty) ...[
                     SizedBox(height: 4.h),
                     Text(
                       suggestion.subtitle,
-                      style: TextStyle(
-                        fontSize: 12.sp,
-                        color: colors.textSecondary,
-                      ),
+                      style: TextStyle(fontSize: 12.sp, color: colors.textSecondary),
                     ),
                   ],
                 ],
@@ -1272,11 +1067,7 @@ class _SearchPageState extends State<SearchPage> {
             ),
             Text(
               suggestion.type.toUpperCase(),
-              style: TextStyle(
-                fontSize: 10.sp,
-                fontWeight: FontWeight.w700,
-                color: colors.textTertiary,
-              ),
+              style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w700, color: colors.textTertiary),
             ),
           ],
         ),
@@ -1284,10 +1075,7 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Widget _buildCategorySearchResult(
-    AppColorsExtension colors,
-    CatalogSearchCategory category,
-  ) {
+  Widget _buildCategorySearchResult(AppColorsExtension colors, CatalogSearchCategory category) {
     return GestureDetector(
       onTap: () => _openSearchCategory(category),
       child: Container(
@@ -1295,10 +1083,7 @@ class _SearchPageState extends State<SearchPage> {
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-          border: Border.all(
-            color: colors.inputBorder.withValues(alpha: 0.3),
-            width: 0.5,
-          ),
+          border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
         ),
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
@@ -1307,15 +1092,9 @@ class _SearchPageState extends State<SearchPage> {
               Container(
                 width: 40.w,
                 height: 40.h,
-                decoration: BoxDecoration(
-                  color: colors.accentOrange.withValues(alpha: 0.14),
-                  shape: BoxShape.circle,
-                ),
+                decoration: BoxDecoration(color: colors.accentOrange.withValues(alpha: 0.14), shape: BoxShape.circle),
                 child: Center(
-                  child: Text(
-                    category.emoji.isNotEmpty ? category.emoji : '📦',
-                    style: TextStyle(fontSize: 16.sp),
-                  ),
+                  child: Text(category.emoji.isNotEmpty ? category.emoji : '📦', style: TextStyle(fontSize: 16.sp)),
                 ),
               ),
               SizedBox(width: 12.w),
@@ -1325,21 +1104,14 @@ class _SearchPageState extends State<SearchPage> {
                   children: [
                     Text(
                       category.name,
-                      style: TextStyle(
-                        fontSize: 15.sp,
-                        fontWeight: FontWeight.w600,
-                        color: colors.textPrimary,
-                      ),
+                      style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     SizedBox(height: 4.h),
                     Text(
                       '${category.itemCount} items',
-                      style: TextStyle(
-                        fontSize: 12.sp,
-                        color: colors.textSecondary,
-                      ),
+                      style: TextStyle(fontSize: 12.sp, color: colors.textSecondary),
                     ),
                   ],
                 ),
@@ -1349,10 +1121,7 @@ class _SearchPageState extends State<SearchPage> {
                 package: 'grab_go_shared',
                 width: 20.w,
                 height: 20.h,
-                colorFilter: ColorFilter.mode(
-                  colors.textSecondary,
-                  BlendMode.srcIn,
-                ),
+                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
               ),
             ],
           ),
@@ -1361,11 +1130,7 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Widget _buildItemSearchResult(
-    AppColorsExtension colors,
-    CatalogSearchItemResult item, {
-    required bool persistQuery,
-  }) {
+  Widget _buildItemSearchResult(AppColorsExtension colors, CatalogSearchItemResult item, {required bool persistQuery}) {
     final source = item.sourceItem;
 
     void onTap() {
@@ -1419,17 +1184,11 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Widget _buildSearchCardTrailing(
-    AppColorsExtension colors,
-    CartItem cartItem,
-  ) {
+  Widget _buildSearchCardTrailing(AppColorsExtension colors, CartItem cartItem) {
     return Consumer<CartProvider>(
       builder: (context, provider, _) {
         final includeFoodCustomizations = cartItem is FoodItem;
-        final isInCart = provider.hasItemInCart(
-          cartItem,
-          includeFoodCustomizations: includeFoodCustomizations,
-        );
+        final isInCart = provider.hasItemInCart(cartItem, includeFoodCustomizations: includeFoodCustomizations);
         final isItemPending = provider.isItemOperationPendingForDisplay(
           cartItem,
           includeFoodCustomizations: includeFoodCustomizations,
@@ -1452,13 +1211,8 @@ class _SearchPageState extends State<SearchPage> {
             padding: EdgeInsets.all(8.r),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: isInCart
-                  ? colors.accentOrange
-                  : colors.backgroundSecondary,
-              border: Border.all(
-                color: isInCart ? colors.accentOrange : colors.inputBorder,
-                width: 1,
-              ),
+              color: isInCart ? colors.accentOrange : colors.backgroundSecondary,
+              border: Border.all(color: isInCart ? colors.accentOrange : colors.inputBorder, width: 1),
             ),
             child: isItemPending
                 ? SizedBox(
@@ -1466,9 +1220,7 @@ class _SearchPageState extends State<SearchPage> {
                     height: 16.w,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        isInCart ? Colors.white : colors.accentOrange,
-                      ),
+                      valueColor: AlwaysStoppedAnimation<Color>(isInCart ? Colors.white : colors.accentOrange),
                     ),
                   )
                 : SvgPicture.asset(
@@ -1476,10 +1228,7 @@ class _SearchPageState extends State<SearchPage> {
                     package: 'grab_go_shared',
                     height: 16.h,
                     width: 16.h,
-                    colorFilter: ColorFilter.mode(
-                      isInCart ? Colors.white : colors.textPrimary,
-                      BlendMode.srcIn,
-                    ),
+                    colorFilter: ColorFilter.mode(isInCart ? Colors.white : colors.textPrimary, BlendMode.srcIn),
                   ),
           ),
         );
@@ -1546,12 +1295,7 @@ class _SearchPageState extends State<SearchPage> {
       padding: EdgeInsets.all(40.r),
       child: Column(
         children: [
-          SvgPicture.asset(
-            Assets.icons.emptySearchIcon,
-            package: 'grab_go_shared',
-            width: 180.w,
-            height: 180.h,
-          ),
+          SvgPicture.asset(Assets.icons.emptySearchIcon, package: 'grab_go_shared', width: 180.w, height: 180.h),
           SizedBox(height: 16.h),
           Text(
             message,
@@ -1583,34 +1327,20 @@ class _SearchPageState extends State<SearchPage> {
             decoration: BoxDecoration(
               color: colors.backgroundPrimary,
               borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-              border: Border.all(
-                color: colors.inputBorder.withValues(alpha: 0.25),
-              ),
+              border: Border.all(color: colors.inputBorder.withValues(alpha: 0.25)),
             ),
             child: Column(
               children: [
-                SvgPicture.asset(
-                  Assets.icons.emptySearchIcon,
-                  package: 'grab_go_shared',
-                  width: 160.w,
-                  height: 160.h,
-                ),
+                SvgPicture.asset(Assets.icons.emptySearchIcon, package: 'grab_go_shared', width: 160.w, height: 160.h),
                 SizedBox(height: 12.h),
                 Text(
                   title,
-                  style: TextStyle(
-                    fontSize: 18.sp,
-                    fontWeight: FontWeight.w700,
-                    color: colors.textPrimary,
-                  ),
+                  style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
                 ),
                 SizedBox(height: 8.h),
                 Text(
                   message,
-                  style: TextStyle(
-                    fontSize: 13.sp,
-                    color: colors.textSecondary,
-                  ),
+                  style: TextStyle(fontSize: 13.sp, color: colors.textSecondary),
                   textAlign: TextAlign.center,
                 ),
                 SizedBox(height: 16.h),
@@ -1627,11 +1357,7 @@ class _SearchPageState extends State<SearchPage> {
                         buttonText: 'Retry',
                         width: 116.w,
                         height: 42.h,
-                        textStyle: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13.sp,
-                        ),
+                        textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13.sp),
                       ),
                     if (_activeFilter.isActive)
                       AppButton(
@@ -1641,11 +1367,7 @@ class _SearchPageState extends State<SearchPage> {
                         buttonText: 'Clear filters',
                         width: 124.w,
                         height: 42.h,
-                        textStyle: TextStyle(
-                          color: colors.textPrimary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13.sp,
-                        ),
+                        textStyle: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w700, fontSize: 13.sp),
                       ),
                   ],
                 ),
@@ -1656,11 +1378,7 @@ class _SearchPageState extends State<SearchPage> {
             SizedBox(height: 20.h),
             Text(
               'Try these categories',
-              style: TextStyle(
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w700,
-                color: colors.textPrimary,
-              ),
+              style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
             ),
             SizedBox(height: 10.h),
             Wrap(
@@ -1669,22 +1387,12 @@ class _SearchPageState extends State<SearchPage> {
               children: recoveryCategories
                   .map((category) {
                     return ActionChip(
-                      label: Text(
-                        category.emoji.isNotEmpty
-                            ? '${category.emoji} ${category.name}'
-                            : category.name,
-                      ),
+                      label: Text(category.emoji.isNotEmpty ? '${category.emoji} ${category.name}' : category.name),
                       onPressed: () => _openCategory(category, serviceProvider),
                       backgroundColor: colors.backgroundSecondary,
-                      labelStyle: TextStyle(
-                        fontSize: 12.sp,
-                        color: colors.textPrimary,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      labelStyle: TextStyle(fontSize: 12.sp, color: colors.textPrimary, fontWeight: FontWeight.w600),
                       shape: RoundedRectangleBorder(
-                        side: BorderSide(
-                          color: colors.inputBorder.withValues(alpha: 0.35),
-                        ),
+                        side: BorderSide(color: colors.inputBorder.withValues(alpha: 0.35)),
                         borderRadius: BorderRadius.circular(KBorderSize.border),
                       ),
                     );
@@ -1696,19 +1404,10 @@ class _SearchPageState extends State<SearchPage> {
             SizedBox(height: 20.h),
             Text(
               'Popular right now',
-              style: TextStyle(
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w700,
-                color: colors.textPrimary,
-              ),
+              style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
             ),
             SizedBox(height: 8.h),
-            ...suggestedItems
-                .take(4)
-                .map(
-                  (item) =>
-                      _buildItemSearchResult(colors, item, persistQuery: false),
-                ),
+            ...suggestedItems.take(4).map((item) => _buildItemSearchResult(colors, item, persistQuery: false)),
           ],
         ],
       ),
@@ -1717,88 +1416,67 @@ class _SearchPageState extends State<SearchPage> {
 
   Widget _buildSearchLoadingState(AppColorsExtension colors) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 20.w),
-      child: Column(
-        children: List.generate(4, (index) {
-          final showImage = index == 0;
-          return Container(
-            margin: EdgeInsets.only(bottom: 14.h),
-            padding: EdgeInsets.all(12.r),
-            decoration: BoxDecoration(
-              color: colors.backgroundPrimary,
-              borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-              border: Border.all(
-                color: colors.inputBorder.withValues(alpha: 0.18),
-              ),
-            ),
-            child: Shimmer.fromColors(
-              baseColor: isDark
-                  ? colors.backgroundSecondary.withValues(alpha: 0.8)
-                  : colors.inputBorder.withValues(alpha: 0.35),
-              highlightColor: isDark
-                  ? colors.backgroundSecondary.withValues(alpha: 0.45)
-                  : colors.backgroundPrimary,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (showImage) ...[
-                    Container(
-                      height: 118.h,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(
-                          KBorderSize.borderMedium,
-                        ),
-                      ),
+    return Column(
+      children: List.generate(4, (index) {
+        final showImage = index == 0;
+        return Container(
+          margin: EdgeInsets.only(bottom: 14.h),
+          padding: EdgeInsets.all(12.r),
+          decoration: BoxDecoration(
+            color: colors.backgroundPrimary,
+            borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+          ),
+          child: Shimmer.fromColors(
+            baseColor: isDark
+                ? colors.backgroundSecondary.withValues(alpha: 0.8)
+                : colors.inputBorder.withValues(alpha: 0.35),
+            highlightColor: isDark ? colors.backgroundSecondary.withValues(alpha: 0.45) : colors.backgroundPrimary,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (showImage) ...[
+                  Container(
+                    height: 118.h,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                     ),
-                    SizedBox(height: 12.h),
-                  ],
-                  _buildShimmerBox(width: 180.w, height: 16.h, radius: 6.r),
-                  SizedBox(height: 10.h),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildShimmerBox(
-                          width: double.infinity,
-                          height: 12.h,
-                          radius: 6.r,
-                        ),
-                      ),
-                      SizedBox(width: 12.w),
-                      _buildShimmerBox(width: 64.w, height: 12.h, radius: 6.r),
-                    ],
                   ),
                   SizedBox(height: 12.h),
-                  Row(
-                    children: [
-                      _buildShimmerBox(width: 96.w, height: 12.h, radius: 6.r),
-                      SizedBox(width: 12.w),
-                      _buildShimmerBox(width: 88.w, height: 12.h, radius: 6.r),
-                    ],
-                  ),
                 ],
-              ),
+                _buildShimmerBox(width: 180.w, height: 16.h, radius: 6.r),
+                SizedBox(height: 10.h),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildShimmerBox(width: double.infinity, height: 12.h, radius: 6.r),
+                    ),
+                    SizedBox(width: 12.w),
+                    _buildShimmerBox(width: 64.w, height: 12.h, radius: 6.r),
+                  ],
+                ),
+                SizedBox(height: 12.h),
+                Row(
+                  children: [
+                    _buildShimmerBox(width: 96.w, height: 12.h, radius: 6.r),
+                    SizedBox(width: 12.w),
+                    _buildShimmerBox(width: 88.w, height: 12.h, radius: 6.r),
+                  ],
+                ),
+              ],
             ),
-          );
-        }),
-      ),
+          ),
+        );
+      }),
     );
   }
 
-  Widget _buildShimmerBox({
-    required double width,
-    required double height,
-    required double radius,
-  }) {
+  Widget _buildShimmerBox({required double width, required double height, required double radius}) {
     return Container(
       width: width,
       height: height,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(radius),
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(radius)),
     );
   }
 }

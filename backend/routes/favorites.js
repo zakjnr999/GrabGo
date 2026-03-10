@@ -22,11 +22,22 @@ const {
     clearAllFavorites,
     syncFavorites
 } = require('../services/favorites_service');
+const { createScopedLogger } = require('../utils/logger');
+
+const console = createScopedLogger('favorites_route');
 
 const getErrorStatus = (error) => {
     const message = String(error?.message || '').toLowerCase();
     if (message.includes('not found')) return 404;
     return 500;
+};
+
+const sendFavoritesError = (res, error, fallbackMessage) => {
+    const status = getErrorStatus(error);
+    return res.status(status).json({
+        success: false,
+        message: status >= 500 ? fallbackMessage : (error?.message || fallbackMessage)
+    });
 };
 
 /**
@@ -44,10 +55,7 @@ router.get('/', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Get favorites error:', error);
-        res.status(500).json({
-            success: false,
-            message: error.message || 'Failed to get favorites'
-        });
+        sendFavoritesError(res, error, 'Failed to get favorites');
     }
 });
 
@@ -67,10 +75,7 @@ router.post('/restaurant/:restaurantId', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Add favorite restaurant error:', error);
-        res.status(getErrorStatus(error)).json({
-            success: false,
-            message: error.message || 'Failed to add restaurant to favorites'
-        });
+        sendFavoritesError(res, error, 'Failed to add restaurant to favorites');
     }
 });
 
@@ -90,10 +95,7 @@ router.delete('/restaurant/:restaurantId', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Remove favorite restaurant error:', error);
-        res.status(getErrorStatus(error)).json({
-            success: false,
-            message: error.message || 'Failed to remove restaurant from favorites'
-        });
+        sendFavoritesError(res, error, 'Failed to remove restaurant from favorites');
     }
 });
 
@@ -113,10 +115,7 @@ router.post('/store/:storeId', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Add favorite store error:', error);
-        res.status(getErrorStatus(error)).json({
-            success: false,
-            message: error.message || 'Failed to add store to favorites'
-        });
+        sendFavoritesError(res, error, 'Failed to add store to favorites');
     }
 });
 
@@ -136,10 +135,7 @@ router.delete('/store/:storeId', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Remove favorite store error:', error);
-        res.status(getErrorStatus(error)).json({
-            success: false,
-            message: error.message || 'Failed to remove store from favorites'
-        });
+        sendFavoritesError(res, error, 'Failed to remove store from favorites');
     }
 });
 
@@ -159,10 +155,7 @@ router.post('/food/:foodId', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Add favorite food item error:', error);
-        res.status(getErrorStatus(error)).json({
-            success: false,
-            message: error.message || 'Failed to add food item to favorites'
-        });
+        sendFavoritesError(res, error, 'Failed to add food item to favorites');
     }
 });
 
@@ -182,10 +175,7 @@ router.delete('/food/:foodId', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Remove favorite food item error:', error);
-        res.status(getErrorStatus(error)).json({
-            success: false,
-            message: error.message || 'Failed to remove food item from favorites'
-        });
+        sendFavoritesError(res, error, 'Failed to remove food item from favorites');
     }
 });
 
@@ -205,10 +195,7 @@ router.post('/grocery/:groceryId', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Add favorite grocery item error:', error);
-        res.status(getErrorStatus(error)).json({
-            success: false,
-            message: error.message || 'Failed to add grocery item to favorites'
-        });
+        sendFavoritesError(res, error, 'Failed to add grocery item to favorites');
     }
 });
 
@@ -228,10 +215,7 @@ router.post('/pharmacy/:pharmacyId', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Add favorite pharmacy store error:', error);
-        res.status(getErrorStatus(error)).json({
-            success: false,
-            message: error.message || 'Failed to add pharmacy store to favorites'
-        });
+        sendFavoritesError(res, error, 'Failed to add pharmacy store to favorites');
     }
 });
 
@@ -251,10 +235,7 @@ router.delete('/pharmacy/:pharmacyId', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Remove favorite pharmacy store error:', error);
-        res.status(getErrorStatus(error)).json({
-            success: false,
-            message: error.message || 'Failed to remove pharmacy store from favorites'
-        });
+        sendFavoritesError(res, error, 'Failed to remove pharmacy store from favorites');
     }
 });
 
@@ -274,10 +255,7 @@ router.post('/grabmart-store/:storeId', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Add favorite GrabMart store error:', error);
-        res.status(getErrorStatus(error)).json({
-            success: false,
-            message: error.message || 'Failed to add GrabMart store to favorites'
-        });
+        sendFavoritesError(res, error, 'Failed to add GrabMart store to favorites');
     }
 });
 
@@ -297,10 +275,7 @@ router.delete('/grabmart-store/:storeId', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Remove favorite GrabMart store error:', error);
-        res.status(getErrorStatus(error)).json({
-            success: false,
-            message: error.message || 'Failed to remove GrabMart store from favorites'
-        });
+        sendFavoritesError(res, error, 'Failed to remove GrabMart store from favorites');
     }
 });
 
@@ -320,10 +295,7 @@ router.post('/pharmacy-item/:pharmacyItemId', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Add favorite pharmacy item error:', error);
-        res.status(getErrorStatus(error)).json({
-            success: false,
-            message: error.message || 'Failed to add pharmacy item to favorites'
-        });
+        sendFavoritesError(res, error, 'Failed to add pharmacy item to favorites');
     }
 });
 
@@ -343,10 +315,7 @@ router.delete('/pharmacy-item/:pharmacyItemId', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Remove favorite pharmacy item error:', error);
-        res.status(getErrorStatus(error)).json({
-            success: false,
-            message: error.message || 'Failed to remove pharmacy item from favorites'
-        });
+        sendFavoritesError(res, error, 'Failed to remove pharmacy item from favorites');
     }
 });
 
@@ -366,10 +335,7 @@ router.post('/grabmart-item/:grabMartItemId', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Add favorite GrabMart item error:', error);
-        res.status(getErrorStatus(error)).json({
-            success: false,
-            message: error.message || 'Failed to add GrabMart item to favorites'
-        });
+        sendFavoritesError(res, error, 'Failed to add GrabMart item to favorites');
     }
 });
 
@@ -389,10 +355,7 @@ router.delete('/grabmart-item/:grabMartItemId', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Remove favorite GrabMart item error:', error);
-        res.status(getErrorStatus(error)).json({
-            success: false,
-            message: error.message || 'Failed to remove GrabMart item from favorites'
-        });
+        sendFavoritesError(res, error, 'Failed to remove GrabMart item from favorites');
     }
 });
 
@@ -412,10 +375,7 @@ router.delete('/', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Clear favorites error:', error);
-        res.status(getErrorStatus(error)).json({
-            success: false,
-            message: error.message || 'Failed to clear favorites'
-        });
+        sendFavoritesError(res, error, 'Failed to clear favorites');
     }
 });
 
@@ -435,10 +395,7 @@ router.delete('/grocery/:groceryId', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Remove favorite grocery item error:', error);
-        res.status(getErrorStatus(error)).json({
-            success: false,
-            message: error.message || 'Failed to remove grocery item from favorites'
-        });
+        sendFavoritesError(res, error, 'Failed to remove grocery item from favorites');
     }
 });
 
@@ -483,10 +440,7 @@ router.post('/sync', protect, async (req, res) => {
         });
     } catch (error) {
         console.error('Sync favorites error:', error);
-        res.status(getErrorStatus(error)).json({
-            success: false,
-            message: error.message || 'Failed to sync favorites'
-        });
+        sendFavoritesError(res, error, 'Failed to sync favorites');
     }
 });
 

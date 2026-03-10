@@ -1,9 +1,11 @@
 const prisma = require('../config/prisma');
 const { setFeature } = require('../services/fraud/fraud_feature_store');
+const { createScopedLogger } = require('../utils/logger');
 
 let intervalRef = null;
 let isRunning = false;
 let startupTimeoutRef = null;
+const console = createScopedLogger('fraud_feature_recompute_job');
 
 const getDistinctActors = async () => {
   try {

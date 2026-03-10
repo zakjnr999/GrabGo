@@ -1,8 +1,23 @@
 const express = require('express');
 const router = express.Router();
 const { protect, authorize } = require('../middleware/auth');
+const { createScopedLogger } = require('../utils/logger');
 const analyticsService = require('../services/analytic_service');
 const DeliveryAnalytics = require('../models/DeliveryAnalytics');
+const console = createScopedLogger('rider_analytics_route');
+
+const sendRiderAnalyticsError = (res, error, fallbackMessage, fallbackStatus = 500) => {
+  const explicitStatus = Number(error?.status);
+  const status =
+    Number.isInteger(explicitStatus) && explicitStatus >= 400 && explicitStatus < 600
+      ? explicitStatus
+      : fallbackStatus;
+
+  return res.status(status).json({
+    success: false,
+    message: status >= 500 ? fallbackMessage : String(error?.message || fallbackMessage),
+  });
+};
 
 /**
  * @route   GET /rider-analytics/performance/:riderId
@@ -38,7 +53,7 @@ router.get('/performance/:riderId', protect, async (req, res) => {
     
   } catch (error) {
     console.error('Rider performance error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendRiderAnalyticsError(res, error, 'Failed to fetch rider performance');
   }
 });
 
@@ -77,7 +92,7 @@ router.get('/on-time-rate/:riderId', protect, async (req, res) => {
     
   } catch (error) {
     console.error('On-time rate error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendRiderAnalyticsError(res, error, 'Failed to fetch rider on-time rate');
   }
 });
 
@@ -112,7 +127,7 @@ router.get('/summary/:riderId', protect, async (req, res) => {
     
   } catch (error) {
     console.error('Performance summary error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendRiderAnalyticsError(res, error, 'Failed to fetch rider performance summary');
   }
 });
 
@@ -159,7 +174,7 @@ router.get('/my-performance', protect, authorize('rider'), async (req, res) => {
     
   } catch (error) {
     console.error('My performance error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    return sendRiderAnalyticsError(res, error, 'Failed to fetch rider performance');
   }
 });
 

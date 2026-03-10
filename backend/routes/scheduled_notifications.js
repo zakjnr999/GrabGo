@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { protect, authorize } = require('../middleware/auth');
+const { createScopedLogger } = require('../utils/logger');
 const {
     createScheduledNotification,
     cancelScheduledNotification,
@@ -9,6 +10,20 @@ const {
     getScheduledNotificationById,
     getScheduledNotificationStats
 } = require('../services/scheduled_notification_service');
+const console = createScopedLogger('scheduled_notifications_route');
+
+const sendScheduledNotificationError = (res, error, fallbackMessage, fallbackStatus = 500) => {
+    const explicitStatus = Number(error?.status);
+    const status =
+        Number.isInteger(explicitStatus) && explicitStatus >= 400 && explicitStatus < 600
+            ? explicitStatus
+            : fallbackStatus;
+
+    return res.status(status).json({
+        success: false,
+        message: status >= 500 ? fallbackMessage : String(error?.message || fallbackMessage),
+    });
+};
 
 // @route   POST /api/scheduled-notifications
 // @desc    Create a scheduled notification
@@ -92,10 +107,7 @@ router.post('/', protect, authorize('admin'), async (req, res) => {
         });
     } catch (error) {
         console.error('Create scheduled notification error:', error);
-        res.status(500).json({
-            success: false,
-            message: error.message || 'Failed to create scheduled notification'
-        });
+        return sendScheduledNotificationError(res, error, 'Failed to create scheduled notification');
     }
 });
 

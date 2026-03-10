@@ -1,6 +1,9 @@
 const cron = require('node-cron');
 const { processScheduledNotifications } = require('../services/scheduled_notification_service');
 const cache = require('../utils/cache');
+const { createScopedLogger } = require('../utils/logger');
+
+const console = createScopedLogger('notification_scheduler_job');
 
 const initializeScheduler = (io) => {
     console.log('📅 Initializing notification scheduler...');

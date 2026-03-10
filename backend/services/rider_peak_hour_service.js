@@ -2,8 +2,10 @@ const prisma = require('../config/prisma');
 const featureFlags = require('../config/feature_flags');
 const { LEVEL_MULTIPLIERS } = require('./rider_score_engine');
 const { getDailyWindowKey, getWindowKey } = require('./rider_quest_engine');
+const { createScopedLogger } = require('../utils/logger');
 // Lazy require to break circular dependency with orchestrator
 const getOrchestratorHelpers = () => require('./rider_incentive_orchestrator');
+const console = createScopedLogger('rider_peak_hour_service');
 
 // ── Peak Hour Configuration ──
 // Default peak windows for the Ghana market (Africa/Accra = UTC+0).
