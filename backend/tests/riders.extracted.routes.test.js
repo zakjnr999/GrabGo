@@ -128,6 +128,7 @@ jest.mock('../models/OrderReservation', () => ({
   buildEntityQuery: jest.fn((_entityType, query) => query),
   find: jest.fn(),
   findById: jest.fn(),
+  findOne: jest.fn(),
 }));
 
 jest.mock('../models/OrderTracking', () => ({
@@ -167,6 +168,7 @@ const prisma = require('../config/prisma');
 const OrderReservation = require('../models/OrderReservation');
 const RiderStatus = require('../models/RiderStatus');
 const dispatchService = require('../services/dispatch_service');
+const dispatchRetryService = require('../services/dispatch_retry_service');
 const socketService = require('../services/socket_service');
 const ridersRoutes = require('../routes/riders');
 
@@ -194,6 +196,7 @@ describe('Riders Routes - extracted flow regressions', () => {
       sort: jest.fn().mockReturnThis(),
       limit: jest.fn().mockResolvedValue([]),
     });
+    OrderReservation.findOne.mockResolvedValue(null);
     RiderStatus.findOne.mockResolvedValue({
       location: { coordinates: [-0.15, 5.58] },
     });
@@ -339,5 +342,100 @@ describe('Riders Routes - extracted flow regressions', () => {
       success: false,
       message: 'This reservation does not belong to you',
     });
+  });
+
+  test('declines a reservation and marks retry resolved when redispatch succeeds', async () => {
+    dispatchService.declineReservation.mockResolvedValue({
+      success: true,
+      orderId: 'order-9',
+      orderNumber: 'ORD-9',
+      nextDispatch: {
+        success: true,
+        riderId: 'rider-2',
+        riderName: 'Ama',
+        attemptNumber: 2,
+      },
+    });
+
+    const response = await withAuth(
+      request(app).post('/api/riders/reservation/res-9/decline').send({ reason: 'busy' })
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toEqual({
+      success: true,
+      message: 'Reservation declined',
+      nextDispatch: {
+        riderId: 'rider-2',
+        riderName: 'Ama',
+        attemptNumber: 2,
+      },
+    });
+    expect(dispatchRetryService.markRetryResolved).toHaveBeenCalledWith(
+      'order-9',
+      'dispatch_succeeded'
+    );
+  });
+
+  test('directly accepts an order and marks the active reservation as accepted', async () => {
+    const activeReservation = {
+      _id: 'res-10',
+      riderId: 'rider-1',
+      status: 'pending',
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    OrderReservation.findOne.mockResolvedValue(activeReservation);
+    prisma.order.findUnique
+      .mockResolvedValueOnce({
+        id: 'order-10',
+        orderNumber: 'ORD-10',
+        riderId: null,
+        status: 'ready',
+        fulfillmentMode: 'delivery',
+        isScheduledOrder: false,
+        paymentStatus: 'paid',
+      })
+      .mockResolvedValueOnce({
+        id: 'order-10',
+        orderNumber: 'ORD-10',
+        restaurantId: 'rest-10',
+        restaurant: { latitude: 5.6, longitude: -0.1 },
+      });
+    prisma.order.update
+      .mockResolvedValueOnce({
+        id: 'order-10',
+        orderNumber: 'ORD-10',
+        customerId: 'customer-10',
+        riderId: 'rider-1',
+        status: 'picked_up',
+        restaurantId: 'rest-10',
+        restaurant: { latitude: 5.6, longitude: -0.1, averagePreparationTime: 18 },
+        deliveryLatitude: 5.7,
+        deliveryLongitude: -0.12,
+        items: [{ id: 'item-1' }],
+        rider: { username: 'Yaw', phone: '233555000111' },
+      })
+      .mockResolvedValueOnce(undefined);
+
+    const response = await withAuth(
+      request(app).post('/api/riders/accept-order/order-10')
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toMatchObject({
+      success: true,
+      message: 'Order accepted successfully',
+      data: {
+        id: 'order-10',
+        riderId: 'rider-1',
+        status: 'picked_up',
+      },
+    });
+    expect(activeReservation.status).toBe('accepted');
+    expect(activeReservation.save).toHaveBeenCalled();
+    expect(dispatchRetryService.markRetryResolved).toHaveBeenCalledWith(
+      'order-10',
+      'rider_accepted_order'
+    );
   });
 });

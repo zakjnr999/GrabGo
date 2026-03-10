@@ -1,5 +1,6 @@
 const express = require('express');
 const request = require('supertest');
+const crypto = require('crypto');
 
 jest.mock('../middleware/auth', () => ({
   protect: (req, res, next) => {
@@ -28,7 +29,10 @@ jest.mock('../middleware/auth', () => ({
 jest.mock('../middleware/upload', () => ({
   uploadSingle: () => (_req, _res, next) => next(),
   uploadToCloudinary: (req, _res, next) => {
-    req.file = req.file || { path: 'https://cdn.test/proof.jpg' };
+    req.file = req.file || {
+      cloudinaryUrl: 'https://cdn.test/proof.jpg',
+      blurHash: 'LKO2?U%2Tw=w]~RBVZRi};RPxuwH',
+    };
     next();
   },
 }));
@@ -259,6 +263,10 @@ jest.mock('../services/item_review_service', () => {
 const prisma = require('../config/prisma');
 const paystackService = require('../services/paystack_service');
 const { sendDeliveryCodeSms } = require('../services/delivery_verification_service');
+const {
+  createOrderAudit,
+  cancelPickupOrder,
+} = require('../services/pickup_order_service');
 const ordersRoutes = require('../routes/orders');
 
 const makeApp = () => {
@@ -270,6 +278,12 @@ const makeApp = () => {
 
 const withAuth = (req, { role = 'customer', userId = 'user-1', email = 'user@example.com' } = {}) =>
   req.set('x-test-role', role).set('x-test-user-id', userId).set('x-test-email', email);
+
+const hashPickupCodeForTest = (orderId, code) =>
+  crypto
+    .createHmac('sha256', process.env.PICKUP_OTP_SECRET || process.env.JWT_SECRET || 'grabgo-pickup-otp-secret')
+    .update(`${orderId}:${code}`)
+    .digest('hex');
 
 describe('Orders Routes - extracted flow regressions', () => {
   let app;
@@ -293,6 +307,11 @@ describe('Orders Routes - extracted flow regressions', () => {
       access_code: 'access-1',
     });
     sendDeliveryCodeSms.mockResolvedValue({ success: true, provider: 'hubtel' });
+    cancelPickupOrder.mockResolvedValue({
+      id: 'order-6',
+      status: 'cancelled',
+      paymentStatus: 'refunded',
+    });
   });
 
   test('accepts a pickup order for the owning restaurant', async () => {
@@ -439,6 +458,123 @@ describe('Orders Routes - extracted flow regressions', () => {
     expect(response.body).toEqual({
       success: false,
       message: 'Riders can only resend code to recipient',
+    });
+  });
+
+  test('verifies a valid pickup code and marks the order as picked up', async () => {
+    const pickupCode = '123456';
+    prisma.restaurant.findFirst.mockResolvedValue({ id: 'rest-1' });
+    prisma.order.findUnique.mockResolvedValue({
+      id: 'order-pickup-1',
+      orderNumber: 'ORD-PICKUP-1',
+      customerId: 'customer-1',
+      status: 'ready',
+      fulfillmentMode: 'pickup',
+      restaurantId: 'rest-1',
+      groceryStoreId: null,
+      pharmacyStoreId: null,
+      grabMartStoreId: null,
+      readyAt: new Date(Date.now() - 60_000).toISOString(),
+      pickupExpiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
+      pickupOtpHash: hashPickupCodeForTest('order-pickup-1', pickupCode),
+      pickupOtpFailedAttempts: 0,
+      pickupOtpLastAttemptAt: null,
+    });
+    prisma.order.update.mockResolvedValue({
+      id: 'order-pickup-1',
+      status: 'picked_up',
+      customerId: 'customer-1',
+    });
+
+    const response = await withAuth(
+      request(app).post('/api/orders/order-pickup-1/pickup/verify-code').send({ code: pickupCode }),
+      { role: 'restaurant', userId: 'vendor-1', email: 'vendor@grabgo.test' }
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toMatchObject({
+      success: true,
+      message: 'Pickup code verified. Order marked as picked up.',
+      data: {
+        id: 'order-pickup-1',
+        status: 'picked_up',
+      },
+    });
+    expect(prisma.orderActionAudit.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        orderId: 'order-pickup-1',
+        actorId: 'vendor-1',
+        actorRole: 'restaurant',
+        action: 'pickup_verified',
+      }),
+    });
+  });
+
+  test('cancels a pickup order through the support route', async () => {
+    prisma.order.findUnique.mockResolvedValue({
+      id: 'order-6',
+      status: 'preparing',
+      fulfillmentMode: 'pickup',
+      paymentStatus: 'paid',
+      promoCode: null,
+    });
+
+    const response = await withAuth(
+      request(app).post('/api/orders/order-6/support/cancel').send({ reason: 'Store issue', refund: true }),
+      { role: 'admin', userId: 'admin-1', email: 'admin@grabgo.test' }
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toMatchObject({
+      success: true,
+      message: 'Order cancelled by support',
+      data: {
+        id: 'order-6',
+        status: 'cancelled',
+      },
+    });
+    expect(cancelPickupOrder).toHaveBeenCalledWith({
+      orderId: 'order-6',
+      reason: 'Store issue',
+      refund: true,
+      actorId: 'admin-1',
+      actorRole: 'admin',
+      action: 'support_cancel',
+      metadata: { previousStatus: 'preparing' },
+    });
+  });
+
+  test('uploads a delivery proof photo for an authorized rider', async () => {
+    prisma.order.findUnique.mockResolvedValue({
+      id: 'order-7',
+      status: 'picked_up',
+      riderId: 'rider-1',
+      isGiftOrder: true,
+      deliveryVerificationRequired: true,
+    });
+
+    const response = await withAuth(
+      request(app).post('/api/orders/order-7/delivery-proof/photo'),
+      { role: 'rider', userId: 'rider-1', email: 'rider@grabgo.test' }
+    );
+
+    expect(response.statusCode).toBe(201);
+    expect(response.body).toMatchObject({
+      success: true,
+      message: 'Delivery proof photo uploaded successfully',
+      data: {
+        orderId: 'order-7',
+        photoUrl: 'https://cdn.test/proof.jpg',
+      },
+    });
+    expect(createOrderAudit).toHaveBeenCalledWith({
+      orderId: 'order-7',
+      actorId: 'rider-1',
+      actorRole: 'rider',
+      action: 'gift_delivery_photo_uploaded',
+      metadata: expect.objectContaining({
+        photoUrl: 'https://cdn.test/proof.jpg',
+      }),
     });
   });
 

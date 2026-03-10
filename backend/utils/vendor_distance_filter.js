@@ -8,12 +8,14 @@ const { calculateDistance } = require('./distance');
  * @returns {Object|null} {userLatitude, userLongitude, maxDistanceKm} or null if invalid
  */
 function validateLocationParams(userLat, userLng, maxDistance = 15) {
-    const userLatitude = userLat ? parseFloat(userLat) : null;
-    const userLongitude = userLng ? parseFloat(userLng) : null;
+    const hasLat = userLat !== undefined && userLat !== null && userLat !== '';
+    const hasLng = userLng !== undefined && userLng !== null && userLng !== '';
+    const userLatitude = hasLat ? parseFloat(userLat) : null;
+    const userLongitude = hasLng ? parseFloat(userLng) : null;
     let maxDistanceKm = parseFloat(maxDistance);
 
     // Check if coordinates are valid numbers
-    if (!userLatitude || !userLongitude || isNaN(userLatitude) || isNaN(userLongitude)) {
+    if (userLatitude === null || userLongitude === null || isNaN(userLatitude) || isNaN(userLongitude)) {
         return null; // Invalid or missing coordinates
     }
 
@@ -42,7 +44,7 @@ function validateLocationParams(userLat, userLng, maxDistance = 15) {
  * @returns {Array} Filtered vendors within distance, with distance property added
  */
 function filterVendorsByDistance(vendors, userLat, userLng, maxDistanceKm = 15) {
-    if (!userLat || !userLng || isNaN(userLat) || isNaN(userLng)) {
+    if (userLat === undefined || userLat === null || userLng === undefined || userLng === null || isNaN(userLat) || isNaN(userLng)) {
         // No user location provided - return all vendors
         return vendors;
     }
@@ -120,4 +122,3 @@ module.exports = {
     filterVendorsByDistance,
     getBoundingBox
 };
-

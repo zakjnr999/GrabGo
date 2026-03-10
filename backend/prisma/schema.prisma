@@ -492,6 +492,8 @@ model User {
 
   // GrabGo Pro Subscription
   subscriptions Subscription[]
+  createdEventCampaigns EventCampaign[] @relation("EventCampaignCreator")
+  eventCampaignNotificationDispatches EventCampaignNotificationDispatch[]
 
   @@index([email])
   @@index([role])
@@ -772,6 +774,7 @@ model Restaurant {
   orders       Order[]
   vendorReviews VendorReview[]          @relation("RestaurantVendorReviews")
   favoritedBy  UserFavoriteRestaurant[]
+  eventParticipations RestaurantEventParticipation[]
 
   @@index([status])
   @@index([city])
@@ -834,12 +837,16 @@ model Food {
   discountPercentage Int       @default(0)
   discountEndDate    DateTime?
   orderCount         Int       @default(0)
+  eventCampaignId    String?
+  isEventItem        Boolean   @default(false)
+  isEventBundle      Boolean   @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   category    Category           @relation(fields: [categoryId], references: [id])
   restaurant  Restaurant         @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  eventCampaign EventCampaign?   @relation(fields: [eventCampaignId], references: [id], onDelete: SetNull)
   orderItems  OrderItem[]
   cartItems   CartItem[]
   favoritedBy UserFavoriteFood[]
@@ -848,6 +855,7 @@ model Food {
   @@index([restaurantId])
   @@index([categoryId])
   @@index([orderCount])
+  @@index([eventCampaignId, isEventItem, isEventBundle])
   @@map("foods")
 }
 
@@ -2220,6 +2228,7 @@ model ScheduledNotification {
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventCampaignDispatches EventCampaignNotificationDispatch[]
 
   @@index([userId])
   @@index([scheduledAt])
@@ -2279,6 +2288,13 @@ enum BannerAudience {
   frequent
 }
 
+enum EventParticipationStatus {
+  pending
+  approved
+  rejected
+  withdrawn
+}
+
 model PromotionalBanner {
   id              String         @id @default(cuid())
   title           String
@@ -2295,10 +2311,95 @@ model PromotionalBanner {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  eventCampaign EventCampaign? @relation("EventCampaignBanner")
 
   @@index([isActive])
   @@index([startDate, endDate])
   @@map("promotional_banners")
+}
+
+model EventCampaign {
+  id                      String    @id @default(cuid())
+  name                    String
+  slug                    String    @unique
+  eventType               String
+  description             String?
+  startsAt                DateTime
+  endsAt                  DateTime
+  eventDate               DateTime
+  isActive                Boolean   @default(true)
+  heroTitle               String?
+  heroSubtitle            String?
+  heroImageUrl            String?
+  bannerImageUrl          String?
+  bannerBackgroundColor   String    @default("#FFFFFF")
+  ctaLabel                String    @default("View event")
+  preEventNotifyDays      Int       @default(3)
+  preEventNotifyHour      Int       @default(18)
+  sameDayNotifyHour       Int       @default(12)
+  lastCallNotifyHour      Int       @default(17)
+  recentOrderLookbackDays Int       @default(30)
+  orderWindowStartHour    Int?
+  orderWindowEndHour      Int?
+  promotionalBannerId     String?   @unique
+  createdById             String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  promotionalBanner      PromotionalBanner?                 @relation("EventCampaignBanner", fields: [promotionalBannerId], references: [id], onDelete: SetNull)
+  createdBy              User?                              @relation("EventCampaignCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  participations         RestaurantEventParticipation[]
+  foods                  Food[]
+  notificationDispatches EventCampaignNotificationDispatch[]
+
+  @@index([isActive, startsAt, endsAt])
+  @@index([eventDate])
+  @@map("event_campaigns")
+}
+
+model RestaurantEventParticipation {
+  id               String                   @id @default(cuid())
+  eventCampaignId  String
+  restaurantId     String
+  status           EventParticipationStatus @default(pending)
+  supportsPreorder Boolean                  @default(false)
+  isApproved       Boolean                  @default(false)
+  isFeatured       Boolean                  @default(false)
+  isActive         Boolean                  @default(true)
+  optedInAt        DateTime                 @default(now())
+  approvedAt       DateTime?
+  rejectedAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  eventCampaign EventCampaign @relation(fields: [eventCampaignId], references: [id], onDelete: Cascade)
+  restaurant    Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@unique([eventCampaignId, restaurantId])
+  @@index([restaurantId, status])
+  @@index([eventCampaignId, isApproved, isFeatured])
+  @@map("restaurant_event_participations")
+}
+
+model EventCampaignNotificationDispatch {
+  id                      String   @id @default(cuid())
+  eventCampaignId         String
+  userId                  String
+  phase                   String
+  scheduledNotificationId String?  @unique
+  scheduledFor            DateTime
+  createdAt               DateTime @default(now())
+
+  eventCampaign         EventCampaign          @relation(fields: [eventCampaignId], references: [id], onDelete: Cascade)
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scheduledNotification ScheduledNotification? @relation(fields: [scheduledNotificationId], references: [id], onDelete: SetNull)
+
+  @@unique([eventCampaignId, userId, phase])
+  @@index([eventCampaignId, phase])
+  @@index([userId, scheduledFor])
+  @@map("event_campaign_notification_dispatches")
 }
 
 // ==================== ORDER TRACKING ====================
