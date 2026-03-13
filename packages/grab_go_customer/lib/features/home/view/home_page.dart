@@ -557,8 +557,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                                     _buildExclusiveVendorsSection(
                                                       foodProvider,
                                                     ),
-                                                    SizedBox(
-                                                      height: KSpacing.lg.h,
+                                                    _buildFreeDeliveryVendorsSection(
+                                                      foodProvider,
+                                                      locationProvider,
                                                     ),
                                                     _buildNearbyVendorsSection(
                                                       foodProvider,
@@ -979,6 +980,40 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           onItemTap: (vendor) => context.push('/vendorDetails', extra: vendor),
         ),
         SizedBox(height: KSpacing.lg.h),
+      ],
+    );
+  }
+
+  Widget _buildFreeDeliveryVendorsSection(
+    FoodProvider foodProvider,
+    NativeLocationProvider locationProvider,
+  ) {
+    if (!locationProvider.hasLocation) return const SizedBox.shrink();
+
+    final vendors = foodProvider.freeDeliveryNearbyVendors.take(10).toList();
+
+    if (foodProvider.isLoading && vendors.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    if (!foodProvider.isLoading && vendors.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      children: [
+        SizedBox(height: KSpacing.lg.h),
+        VendorHorizontalSection(
+          title: 'Free Delivery Near You',
+          icon: Assets.icons.deliveryTruck,
+          vendors: vendors,
+          isLoading: false,
+          accentColor: context.appColors.accentOrange,
+          showClosedOnImage: true,
+          showEndSeeAllCard: true,
+          onSeeAll: () {},
+          onItemTap: (vendor) => context.push('/vendorDetails', extra: vendor),
+        ),
       ],
     );
   }

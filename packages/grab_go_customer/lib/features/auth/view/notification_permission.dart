@@ -151,7 +151,7 @@ class _NotificationPermissionState extends State<NotificationPermission> with Si
       context.go(widget.nextRoute!, extra: widget.nextExtra);
       return;
     }
-    context.go("/location-picker", extra: {"goHomeOnComplete": true});
+    context.go("/homepage");
   }
 
   @override

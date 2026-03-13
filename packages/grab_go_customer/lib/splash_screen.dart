@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grab_go_customer/shared/services/storage_service.dart';
+import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
@@ -84,12 +85,16 @@ class _SplashScreenState extends State<SplashScreen>
       if (isFirst) {
         context.go("/onboarding");
       } else {
-        context.go("/homepage");
+        if (UserService().isLoggedIn) {
+          context.go("/homepage");
+        } else {
+          context.go("/login");
+        }
       }
     } catch (e) {
       debugPrint('Splash screen initialization error: $e');
       if (mounted) {
-        context.go("/onboarding");
+        context.go("/login");
       }
     }
   }

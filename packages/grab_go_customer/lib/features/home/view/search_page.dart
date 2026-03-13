@@ -780,7 +780,7 @@ class _SearchPageState extends State<SearchPage> {
           Expanded(
             child: Container(
               height: 44,
-              padding: EdgeInsets.symmetric(horizontal: 12.w),
+              padding: EdgeInsets.only(left: 12.w),
               decoration: BoxDecoration(
                 color: colors.backgroundSecondary,
                 borderRadius: BorderRadius.circular(KBorderSize.border),
@@ -813,46 +813,58 @@ class _SearchPageState extends State<SearchPage> {
                     ),
                   ),
                   if (_searchController.text.isNotEmpty)
-                    GestureDetector(
-                      onTap: _clearSearchInput,
-                      child: Icon(Icons.close, color: colors.textTertiary, size: 18.sp),
+                    IconButton(
+                      onPressed: _clearSearchInput,
+                      icon: SvgPicture.asset(
+                        Assets.icons.xmark,
+                        package: 'grab_go_shared',
+                        width: 18.w,
+                        height: 18.h,
+                        colorFilter: ColorFilter.mode(colors.textTertiary, BlendMode.srcIn),
+                      ),
                     ),
                 ],
               ),
             ),
           ),
           SizedBox(width: 10.w),
-          GestureDetector(
-            onTap: () => _openFilterBottomSheet(serviceProvider),
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  height: 44,
-                  width: 44,
-                  decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
-                  padding: EdgeInsets.all(12.r),
-                  child: SvgPicture.asset(
-                    Assets.icons.slidersHorizontal,
-                    package: 'grab_go_shared',
-                    colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
-                  ),
-                ),
-                if (_activeFilter.isActive)
-                  Positioned(
-                    right: 2.w,
-                    top: 2.h,
-                    child: Container(
-                      width: 10.w,
-                      height: 10.w,
-                      decoration: BoxDecoration(
-                        color: colors.accentOrange,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: colors.backgroundPrimary, width: 1.5),
+          Container(
+            height: 44,
+            width: 44,
+            decoration: BoxDecoration(color: colors.backgroundSecondary, shape: BoxShape.circle),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => _openFilterBottomSheet(serviceProvider),
+                customBorder: const CircleBorder(),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.all(12.r),
+                      child: SvgPicture.asset(
+                        Assets.icons.slidersHorizontal,
+                        package: 'grab_go_shared',
+                        colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                       ),
                     ),
-                  ),
-              ],
+                    if (_activeFilter.isActive)
+                      Positioned(
+                        right: 2.w,
+                        top: 2.h,
+                        child: Container(
+                          width: 10.w,
+                          height: 10.w,
+                          decoration: BoxDecoration(
+                            color: colors.accentOrange,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: colors.backgroundPrimary, width: 1.5),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
@@ -996,6 +1008,7 @@ class _SearchPageState extends State<SearchPage> {
                   return Padding(
                     padding: EdgeInsets.only(right: 8.w),
                     child: ChoiceChip(
+                      showCheckmark: false,
                       label: Text(option.label),
                       selected: isSelected,
                       onSelected: (_) {
@@ -1014,9 +1027,7 @@ class _SearchPageState extends State<SearchPage> {
                         fontWeight: FontWeight.w600,
                         color: isSelected ? Colors.white : colors.textPrimary,
                       ),
-                      side: BorderSide(
-                        color: isSelected ? colors.accentOrange : colors.inputBorder.withValues(alpha: 0.35),
-                      ),
+                      side: BorderSide(color: isSelected ? colors.accentOrange : Colors.transparent),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(KBorderSize.border)),
                     ),
                   );
@@ -1083,15 +1094,14 @@ class _SearchPageState extends State<SearchPage> {
         decoration: BoxDecoration(
           color: colors.backgroundPrimary,
           borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
-          border: Border.all(color: colors.inputBorder.withValues(alpha: 0.3), width: 0.5),
         ),
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
           child: Row(
             children: [
               Container(
-                width: 40.w,
-                height: 40.h,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(color: colors.accentOrange.withValues(alpha: 0.14), shape: BoxShape.circle),
                 child: Center(
                   child: Text(category.emoji.isNotEmpty ? category.emoji : '📦', style: TextStyle(fontSize: 16.sp)),
@@ -1343,34 +1353,6 @@ class _SearchPageState extends State<SearchPage> {
                   style: TextStyle(fontSize: 13.sp, color: colors.textSecondary),
                   textAlign: TextAlign.center,
                 ),
-                SizedBox(height: 16.h),
-                Wrap(
-                  spacing: 8.w,
-                  runSpacing: 8.h,
-                  alignment: WrapAlignment.center,
-                  children: [
-                    if (showRetry)
-                      AppButton(
-                        onPressed: _performSearch,
-                        backgroundColor: colors.accentOrange,
-                        borderRadius: KBorderSize.borderRadius15,
-                        buttonText: 'Retry',
-                        width: 116.w,
-                        height: 42.h,
-                        textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13.sp),
-                      ),
-                    if (_activeFilter.isActive)
-                      AppButton(
-                        onPressed: _clearFilters,
-                        backgroundColor: colors.backgroundSecondary,
-                        borderRadius: KBorderSize.borderRadius15,
-                        buttonText: 'Clear filters',
-                        width: 124.w,
-                        height: 42.h,
-                        textStyle: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w700, fontSize: 13.sp),
-                      ),
-                  ],
-                ),
               ],
             ),
           ),
@@ -1392,7 +1374,7 @@ class _SearchPageState extends State<SearchPage> {
                       backgroundColor: colors.backgroundSecondary,
                       labelStyle: TextStyle(fontSize: 12.sp, color: colors.textPrimary, fontWeight: FontWeight.w600),
                       shape: RoundedRectangleBorder(
-                        side: BorderSide(color: colors.inputBorder.withValues(alpha: 0.35)),
+                        side: const BorderSide(color: Colors.transparent),
                         borderRadius: BorderRadius.circular(KBorderSize.border),
                       ),
                     );

@@ -12,6 +12,8 @@ import 'package:grab_go_shared/shared/services/cache_service.dart';
 
 class FoodProvider with ChangeNotifier {
   static const String _homeNearbyVendorsCacheKey = 'home_nearby_food';
+  static const String _homeFreeDeliveryVendorsCacheKey =
+      'home_free_delivery_food';
   static const String _homeExclusiveVendorsCacheKey = 'home_exclusive_food';
 
   final FoodCategoryProvider _categoryProvider;
@@ -20,6 +22,7 @@ class FoodProvider with ChangeNotifier {
   final FoodDiscoveryProvider _discoveryProvider;
   final FoodRepository _repository = FoodRepository();
   List<VendorModel> _nearbyVendors = const [];
+  List<VendorModel> _freeDeliveryNearbyVendors = const [];
   List<VendorModel> _exclusiveVendors = const [];
   bool _isRefreshingHomeFeed = false;
   String? _homeFeedError;
@@ -56,6 +59,42 @@ class FoodProvider with ChangeNotifier {
   bool get hasAttemptedFetch => _categoryProvider.hasAttemptedFetch;
   List<VendorModel> get nearbyVendors => _nearbyVendors;
   List<VendorModel> get exclusiveVendors => _exclusiveVendors;
+  List<VendorModel> get freeDeliveryNearbyVendors {
+    if (_freeDeliveryNearbyVendors.isNotEmpty) {
+      return _freeDeliveryNearbyVendors;
+    }
+
+    final vendors = _nearbyVendors
+        .where((vendor) => vendor.deliveryFee <= 0.001)
+        .toList(growable: false);
+
+    if (vendors.isEmpty) return const <VendorModel>[];
+
+    final sorted = [...vendors]
+      ..sort((a, b) {
+        final featuredCompare = _featuredPriority(
+          b,
+        ).compareTo(_featuredPriority(a));
+        if (featuredCompare != 0) return featuredCompare;
+
+        final availabilityCompare = _availabilityPriority(
+          b,
+        ).compareTo(_availabilityPriority(a));
+        if (availabilityCompare != 0) return availabilityCompare;
+
+        final distanceCompare = _distanceValue(a).compareTo(_distanceValue(b));
+        if (distanceCompare != 0) return distanceCompare;
+
+        final ratingCompare = b.rating.compareTo(a.rating);
+        if (ratingCompare != 0) return ratingCompare;
+
+        return a.displayName.toLowerCase().compareTo(
+          b.displayName.toLowerCase(),
+        );
+      });
+
+    return sorted;
+  }
 
   Future<void> fetchCategories() => _categoryProvider.fetchCategories();
   Future<void> refreshCategories() => _categoryProvider.refreshCategories();
@@ -119,6 +158,72 @@ class FoodProvider with ChangeNotifier {
       return restaurantItems.take(limit).toList();
     }
     return restaurantItems;
+  }
+
+  List<FoodItem> getRecommendedItemsFromRestaurant({
+    required String restaurantId,
+    int? sellerId,
+    String? sellerName,
+    Set<String> excludedItemIds = const <String>{},
+    int limit = 8,
+  }) {
+    final normalizedRestaurantId = restaurantId.trim();
+    final normalizedSellerName = sellerName?.trim().toLowerCase();
+    final normalizedExcludedIds = excludedItemIds
+        .map((id) => id.trim())
+        .where((id) => id.isNotEmpty)
+        .toSet();
+
+    bool matchesRestaurant(FoodItem item) {
+      final itemId = item.id.trim();
+      if (itemId.isEmpty || normalizedExcludedIds.contains(itemId)) {
+        return false;
+      }
+
+      if (normalizedRestaurantId.isNotEmpty) {
+        return item.restaurantId.trim() == normalizedRestaurantId;
+      }
+
+      if (sellerId != null && sellerId != 0) {
+        return item.sellerId == sellerId;
+      }
+
+      if (normalizedSellerName != null && normalizedSellerName.isNotEmpty) {
+        return item.sellerName.trim().toLowerCase() == normalizedSellerName;
+      }
+
+      return false;
+    }
+
+    final matchingItems = _buildYouMayLikePool()
+        .where(matchesRestaurant)
+        .toList(growable: false);
+
+    if (matchingItems.isEmpty) return const <FoodItem>[];
+
+    final sortedItems = [...matchingItems]
+      ..sort((a, b) {
+        final bundleCompare = _bundlePriority(b).compareTo(_bundlePriority(a));
+        if (bundleCompare != 0) return bundleCompare;
+
+        final discountCompare = b.discountPercentage.compareTo(
+          a.discountPercentage,
+        );
+        if (discountCompare != 0) return discountCompare;
+
+        final orderCompare = b.orderCount.compareTo(a.orderCount);
+        if (orderCompare != 0) return orderCompare;
+
+        final ratingCompare = b.rating.compareTo(a.rating);
+        if (ratingCompare != 0) return ratingCompare;
+
+        final reviewCompare = b.reviewCount.compareTo(a.reviewCount);
+        if (reviewCompare != 0) return reviewCompare;
+
+        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      });
+
+    return sortedItems.take(limit).toList(growable: false);
   }
 
   /// Get similar items from the same category, excluding the current item
@@ -206,6 +311,37 @@ class FoodProvider with ChangeNotifier {
     }
 
     return false;
+  }
+
+  int _bundlePriority(FoodItem item) {
+    final name = item.name.toLowerCase();
+    final description = item.description.toLowerCase();
+    final categoryName = item.categoryName?.toLowerCase() ?? '';
+    const bundleKeywords = <String>[
+      'bundle',
+      'combo',
+      'meal for two',
+      'platter',
+    ];
+
+    final haystack = '$name $description $categoryName';
+    return bundleKeywords.any(haystack.contains) ? 1 : 0;
+  }
+
+  int _featuredPriority(VendorModel vendor) => vendor.featured == true ? 1 : 0;
+
+  int _availabilityPriority(VendorModel vendor) {
+    final accepting = vendor.isAcceptingOrders;
+    final open = vendor.isOpen;
+    if (open && accepting) return 2;
+    if (open) return 1;
+    return 0;
+  }
+
+  double _distanceValue(VendorModel vendor) {
+    final distance = vendor.distance;
+    if (distance == null || distance.isNaN) return double.infinity;
+    return distance;
   }
 
   /// Find which category contains a food item
@@ -296,11 +432,17 @@ class FoodProvider with ChangeNotifier {
       final cachedNearby = CacheService.getVendorsByType(
         _homeNearbyVendorsCacheKey,
       );
+      final cachedFreeDelivery = CacheService.getVendorsByType(
+        _homeFreeDeliveryVendorsCacheKey,
+      );
       final cachedExclusive = CacheService.getVendorsByType(
         _homeExclusiveVendorsCacheKey,
       );
 
       final nearbyVendors = cachedNearby
+          .map((json) => VendorModel.fromJson(json))
+          .toList(growable: false);
+      final freeDeliveryNearbyVendors = cachedFreeDelivery
           .map((json) => VendorModel.fromJson(json))
           .toList(growable: false);
       final exclusiveVendors = cachedExclusive
@@ -309,9 +451,14 @@ class FoodProvider with ChangeNotifier {
 
       final hasChanged =
           !_sameVendorIds(_nearbyVendors, nearbyVendors) ||
+          !_sameVendorIds(
+            _freeDeliveryNearbyVendors,
+            freeDeliveryNearbyVendors,
+          ) ||
           !_sameVendorIds(_exclusiveVendors, exclusiveVendors);
 
       _nearbyVendors = nearbyVendors;
+      _freeDeliveryNearbyVendors = freeDeliveryNearbyVendors;
       _exclusiveVendors = exclusiveVendors;
 
       if (hasChanged) {
@@ -330,6 +477,12 @@ class FoodProvider with ChangeNotifier {
         CacheService.saveVendorsByType(
           _homeNearbyVendorsCacheKey,
           _nearbyVendors
+              .map((vendor) => vendor.toJson())
+              .toList(growable: false),
+        ),
+        CacheService.saveVendorsByType(
+          _homeFreeDeliveryVendorsCacheKey,
+          _freeDeliveryNearbyVendors
               .map((vendor) => vendor.toJson())
               .toList(growable: false),
         ),
@@ -372,6 +525,7 @@ class FoodProvider with ChangeNotifier {
     ]);
 
     _nearbyVendors = feed.nearbyVendors;
+    _freeDeliveryNearbyVendors = feed.freeDeliveryNearbyVendors;
     _exclusiveVendors = feed.exclusiveVendors;
     await _saveHomeVendorsToCache();
     notifyListeners();

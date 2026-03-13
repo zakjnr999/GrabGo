@@ -1,3 +1,6 @@
+import java.io.File
+import java.util.Properties
+
 buildscript {
     repositories {
         google()
@@ -15,6 +18,15 @@ allprojects {
     }
 }
 
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.inputStream().use { localProperties.load(it) }
+}
+val flutterSdkPath = localProperties.getProperty("flutter.sdk")
+val flutterToolPath = flutterSdkPath?.let { "$it/bin" }
+val dartToolPath = flutterSdkPath?.let { "$it/bin/cache/dart-sdk/bin" }
+
 val newBuildDir: Directory =
     rootProject.layout.buildDirectory
         .dir("../../build")
@@ -27,6 +39,23 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+}
+
+subprojects {
+    if (name == "rive_native" && flutterSdkPath != null) {
+        tasks.withType<Exec>().configureEach {
+            val existingPath =
+                (environment["PATH"] as? String)
+                    ?: System.getenv("PATH").orEmpty()
+            val patchedPath =
+                listOfNotNull(dartToolPath, flutterToolPath, existingPath)
+                    .filter { it.isNotBlank() }
+                    .joinToString(File.pathSeparator)
+
+            environment("PATH", patchedPath)
+            environment("FLUTTER_ROOT", flutterSdkPath)
+        }
+    }
 }
 
 tasks.register<Delete>("clean") {

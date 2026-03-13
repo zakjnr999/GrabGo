@@ -42,6 +42,7 @@ class FoodHomeFeed {
   final RecommendedFeedSection recommended;
   final List<PromoBanner> promoBanners;
   final List<VendorModel> nearbyVendors;
+  final List<VendorModel> freeDeliveryNearbyVendors;
   final List<VendorModel> exclusiveVendors;
   final DateTime? fetchedAt;
 
@@ -54,6 +55,7 @@ class FoodHomeFeed {
     this.recommended = const RecommendedFeedSection(),
     this.promoBanners = const [],
     this.nearbyVendors = const [],
+    this.freeDeliveryNearbyVendors = const [],
     this.exclusiveVendors = const [],
     this.fetchedAt,
   });
@@ -110,6 +112,9 @@ class FoodHomeFeed {
               )
               .toList(growable: false),
       nearbyVendors: parseVendors(json['nearbyVendors']),
+      freeDeliveryNearbyVendors: parseVendors(
+        json['freeDeliveryNearbyVendors'],
+      ),
       exclusiveVendors: parseVendors(json['exclusiveVendors']),
       fetchedAt: json['fetchedAt'] == null
           ? null
@@ -132,6 +137,9 @@ class FoodHomeFeed {
         .map((banner) => banner.toJson())
         .toList(growable: false),
     'nearbyVendors': nearbyVendors
+        .map((vendor) => vendor.toJson())
+        .toList(growable: false),
+    'freeDeliveryNearbyVendors': freeDeliveryNearbyVendors
         .map((vendor) => vendor.toJson())
         .toList(growable: false),
     'exclusiveVendors': exclusiveVendors

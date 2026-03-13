@@ -82,12 +82,10 @@ class CartProvider extends ChangeNotifier {
   String? get subscriptionTier => _subscriptionTier;
   double get subscriptionDeliveryDiscount => _subscriptionDeliveryDiscount;
   double get subscriptionServiceFeeDiscount => _subscriptionServiceFeeDiscount;
-  double get subscriptionTotalDiscount =>
-      _subscriptionDeliveryDiscount + _subscriptionServiceFeeDiscount;
+  double get subscriptionTotalDiscount => _subscriptionDeliveryDiscount + _subscriptionServiceFeeDiscount;
   double get creditsApplied => _creditsApplied;
   double get availableCredits => _availableCredits;
-  double get total =>
-      _total ?? (subtotal + deliveryFee + serviceFee + tax + rainFee);
+  double get total => _total ?? (subtotal + deliveryFee + serviceFee + tax + rainFee);
   int? get estimatedDeliveryMin => _estimatedDeliveryMin;
   int? get estimatedDeliveryMax => _estimatedDeliveryMax;
   int? get estimatedDeliveryFirstMin => _estimatedDeliveryFirstMin;
@@ -99,17 +97,15 @@ class CartProvider extends ChangeNotifier {
   bool get hasPendingCartOperations => _pendingItemOps.isNotEmpty;
   bool get isCartInteractionLocked => hasPendingCartOperations;
   String get fulfillmentMode => _fulfillmentMode;
-  Map<String, String> get vendorEtaLabelsByGroupKey => _vendorGroupEtasByKey
-      .map((key, value) => MapEntry(key, _formatEtaWindow(value)));
+  Map<String, String> get vendorEtaLabelsByGroupKey =>
+      _vendorGroupEtasByKey.map((key, value) => MapEntry(key, _formatEtaWindow(value)));
   int get providerCount => _cartItems.keys
       .map((item) => '${item.itemType}:${item.providerId}')
       .where((key) => key.trim().isNotEmpty)
       .toSet()
       .length;
   Map<String, dynamic>? get scheduleAvailability =>
-      _scheduleAvailability == null
-      ? null
-      : Map<String, dynamic>.unmodifiable(_scheduleAvailability!);
+      _scheduleAvailability == null ? null : Map<String, dynamic>.unmodifiable(_scheduleAvailability!);
   bool get isGiftOrderDraftEnabled => _giftOrderEnabled;
   String get giftRecipientNameDraft => _giftRecipientNameDraft;
   String get giftRecipientPhoneDraft => _giftRecipientPhoneDraft;
@@ -118,36 +114,22 @@ class CartProvider extends ChangeNotifier {
   String? get promoType => _promoType;
   double get promoDiscount => _promoDiscount;
   String? get promoErrorMessage => _promoErrorMessage;
-  bool isItemOperationPending(CartItem item) =>
-      _pendingItemOps.contains(_itemKey(item));
+  bool isItemOperationPending(CartItem item) => _pendingItemOps.contains(_itemKey(item));
 
   bool hasItemInCart(CartItem item, {bool includeFoodCustomizations = false}) =>
-      getItemQuantity(
-        item,
-        includeFoodCustomizations: includeFoodCustomizations,
-      ) >
-      0;
+      getItemQuantity(item, includeFoodCustomizations: includeFoodCustomizations) > 0;
 
   int getItemQuantity(CartItem item, {bool includeFoodCustomizations = false}) {
-    final entries = _findMatchingCartEntries(
-      item,
-      includeFoodCustomizations: includeFoodCustomizations,
-    );
+    final entries = _findMatchingCartEntries(item, includeFoodCustomizations: includeFoodCustomizations);
     if (entries.isEmpty) return 0;
     return entries.fold<int>(0, (sum, entry) => sum + entry.value);
   }
 
-  bool isItemOperationPendingForDisplay(
-    CartItem item, {
-    bool includeFoodCustomizations = false,
-  }) {
+  bool isItemOperationPendingForDisplay(CartItem item, {bool includeFoodCustomizations = false}) {
     if (isItemOperationPending(item)) return true;
     if (!includeFoodCustomizations || item is! FoodItem) return false;
 
-    final entries = _findMatchingCartEntries(
-      item,
-      includeFoodCustomizations: true,
-    );
+    final entries = _findMatchingCartEntries(item, includeFoodCustomizations: true);
     for (final entry in entries) {
       if (isItemOperationPending(entry.key)) {
         return true;
@@ -156,23 +138,14 @@ class CartProvider extends ChangeNotifier {
     return false;
   }
 
-  CartItem? resolveItemForCartAction(
-    CartItem item, {
-    bool includeFoodCustomizations = false,
-  }) {
+  CartItem? resolveItemForCartAction(CartItem item, {bool includeFoodCustomizations = false}) {
     if (_cartItems.containsKey(item)) return item;
-    final entries = _findMatchingCartEntries(
-      item,
-      includeFoodCustomizations: includeFoodCustomizations,
-    );
+    final entries = _findMatchingCartEntries(item, includeFoodCustomizations: includeFoodCustomizations);
     if (entries.isEmpty) return null;
     return entries.first.key;
   }
 
-  List<MapEntry<CartItem, int>> _findMatchingCartEntries(
-    CartItem item, {
-    bool includeFoodCustomizations = false,
-  }) {
+  List<MapEntry<CartItem, int>> _findMatchingCartEntries(CartItem item, {bool includeFoodCustomizations = false}) {
     final exactQuantity = _cartItems[item];
     if (exactQuantity != null) {
       return [MapEntry(item, exactQuantity)];
@@ -197,14 +170,10 @@ class CartProvider extends ChangeNotifier {
       return current.id == other.id;
     }
 
-    return current.name == other.name &&
-        current.restaurantId == other.restaurantId;
+    return current.name == other.name && current.restaurantId == other.restaurantId;
   }
 
-  Future<String?> replaceFoodCustomizationInCart({
-    required FoodItem currentItem,
-    required FoodItem updatedItem,
-  }) async {
+  Future<String?> replaceFoodCustomizationInCart({required FoodItem currentItem, required FoodItem updatedItem}) async {
     final oldKey = _itemKey(currentItem);
     final newKey = _itemKey(updatedItem);
     if (oldKey == newKey) return null;
@@ -261,10 +230,7 @@ class CartProvider extends ChangeNotifier {
 
       var removeError = await _removeFromBackend(oldCartItemId);
       if (_isItemNotFoundInCartError(removeError)) {
-        final freshCartItemId = await _ensureCartItemId(
-          oldKey,
-          forceRefresh: true,
-        );
+        final freshCartItemId = await _ensureCartItemId(oldKey, forceRefresh: true);
         if (freshCartItemId != null) {
           removeError = await _removeFromBackend(freshCartItemId);
         } else {
@@ -299,11 +265,7 @@ class CartProvider extends ChangeNotifier {
     }
   }
 
-  String buildVendorGroupKey({
-    required String itemType,
-    required String providerId,
-    required String providerName,
-  }) {
+  String buildVendorGroupKey({required String itemType, required String providerId, required String providerName}) {
     final normalizedItemType = itemType.trim();
     final normalizedProviderId = providerId.trim();
     final normalizedProviderName = providerName.trim();
@@ -319,16 +281,8 @@ class CartProvider extends ChangeNotifier {
     return _formatEtaWindow(eta);
   }
 
-  String? etaLabelForVendor({
-    required String itemType,
-    required String providerId,
-    required String providerName,
-  }) {
-    final key = buildVendorGroupKey(
-      itemType: itemType,
-      providerId: providerId,
-      providerName: providerName,
-    );
+  String? etaLabelForVendor({required String itemType, required String providerId, required String providerName}) {
+    final key = buildVendorGroupKey(itemType: itemType, providerId: providerId, providerName: providerName);
     return etaLabelForVendorGroupKey(key);
   }
 
@@ -372,10 +326,7 @@ class CartProvider extends ChangeNotifier {
     return null;
   }
 
-  _ProviderIdentity _extractProviderIdentityFromRawGroup(
-    Map<String, dynamic> group,
-    String itemType,
-  ) {
+  _ProviderIdentity _extractProviderIdentityFromRawGroup(Map<String, dynamic> group, String itemType) {
     String providerId = '';
     String providerName = 'Vendor';
 
@@ -403,9 +354,7 @@ class CartProvider extends ChangeNotifier {
         if (restaurantData is Map) {
           providerId = providerId.isNotEmpty
               ? providerId
-              : (restaurantData['_id']?.toString() ??
-                    restaurantData['id']?.toString() ??
-                    '');
+              : (restaurantData['_id']?.toString() ?? restaurantData['id']?.toString() ?? '');
           providerName =
               restaurantData['restaurantName']?.toString() ??
               restaurantData['restaurant_name']?.toString() ??
@@ -416,9 +365,7 @@ class CartProvider extends ChangeNotifier {
         }
         providerId = providerId.isNotEmpty
             ? providerId
-            : (itemData['restaurantId']?.toString() ??
-                  firstItem?['restaurantId']?.toString() ??
-                  '');
+            : (itemData['restaurantId']?.toString() ?? firstItem?['restaurantId']?.toString() ?? '');
         providerName = itemData['restaurantName']?.toString() ?? providerName;
       }
     } else if (itemType == 'GroceryItem') {
@@ -439,9 +386,7 @@ class CartProvider extends ChangeNotifier {
         if (storeData is Map) {
           providerId = providerId.isNotEmpty
               ? providerId
-              : (storeData['_id']?.toString() ??
-                    storeData['id']?.toString() ??
-                    '');
+              : (storeData['_id']?.toString() ?? storeData['id']?.toString() ?? '');
           providerName =
               storeData['storeName']?.toString() ??
               storeData['store_name']?.toString() ??
@@ -452,9 +397,7 @@ class CartProvider extends ChangeNotifier {
         }
         providerId = providerId.isNotEmpty
             ? providerId
-            : (itemData['storeId']?.toString() ??
-                  firstItem?['groceryStoreId']?.toString() ??
-                  '');
+            : (itemData['storeId']?.toString() ?? firstItem?['groceryStoreId']?.toString() ?? '');
       }
     } else if (itemType == 'PharmacyItem') {
       providerId = group['pharmacyStoreId']?.toString() ?? '';
@@ -474,9 +417,7 @@ class CartProvider extends ChangeNotifier {
         if (storeData is Map) {
           providerId = providerId.isNotEmpty
               ? providerId
-              : (storeData['_id']?.toString() ??
-                    storeData['id']?.toString() ??
-                    '');
+              : (storeData['_id']?.toString() ?? storeData['id']?.toString() ?? '');
           providerName =
               storeData['storeName']?.toString() ??
               storeData['store_name']?.toString() ??
@@ -487,9 +428,7 @@ class CartProvider extends ChangeNotifier {
         }
         providerId = providerId.isNotEmpty
             ? providerId
-            : (itemData['storeId']?.toString() ??
-                  firstItem?['pharmacyStoreId']?.toString() ??
-                  '');
+            : (itemData['storeId']?.toString() ?? firstItem?['pharmacyStoreId']?.toString() ?? '');
       }
     } else if (itemType == 'GrabMartItem') {
       providerId = group['grabMartStoreId']?.toString() ?? '';
@@ -509,9 +448,7 @@ class CartProvider extends ChangeNotifier {
         if (storeData is Map) {
           providerId = providerId.isNotEmpty
               ? providerId
-              : (storeData['_id']?.toString() ??
-                    storeData['id']?.toString() ??
-                    '');
+              : (storeData['_id']?.toString() ?? storeData['id']?.toString() ?? '');
           providerName =
               storeData['storeName']?.toString() ??
               storeData['store_name']?.toString() ??
@@ -522,15 +459,11 @@ class CartProvider extends ChangeNotifier {
         }
         providerId = providerId.isNotEmpty
             ? providerId
-            : (itemData['storeId']?.toString() ??
-                  firstItem?['grabMartStoreId']?.toString() ??
-                  '');
+            : (itemData['storeId']?.toString() ?? firstItem?['grabMartStoreId']?.toString() ?? '');
       }
     }
 
-    providerName = providerName.trim().isNotEmpty
-        ? providerName.trim()
-        : 'Vendor';
+    providerName = providerName.trim().isNotEmpty ? providerName.trim() : 'Vendor';
     providerId = providerId.trim();
     return _ProviderIdentity(id: providerId, name: providerName);
   }
@@ -557,19 +490,11 @@ class CartProvider extends ChangeNotifier {
       final parsed = jsonDecode(raw);
       if (parsed is! Map) return;
       final metadata = Map<String, dynamic>.from(parsed);
-      _localMutationVersion =
-          (metadata['localMutationVersion'] as num?)?.toInt() ??
-          _localMutationVersion;
-      _lastSyncedCartVersion =
-          (metadata['lastSyncedCartVersion'] as num?)?.toInt() ??
-          _lastSyncedCartVersion;
-      _lastAttemptedCartVersion =
-          (metadata['lastAttemptedCartVersion'] as num?)?.toInt() ??
-          _lastAttemptedCartVersion;
+      _localMutationVersion = (metadata['localMutationVersion'] as num?)?.toInt() ?? _localMutationVersion;
+      _lastSyncedCartVersion = (metadata['lastSyncedCartVersion'] as num?)?.toInt() ?? _lastSyncedCartVersion;
+      _lastAttemptedCartVersion = (metadata['lastAttemptedCartVersion'] as num?)?.toInt() ?? _lastAttemptedCartVersion;
       _hasDirtyCart = metadata['hasDirtyCart'] == true;
-      _fulfillmentMode = _normalizeFulfillmentMode(
-        metadata['fulfillmentMode']?.toString(),
-      );
+      _fulfillmentMode = _normalizeFulfillmentMode(metadata['fulfillmentMode']?.toString());
     } catch (e) {
       debugPrint('Error restoring cart sync metadata: $e');
     }
@@ -604,13 +529,8 @@ class CartProvider extends ChangeNotifier {
       // First load from local cache for immediate UI
       final cartList = CacheService.getCartItems();
       _cartItems.clear();
-      if (cartList.isNotEmpty &&
-          !_hasDirtyCart &&
-          _lastSyncedCartVersion == 0 &&
-          _localMutationVersion == 0) {
-        _fulfillmentMode = _normalizeFulfillmentMode(
-          cartList.first['fulfillmentMode'] as String?,
-        );
+      if (cartList.isNotEmpty && !_hasDirtyCart && _lastSyncedCartVersion == 0 && _localMutationVersion == 0) {
+        _fulfillmentMode = _normalizeFulfillmentMode(cartList.first['fulfillmentMode'] as String?);
       }
 
       for (var item in cartList) {
@@ -680,8 +600,7 @@ class CartProvider extends ChangeNotifier {
           payload['selectedPortionId'] = selectedPortionId;
         }
         if (item.selectedPreferenceOptionIds.isNotEmpty) {
-          payload['selectedPreferenceOptionIds'] =
-              item.selectedPreferenceOptionIds;
+          payload['selectedPreferenceOptionIds'] = item.selectedPreferenceOptionIds;
         }
         final note = item.itemNote?.trim();
         if (note != null && note.isNotEmpty) {
@@ -707,8 +626,7 @@ class CartProvider extends ChangeNotifier {
 
     return {
       'clientCartVersion': _localMutationVersion,
-      'idempotencyKey':
-          'cart-sync-$_localMutationVersion-${DateTime.now().microsecondsSinceEpoch}',
+      'idempotencyKey': 'cart-sync-$_localMutationVersion-${DateTime.now().microsecondsSinceEpoch}',
       'fulfillmentMode': _fulfillmentMode,
       'useCredits': _useCredits,
       'promoCode': _appliedPromoCode,
@@ -732,10 +650,7 @@ class CartProvider extends ChangeNotifier {
         final groupItemType = _inferItemTypeFromRawGroup(group);
         final groupEta = _extractEtaFromPricing(group['pricing']);
         if (groupItemType != null && groupEta != null) {
-          final provider = _extractProviderIdentityFromRawGroup(
-            group,
-            groupItemType,
-          );
+          final provider = _extractProviderIdentityFromRawGroup(group, groupItemType);
           final groupKey = buildVendorGroupKey(
             itemType: groupItemType,
             providerId: provider.id,
@@ -743,22 +658,17 @@ class CartProvider extends ChangeNotifier {
           );
           parsedVendorGroupEtas[groupKey] = groupEta;
         }
-        groupedFulfillmentMode =
-            groupedFulfillmentMode ?? group['fulfillmentMode']?.toString();
+        groupedFulfillmentMode = groupedFulfillmentMode ?? group['fulfillmentMode']?.toString();
         if (rawGroups.length == 1) {
           final scheduleAvailability = group['scheduleAvailability'];
           if (scheduleAvailability is Map) {
-            singleGroupScheduleAvailability = Map<String, dynamic>.from(
-              scheduleAvailability,
-            );
+            singleGroupScheduleAvailability = Map<String, dynamic>.from(scheduleAvailability);
           }
         }
 
         final groupItems = group['items'];
         if (groupItems is! List) continue;
-        final groupMode = _normalizeFulfillmentMode(
-          group['fulfillmentMode']?.toString(),
-        );
+        final groupMode = _normalizeFulfillmentMode(group['fulfillmentMode']?.toString());
 
         for (final rawItem in groupItems) {
           if (rawItem is! Map) continue;
@@ -789,10 +699,7 @@ class CartProvider extends ChangeNotifier {
     );
 
     final payload =
-        response.body ??
-        (response.error is Map<String, dynamic>
-            ? response.error as Map<String, dynamic>
-            : null);
+        response.body ?? (response.error is Map<String, dynamic> ? response.error as Map<String, dynamic> : null);
 
     if (payload is! Map<String, dynamic>) {
       return null;
@@ -800,26 +707,16 @@ class CartProvider extends ChangeNotifier {
 
     final code = payload['code']?.toString();
     if (response.isSuccessful && payload['success'] == true) {
-      final acceptedVersion =
-          (payload['acceptedCartVersion'] as num?)?.toInt() ??
-          _localMutationVersion;
+      final acceptedVersion = (payload['acceptedCartVersion'] as num?)?.toInt() ?? _localMutationVersion;
       _lastAttemptedCartVersion = acceptedVersion;
-      _lastSyncedCartVersion = math.max(
-        _lastSyncedCartVersion,
-        acceptedVersion,
-      );
+      _lastSyncedCartVersion = math.max(_lastSyncedCartVersion, acceptedVersion);
       return payload;
     }
 
     if (code == 'CART_SYNC_REJECTED') {
-      final acceptedVersion =
-          (payload['acceptedCartVersion'] as num?)?.toInt() ??
-          _localMutationVersion;
+      final acceptedVersion = (payload['acceptedCartVersion'] as num?)?.toInt() ?? _localMutationVersion;
       _lastAttemptedCartVersion = acceptedVersion;
-      _lastSyncedCartVersion = math.max(
-        _lastSyncedCartVersion,
-        acceptedVersion,
-      );
+      _lastSyncedCartVersion = math.max(_lastSyncedCartVersion, acceptedVersion);
       return payload;
     }
     return null;
@@ -884,10 +781,7 @@ class CartProvider extends ChangeNotifier {
           final syncPayload = await _pushDirtyCartSnapshot();
           if (syncPayload != null) {
             syncSucceeded = true;
-            cartData = _buildFlattenedCartDataFromGroupedPayload(
-              syncPayload,
-              parsedVendorGroupEtas,
-            );
+            cartData = _buildFlattenedCartDataFromGroupedPayload(syncPayload, parsedVendorGroupEtas);
           }
         } catch (e) {
           syncError = e;
@@ -910,14 +804,9 @@ class CartProvider extends ChangeNotifier {
             promoCode: _appliedPromoCode,
           );
           final groupsBody = groupsResponse.body;
-          if (groupsResponse.isSuccessful &&
-              groupsBody != null &&
-              groupsBody['success'] == true) {
+          if (groupsResponse.isSuccessful && groupsBody != null && groupsBody['success'] == true) {
             syncSucceeded = true;
-            cartData = _buildFlattenedCartDataFromGroupedPayload(
-              groupsBody,
-              parsedVendorGroupEtas,
-            );
+            cartData = _buildFlattenedCartDataFromGroupedPayload(groupsBody, parsedVendorGroupEtas);
           }
         } catch (e) {
           syncError = e;
@@ -968,26 +857,19 @@ class CartProvider extends ChangeNotifier {
       }
 
       {
-        final shouldSkipApplyingSnapshot =
-            mutationVersionAtStart != _localMutationVersion;
+        final shouldSkipApplyingSnapshot = mutationVersionAtStart != _localMutationVersion;
         if (shouldSkipApplyingSnapshot) {
           _syncQueued = true;
           return syncSucceeded;
         }
 
-        _scheduleAvailability = _parseScheduleAvailability(
-          cartData['scheduleAvailability'],
-        );
+        _scheduleAvailability = _parseScheduleAvailability(cartData['scheduleAvailability']);
         _vendorGroupEtasByKey
           ..clear()
           ..addAll(parsedVendorGroupEtas);
         final previousMode = _normalizeFulfillmentMode(_fulfillmentMode);
-        final previousItemOrderStableKeys = _cartItems.keys
-            .map(_itemStableKey)
-            .toList(growable: false);
-        _fulfillmentMode = _normalizeFulfillmentMode(
-          cartData['fulfillmentMode']?.toString(),
-        );
+        final previousItemOrderStableKeys = _cartItems.keys.map(_itemStableKey).toList(growable: false);
+        _fulfillmentMode = _normalizeFulfillmentMode(cartData['fulfillmentMode']?.toString());
         final parsedEntriesByStableKey = <String, MapEntry<CartItem, int>>{};
         final parsedEntryStableKeysInOrder = <String>[];
         _cartItems.clear();
@@ -998,11 +880,7 @@ class CartProvider extends ChangeNotifier {
           final item = Map<String, dynamic>.from(rawItem);
 
           final itemData =
-              item['itemId'] ??
-              item['food'] ??
-              item['groceryItem'] ??
-              item['pharmacyItem'] ??
-              item['grabMartItem'];
+              item['itemId'] ?? item['food'] ?? item['groceryItem'] ?? item['pharmacyItem'] ?? item['grabMartItem'];
           if (itemData == null || itemData is! Map) continue;
 
           String? itemType = item['itemType']?.toString();
@@ -1021,13 +899,9 @@ class CartProvider extends ChangeNotifier {
             final restaurantData = itemDataMap['restaurant'];
             String? providerId;
             if (restaurantData is Map) {
-              providerId =
-                  restaurantData['_id']?.toString() ??
-                  restaurantData['id']?.toString();
+              providerId = restaurantData['_id']?.toString() ?? restaurantData['id']?.toString();
             }
-            providerId ??=
-                itemDataMap['restaurantId']?.toString() ??
-                itemDataMap['restaurant']?.toString();
+            providerId ??= itemDataMap['restaurantId']?.toString() ?? itemDataMap['restaurant']?.toString();
             providerId ??= item['restaurantId']?.toString();
 
             final fallbackOpen =
@@ -1036,30 +910,15 @@ class CartProvider extends ChangeNotifier {
                     item['foodId']?.toString() ??
                     item['itemId']?.toString() ??
                     ''] ??
-                (providerId != null
-                    ? previousOpenByProviderId[providerId]
-                    : null);
+                (providerId != null ? previousOpenByProviderId[providerId] : null);
 
-            cartItem = _createFoodItemFromBackend(
-              itemDataMap,
-              item,
-              fallbackIsOpen: fallbackOpen,
-            );
+            cartItem = _createFoodItemFromBackend(itemDataMap, item, fallbackIsOpen: fallbackOpen);
           } else if (itemType == 'GroceryItem') {
-            cartItem = _createGroceryItemFromBackend(
-              Map<String, dynamic>.from(itemData),
-              item,
-            );
+            cartItem = _createGroceryItemFromBackend(Map<String, dynamic>.from(itemData), item);
           } else if (itemType == 'PharmacyItem') {
-            cartItem = _createPharmacyItemFromBackend(
-              Map<String, dynamic>.from(itemData),
-              item,
-            );
+            cartItem = _createPharmacyItemFromBackend(Map<String, dynamic>.from(itemData), item);
           } else if (itemType == 'GrabMartItem') {
-            cartItem = _createGrabMartItemFromBackend(
-              Map<String, dynamic>.from(itemData),
-              item,
-            );
+            cartItem = _createGrabMartItemFromBackend(Map<String, dynamic>.from(itemData), item);
           } else {
             debugPrint('Unknown item type: $itemType');
             continue;
@@ -1071,11 +930,7 @@ class CartProvider extends ChangeNotifier {
           parsedEntryStableKeysInOrder.add(stableKey);
 
           final cartItemId = item['id']?.toString();
-          final itemKey = _itemKeyFromBackend(
-            itemType,
-            Map<String, dynamic>.from(itemData),
-            item,
-          );
+          final itemKey = _itemKeyFromBackend(itemType, Map<String, dynamic>.from(itemData), item);
           if (cartItemId != null && itemKey != null) {
             _cartItemIdsByKey[itemKey] = cartItemId;
           }
@@ -1151,59 +1006,38 @@ class CartProvider extends ChangeNotifier {
     _serviceFee = (pricing['serviceFee'] as num?)?.toDouble() ?? 0.0;
     _originalDeliveryFee =
         (pricing['originalDeliveryFee'] as num?)?.toDouble() ??
-        _deliveryFee +
-            ((pricing['subscriptionDeliveryDiscount'] as num?)?.toDouble() ??
-                0.0);
+        _deliveryFee + ((pricing['subscriptionDeliveryDiscount'] as num?)?.toDouble() ?? 0.0);
     _originalServiceFee =
         (pricing['originalServiceFee'] as num?)?.toDouble() ??
-        _serviceFee +
-            ((pricing['subscriptionServiceFeeDiscount'] as num?)?.toDouble() ??
-                0.0);
+        _serviceFee + ((pricing['subscriptionServiceFeeDiscount'] as num?)?.toDouble() ?? 0.0);
     _tax = (pricing['tax'] as num?)?.toDouble() ?? 0.0;
     _rainFee = (pricing['rainFee'] as num?)?.toDouble() ?? 0.0;
     final promoCodeRaw = pricing['promoCode']?.toString().trim();
-    _appliedPromoCode = (promoCodeRaw == null || promoCodeRaw.isEmpty)
-        ? null
-        : promoCodeRaw.toUpperCase();
+    _appliedPromoCode = (promoCodeRaw == null || promoCodeRaw.isEmpty) ? null : promoCodeRaw.toUpperCase();
     final promoTypeRaw = pricing['promoType']?.toString().trim();
-    _promoType = (promoTypeRaw == null || promoTypeRaw.isEmpty)
-        ? null
-        : promoTypeRaw;
+    _promoType = (promoTypeRaw == null || promoTypeRaw.isEmpty) ? null : promoTypeRaw;
     _promoDiscount = (pricing['promoDiscount'] as num?)?.toDouble() ?? 0.0;
-    final promoValidationMessageRaw = pricing['promoValidationMessage']
-        ?.toString()
-        .trim();
-    _promoErrorMessage =
-        (promoValidationMessageRaw == null || promoValidationMessageRaw.isEmpty)
+    final promoValidationMessageRaw = pricing['promoValidationMessage']?.toString().trim();
+    _promoErrorMessage = (promoValidationMessageRaw == null || promoValidationMessageRaw.isEmpty)
         ? null
         : promoValidationMessageRaw;
     _subscriptionTier = pricing['subscriptionTier']?.toString();
-    _subscriptionDeliveryDiscount =
-        (pricing['subscriptionDeliveryDiscount'] as num?)?.toDouble() ?? 0.0;
-    _subscriptionServiceFeeDiscount =
-        (pricing['subscriptionServiceFeeDiscount'] as num?)?.toDouble() ?? 0.0;
+    _subscriptionDeliveryDiscount = (pricing['subscriptionDeliveryDiscount'] as num?)?.toDouble() ?? 0.0;
+    _subscriptionServiceFeeDiscount = (pricing['subscriptionServiceFeeDiscount'] as num?)?.toDouble() ?? 0.0;
     _creditsApplied = (pricing['creditsApplied'] as num?)?.toDouble() ?? 0.0;
     _availableCredits =
-        (pricing['availableBalance'] as num?)?.toDouble() ??
-        (pricing['creditBalance'] as num?)?.toDouble() ??
-        0.0;
+        (pricing['availableBalance'] as num?)?.toDouble() ?? (pricing['creditBalance'] as num?)?.toDouble() ?? 0.0;
     _total = (pricing['total'] as num?)?.toDouble();
     _estimatedDeliveryMin = (pricing['estimatedDeliveryMin'] as num?)?.toInt();
     _estimatedDeliveryMax = (pricing['estimatedDeliveryMax'] as num?)?.toInt();
-    _estimatedDeliveryFirstMin = (pricing['estimatedDeliveryFirstMin'] as num?)
-        ?.toInt();
-    _estimatedDeliveryFirstMax = (pricing['estimatedDeliveryFirstMax'] as num?)
-        ?.toInt();
-    _estimatedDeliveryCompletionMin =
-        (pricing['estimatedDeliveryCompletionMin'] as num?)?.toInt();
-    _estimatedDeliveryCompletionMax =
-        (pricing['estimatedDeliveryCompletionMax'] as num?)?.toInt();
+    _estimatedDeliveryFirstMin = (pricing['estimatedDeliveryFirstMin'] as num?)?.toInt();
+    _estimatedDeliveryFirstMax = (pricing['estimatedDeliveryFirstMax'] as num?)?.toInt();
+    _estimatedDeliveryCompletionMin = (pricing['estimatedDeliveryCompletionMin'] as num?)?.toInt();
+    _estimatedDeliveryCompletionMax = (pricing['estimatedDeliveryCompletionMax'] as num?)?.toInt();
 
     _estimatedDeliveryCompletionMin ??= _estimatedDeliveryMin;
     _estimatedDeliveryCompletionMax ??= _estimatedDeliveryMax;
-    if (_estimatedDeliveryFirstMin == null &&
-        _estimatedDeliveryFirstMax == null &&
-        providerCount <= 1) {
+    if (_estimatedDeliveryFirstMin == null && _estimatedDeliveryFirstMax == null && providerCount <= 1) {
       _estimatedDeliveryFirstMin = _estimatedDeliveryMin;
       _estimatedDeliveryFirstMax = _estimatedDeliveryMax;
     }
@@ -1219,10 +1053,7 @@ class CartProvider extends ChangeNotifier {
     final parsed = Map<String, dynamic>.from(raw);
     final openingHoursRaw = parsed['openingHours'];
     if (openingHoursRaw is List) {
-      parsed['openingHours'] = openingHoursRaw
-          .whereType<Map>()
-          .map((e) => Map<String, dynamic>.from(e))
-          .toList();
+      parsed['openingHours'] = openingHoursRaw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
     } else {
       parsed['openingHours'] = const <Map<String, dynamic>>[];
     }
@@ -1267,9 +1098,7 @@ class CartProvider extends ChangeNotifier {
 
   void _resetGiftOrderDraftIfCartIsEmpty({bool notify = true}) {
     final shouldReset =
-        _cartItems.isEmpty ||
-        _normalizeFulfillmentMode(_fulfillmentMode) == 'pickup' ||
-        providerCount > 1;
+        _cartItems.isEmpty || _normalizeFulfillmentMode(_fulfillmentMode) == 'pickup' || providerCount > 1;
     if (!shouldReset) return;
     _resetGiftOrderDraft(notify: notify);
   }
@@ -1313,11 +1142,7 @@ class CartProvider extends ChangeNotifier {
     return '$mode:${_itemStableKey(item)}';
   }
 
-  String? _itemKeyFromBackend(
-    String? itemType,
-    Map<String, dynamic> itemData,
-    Map<String, dynamic> cartItem,
-  ) {
+  String? _itemKeyFromBackend(String? itemType, Map<String, dynamic> itemData, Map<String, dynamic> cartItem) {
     if (itemType == null) return null;
     final id =
         itemData['_id']?.toString() ??
@@ -1329,9 +1154,7 @@ class CartProvider extends ChangeNotifier {
         cartItem['itemId']?.toString();
 
     if (id == null || id.isEmpty) return null;
-    final mode = _normalizeFulfillmentMode(
-      cartItem['fulfillmentMode']?.toString() ?? _fulfillmentMode,
-    );
+    final mode = _normalizeFulfillmentMode(cartItem['fulfillmentMode']?.toString() ?? _fulfillmentMode);
     final customizationKey = cartItem['customizationKey']?.toString();
     if (customizationKey != null && customizationKey.trim().isNotEmpty) {
       return '$mode:$itemType:$id:${customizationKey.trim()}';
@@ -1427,8 +1250,7 @@ class CartProvider extends ChangeNotifier {
       return 'Add items to cart before applying a promo code.';
     }
     if (providerCount > 1) {
-      final message =
-          'Promo codes are currently available for single-vendor carts only.';
+      final message = 'Promo codes are currently available for single-vendor carts only.';
       _appliedPromoCode = null;
       _promoType = null;
       _promoDiscount = 0.0;
@@ -1454,9 +1276,7 @@ class CartProvider extends ChangeNotifier {
       return validation.message;
     }
 
-    _appliedPromoCode = validation.code.isEmpty
-        ? normalizedCode
-        : validation.code;
+    _appliedPromoCode = validation.code.isEmpty ? normalizedCode : validation.code;
     _promoErrorMessage = null;
     notifyListeners();
 
@@ -1490,9 +1310,7 @@ class CartProvider extends ChangeNotifier {
   Future<bool> replaceCartWithOrder(Map<String, dynamic> order) async {
     final rawItems = order['items'];
     if (rawItems is! List || rawItems.isEmpty) return false;
-    _fulfillmentMode = _normalizeFulfillmentMode(
-      order['fulfillmentMode']?.toString(),
-    );
+    _fulfillmentMode = _normalizeFulfillmentMode(order['fulfillmentMode']?.toString());
 
     final orderType = order['orderType']?.toString().toLowerCase();
     if (orderType == 'pharmacy') {
@@ -1591,10 +1409,7 @@ class CartProvider extends ChangeNotifier {
     String restaurantName = '';
     String restaurantImage = '';
     if (restaurantData != null) {
-      restaurantId =
-          restaurantData['_id']?.toString() ??
-          restaurantData['id']?.toString() ??
-          '';
+      restaurantId = restaurantData['_id']?.toString() ?? restaurantData['id']?.toString() ?? '';
       restaurantName =
           restaurantData['name']?.toString() ??
           restaurantData['restaurant_name']?.toString() ??
@@ -1608,8 +1423,7 @@ class CartProvider extends ChangeNotifier {
     }
 
     if (restaurantId.isEmpty) {
-      final rawRestaurantId =
-          itemData['restaurantId'] ?? itemData['restaurant'];
+      final rawRestaurantId = itemData['restaurantId'] ?? itemData['restaurant'];
       if (rawRestaurantId != null) {
         restaurantId = rawRestaurantId.toString();
       }
@@ -1645,12 +1459,8 @@ class CartProvider extends ChangeNotifier {
     rawOpen ??= fallbackIsOpen;
     final isVendorOperational = _isVendorOperational(restaurantData);
     final isVendorOpenNow = _isVendorOpenNow(restaurantData);
-    final effectiveItemAvailable =
-        _parseBool(itemData['isAvailable'], defaultValue: true) &&
-        isVendorOperational;
-    final effectiveRestaurantOpen =
-        _parseBool(rawOpen, defaultValue: isVendorOpenNow) &&
-        isVendorOperational;
+    final effectiveItemAvailable = _parseBool(itemData['isAvailable'], defaultValue: true) && isVendorOperational;
+    final effectiveRestaurantOpen = _parseBool(rawOpen, defaultValue: isVendorOpenNow) && isVendorOperational;
 
     return FoodItem(
       id:
@@ -1660,29 +1470,16 @@ class CartProvider extends ChangeNotifier {
           cartItem['foodId']?.toString() ??
           '',
       name: itemData['name']?.toString() ?? '',
-      price:
-          (cartItem['price'] as num?)?.toDouble() ??
-          (itemData['price'] as num?)?.toDouble() ??
-          0.0,
+      price: (cartItem['price'] as num?)?.toDouble() ?? (itemData['price'] as num?)?.toDouble() ?? 0.0,
       image:
           itemData['food_image']?.toString() ??
           itemData['image']?.toString() ??
           itemData['foodImage']?.toString() ??
           '',
       rating:
-          ((itemData['weightedRating'] ??
-                      itemData['displayRating'] ??
-                      itemData['rating'])
-                  as num?)
-              ?.toDouble() ??
-          0.0,
+          ((itemData['weightedRating'] ?? itemData['displayRating'] ?? itemData['rating']) as num?)?.toDouble() ?? 0.0,
       reviewCount:
-          ((itemData['reviewCount'] ??
-                      itemData['totalReviews'] ??
-                      itemData['ratingCount'])
-                  as num?)
-              ?.toInt() ??
-          0,
+          ((itemData['reviewCount'] ?? itemData['totalReviews'] ?? itemData['ratingCount']) as num?)?.toInt() ?? 0,
       description: itemData['description']?.toString() ?? '',
       sellerName: restaurantName,
       sellerId: restaurantId.isNotEmpty ? restaurantId.hashCode % 1000000 : 0,
@@ -1701,44 +1498,32 @@ class CartProvider extends ChangeNotifier {
       selectedPortion: cartItem['selectedPortion'] is Map
           ? Map<String, dynamic>.from(cartItem['selectedPortion'])
           : null,
-      selectedPreferences:
-          ((cartItem['selectedPreferences'] as List?) ?? const [])
-              .whereType<Map>()
-              .map((entry) => Map<String, dynamic>.from(entry))
-              .toList(growable: false),
+      selectedPreferences: ((cartItem['selectedPreferences'] as List?) ?? const [])
+          .whereType<Map>()
+          .map((entry) => Map<String, dynamic>.from(entry))
+          .toList(growable: false),
       itemNote: cartItem['itemNote']?.toString(),
       cartCustomizationKey: cartItem['customizationKey']?.toString(),
-      deliveryTimeMinutes:
-          (itemData['deliveryTimeMinutes'] as num?)?.toInt() ?? 30,
+      deliveryTimeMinutes: (itemData['deliveryTimeMinutes'] as num?)?.toInt() ?? 30,
       isAvailable: effectiveItemAvailable,
       isRestaurantOpen: effectiveRestaurantOpen,
     );
   }
 
   /// Create GroceryItem from backend data
-  GroceryItem _createGroceryItemFromBackend(
-    Map<String, dynamic> itemData,
-    Map<String, dynamic> cartItem,
-  ) {
+  GroceryItem _createGroceryItemFromBackend(Map<String, dynamic> itemData, Map<String, dynamic> cartItem) {
     // Extract store data if available
     final storeData = itemData['store'];
     String storeId = '';
 
     if (storeData != null) {
-      storeId =
-          storeData['_id']?.toString() ?? storeData['id']?.toString() ?? '';
+      storeId = storeData['_id']?.toString() ?? storeData['id']?.toString() ?? '';
     }
     final isStoreOperational = _isVendorOperational(storeData);
-    final effectiveItemAvailable =
-        _parseBool(itemData['isAvailable'], defaultValue: true) &&
-        isStoreOperational;
+    final effectiveItemAvailable = _parseBool(itemData['isAvailable'], defaultValue: true) && isStoreOperational;
 
     return GroceryItem.fromJson({
-      '_id':
-          itemData['_id'] ??
-          itemData['id'] ??
-          cartItem['itemId'] ??
-          cartItem['groceryItemId'],
+      '_id': itemData['_id'] ?? itemData['id'] ?? cartItem['itemId'] ?? cartItem['groceryItemId'],
       'name': itemData['name'] ?? '',
       'description': itemData['description'] ?? '',
       'image': itemData['image'] ?? itemData['imageUrl'] ?? '',
@@ -1750,9 +1535,7 @@ class CartProvider extends ChangeNotifier {
               ...Map<String, dynamic>.from(storeData),
               '_id': storeId.isNotEmpty
                   ? storeId
-                  : (storeData['_id']?.toString() ??
-                        storeData['id']?.toString() ??
-                        itemData['storeId']),
+                  : (storeData['_id']?.toString() ?? storeData['id']?.toString() ?? itemData['storeId']),
             }
           : (storeId.isNotEmpty ? storeId : itemData['storeId']),
       'brand': itemData['brand'] ?? '',
@@ -1762,79 +1545,39 @@ class CartProvider extends ChangeNotifier {
       'discountEndDate': itemData['discountEndDate'],
       'nutritionInfo': itemData['nutritionInfo'],
       'tags': itemData['tags'] ?? [],
-      'rating':
-          itemData['weightedRating'] ??
-          itemData['displayRating'] ??
-          itemData['rating'] ??
-          0.0,
-      'reviewCount':
-          itemData['reviewCount'] ??
-          itemData['totalReviews'] ??
-          itemData['ratingCount'] ??
-          0,
+      'rating': itemData['weightedRating'] ?? itemData['displayRating'] ?? itemData['rating'] ?? 0.0,
+      'reviewCount': itemData['reviewCount'] ?? itemData['totalReviews'] ?? itemData['ratingCount'] ?? 0,
       'orderCount': itemData['orderCount'] ?? 0,
       'createdAt': itemData['createdAt'],
     });
   }
 
-  PharmacyItem _createPharmacyItemFromBackend(
-    Map<String, dynamic> itemData,
-    Map<String, dynamic> cartItem,
-  ) {
+  PharmacyItem _createPharmacyItemFromBackend(Map<String, dynamic> itemData, Map<String, dynamic> cartItem) {
     final storeData = itemData['store'];
-    final storeMap = storeData is Map
-        ? Map<String, dynamic>.from(storeData)
-        : null;
-    final storeId =
-        storeMap?['_id']?.toString() ??
-        storeMap?['id']?.toString() ??
-        itemData['storeId']?.toString();
+    final storeMap = storeData is Map ? Map<String, dynamic>.from(storeData) : null;
+    final storeId = storeMap?['_id']?.toString() ?? storeMap?['id']?.toString() ?? itemData['storeId']?.toString();
     final isStoreOperational = _isVendorOperational(storeData);
-    final effectiveItemAvailable =
-        _parseBool(itemData['isAvailable'], defaultValue: true) &&
-        isStoreOperational;
+    final effectiveItemAvailable = _parseBool(itemData['isAvailable'], defaultValue: true) && isStoreOperational;
 
     return PharmacyItem.fromJson({
       ...itemData,
-      '_id':
-          itemData['_id'] ??
-          itemData['id'] ??
-          cartItem['itemId'] ??
-          cartItem['pharmacyItemId'],
-      'store': storeMap != null
-          ? {...storeMap, '_id': storeId}
-          : (storeId ?? itemData['store']),
+      '_id': itemData['_id'] ?? itemData['id'] ?? cartItem['itemId'] ?? cartItem['pharmacyItemId'],
+      'store': storeMap != null ? {...storeMap, '_id': storeId} : (storeId ?? itemData['store']),
       'isAvailable': effectiveItemAvailable,
     });
   }
 
-  GrabMartItem _createGrabMartItemFromBackend(
-    Map<String, dynamic> itemData,
-    Map<String, dynamic> cartItem,
-  ) {
+  GrabMartItem _createGrabMartItemFromBackend(Map<String, dynamic> itemData, Map<String, dynamic> cartItem) {
     final storeData = itemData['store'];
-    final storeMap = storeData is Map
-        ? Map<String, dynamic>.from(storeData)
-        : null;
-    final storeId =
-        storeMap?['_id']?.toString() ??
-        storeMap?['id']?.toString() ??
-        itemData['storeId']?.toString();
+    final storeMap = storeData is Map ? Map<String, dynamic>.from(storeData) : null;
+    final storeId = storeMap?['_id']?.toString() ?? storeMap?['id']?.toString() ?? itemData['storeId']?.toString();
     final isStoreOperational = _isVendorOperational(storeData);
-    final effectiveItemAvailable =
-        _parseBool(itemData['isAvailable'], defaultValue: true) &&
-        isStoreOperational;
+    final effectiveItemAvailable = _parseBool(itemData['isAvailable'], defaultValue: true) && isStoreOperational;
 
     return GrabMartItem.fromJson({
       ...itemData,
-      '_id':
-          itemData['_id'] ??
-          itemData['id'] ??
-          cartItem['itemId'] ??
-          cartItem['grabMartItemId'],
-      'store': storeMap != null
-          ? {...storeMap, '_id': storeId}
-          : (storeId ?? itemData['store']),
+      '_id': itemData['_id'] ?? itemData['id'] ?? cartItem['itemId'] ?? cartItem['grabMartItemId'],
+      'store': storeMap != null ? {...storeMap, '_id': storeId} : (storeId ?? itemData['store']),
       'isAvailable': effectiveItemAvailable,
     });
   }
@@ -1856,10 +1599,7 @@ class CartProvider extends ChangeNotifier {
 
     final status = map['status']?.toString().toLowerCase();
     final isApproved = status == null || status == 'approved';
-    final isAcceptingOrders = _parseBool(
-      map['isAcceptingOrders'],
-      defaultValue: true,
-    );
+    final isAcceptingOrders = _parseBool(map['isAcceptingOrders'], defaultValue: true);
     final isDeleted = _parseBool(map['isDeleted'], defaultValue: false);
 
     return isApproved && isAcceptingOrders && !isDeleted;
@@ -1868,18 +1608,14 @@ class CartProvider extends ChangeNotifier {
   bool _isVendorOpenNow(dynamic vendorData) {
     if (vendorData is! Map) return true;
     return _parseBool(
-      vendorData['isOpen'] ??
-          vendorData['is_open'] ??
-          vendorData['isRestaurantOpen'],
+      vendorData['isOpen'] ?? vendorData['is_open'] ?? vendorData['isRestaurantOpen'],
       defaultValue: true,
     );
   }
 
   Future<void> _saveCart() async {
     try {
-      final List<Map<String, dynamic>> cartList = _cartItems.entries.map((
-        entry,
-      ) {
+      final List<Map<String, dynamic>> cartList = _cartItems.entries.map((entry) {
         return {
           'item': entry.key.toJson(),
           'quantity': entry.value,
@@ -1909,11 +1645,7 @@ class CartProvider extends ChangeNotifier {
       debugPrint('  Item Name: ${item.name}');
       debugPrint('  Provider ID: ${item.providerId}');
 
-      final body = {
-        'itemId': item.id,
-        'itemType': item.itemType,
-        'quantity': quantity,
-      };
+      final body = {'itemId': item.id, 'itemType': item.itemType, 'quantity': quantity};
       body['fulfillmentMode'] = _fulfillmentMode;
 
       if (item.itemType == 'Food') {
@@ -1924,8 +1656,7 @@ class CartProvider extends ChangeNotifier {
             body['selectedPortionId'] = selectedPortionId;
           }
           if (item.selectedPreferenceOptionIds.isNotEmpty) {
-            body['selectedPreferenceOptionIds'] =
-                item.selectedPreferenceOptionIds;
+            body['selectedPreferenceOptionIds'] = item.selectedPreferenceOptionIds;
           }
           final note = item.itemNote?.trim();
           if (note != null && note.isNotEmpty) {
@@ -1950,10 +1681,7 @@ class CartProvider extends ChangeNotifier {
         promoCode: _appliedPromoCode,
       );
       if (!response.isSuccessful) {
-        return _extractCartApiErrorMessage(
-          response,
-          fallback: 'Failed to add item to cart.',
-        );
+        return _extractCartApiErrorMessage(response, fallback: 'Failed to add item to cart.');
       }
       debugPrint('✅ Successfully added to backend');
       return null;
@@ -1963,10 +1691,7 @@ class CartProvider extends ChangeNotifier {
     }
   }
 
-  String _extractCartApiErrorMessage(
-    Response<Map<String, dynamic>> response, {
-    required String fallback,
-  }) {
+  String _extractCartApiErrorMessage(Response<Map<String, dynamic>> response, {required String fallback}) {
     final body = response.body;
     if (body is Map<String, dynamic>) {
       final message = body['message']?.toString();
@@ -2018,10 +1743,7 @@ class CartProvider extends ChangeNotifier {
     return rawError.toLowerCase().contains('item not found in cart');
   }
 
-  Future<String?> _ensureCartItemId(
-    String key, {
-    bool forceRefresh = false,
-  }) async {
+  Future<String?> _ensureCartItemId(String key, {bool forceRefresh = false}) async {
     if (forceRefresh) {
       await syncFromBackend();
     }
@@ -2046,10 +1768,7 @@ class CartProvider extends ChangeNotifier {
         promoCode: _appliedPromoCode,
       );
       if (!response.isSuccessful) {
-        return _extractCartApiErrorMessage(
-          response,
-          fallback: 'Failed to remove item from cart.',
-        );
+        return _extractCartApiErrorMessage(response, fallback: 'Failed to remove item from cart.');
       }
       debugPrint('✅ Successfully removed from backend');
       return null;

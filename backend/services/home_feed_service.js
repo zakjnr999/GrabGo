@@ -344,6 +344,42 @@ const sortExclusiveVendors = (a, b) => {
   return aName.localeCompare(bName);
 };
 
+const sortFreeDeliveryVendors = (a, b) => {
+  const aFeatured = Boolean(a.featured);
+  const bFeatured = Boolean(b.featured);
+  if (aFeatured !== bFeatured) {
+    return Number(bFeatured) - Number(aFeatured);
+  }
+
+  const aAvailable = a.isOpen === true && a.isAcceptingOrders !== false;
+  const bAvailable = b.isOpen === true && b.isAcceptingOrders !== false;
+  if (aAvailable !== bAvailable) {
+    return Number(bAvailable) - Number(aAvailable);
+  }
+
+  const aOpen = a.isOpen === true;
+  const bOpen = b.isOpen === true;
+  if (aOpen !== bOpen) {
+    return Number(bOpen) - Number(aOpen);
+  }
+
+  const aDistance = a.distance ?? Number.POSITIVE_INFINITY;
+  const bDistance = b.distance ?? Number.POSITIVE_INFINITY;
+  if (aDistance !== bDistance) {
+    return aDistance - bDistance;
+  }
+
+  const aRating = Number(a.weightedRating ?? a.rating ?? 0);
+  const bRating = Number(b.weightedRating ?? b.rating ?? 0);
+  if (aRating !== bRating) {
+    return bRating - aRating;
+  }
+
+  const aName = (a.restaurantName || a.storeName || a.name || '').toLowerCase();
+  const bName = (b.restaurantName || b.storeName || b.name || '').toLowerCase();
+  return aName.localeCompare(bName);
+};
+
 const getLocationContext = async ({ userLat, userLng, maxDistance = 15 }) => {
   const location = validateLocationParams(userLat, userLng, maxDistance);
   if (!location) {
@@ -353,6 +389,7 @@ const getLocationContext = async ({ userLat, userLng, maxDistance = 15 }) => {
       maxDistanceKm: maxDistance,
       nearbyRestaurantIds: null,
       nearbyVendors: [],
+      freeDeliveryNearbyVendors: [],
     };
   }
 
@@ -375,14 +412,21 @@ const getLocationContext = async ({ userLat, userLng, maxDistance = 15 }) => {
     maxDistanceKm,
   );
 
+  const formattedNearbyVendors = filteredRestaurants
+    .map((restaurant) => formatRestaurantCard(restaurant))
+    .filter(Boolean);
+  const freeDeliveryNearbyVendors = formattedNearbyVendors
+    .filter((vendor) => Number(vendor.deliveryFee ?? vendor.delivery_fee ?? Number.POSITIVE_INFINITY) <= 0)
+    .sort(sortFreeDeliveryVendors)
+    .slice(0, HOME_SECTION_LIMIT);
+
   return {
     userLatitude,
     userLongitude,
     maxDistanceKm,
     nearbyRestaurantIds: filteredRestaurants.map((restaurant) => restaurant.id),
-    nearbyVendors: filteredRestaurants
-      .slice(0, HOME_SECTION_LIMIT)
-      .map((restaurant) => formatRestaurantCard(restaurant)),
+    nearbyVendors: formattedNearbyVendors.slice(0, HOME_SECTION_LIMIT),
+    freeDeliveryNearbyVendors,
   };
 };
 
@@ -785,6 +829,7 @@ const fetchFoodHomeFeed = async ({ userId, userLat, userLng, maxDistance = 15 })
   const {
     nearbyRestaurantIds,
     nearbyVendors,
+    freeDeliveryNearbyVendors,
     userLatitude,
     userLongitude,
     maxDistanceKm,
@@ -819,6 +864,7 @@ const fetchFoodHomeFeed = async ({ userId, userLat, userLng, maxDistance = 15 })
     recommended,
     promoBanners,
     nearbyVendors,
+    freeDeliveryNearbyVendors,
     exclusiveVendors,
     fetchedAt: new Date().toISOString(),
   };

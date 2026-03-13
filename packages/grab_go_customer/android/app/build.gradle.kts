@@ -21,6 +21,7 @@ android {
     namespace = "com.grabgo.customer"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
+    useLibrary("org.apache.http.legacy")
 
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
@@ -78,4 +79,3 @@ dependencies {
     implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("androidx.core:core-ktx:1.15.0")
 }
-
