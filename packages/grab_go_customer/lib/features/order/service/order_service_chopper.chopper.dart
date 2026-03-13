@@ -51,6 +51,13 @@ final class _$OrderServiceChopper extends OrderServiceChopper {
   }
 
   @override
+  Future<Response<Map<String, dynamic>>> getOrderPaymentStatus(String orderId) {
+    final Uri $url = Uri.parse('/orders/${orderId}/payment-status');
+    final Request $request = Request('GET', $url, client.baseUrl);
+    return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
+  }
+
+  @override
   Future<Response<Map<String, dynamic>>> releaseCreditHold(String orderId) {
     final Uri $url = Uri.parse('/orders/${orderId}/release-credit-hold');
     final Request $request = Request('POST', $url, client.baseUrl);
@@ -95,6 +102,17 @@ final class _$OrderServiceChopper extends OrderServiceChopper {
     );
     final $body = body;
     final Request $request = Request('POST', $url, client.baseUrl, body: $body);
+    return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
+  }
+
+  @override
+  Future<Response<Map<String, dynamic>>> getCheckoutSessionPaymentStatus(
+    String sessionId,
+  ) {
+    final Uri $url = Uri.parse(
+      '/checkout-sessions/${sessionId}/payment-status',
+    );
+    final Request $request = Request('GET', $url, client.baseUrl);
     return client.send<Map<String, dynamic>, Map<String, dynamic>>($request);
   }
 

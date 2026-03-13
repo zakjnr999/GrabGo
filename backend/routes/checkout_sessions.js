@@ -274,6 +274,85 @@ router.post(
   }
 );
 
+router.get('/:sessionId/payment-status', protect, async (req, res) => {
+  try {
+    if (req.user.role !== 'customer') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only customers can check checkout-session payment status',
+      });
+    }
+
+    const session = await prisma.checkoutSession.findUnique({
+      where: { id: req.params.sessionId },
+      select: {
+        id: true,
+        customerId: true,
+        status: true,
+        paymentStatus: true,
+        paymentProvider: true,
+        paymentReferenceId: true,
+        totalAmount: true,
+        groupOrderNumber: true,
+        orders: {
+          select: {
+            id: true,
+            orderNumber: true,
+            paymentStatus: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        message: 'Checkout session not found',
+      });
+    }
+
+    if (session.customerId !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized for this checkout session',
+      });
+    }
+
+    const paymentStatus = String(session.paymentStatus || 'pending');
+    const isPaid = ['paid', 'successful'].includes(paymentStatus);
+    const isTerminal = [
+      'paid',
+      'successful',
+      'failed',
+      'cancelled',
+      'expired',
+      'refunded',
+    ].includes(paymentStatus);
+
+    return res.json({
+      success: true,
+      message: 'Checkout-session payment status retrieved',
+      data: {
+        sessionId: session.id,
+        groupOrderNumber: session.groupOrderNumber,
+        paymentStatus,
+        sessionStatus: session.status,
+        paymentScope: 'full_group_payment',
+        paymentProvider: session.paymentProvider,
+        paymentReferenceId: session.paymentReferenceId,
+        externalPaymentAmount: Number(session.totalAmount || 0),
+        awaitingWebhook: paymentStatus === 'processing',
+        isPaid,
+        isTerminal,
+        childOrders: session.orders,
+      },
+    });
+  } catch (error) {
+    return handleCheckoutSessionError(res, error, 'payment_status');
+  }
+});
+
 router.post('/:sessionId/release-credit-hold', protect, async (req, res) => {
   try {
     if (req.user.role !== 'customer') {

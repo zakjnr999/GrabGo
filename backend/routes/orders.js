@@ -1433,6 +1433,82 @@ router.get("/cod/eligibility", protect, async (req, res) => {
   }
 });
 
+router.get("/:orderId/payment-status", protect, async (req, res) => {
+  try {
+    if (req.user.role !== "customer") {
+      return res.status(403).json({
+        success: false,
+        message: "Only customers can check payment status",
+      });
+    }
+
+    const order = await prisma.order.findUnique({
+      where: { id: req.params.orderId },
+      select: {
+        id: true,
+        customerId: true,
+        status: true,
+        paymentStatus: true,
+        paymentMethod: true,
+        paymentProvider: true,
+        paymentReferenceId: true,
+        totalAmount: true,
+      },
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    if (order.customerId !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to view this order",
+      });
+    }
+
+    const paymentStatus = String(order.paymentStatus || "pending");
+    const isPaid = ["paid", "successful"].includes(paymentStatus);
+    const isTerminal = [
+      "paid",
+      "successful",
+      "failed",
+      "cancelled",
+      "expired",
+      "refunded",
+    ].includes(paymentStatus);
+
+    return res.json({
+      success: true,
+      message: "Payment status retrieved",
+      data: {
+        orderId: order.id,
+        paymentStatus,
+        orderStatus: order.status,
+        paymentScope:
+          order.paymentMethod === "cash"
+            ? "cod_delivery_fee"
+            : "full_order_payment",
+        paymentProvider: order.paymentProvider,
+        paymentReferenceId: order.paymentReferenceId,
+        externalPaymentAmount: Number(order.totalAmount || 0),
+        awaitingWebhook: paymentStatus === "processing",
+        isPaid,
+        isTerminal,
+      },
+    });
+  } catch (error) {
+    console.error("Order payment status error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
+
 router.get("/:orderId", protect, async (req, res) => {
   try {
     const order = await prisma.order.findUnique({

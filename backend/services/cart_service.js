@@ -168,6 +168,201 @@ const mutationCartInclude = {
     }
 };
 
+const buildResolvedCartItemKey = (resolvedItem) => {
+    if (!resolvedItem) return null;
+    if (resolvedItem.itemTypeEnum === 'Food') {
+        return [
+            'Food',
+            resolvedItem.itemId,
+            resolvedItem.customizationKey || '-',
+            resolvedItem.vendorId || '-',
+        ].join(':');
+    }
+
+    return [
+        resolvedItem.itemTypeEnum,
+        resolvedItem.itemId,
+        resolvedItem.vendorId || '-',
+    ].join(':');
+};
+
+const buildCartItemCreateData = (resolvedItem) => {
+    const createData = {
+        itemType: resolvedItem.itemTypeEnum,
+        name: resolvedItem.itemName,
+        price: resolvedItem.price,
+        quantity: resolvedItem.quantity,
+        imageUrl: resolvedItem.imageUrl,
+    };
+
+    if (resolvedItem.itemTypeEnum === 'Food') {
+        createData.foodId = resolvedItem.itemId;
+        createData.selectedPortion = resolvedItem.selectedPortion;
+        createData.selectedPreferences =
+            Array.isArray(resolvedItem.selectedPreferences) &&
+            resolvedItem.selectedPreferences.length > 0
+                ? resolvedItem.selectedPreferences
+                : null;
+        createData.itemNote = resolvedItem.normalizedItemNote;
+        createData.customizationKey = resolvedItem.customizationKey;
+    } else if (resolvedItem.itemTypeEnum === 'GroceryItem') {
+        createData.groceryItemId = resolvedItem.itemId;
+    } else if (resolvedItem.itemTypeEnum === 'PharmacyItem') {
+        createData.pharmacyItemId = resolvedItem.itemId;
+    } else if (resolvedItem.itemTypeEnum === 'GrabMartItem') {
+        createData.grabMartItemId = resolvedItem.itemId;
+    }
+
+    return createData;
+};
+
+const resolveCartItemInput = async (itemData) => {
+    const {
+        itemId,
+        itemType,
+        quantity = 1,
+        restaurantId,
+        groceryStoreId,
+        pharmacyStoreId,
+        grabMartStoreId,
+        selectedPortionId,
+        selectedPreferenceOptionIds,
+        itemNote,
+        fulfillmentMode = 'delivery',
+    } = itemData;
+
+    if (!itemId) {
+        throw new Error('Item ID is required');
+    }
+
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100) {
+        throw new Error('Quantity must be between 1 and 100');
+    }
+
+    const itemTypeEnum = normalizeItemType(itemType);
+    if (!itemTypeEnum) {
+        throw new Error('Invalid item type');
+    }
+
+    let item;
+    let price;
+    let itemName;
+    let imageUrl;
+    let selectedPortion = null;
+    let selectedPreferences = null;
+    let customizationKey = null;
+    let normalizedItemNote = null;
+
+    if (itemTypeEnum === 'Food') {
+        item = await prisma.food.findUnique({ where: { id: itemId } });
+        if (!item) throw new Error('Item not found');
+        if (!item.isAvailable) throw new Error('Item is currently unavailable');
+        const customization = resolveFoodCustomization({
+            food: item,
+            selectedPortionId,
+            selectedPreferenceOptionIds,
+            itemNote,
+            basePrice: item.price,
+        });
+        price = customization.unitPrice;
+        itemName = item.name;
+        imageUrl = item.foodImage;
+        selectedPortion = customization.selectedPortion;
+        selectedPreferences = customization.selectedPreferences;
+        customizationKey = customization.customizationKey;
+        normalizedItemNote = customization.itemNote;
+    } else if (itemTypeEnum === 'GroceryItem') {
+        if (selectedPortionId || selectedPreferenceOptionIds || itemNote) {
+            throw new Error('Item customizations are only supported for food items');
+        }
+        item = await prisma.groceryItem.findUnique({ where: { id: itemId } });
+        if (!item) throw new Error('Item not found');
+        if (!item.isAvailable) throw new Error('Item is currently unavailable');
+        price = item.price;
+        itemName = item.name;
+        imageUrl = item.image;
+    } else if (itemTypeEnum === 'PharmacyItem') {
+        if (selectedPortionId || selectedPreferenceOptionIds || itemNote) {
+            throw new Error('Item customizations are only supported for food items');
+        }
+        item = await prisma.pharmacyItem.findUnique({ where: { id: itemId } });
+        if (!item) throw new Error('Item not found');
+        if (!item.isAvailable) throw new Error('Item is currently unavailable');
+        price = item.price;
+        itemName = item.name;
+        imageUrl = item.image;
+    } else if (itemTypeEnum === 'GrabMartItem') {
+        if (selectedPortionId || selectedPreferenceOptionIds || itemNote) {
+            throw new Error('Item customizations are only supported for food items');
+        }
+        item = await prisma.grabMartItem.findUnique({ where: { id: itemId } });
+        if (!item) throw new Error('Item not found');
+        if (!item.isAvailable) throw new Error('Item is currently unavailable');
+        price = item.price;
+        itemName = item.name;
+        imageUrl = item.image;
+    }
+
+    if (Number.isNaN(price) || price < 0) {
+        throw new Error('Invalid item price');
+    }
+
+    const cartType = cartTypeFromItemType(itemTypeEnum);
+    const normalizedMode = normalizeFulfillmentMode(fulfillmentMode);
+    let vendorId = null;
+    let vendorLabel = 'Vendor';
+    let vendorField = null;
+    let vendorDoc = null;
+
+    if (cartType === 'food') {
+        vendorId = restaurantId || item?.restaurantId;
+        vendorLabel = 'Restaurant';
+        vendorField = 'restaurantId';
+        if (!vendorId) throw new Error('Restaurant not found or inactive');
+        vendorDoc = await prisma.restaurant.findUnique({ where: { id: vendorId } });
+    } else if (cartType === 'grocery') {
+        vendorId = groceryStoreId || item?.storeId;
+        vendorLabel = 'Grocery store';
+        vendorField = 'groceryStoreId';
+        if (!vendorId) throw new Error('Grocery store not found or inactive');
+        vendorDoc = await prisma.groceryStore.findUnique({ where: { id: vendorId } });
+    } else if (cartType === 'pharmacy') {
+        vendorId = pharmacyStoreId || item?.storeId;
+        vendorLabel = 'Pharmacy store';
+        vendorField = 'pharmacyStoreId';
+        if (!vendorId) throw new Error('Pharmacy store not found or inactive');
+        vendorDoc = await prisma.pharmacyStore.findUnique({ where: { id: vendorId } });
+    } else if (cartType === 'grabmart') {
+        vendorId = grabMartStoreId || item?.storeId;
+        vendorLabel = 'GrabMart store';
+        vendorField = 'grabMartStoreId';
+        if (!vendorId) throw new Error('GrabMart store not found or inactive');
+        vendorDoc = await prisma.grabMartStore.findUnique({ where: { id: vendorId } });
+    }
+
+    const availabilityError = getVendorAvailabilityError(vendorDoc, vendorLabel);
+    if (availabilityError) throw new Error(availabilityError);
+
+    return {
+        itemId,
+        quantity,
+        itemTypeEnum,
+        cartType,
+        normalizedMode,
+        vendorId,
+        vendorField,
+        vendorLabel,
+        providerScopeKey: buildProviderScopeKey(cartType, vendorId),
+        price,
+        itemName,
+        imageUrl,
+        selectedPortion,
+        selectedPreferences,
+        customizationKey,
+        normalizedItemNote,
+    };
+};
+
 const readInclude = {
     items: {
         include: {
@@ -316,8 +511,8 @@ const sanitizeCartAfterRead = async (cart) => {
     return cart;
 };
 
-const refreshCartAggregates = async (cartId) => {
-    const items = await prisma.cartItem.findMany({
+const refreshCartAggregates = async (cartId, db = prisma) => {
+    const items = await db.cartItem.findMany({
         where: { cartId },
         select: {
             quantity: true,
@@ -344,7 +539,7 @@ const refreshCartAggregates = async (cartId) => {
         updateData.providerScopeKey = null;
     }
 
-    await prisma.cart.update({
+    await db.cart.update({
         where: { id: cartId },
         data: updateData
     });
@@ -356,7 +551,8 @@ const getOrCreateCart = async (
     fulfillmentMode = 'delivery',
     providerScopeKey = null,
     vendorField = null,
-    vendorId = null
+    vendorId = null,
+    db = prisma
 ) => {
     const normalizedMode = normalizeFulfillmentMode(fulfillmentMode);
     const resolvedScopeKey = featureFlags.isMixedCartEnabled ? providerScopeKey : null;
@@ -367,7 +563,7 @@ const getOrCreateCart = async (
         fulfillmentMode: normalizedMode,
         ...(resolvedScopeKey ? { providerScopeKey: resolvedScopeKey } : {})
     };
-    let cart = await prisma.cart.findFirst({
+    let cart = await db.cart.findFirst({
         where,
         include: {
             items: {
@@ -392,7 +588,7 @@ const getOrCreateCart = async (
             [vendorField]: vendorId
         };
 
-        const legacyCart = await prisma.cart.findFirst({
+        const legacyCart = await db.cart.findFirst({
             where: legacyWhere,
             include: {
                 items: {
@@ -407,7 +603,7 @@ const getOrCreateCart = async (
         });
 
         if (legacyCart) {
-            cart = await prisma.cart.update({
+            cart = await db.cart.update({
                 where: { id: legacyCart.id },
                 data: { providerScopeKey: resolvedScopeKey },
                 include: {
@@ -425,7 +621,7 @@ const getOrCreateCart = async (
     }
 
     if (!cart) {
-        cart = await prisma.cart.create({
+        cart = await db.cart.create({
             data: {
                 userId,
                 cartType,
@@ -444,6 +640,123 @@ const getOrCreateCart = async (
     return cart;
 };
 
+const syncCartState = async (userId, { items = [], fulfillmentMode = 'delivery' } = {}) => {
+    const normalizedMode = normalizeFulfillmentMode(fulfillmentMode);
+    const rawItems = Array.isArray(items) ? items : [];
+    const inputItems = rawItems
+        .filter((item) => item && typeof item === 'object')
+        .map((item) => ({
+            ...item,
+            quantity: Number(item.quantity || 0),
+            fulfillmentMode: normalizedMode,
+        }))
+        .filter((item) => item.quantity > 0);
+
+    const resolvedItems = [];
+    for (const item of inputItems) {
+        resolvedItems.push(await resolveCartItemInput(item));
+    }
+
+    const mergedItemsByKey = new Map();
+    for (const resolvedItem of resolvedItems) {
+        const key = buildResolvedCartItemKey(resolvedItem);
+        const existing = mergedItemsByKey.get(key);
+        if (existing) {
+            existing.quantity += resolvedItem.quantity;
+            if (existing.quantity > 100) {
+                throw new Error('Maximum quantity per item is 100');
+            }
+            continue;
+        }
+        mergedItemsByKey.set(key, { ...resolvedItem });
+    }
+
+    const mergedItems = Array.from(mergedItemsByKey.values());
+    if (!featureFlags.isMixedCartEnabled) {
+        const vendorScopes = new Set(mergedItems.map((item) => item.providerScopeKey).filter(Boolean));
+        if (vendorScopes.size > 1) {
+            throw new Error('Multiple vendors are not supported in this cart');
+        }
+    }
+
+    await prisma.$transaction(async (tx) => {
+        const existingCarts = await tx.cart.findMany({
+            where: {
+                userId,
+                isActive: true,
+                fulfillmentMode: normalizedMode,
+            },
+            select: { id: true },
+        });
+
+        const existingCartIds = existingCarts.map((cart) => cart.id);
+        if (existingCartIds.length > 0) {
+            await tx.cartItem.deleteMany({
+                where: { cartId: { in: existingCartIds } },
+            });
+
+            await tx.cart.updateMany({
+                where: { id: { in: existingCartIds } },
+                data: {
+                    restaurantId: null,
+                    groceryStoreId: null,
+                    pharmacyStoreId: null,
+                    grabMartStoreId: null,
+                    providerScopeKey: null,
+                    totalAmount: 0,
+                    itemCount: 0,
+                    abandonmentNotificationSent: false,
+                    abandonmentNotificationSentAt: null,
+                    lastUpdatedAt: new Date(),
+                },
+            });
+        }
+
+        const groupedItems = new Map();
+        for (const item of mergedItems) {
+            const groupKey = featureFlags.isMixedCartEnabled
+                ? (item.providerScopeKey || item.cartType)
+                : item.cartType;
+            if (!groupedItems.has(groupKey)) {
+                groupedItems.set(groupKey, []);
+            }
+            groupedItems.get(groupKey).push(item);
+        }
+
+        for (const groupItems of groupedItems.values()) {
+            const firstItem = groupItems[0];
+            const cart = await getOrCreateCart(
+                userId,
+                firstItem.cartType,
+                normalizedMode,
+                firstItem.providerScopeKey,
+                firstItem.vendorField,
+                firstItem.vendorId,
+                tx,
+            );
+
+            await tx.cart.update({
+                where: { id: cart.id },
+                data: {
+                    [firstItem.vendorField]: firstItem.vendorId,
+                    providerScopeKey: firstItem.providerScopeKey,
+                },
+            });
+
+            await tx.cartItem.createMany({
+                data: groupItems.map((item) => ({
+                    cartId: cart.id,
+                    ...buildCartItemCreateData(item),
+                })),
+            });
+
+            await refreshCartAggregates(cart.id, tx);
+        }
+    });
+
+    return getUserCartGroups(userId, normalizedMode);
+};
+
 /**
  * Add item to cart
  * @param {string} userId - User ID
@@ -451,145 +764,24 @@ const getOrCreateCart = async (
  * @returns {Promise<Object>} Updated cart
  */
 const addToCart = async (userId, itemData) => {
-    const {
-        itemId,
-        itemType,
-        quantity = 1,
-        restaurantId,
-        groceryStoreId,
-        pharmacyStoreId,
-        grabMartStoreId,
-        selectedPortionId,
-        selectedPreferenceOptionIds,
-        itemNote,
-        fulfillmentMode = 'delivery'
-    } = itemData;
-
-    // Validate quantity
-    if (quantity < 1 || quantity > 100) {
-        throw new Error('Quantity must be between 1 and 100');
-    }
-
-    const itemTypeEnum = normalizeItemType(itemType);
-    if (!itemTypeEnum) {
-        throw new Error('Invalid item type');
-    }
-
-    // Validate item exists and get item details
-    let item;
-    let price;
-    let itemName;
-    let imageUrl;
-    let selectedPortion = null;
-    let selectedPreferences = null;
-    let customizationKey = null;
-    let normalizedItemNote = null;
-
-    if (itemTypeEnum === 'Food') {
-        item = await prisma.food.findUnique({ where: { id: itemId } });
-        if (!item) throw new Error('Item not found');
-        if (!item.isAvailable) throw new Error('Item is currently unavailable');
-        const customization = resolveFoodCustomization({
-            food: item,
-            selectedPortionId,
-            selectedPreferenceOptionIds,
-            itemNote,
-            basePrice: item.price,
-        });
-        price = customization.unitPrice;
-        itemName = item.name;
-        imageUrl = item.foodImage;
-        selectedPortion = customization.selectedPortion;
-        selectedPreferences = customization.selectedPreferences;
-        customizationKey = customization.customizationKey;
-        normalizedItemNote = customization.itemNote;
-    } else if (itemTypeEnum === 'GroceryItem') {
-        if (selectedPortionId || selectedPreferenceOptionIds || itemNote) {
-            throw new Error('Item customizations are only supported for food items');
-        }
-        item = await prisma.groceryItem.findUnique({ where: { id: itemId } });
-        if (!item) throw new Error('Item not found');
-        if (!item.isAvailable) throw new Error('Item is currently unavailable');
-        price = item.price;
-        itemName = item.name;
-        imageUrl = item.image;
-    } else if (itemTypeEnum === 'PharmacyItem') {
-        if (selectedPortionId || selectedPreferenceOptionIds || itemNote) {
-            throw new Error('Item customizations are only supported for food items');
-        }
-        item = await prisma.pharmacyItem.findUnique({ where: { id: itemId } });
-        if (!item) throw new Error('Item not found');
-        if (!item.isAvailable) throw new Error('Item is currently unavailable');
-        price = item.price;
-        itemName = item.name;
-        imageUrl = item.image;
-    } else if (itemTypeEnum === 'GrabMartItem') {
-        if (selectedPortionId || selectedPreferenceOptionIds || itemNote) {
-            throw new Error('Item customizations are only supported for food items');
-        }
-        item = await prisma.grabMartItem.findUnique({ where: { id: itemId } });
-        if (!item) throw new Error('Item not found');
-        if (!item.isAvailable) throw new Error('Item is currently unavailable');
-        price = item.price;
-        itemName = item.name;
-        imageUrl = item.image;
-    }
-
-    // Validate price
-    if (isNaN(price) || price < 0) {
-        throw new Error('Invalid item price');
-    }
-
-    // Determine cart type
-    const cartType = cartTypeFromItemType(itemTypeEnum);
-    const normalizedMode = normalizeFulfillmentMode(fulfillmentMode);
-    let resolvedVendorId = null;
-    let vendorLabel = 'Vendor';
-    let vendorField = null;
-    let vendorDoc = null;
-
-    if (cartType === 'food') {
-        resolvedVendorId = restaurantId || item?.restaurantId;
-        vendorLabel = 'Restaurant';
-        vendorField = 'restaurantId';
-        if (!resolvedVendorId) throw new Error('Restaurant not found or inactive');
-        vendorDoc = await prisma.restaurant.findUnique({ where: { id: resolvedVendorId } });
-    } else if (cartType === 'grocery') {
-        resolvedVendorId = groceryStoreId || item?.storeId;
-        vendorLabel = 'Grocery store';
-        vendorField = 'groceryStoreId';
-        if (!resolvedVendorId) throw new Error('Grocery store not found or inactive');
-        vendorDoc = await prisma.groceryStore.findUnique({ where: { id: resolvedVendorId } });
-    } else if (cartType === 'pharmacy') {
-        resolvedVendorId = pharmacyStoreId || item?.storeId;
-        vendorLabel = 'Pharmacy store';
-        vendorField = 'pharmacyStoreId';
-        if (!resolvedVendorId) throw new Error('Pharmacy store not found or inactive');
-        vendorDoc = await prisma.pharmacyStore.findUnique({ where: { id: resolvedVendorId } });
-    } else if (cartType === 'grabmart') {
-        resolvedVendorId = grabMartStoreId || item?.storeId;
-        vendorLabel = 'GrabMart store';
-        vendorField = 'grabMartStoreId';
-        if (!resolvedVendorId) throw new Error('GrabMart store not found or inactive');
-        vendorDoc = await prisma.grabMartStore.findUnique({ where: { id: resolvedVendorId } });
-    }
-
-    const availabilityError = getVendorAvailabilityError(vendorDoc, vendorLabel);
-    if (availabilityError) throw new Error(availabilityError);
-
-    const providerScopeKey = buildProviderScopeKey(cartType, resolvedVendorId);
+    const resolvedItem = await resolveCartItemInput(itemData);
 
     // Get or create vendor-scoped cart when mixed cart is enabled.
     let cart = await getOrCreateCart(
         userId,
-        cartType,
-        normalizedMode,
-        providerScopeKey,
-        vendorField,
-        resolvedVendorId
+        resolvedItem.cartType,
+        resolvedItem.normalizedMode,
+        resolvedItem.providerScopeKey,
+        resolvedItem.vendorField,
+        resolvedItem.vendorId
     );
 
-    if (!featureFlags.isMixedCartEnabled && vendorField && cart[vendorField] && cart[vendorField] !== resolvedVendorId) {
+    if (
+        !featureFlags.isMixedCartEnabled &&
+        resolvedItem.vendorField &&
+        cart[resolvedItem.vendorField] &&
+        cart[resolvedItem.vendorField] !== resolvedItem.vendorId
+    ) {
         // Legacy behavior: clear cart when switching vendors.
         await prisma.cartItem.deleteMany({
             where: { cartId: cart.id }
@@ -599,8 +791,8 @@ const addToCart = async (userId, itemData) => {
     await prisma.cart.update({
         where: { id: cart.id },
         data: {
-            [vendorField]: resolvedVendorId,
-            providerScopeKey
+            [resolvedItem.vendorField]: resolvedItem.vendorId,
+            providerScopeKey: resolvedItem.providerScopeKey
         }
     });
 
@@ -612,18 +804,19 @@ const addToCart = async (userId, itemData) => {
 
     // Check if item already in cart
     const existingItem = cart.items.find(cartItem => {
-        if (itemTypeEnum === 'Food') {
-            return cartItem.foodId === itemId && (cartItem.customizationKey || null) === (customizationKey || null);
+        if (resolvedItem.itemTypeEnum === 'Food') {
+            return cartItem.foodId === resolvedItem.itemId &&
+                (cartItem.customizationKey || null) === (resolvedItem.customizationKey || null);
         }
-        if (itemTypeEnum === 'GroceryItem') return cartItem.groceryItemId === itemId;
-        if (itemTypeEnum === 'PharmacyItem') return cartItem.pharmacyItemId === itemId;
-        if (itemTypeEnum === 'GrabMartItem') return cartItem.grabMartItemId === itemId;
+        if (resolvedItem.itemTypeEnum === 'GroceryItem') return cartItem.groceryItemId === resolvedItem.itemId;
+        if (resolvedItem.itemTypeEnum === 'PharmacyItem') return cartItem.pharmacyItemId === resolvedItem.itemId;
+        if (resolvedItem.itemTypeEnum === 'GrabMartItem') return cartItem.grabMartItemId === resolvedItem.itemId;
         return false;
     });
 
     if (existingItem) {
         // Update quantity with max limit check
-        const newQuantity = existingItem.quantity + quantity;
+        const newQuantity = existingItem.quantity + resolvedItem.quantity;
         if (newQuantity > 100) {
             throw new Error('Maximum quantity per item is 100');
         }
@@ -634,29 +827,12 @@ const addToCart = async (userId, itemData) => {
         });
     } else {
         // Add new item
-        const createData = {
-            cartId: cart.id,
-            itemType: itemTypeEnum,
-            name: itemName,
-            price,
-            quantity,
-            imageUrl
-        };
-
-        if (itemTypeEnum === 'Food') {
-            createData.foodId = itemId;
-            createData.selectedPortion = selectedPortion;
-            createData.selectedPreferences = Array.isArray(selectedPreferences) && selectedPreferences.length > 0
-                ? selectedPreferences
-                : null;
-            createData.itemNote = normalizedItemNote;
-            createData.customizationKey = customizationKey;
-        }
-        else if (itemTypeEnum === 'GroceryItem') createData.groceryItemId = itemId;
-        else if (itemTypeEnum === 'PharmacyItem') createData.pharmacyItemId = itemId;
-        else if (itemTypeEnum === 'GrabMartItem') createData.grabMartItemId = itemId;
-
-        await prisma.cartItem.create({ data: createData });
+        await prisma.cartItem.create({
+            data: {
+                cartId: cart.id,
+                ...buildCartItemCreateData(resolvedItem),
+            },
+        });
     }
 
     await refreshCartAggregates(cart.id);
@@ -969,8 +1145,10 @@ const markAbandonmentNotificationSent = async (cartId) => {
 module.exports = {
     normalizeFulfillmentMode,
     buildProviderScopeKey,
+    resolveCartItemInput,
     getOrCreateCart,
     addToCart,
+    syncCartState,
     updateCartItem,
     removeFromCart,
     clearCart,

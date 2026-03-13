@@ -646,4 +646,58 @@ describe('Orders Routes - extracted flow regressions', () => {
       message: 'Server error',
     });
   });
+
+  test('returns order payment status for the owning customer', async () => {
+    prisma.order.findUnique.mockResolvedValue({
+      id: 'order-8',
+      customerId: 'customer-8',
+      status: 'confirmed',
+      paymentStatus: 'processing',
+      paymentMethod: 'card',
+      paymentProvider: 'paystack',
+      paymentReferenceId: 'ref-8',
+      totalAmount: 91.5,
+    });
+
+    const response = await withAuth(
+      request(app).get('/api/orders/order-8/payment-status'),
+      { role: 'customer', userId: 'customer-8', email: 'customer8@example.com' }
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toMatchObject({
+      success: true,
+      data: {
+        orderId: 'order-8',
+        paymentStatus: 'processing',
+        awaitingWebhook: true,
+        isPaid: false,
+        isTerminal: false,
+      },
+    });
+  });
+
+  test('returns 403 when another customer requests order payment status', async () => {
+    prisma.order.findUnique.mockResolvedValue({
+      id: 'order-8',
+      customerId: 'customer-8',
+      status: 'confirmed',
+      paymentStatus: 'paid',
+      paymentMethod: 'card',
+      paymentProvider: 'paystack',
+      paymentReferenceId: 'ref-8',
+      totalAmount: 91.5,
+    });
+
+    const response = await withAuth(
+      request(app).get('/api/orders/order-8/payment-status'),
+      { role: 'customer', userId: 'customer-9', email: 'customer9@example.com' }
+    );
+
+    expect(response.statusCode).toBe(403);
+    expect(response.body).toEqual({
+      success: false,
+      message: 'Not authorized to view this order',
+    });
+  });
 });

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -15,11 +16,19 @@ import 'package:grab_go_customer/shared/services/user_service.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
 class CartProvider extends ChangeNotifier {
+  static const Duration _cartSyncDebounceDuration = Duration(milliseconds: 350);
+  static const Duration _cartSyncRetryDelay = Duration(seconds: 2);
+  static const String _cartSyncMetadataCacheKey = 'cart_sync_metadata_v1';
+
   final Map<CartItem, int> _cartItems = {};
   bool _isSyncing = false;
   bool _syncQueued = false;
   Completer<bool>? _syncCompleter;
   int _localMutationVersion = 0;
+  int _lastSyncedCartVersion = 0;
+  int _lastAttemptedCartVersion = 0;
+  bool _hasDirtyCart = false;
+  Timer? _syncDebounceTimer;
   double? _subtotal;
   double _deliveryFee = 0.0;
   double _serviceFee = 0.0;
@@ -61,6 +70,8 @@ class CartProvider extends ChangeNotifier {
 
   Map<CartItem, int> get cartItems => _cartItems;
   bool get isSyncing => _isSyncing;
+  bool get hasDirtyCart => _hasDirtyCart;
+  bool get isBackgroundSyncing => _isSyncing && _hasDirtyCart;
   double get subtotal => _subtotal ?? totalPrice;
   double get deliveryFee => _deliveryFee;
   double get serviceFee => _serviceFee;
@@ -539,6 +550,46 @@ class CartProvider extends ChangeNotifier {
     return mode.toLowerCase() == 'pickup' ? 'pickup' : 'delivery';
   }
 
+  void _restoreCartSyncMetadata() {
+    try {
+      final raw = CacheService.getData(_cartSyncMetadataCacheKey);
+      if (raw == null || raw.trim().isEmpty) return;
+      final parsed = jsonDecode(raw);
+      if (parsed is! Map) return;
+      final metadata = Map<String, dynamic>.from(parsed);
+      _localMutationVersion =
+          (metadata['localMutationVersion'] as num?)?.toInt() ??
+          _localMutationVersion;
+      _lastSyncedCartVersion =
+          (metadata['lastSyncedCartVersion'] as num?)?.toInt() ??
+          _lastSyncedCartVersion;
+      _lastAttemptedCartVersion =
+          (metadata['lastAttemptedCartVersion'] as num?)?.toInt() ??
+          _lastAttemptedCartVersion;
+      _hasDirtyCart = metadata['hasDirtyCart'] == true;
+      _fulfillmentMode = _normalizeFulfillmentMode(
+        metadata['fulfillmentMode']?.toString(),
+      );
+    } catch (e) {
+      debugPrint('Error restoring cart sync metadata: $e');
+    }
+  }
+
+  Future<void> _persistCartSyncMetadata() async {
+    try {
+      final payload = jsonEncode({
+        'localMutationVersion': _localMutationVersion,
+        'lastSyncedCartVersion': _lastSyncedCartVersion,
+        'lastAttemptedCartVersion': _lastAttemptedCartVersion,
+        'hasDirtyCart': _hasDirtyCart,
+        'fulfillmentMode': _fulfillmentMode,
+      });
+      await CacheService.saveData(_cartSyncMetadataCacheKey, payload);
+    } catch (e) {
+      debugPrint('Error saving cart sync metadata: $e');
+    }
+  }
+
   CartProvider() {
     // Load cart data asynchronously without blocking
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -548,10 +599,15 @@ class CartProvider extends ChangeNotifier {
 
   Future<void> _loadCart() async {
     try {
+      _restoreCartSyncMetadata();
+
       // First load from local cache for immediate UI
       final cartList = CacheService.getCartItems();
       _cartItems.clear();
-      if (cartList.isNotEmpty) {
+      if (cartList.isNotEmpty &&
+          !_hasDirtyCart &&
+          _lastSyncedCartVersion == 0 &&
+          _localMutationVersion == 0) {
         _fulfillmentMode = _normalizeFulfillmentMode(
           cartList.first['fulfillmentMode'] as String?,
         );
@@ -587,14 +643,191 @@ class CartProvider extends ChangeNotifier {
       notifyListeners();
 
       // Then sync from backend in background
-      await syncFromBackend();
+      if (_cartItems.isNotEmpty || _hasDirtyCart) {
+        await syncFromBackend();
+      }
     } catch (e) {
       debugPrint('Error loading cart: $e');
     }
   }
 
+  void _scheduleCartSync({Duration delay = _cartSyncDebounceDuration}) {
+    if (!_hasDirtyCart || !UserService().isLoggedIn) return;
+    _syncDebounceTimer?.cancel();
+    _syncDebounceTimer = Timer(delay, () {
+      unawaited(syncFromBackend());
+    });
+  }
+
+  void _cancelScheduledCartSync() {
+    _syncDebounceTimer?.cancel();
+    _syncDebounceTimer = null;
+  }
+
+  Map<String, dynamic> _buildCartSyncItemPayload(CartItem item, int quantity) {
+    final payload = <String, dynamic>{
+      'itemId': item.id,
+      'itemType': item.itemType,
+      'quantity': quantity,
+      'providerId': item.providerId,
+    };
+
+    if (item.itemType == 'Food') {
+      payload['restaurantId'] = item.providerId;
+      if (item is FoodItem) {
+        final selectedPortionId = item.selectedPortionId?.trim();
+        if (selectedPortionId != null && selectedPortionId.isNotEmpty) {
+          payload['selectedPortionId'] = selectedPortionId;
+        }
+        if (item.selectedPreferenceOptionIds.isNotEmpty) {
+          payload['selectedPreferenceOptionIds'] =
+              item.selectedPreferenceOptionIds;
+        }
+        final note = item.itemNote?.trim();
+        if (note != null && note.isNotEmpty) {
+          payload['itemNote'] = note;
+        }
+      }
+    } else if (item.itemType == 'GroceryItem') {
+      payload['groceryStoreId'] = item.providerId;
+    } else if (item.itemType == 'PharmacyItem') {
+      payload['pharmacyStoreId'] = item.providerId;
+    } else if (item.itemType == 'GrabMartItem') {
+      payload['grabMartStoreId'] = item.providerId;
+    }
+
+    return payload;
+  }
+
+  Map<String, dynamic> _buildCartSyncRequestBody() {
+    final items = _cartItems.entries
+        .where((entry) => entry.value > 0)
+        .map((entry) => _buildCartSyncItemPayload(entry.key, entry.value))
+        .toList(growable: false);
+
+    return {
+      'clientCartVersion': _localMutationVersion,
+      'idempotencyKey':
+          'cart-sync-$_localMutationVersion-${DateTime.now().microsecondsSinceEpoch}',
+      'fulfillmentMode': _fulfillmentMode,
+      'useCredits': _useCredits,
+      'promoCode': _appliedPromoCode,
+      'items': items,
+    };
+  }
+
+  Map<String, dynamic>? _buildFlattenedCartDataFromGroupedPayload(
+    Map<String, dynamic> groupedPayload,
+    Map<String, _VendorGroupEta> parsedVendorGroupEtas,
+  ) {
+    final rawGroups = groupedPayload['groups'];
+    final flattenedItems = <Map<String, dynamic>>[];
+    Map<String, dynamic>? singleGroupScheduleAvailability;
+    String? groupedFulfillmentMode;
+
+    if (rawGroups is List) {
+      for (final rawGroup in rawGroups) {
+        if (rawGroup is! Map) continue;
+        final group = Map<String, dynamic>.from(rawGroup);
+        final groupItemType = _inferItemTypeFromRawGroup(group);
+        final groupEta = _extractEtaFromPricing(group['pricing']);
+        if (groupItemType != null && groupEta != null) {
+          final provider = _extractProviderIdentityFromRawGroup(
+            group,
+            groupItemType,
+          );
+          final groupKey = buildVendorGroupKey(
+            itemType: groupItemType,
+            providerId: provider.id,
+            providerName: provider.name,
+          );
+          parsedVendorGroupEtas[groupKey] = groupEta;
+        }
+        groupedFulfillmentMode =
+            groupedFulfillmentMode ?? group['fulfillmentMode']?.toString();
+        if (rawGroups.length == 1) {
+          final scheduleAvailability = group['scheduleAvailability'];
+          if (scheduleAvailability is Map) {
+            singleGroupScheduleAvailability = Map<String, dynamic>.from(
+              scheduleAvailability,
+            );
+          }
+        }
+
+        final groupItems = group['items'];
+        if (groupItems is! List) continue;
+        final groupMode = _normalizeFulfillmentMode(
+          group['fulfillmentMode']?.toString(),
+        );
+
+        for (final rawItem in groupItems) {
+          if (rawItem is! Map) continue;
+          final item = Map<String, dynamic>.from(rawItem);
+          item['fulfillmentMode'] = groupMode;
+          flattenedItems.add(item);
+        }
+      }
+    }
+
+    final summary = groupedPayload['summary'];
+    return {
+      'items': flattenedItems,
+      'fulfillmentMode': groupedFulfillmentMode ?? _fulfillmentMode,
+      'scheduleAvailability': singleGroupScheduleAvailability,
+      'pricing': summary is Map ? Map<String, dynamic>.from(summary) : null,
+    };
+  }
+
+  Future<Map<String, dynamic>?> _pushDirtyCartSnapshot() async {
+    final response = await cartApiService.syncCart(
+      _buildCartSyncRequestBody(),
+      fulfillmentMode: _fulfillmentMode,
+      lat: _deliveryLatitude,
+      lng: _deliveryLongitude,
+      useCredits: _useCredits,
+      promoCode: _appliedPromoCode,
+    );
+
+    final payload =
+        response.body ??
+        (response.error is Map<String, dynamic>
+            ? response.error as Map<String, dynamic>
+            : null);
+
+    if (payload is! Map<String, dynamic>) {
+      return null;
+    }
+
+    final code = payload['code']?.toString();
+    if (response.isSuccessful && payload['success'] == true) {
+      final acceptedVersion =
+          (payload['acceptedCartVersion'] as num?)?.toInt() ??
+          _localMutationVersion;
+      _lastAttemptedCartVersion = acceptedVersion;
+      _lastSyncedCartVersion = math.max(
+        _lastSyncedCartVersion,
+        acceptedVersion,
+      );
+      return payload;
+    }
+
+    if (code == 'CART_SYNC_REJECTED') {
+      final acceptedVersion =
+          (payload['acceptedCartVersion'] as num?)?.toInt() ??
+          _localMutationVersion;
+      _lastAttemptedCartVersion = acceptedVersion;
+      _lastSyncedCartVersion = math.max(
+        _lastSyncedCartVersion,
+        acceptedVersion,
+      );
+      return payload;
+    }
+    return null;
+  }
+
   /// Sync cart from backend
   Future<bool> syncFromBackend() async {
+    _cancelScheduledCartSync();
     if (_isSyncing) {
       _syncQueued = true;
       final currentSync = _syncCompleter;
@@ -646,102 +879,69 @@ class CartProvider extends ChangeNotifier {
       }
       Map<String, dynamic>? cartData;
       Object? syncError;
-
-      try {
-        final groupsResponse = await cartApiService.getCartGroups(
-          fulfillmentMode: _fulfillmentMode,
-          lat: _deliveryLatitude,
-          lng: _deliveryLongitude,
-          useCredits: _useCredits,
-          promoCode: _appliedPromoCode,
-        );
-        final groupsBody = groupsResponse.body;
-        if (groupsResponse.isSuccessful &&
-            groupsBody != null &&
-            groupsBody['success'] == true) {
-          syncSucceeded = true;
-          final rawGroups = groupsBody['groups'];
-          final flattenedItems = <Map<String, dynamic>>[];
-          Map<String, dynamic>? singleGroupScheduleAvailability;
-          String? groupedFulfillmentMode;
-
-          if (rawGroups is List) {
-            for (final rawGroup in rawGroups) {
-              if (rawGroup is! Map) continue;
-              final group = Map<String, dynamic>.from(rawGroup);
-              final groupItemType = _inferItemTypeFromRawGroup(group);
-              final groupEta = _extractEtaFromPricing(group['pricing']);
-              if (groupItemType != null && groupEta != null) {
-                final provider = _extractProviderIdentityFromRawGroup(
-                  group,
-                  groupItemType,
-                );
-                final groupKey = buildVendorGroupKey(
-                  itemType: groupItemType,
-                  providerId: provider.id,
-                  providerName: provider.name,
-                );
-                parsedVendorGroupEtas[groupKey] = groupEta;
-              }
-              groupedFulfillmentMode =
-                  groupedFulfillmentMode ??
-                  group['fulfillmentMode']?.toString();
-              if (rawGroups.length == 1) {
-                final scheduleAvailability = group['scheduleAvailability'];
-                if (scheduleAvailability is Map) {
-                  singleGroupScheduleAvailability = Map<String, dynamic>.from(
-                    scheduleAvailability,
-                  );
-                }
-              }
-
-              final groupItems = group['items'];
-              if (groupItems is! List) continue;
-              final groupMode = _normalizeFulfillmentMode(
-                group['fulfillmentMode']?.toString(),
-              );
-
-              for (final rawItem in groupItems) {
-                if (rawItem is! Map) continue;
-                final item = Map<String, dynamic>.from(rawItem);
-                item['fulfillmentMode'] = groupMode;
-                flattenedItems.add(item);
-              }
-            }
+      if (_hasDirtyCart) {
+        try {
+          final syncPayload = await _pushDirtyCartSnapshot();
+          if (syncPayload != null) {
+            syncSucceeded = true;
+            cartData = _buildFlattenedCartDataFromGroupedPayload(
+              syncPayload,
+              parsedVendorGroupEtas,
+            );
           }
-
-          final summary = groupsBody['summary'];
-          cartData = {
-            'items': flattenedItems,
-            'fulfillmentMode': groupedFulfillmentMode ?? _fulfillmentMode,
-            'scheduleAvailability': singleGroupScheduleAvailability,
-            'pricing': summary is Map
-                ? Map<String, dynamic>.from(summary)
-                : null,
-          };
+        } catch (e) {
+          syncError = e;
         }
-      } catch (e) {
-        syncError = e;
-      }
 
-      if (cartData == null) {
-        final response = await cartApiService.getCart(
-          type: _cartType ?? _inferCartType(),
-          fulfillmentMode: _fulfillmentMode,
-          lat: _deliveryLatitude,
-          lng: _deliveryLongitude,
-          useCredits: _useCredits,
-          promoCode: _appliedPromoCode,
-        );
-
-        if (response.isSuccessful && response.body != null) {
-          syncSucceeded = true;
-          final backendCart = response.body!['cart'];
-          if (backendCart is Map) {
-            cartData = Map<String, dynamic>.from(backendCart);
+        if (cartData == null) {
+          if (_hasDirtyCart) {
+            _scheduleCartSync(delay: _cartSyncRetryDelay);
           }
-        } else {
-          syncError = response.error;
+          debugPrint('Error syncing dirty cart snapshot: $syncError');
+          return false;
+        }
+      } else {
+        try {
+          final groupsResponse = await cartApiService.getCartGroups(
+            fulfillmentMode: _fulfillmentMode,
+            lat: _deliveryLatitude,
+            lng: _deliveryLongitude,
+            useCredits: _useCredits,
+            promoCode: _appliedPromoCode,
+          );
+          final groupsBody = groupsResponse.body;
+          if (groupsResponse.isSuccessful &&
+              groupsBody != null &&
+              groupsBody['success'] == true) {
+            syncSucceeded = true;
+            cartData = _buildFlattenedCartDataFromGroupedPayload(
+              groupsBody,
+              parsedVendorGroupEtas,
+            );
+          }
+        } catch (e) {
+          syncError = e;
+        }
+
+        if (cartData == null) {
+          final response = await cartApiService.getCart(
+            type: _cartType ?? _inferCartType(),
+            fulfillmentMode: _fulfillmentMode,
+            lat: _deliveryLatitude,
+            lng: _deliveryLongitude,
+            useCredits: _useCredits,
+            promoCode: _appliedPromoCode,
+          );
+
+          if (response.isSuccessful && response.body != null) {
+            syncSucceeded = true;
+            final backendCart = response.body!['cart'];
+            if (backendCart is Map) {
+              cartData = Map<String, dynamic>.from(backendCart);
+            }
+          } else {
+            syncError = response.error;
+          }
         }
       }
 
@@ -760,6 +960,7 @@ class CartProvider extends ChangeNotifier {
         _cartItemIdsByKey.clear();
         _cartType = null;
         _applyPricing(null);
+        _hasDirtyCart = _lastSyncedCartVersion < _localMutationVersion;
         _resetGiftOrderDraftIfCartIsEmpty(notify: false);
         await _saveCart();
         notifyListeners();
@@ -901,12 +1102,16 @@ class CartProvider extends ChangeNotifier {
         } else {
           _recalculateLocalPricing();
         }
+        _hasDirtyCart = _lastSyncedCartVersion < _localMutationVersion;
         _resetGiftOrderDraftIfCartIsEmpty(notify: false);
         await _saveCart();
         notifyListeners();
       }
     } catch (e) {
       debugPrint('Error syncing cart from backend: $e');
+      if (_hasDirtyCart) {
+        _scheduleCartSync(delay: _cartSyncRetryDelay);
+      }
       // Continue with local cache on error
     }
     return syncSucceeded;
@@ -1163,15 +1368,17 @@ class CartProvider extends ChangeNotifier {
     final normalizedMode = _normalizeFulfillmentMode(mode);
     if (_fulfillmentMode == normalizedMode) return;
 
+    _cancelScheduledCartSync();
     _fulfillmentMode = normalizedMode;
     _cartItems.clear();
     _cartItemIdsByKey.clear();
     _vendorGroupEtasByKey.clear();
     _cartType = null;
     _scheduleAvailability = null;
-    _markLocalCartMutated();
+    _hasDirtyCart = false;
     _applyPricing(null);
     _resetGiftOrderDraftIfCartIsEmpty(notify: false);
+    await _saveCart();
     notifyListeners();
     await syncFromBackend();
   }
@@ -1682,6 +1889,7 @@ class CartProvider extends ChangeNotifier {
       }).toList();
 
       await CacheService.saveCartItems(cartList);
+      await _persistCartSyncMetadata();
     } catch (e) {
       debugPrint('Error saving cart: $e');
     }
@@ -1689,6 +1897,7 @@ class CartProvider extends ChangeNotifier {
 
   void _markLocalCartMutated() {
     _localMutationVersion++;
+    _hasDirtyCart = true;
   }
 
   /// Add item to backend
@@ -1804,35 +2013,6 @@ class CartProvider extends ChangeNotifier {
     return null;
   }
 
-  String _humanizeAddToCartError(String rawError) {
-    final normalized = rawError.toLowerCase();
-    if (normalized.contains('currently closed') ||
-        normalized.contains('vendor is closed')) {
-      return 'This vendor is currently closed.';
-    }
-    if (normalized.contains('not accepting orders')) {
-      return 'This vendor is not accepting orders right now.';
-    }
-    if (normalized.contains('inactive') || normalized.contains('not found')) {
-      return 'This vendor is unavailable right now.';
-    }
-    if (normalized.contains('out of stock') ||
-        normalized.contains('not enough stock') ||
-        normalized.contains('insufficient stock')) {
-      return 'This item is out of stock.';
-    }
-    if (normalized.contains('unavailable')) {
-      return 'This item is currently unavailable.';
-    }
-    if (normalized.contains('portion')) {
-      return 'Please select a portion size before adding to cart.';
-    }
-    if (normalized.contains('preference')) {
-      return 'Please review your food preferences and try again.';
-    }
-    return 'Could not add item to cart. Please try again.';
-  }
-
   bool _isItemNotFoundInCartError(String? rawError) {
     if (rawError == null || rawError.trim().isEmpty) return false;
     return rawError.toLowerCase().contains('item not found in cart');
@@ -1851,31 +2031,6 @@ class CartProvider extends ChangeNotifier {
     await syncFromBackend();
     cartItemId = _cartItemIdsByKey[key];
     return cartItemId;
-  }
-
-  /// Update quantity on backend
-  Future<String?> _updateQuantityOnBackend(String itemId, int quantity) async {
-    try {
-      final response = await cartApiService.updateCartItem(
-        itemId,
-        {'quantity': quantity},
-        fulfillmentMode: _fulfillmentMode,
-        lat: _deliveryLatitude,
-        lng: _deliveryLongitude,
-        useCredits: _useCredits,
-        promoCode: _appliedPromoCode,
-      );
-      if (!response.isSuccessful) {
-        return _extractCartApiErrorMessage(
-          response,
-          fallback: 'Failed to update cart item quantity.',
-        );
-      }
-      return null;
-    } catch (e) {
-      debugPrint('Error updating backend cart: $e');
-      return e.toString();
-    }
   }
 
   /// Remove from backend
@@ -1914,7 +2069,6 @@ class CartProvider extends ChangeNotifier {
 
     final key = _itemKey(item);
     if (_pendingItemOps.contains(key)) return;
-    _pendingItemOps.add(key);
 
     final localIssue = _getLocalAddToCartBlockingIssue(item);
     if (localIssue != null) {
@@ -1926,7 +2080,6 @@ class CartProvider extends ChangeNotifier {
           maxLines: 2,
         );
       }
-      _pendingItemOps.remove(key);
       return;
     }
 
@@ -1939,65 +2092,18 @@ class CartProvider extends ChangeNotifier {
         : item.itemType == 'GrabMartItem'
         ? 'grabmart'
         : _cartType;
-    final previousQuantity = _cartItems[item] ?? 0;
-
-    try {
-      if (_cartItems.containsKey(item)) {
-        _cartItems[item] = _cartItems[item]! + 1;
-      } else {
-        _cartItems[item] = 1;
-      }
-
-      _markLocalCartMutated();
-      _recalculateLocalPricing();
-      _saveCart();
-      _resetGiftOrderDraftIfCartIsEmpty(notify: false);
-      notifyListeners();
-
-      // Sync to backend async
-      String? addError;
-      if (previousQuantity == 0) {
-        _cartItemIdsByKey.remove(key);
-        addError = await _addToBackend(item, 1);
-      } else {
-        final cartItemId = _cartItemIdsByKey[key];
-        if (cartItemId != null) {
-          addError = await _updateQuantityOnBackend(
-            cartItemId,
-            _cartItems[item]!,
-          );
-        } else {
-          addError = await _addToBackend(item, 1);
-        }
-      }
-
-      if (addError != null) {
-        if (previousQuantity == 0) {
-          _cartItems.remove(item);
-        } else {
-          _cartItems[item] = previousQuantity;
-        }
-        _markLocalCartMutated();
-        _recalculateLocalPricing();
-        _saveCart();
-        _resetGiftOrderDraftIfCartIsEmpty(notify: false);
-        notifyListeners();
-        await syncFromBackend();
-        if (context != null && context.mounted) {
-          AppToastMessage.show(
-            context: context,
-            backgroundColor: context.appColors.error,
-            message: _humanizeAddToCartError(addError),
-            maxLines: 2,
-          );
-        }
-        return;
-      }
-
-      await syncFromBackend();
-    } finally {
-      _pendingItemOps.remove(key);
+    if (_cartItems.containsKey(item)) {
+      _cartItems[item] = _cartItems[item]! + 1;
+    } else {
+      _cartItems[item] = 1;
     }
+    _cartItemIdsByKey.remove(key);
+    _markLocalCartMutated();
+    _recalculateLocalPricing();
+    _resetGiftOrderDraftIfCartIsEmpty(notify: false);
+    await _saveCart();
+    notifyListeners();
+    _scheduleCartSync();
   }
 
   Future<void> removeFromCart(CartItem item) async {
@@ -2005,84 +2111,21 @@ class CartProvider extends ChangeNotifier {
 
     final key = _itemKey(item);
     if (_pendingItemOps.contains(key)) return;
-    var cartItemId = _cartItemIdsByKey[key];
-    cartItemId ??= await _ensureCartItemId(key, forceRefresh: true);
-    if (cartItemId == null) {
-      await syncFromBackend();
-      return;
-    }
-    _pendingItemOps.add(key);
-
-    try {
-      final previousQuantity = _cartItems[item]!;
-      final previousCartType = _cartType;
-      String? backendError;
-
-      if (_cartItems[item]! > 1) {
-        _cartItems[item] = _cartItems[item]! - 1;
-        _markLocalCartMutated();
-        _recalculateLocalPricing();
-        _saveCart();
-        _resetGiftOrderDraftIfCartIsEmpty(notify: false);
-        notifyListeners();
-        backendError = await _updateQuantityOnBackend(
-          cartItemId,
-          _cartItems[item]!,
-        );
-        if (_isItemNotFoundInCartError(backendError)) {
-          final freshCartItemId = await _ensureCartItemId(
-            key,
-            forceRefresh: true,
-          );
-          if (freshCartItemId != null) {
-            cartItemId = freshCartItemId;
-            backendError = await _updateQuantityOnBackend(
-              freshCartItemId,
-              _cartItems[item]!,
-            );
-          }
-        }
-      } else {
-        _cartItems.remove(item);
-        if (_cartItems.isEmpty) {
-          _cartType = null;
-        }
-        _markLocalCartMutated();
-        _recalculateLocalPricing();
-        _saveCart();
-        _resetGiftOrderDraftIfCartIsEmpty(notify: false);
-        notifyListeners();
-        backendError = await _removeFromBackend(cartItemId);
-        if (_isItemNotFoundInCartError(backendError)) {
-          final freshCartItemId = await _ensureCartItemId(
-            key,
-            forceRefresh: true,
-          );
-          if (freshCartItemId != null) {
-            cartItemId = freshCartItemId;
-            backendError = await _removeFromBackend(freshCartItemId);
-          } else {
-            backendError = null;
-          }
-        }
+    if (_cartItems[item]! > 1) {
+      _cartItems[item] = _cartItems[item]! - 1;
+    } else {
+      _cartItems.remove(item);
+      _cartItemIdsByKey.remove(key);
+      if (_cartItems.isEmpty) {
+        _cartType = null;
       }
-
-      if (backendError != null) {
-        _cartItems[item] = previousQuantity;
-        _cartType = previousCartType;
-        _markLocalCartMutated();
-        _recalculateLocalPricing();
-        _saveCart();
-        _resetGiftOrderDraftIfCartIsEmpty(notify: false);
-        notifyListeners();
-        await syncFromBackend();
-        return;
-      }
-
-      await syncFromBackend();
-    } finally {
-      _pendingItemOps.remove(key);
     }
+    _markLocalCartMutated();
+    _recalculateLocalPricing();
+    _resetGiftOrderDraftIfCartIsEmpty(notify: false);
+    await _saveCart();
+    notifyListeners();
+    _scheduleCartSync();
   }
 
   Future<void> removeItemCompletely(CartItem item) async {
@@ -2094,51 +2137,22 @@ class CartProvider extends ChangeNotifier {
 
     final key = _itemKey(item);
     if (_pendingItemOps.contains(key)) return;
-    var cartItemId = _cartItemIdsByKey[key];
-    cartItemId ??= await _ensureCartItemId(key, forceRefresh: true);
-    if (cartItemId == null) {
-      await syncFromBackend();
-      return;
+    _cartItems.remove(item);
+    _cartItemIdsByKey.remove(key);
+    if (_cartItems.isEmpty) {
+      _cartType = null;
     }
-    _pendingItemOps.add(key);
-
-    try {
-      var backendError = await _removeFromBackend(cartItemId);
-      if (_isItemNotFoundInCartError(backendError)) {
-        final freshCartItemId = await _ensureCartItemId(
-          key,
-          forceRefresh: true,
-        );
-        if (freshCartItemId != null) {
-          cartItemId = freshCartItemId;
-          backendError = await _removeFromBackend(freshCartItemId);
-        } else {
-          backendError = null;
-        }
-      }
-      if (backendError != null) {
-        await syncFromBackend();
-        return;
-      }
-
-      _cartItems.remove(item);
-      if (_cartItems.isEmpty) {
-        _cartType = null;
-      }
-      _markLocalCartMutated();
-      _recalculateLocalPricing();
-      _saveCart();
-      _resetGiftOrderDraftIfCartIsEmpty(notify: false);
-      notifyListeners();
-      debugPrint('✅ Remove operation completed');
-
-      await syncFromBackend();
-    } finally {
-      _pendingItemOps.remove(key);
-    }
+    _markLocalCartMutated();
+    _recalculateLocalPricing();
+    _resetGiftOrderDraftIfCartIsEmpty(notify: false);
+    await _saveCart();
+    notifyListeners();
+    debugPrint('✅ Remove operation completed');
+    _scheduleCartSync();
   }
 
   Future<void> clearCart() async {
+    _cancelScheduledCartSync();
     _cartItems.clear();
     _cartType = null;
     _cartItemIdsByKey.clear();
@@ -2146,22 +2160,9 @@ class CartProvider extends ChangeNotifier {
     _markLocalCartMutated();
     _applyPricing(null);
     _resetGiftOrderDraftIfCartIsEmpty(notify: false);
-    _saveCart();
+    await _saveCart();
     notifyListeners();
-
-    // Clear backend cart async
-    try {
-      await cartApiService.clearCart(
-        fulfillmentMode: _fulfillmentMode,
-        lat: _deliveryLatitude,
-        lng: _deliveryLongitude,
-        useCredits: _useCredits,
-        promoCode: _appliedPromoCode,
-      );
-      await syncFromBackend();
-    } catch (e) {
-      debugPrint('Error clearing backend cart: $e');
-    }
+    _scheduleCartSync(delay: Duration.zero);
   }
 
   double get totalPrice {
@@ -2179,6 +2180,12 @@ class CartProvider extends ChangeNotifier {
   }
 
   int get uniqueItemCount => _cartItems.length;
+
+  @override
+  void dispose() {
+    _cancelScheduledCartSync();
+    super.dispose();
+  }
 }
 
 class _VendorGroupEta {

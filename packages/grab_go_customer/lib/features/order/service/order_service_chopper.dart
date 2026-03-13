@@ -23,6 +23,11 @@ abstract class OrderServiceChopper extends ChopperService {
     @Body() Map<String, dynamic> body,
   );
 
+  @GET(path: '/orders/{orderId}/payment-status')
+  Future<Response<Map<String, dynamic>>> getOrderPaymentStatus(
+    @Path() String orderId,
+  );
+
   @POST(path: '/orders/{orderId}/release-credit-hold')
   Future<Response<Map<String, dynamic>>> releaseCreditHold(
     @Path() String orderId,
@@ -47,6 +52,11 @@ abstract class OrderServiceChopper extends ChopperService {
   Future<Response<Map<String, dynamic>>> confirmCheckoutSessionPayment(
     @Path() String sessionId,
     @Body() Map<String, dynamic> body,
+  );
+
+  @GET(path: '/checkout-sessions/{sessionId}/payment-status')
+  Future<Response<Map<String, dynamic>>> getCheckoutSessionPaymentStatus(
+    @Path() String sessionId,
   );
 
   @POST(path: '/checkout-sessions/{sessionId}/release-credit-hold')

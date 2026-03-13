@@ -27,7 +27,25 @@ class PaymentConfirming extends StatefulWidget {
 }
 
 class _PaymentConfirmingState extends State<PaymentConfirming> {
+  static const List<Duration> _confirmationRetryDelays = <Duration>[
+    Duration.zero,
+    Duration(seconds: 2),
+    Duration(seconds: 3),
+    Duration(seconds: 5),
+    Duration(seconds: 8),
+  ];
+  static const List<Duration> _statusPollDelays = <Duration>[
+    Duration(seconds: 2),
+    Duration(seconds: 3),
+    Duration(seconds: 5),
+    Duration(seconds: 5),
+    Duration(seconds: 8),
+  ];
+
   bool _isConfirming = true;
+  bool _showManualRetry = false;
+  String _title = 'Confirming payment...';
+  String _subtitle = 'Please wait a moment';
 
   @override
   void initState() {
@@ -36,9 +54,14 @@ class _PaymentConfirmingState extends State<PaymentConfirming> {
   }
 
   Future<void> _confirmPayment() async {
-    setState(() {
-      _isConfirming = true;
-    });
+    if (mounted) {
+      setState(() {
+        _isConfirming = true;
+        _showManualRetry = false;
+        _title = 'Confirming payment...';
+        _subtitle = 'Please wait a moment';
+      });
+    }
 
     if (widget.flow == 'subscription') {
       try {
@@ -47,7 +70,9 @@ class _PaymentConfirmingState extends State<PaymentConfirming> {
           Navigator.of(context).pop(false);
           return;
         }
-        final confirmation = await SubscriptionService().confirmPayment(widget.reference);
+        final confirmation = await SubscriptionService().confirmPayment(
+          widget.reference,
+        );
         if (!mounted) return;
         Navigator.of(context).pop(confirmation.confirmed);
         return;
@@ -59,29 +84,12 @@ class _PaymentConfirmingState extends State<PaymentConfirming> {
       }
     }
 
-    final orderService = OrderServiceWrapper();
-    ConfirmPaymentResult confirmationResult = const ConfirmPaymentResult(
-      success: false,
-    );
-    try {
-      if (widget.sessionId != null && widget.sessionId!.isNotEmpty) {
-        confirmationResult = await orderService.confirmCheckoutSessionPayment(
-          sessionId: widget.sessionId!,
-          reference: widget.reference,
-        );
-      } else if (widget.orderId != null && widget.orderId!.isNotEmpty) {
-        confirmationResult = await orderService.confirmPayment(
-          orderId: widget.orderId!,
-          reference: widget.reference,
-        );
-      }
-    } catch (e) {
-      debugPrint('⚠️ Failed to confirm payment: $e');
-    }
-
+    final confirmationResult = await _confirmPaymentWithRetry();
     if (!mounted) return;
 
-    if (confirmationResult.success) {
+    if (confirmationResult != null &&
+        confirmationResult.success &&
+        !confirmationResult.awaitingWebhook) {
       final mergedPaymentData = <String, dynamic>{
         ...widget.paymentData,
         'paymentScope':
@@ -97,7 +105,153 @@ class _PaymentConfirmingState extends State<PaymentConfirming> {
       context.go('/paymentComplete', extra: mergedPaymentData);
       return;
     }
+
+    if (confirmationResult == null ||
+        confirmationResult.awaitingWebhook ||
+        confirmationResult.indeterminate) {
+      final statusResult = await _pollPaymentStatusWithRetry();
+      if (!mounted) return;
+
+      if (statusResult?.isPaid == true) {
+        final mergedPaymentData = <String, dynamic>{
+          ...widget.paymentData,
+          'paymentScope':
+              statusResult?.paymentScope ?? widget.paymentData['paymentScope'],
+          'total':
+              statusResult?.externalPaymentAmount ??
+              widget.paymentData['total'],
+        };
+        context.go('/paymentComplete', extra: mergedPaymentData);
+        return;
+      }
+
+      if (statusResult?.isTerminal == true) {
+        context.go('/paymentFailed', extra: widget.paymentData);
+        return;
+      }
+
+      setState(() {
+        _isConfirming = false;
+        _showManualRetry = true;
+        _title = 'Still confirming your payment';
+        _subtitle =
+            'Your payment may already be processing. Keep this screen open and check again.';
+      });
+      return;
+    }
+
     context.go('/paymentFailed', extra: widget.paymentData);
+  }
+
+  Future<ConfirmPaymentResult?> _confirmPaymentWithRetry() async {
+    final orderService = OrderServiceWrapper();
+    ConfirmPaymentResult? lastResult;
+
+    for (final delay in _confirmationRetryDelays) {
+      if (delay > Duration.zero) {
+        await Future.delayed(delay);
+      }
+      if (!mounted) return null;
+
+      ConfirmPaymentResult confirmationResult = const ConfirmPaymentResult(
+        success: false,
+      );
+      try {
+        if (widget.sessionId != null && widget.sessionId!.isNotEmpty) {
+          confirmationResult = await orderService.confirmCheckoutSessionPayment(
+            sessionId: widget.sessionId!,
+            reference: widget.reference,
+          );
+        } else if (widget.orderId != null && widget.orderId!.isNotEmpty) {
+          confirmationResult = await orderService.confirmPayment(
+            orderId: widget.orderId!,
+            reference: widget.reference,
+          );
+        }
+      } catch (e) {
+        debugPrint('⚠️ Failed to confirm payment: $e');
+      }
+
+      lastResult = confirmationResult;
+
+      if (confirmationResult.success && !confirmationResult.awaitingWebhook) {
+        return confirmationResult;
+      }
+
+      if (!confirmationResult.success && !confirmationResult.indeterminate) {
+        return confirmationResult;
+      }
+
+      if (!mounted) return null;
+      setState(() {
+        _isConfirming = true;
+        _showManualRetry = false;
+        _title = confirmationResult.awaitingWebhook
+            ? 'Finalizing your payment'
+            : 'Still confirming your payment';
+        _subtitle = confirmationResult.awaitingWebhook
+            ? 'Payment was received. We are waiting for final confirmation.'
+            : 'Connection was interrupted. We are safely retrying confirmation.';
+      });
+    }
+
+    if (lastResult?.success == true && lastResult?.awaitingWebhook == true) {
+      return null;
+    }
+
+    if (lastResult?.indeterminate == true) {
+      return null;
+    }
+
+    return lastResult;
+  }
+
+  Future<PaymentStatusResult?> _pollPaymentStatusWithRetry() async {
+    final orderService = OrderServiceWrapper();
+    PaymentStatusResult? lastResult;
+
+    for (final delay in _statusPollDelays) {
+      await Future.delayed(delay);
+      if (!mounted) return null;
+
+      PaymentStatusResult statusResult;
+      if (widget.sessionId != null && widget.sessionId!.isNotEmpty) {
+        statusResult = await orderService.getCheckoutSessionPaymentStatus(
+          sessionId: widget.sessionId!,
+        );
+      } else if (widget.orderId != null && widget.orderId!.isNotEmpty) {
+        statusResult = await orderService.getOrderPaymentStatus(
+          orderId: widget.orderId!,
+        );
+      } else {
+        return null;
+      }
+
+      lastResult = statusResult;
+
+      if (!mounted) return null;
+      setState(() {
+        _isConfirming = true;
+        _showManualRetry = false;
+        _title = statusResult.awaitingWebhook
+            ? 'Finalizing your payment'
+            : 'Still confirming your payment';
+        _subtitle = statusResult.awaitingWebhook
+            ? 'Payment was received. We are waiting for final confirmation.'
+            : 'We are checking the latest payment status now.';
+      });
+
+      if (statusResult.isPaid || statusResult.isTerminal) {
+        return statusResult;
+      }
+    }
+
+    return lastResult;
+  }
+
+  void _retryConfirmation() {
+    if (_isConfirming) return;
+    _confirmPayment();
   }
 
   @override
@@ -115,21 +269,63 @@ class _PaymentConfirmingState extends State<PaymentConfirming> {
               if (_isConfirming) ...[
                 SpinKitCubeGrid(color: colors.accentOrange, size: 35),
                 SizedBox(height: 16.h),
-                Text(
-                  'Confirming payment...',
-                  style: TextStyle(
-                    color: colors.textPrimary,
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.w700,
+              ] else ...[
+                Container(
+                  width: 64.w,
+                  height: 64.h,
+                  decoration: BoxDecoration(
+                    color: colors.accentOrange.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.sync_problem_rounded,
+                    color: colors.accentOrange,
+                    size: 30.sp,
                   ),
                 ),
-                SizedBox(height: 6.h),
-                Text(
-                  'Please wait a moment',
-                  style: TextStyle(
-                    color: colors.textSecondary,
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w500,
+                SizedBox(height: 16.h),
+              ],
+              Text(
+                _title,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: colors.textPrimary,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              SizedBox(height: 6.h),
+              Text(
+                _subtitle,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: colors.textSecondary,
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              if (_showManualRetry) ...[
+                SizedBox(height: 20.h),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _retryConfirmation,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colors.accentOrange,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: EdgeInsets.symmetric(vertical: 14.h),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14.r),
+                      ),
+                    ),
+                    child: Text(
+                      'Check Again',
+                      style: TextStyle(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ),
               ],

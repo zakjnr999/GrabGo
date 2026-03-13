@@ -298,4 +298,55 @@ describe('Checkout Session Routes', () => {
       result: 'failure',
     });
   });
+
+  test('returns checkout-session payment status for the owning customer', async () => {
+    prisma.checkoutSession.findUnique.mockResolvedValue({
+      id: 'session-1',
+      customerId: 'customer-1',
+      status: 'processing',
+      paymentStatus: 'processing',
+      paymentProvider: 'paystack',
+      paymentReferenceId: 'ref-1',
+      totalAmount: 42.5,
+      groupOrderNumber: 'GRP-1',
+      orders: [
+        {
+          id: 'order-1',
+          orderNumber: 'ORD-1',
+          paymentStatus: 'processing',
+          status: 'pending',
+        },
+      ],
+    });
+
+    const response = await withAuth(
+      request(app).get('/api/checkout-sessions/session-1/payment-status')
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toMatchObject({
+      success: true,
+      data: {
+        sessionId: 'session-1',
+        paymentStatus: 'processing',
+        awaitingWebhook: true,
+        isPaid: false,
+        isTerminal: false,
+      },
+    });
+  });
+
+  test('returns 404 when checkout-session payment status target is missing', async () => {
+    prisma.checkoutSession.findUnique.mockResolvedValue(null);
+
+    const response = await withAuth(
+      request(app).get('/api/checkout-sessions/session-1/payment-status')
+    );
+
+    expect(response.statusCode).toBe(404);
+    expect(response.body).toEqual({
+      success: false,
+      message: 'Checkout session not found',
+    });
+  });
 });

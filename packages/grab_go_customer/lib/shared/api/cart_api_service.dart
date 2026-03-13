@@ -36,6 +36,17 @@ abstract class CartApiService extends ChopperService {
     @Query('promoCode') String? promoCode,
   });
 
+  /// Sync full cart snapshot
+  @PUT(path: '/sync')
+  Future<Response<Map<String, dynamic>>> syncCart(
+    @Body() Map<String, dynamic> body, {
+    @Query('fulfillmentMode') String? fulfillmentMode,
+    @Query('lat') double? lat,
+    @Query('lng') double? lng,
+    @Query('useCredits') bool? useCredits,
+    @Query('promoCode') String? promoCode,
+  });
+
   /// Update cart item quantity
   @PATCH(path: '/update/{itemId}')
   Future<Response<Map<String, dynamic>>> updateCartItem(

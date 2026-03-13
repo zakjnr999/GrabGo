@@ -5,6 +5,7 @@ const { calculateCartPricing, calculateCartGroupsPricing } = require('../service
 const {
     normalizeFulfillmentMode,
     addToCart,
+    syncCartState,
     updateCartItem,
     removeFromCart,
     clearCart,
@@ -13,8 +14,10 @@ const {
 } = require('../services/cart_service');
 const featureFlags = require('../config/feature_flags');
 const { createScopedLogger } = require('../utils/logger');
+const cache = require('../utils/cache');
 
 const console = createScopedLogger('cart_route');
+const CART_SYNC_IDEMPOTENCY_TTL_SECONDS = 5 * 60;
 
 const parseBoolean = (value) => {
     if (typeof value === 'boolean') return value;
@@ -34,6 +37,27 @@ const normalizePromoCode = (value) => {
 };
 
 const getErrorMessage = (error) => String(error?.message || '');
+
+const isCartBusinessError = (message) => {
+    const normalized = String(message || '').toLowerCase();
+    return [
+        'not found',
+        'unavailable',
+        'inactive',
+        'closed',
+        'accepting orders',
+        'portion',
+        'preference option',
+        'customization',
+        'out of stock',
+        'not enough stock',
+        'insufficient stock',
+        'quantity must be',
+        'maximum quantity',
+        'invalid',
+        'multiple vendors',
+    ].some((fragment) => normalized.includes(fragment));
+};
 
 /**
  * @route   GET /api/cart/groups
@@ -246,6 +270,135 @@ router.post('/add', protect, async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to add item to cart'
+        });
+    }
+});
+
+/**
+ * @route   PUT /api/cart/sync
+ * @desc    Reconcile the full desired cart snapshot for the current user
+ * @access  Private
+ */
+router.put('/sync', protect, async (req, res) => {
+    const fulfillmentMode = normalizeFulfillmentMode(req.query.fulfillmentMode ?? req.body?.fulfillmentMode);
+    const lat = Number(req.query.lat ?? req.body?.lat);
+    const lng = Number(req.query.lng ?? req.body?.lng);
+    const deliveryLocation =
+        Number.isFinite(lat) && Number.isFinite(lng) ? { latitude: lat, longitude: lng } : null;
+    const useCredits = parseBoolean(req.query.useCredits ?? req.body?.useCredits);
+    const promoCode = featureFlags.isPromoCheckoutEnabled
+        ? normalizePromoCode(req.query.promoCode ?? req.body?.promoCode)
+        : null;
+    const clientCartVersion = Number(req.body?.clientCartVersion);
+    const acceptedCartVersion = Number.isFinite(clientCartVersion) ? clientCartVersion : null;
+    const items = Array.isArray(req.body?.items) ? req.body.items : [];
+    const idempotencyKey = String(
+        req.headers['x-idempotency-key'] ||
+        req.body?.idempotencyKey ||
+        ''
+    ).trim();
+
+    if (!Array.isArray(req.body?.items)) {
+        return res.status(400).json({
+            success: false,
+            message: 'Cart items array is required',
+        });
+    }
+
+    const idemCacheKey = idempotencyKey
+        ? `grabgo:cart:sync:idem:${req.user.id}:${fulfillmentMode}:${idempotencyKey}`
+        : null;
+
+    try {
+        if (idemCacheKey) {
+            const cachedResponse = await cache.get(idemCacheKey);
+            if (cachedResponse) {
+                return res.json(cachedResponse);
+            }
+        }
+
+        const lock = await cache.acquireLock(`cart-sync:${req.user.id}:${fulfillmentMode}`, 15);
+        if (!lock) {
+            return res.status(409).json({
+                success: false,
+                message: 'Cart sync already in progress',
+                code: 'CART_SYNC_IN_PROGRESS',
+            });
+        }
+
+        try {
+            if (idemCacheKey) {
+                const cachedResponse = await cache.get(idemCacheKey);
+                if (cachedResponse) {
+                    return res.json(cachedResponse);
+                }
+            }
+
+            const carts = await syncCartState(req.user.id, {
+                items,
+                fulfillmentMode,
+            });
+            const groupedPricing = await calculateCartGroupsPricing(carts, {
+                userId: req.user.id,
+                deliveryLocation,
+                useCredits,
+                fulfillmentMode,
+                promoCode,
+            });
+
+            const payload = {
+                success: true,
+                acceptedCartVersion,
+                groups: groupedPricing.groups,
+                summary: groupedPricing.summary,
+            };
+
+            if (idemCacheKey) {
+                await cache.set(idemCacheKey, payload, CART_SYNC_IDEMPOTENCY_TTL_SECONDS);
+            }
+
+            return res.json(payload);
+        } finally {
+            await cache.releaseLock(lock);
+        }
+    } catch (error) {
+        console.error('Error syncing cart snapshot:', error);
+        const errorMessage = getErrorMessage(error);
+
+        if (isCartBusinessError(errorMessage)) {
+            try {
+                const carts = await getUserCartGroups(req.user.id, fulfillmentMode);
+                const groupedPricing = await calculateCartGroupsPricing(carts, {
+                    userId: req.user.id,
+                    deliveryLocation,
+                    useCredits,
+                    fulfillmentMode,
+                    promoCode,
+                });
+
+                return res.status(409).json({
+                    success: false,
+                    message: errorMessage,
+                    code: 'CART_SYNC_REJECTED',
+                    acceptedCartVersion,
+                    groups: groupedPricing.groups,
+                    summary: groupedPricing.summary,
+                });
+            } catch (snapshotError) {
+                console.error('Error fetching authoritative cart after sync rejection:', snapshotError);
+            }
+
+            return res.status(409).json({
+                success: false,
+                message: errorMessage,
+                code: 'CART_SYNC_REJECTED',
+                acceptedCartVersion,
+            });
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to sync cart',
         });
     }
 });

@@ -60,17 +60,51 @@ class DeliveryCodeResendResult {
 
 class ConfirmPaymentResult {
   final bool success;
+  final bool awaitingWebhook;
+  final bool indeterminate;
   final String? paymentScope;
+  final String? paymentStatus;
+  final String? message;
   final double? externalPaymentAmount;
   final double? codRemainingCashAmount;
   final String? sessionId;
 
   const ConfirmPaymentResult({
     required this.success,
+    this.awaitingWebhook = false,
+    this.indeterminate = false,
     this.paymentScope,
+    this.paymentStatus,
+    this.message,
     this.externalPaymentAmount,
     this.codRemainingCashAmount,
     this.sessionId,
+  });
+}
+
+class PaymentStatusResult {
+  final bool success;
+  final bool isPaid;
+  final bool isTerminal;
+  final bool awaitingWebhook;
+  final String? paymentStatus;
+  final String? orderStatus;
+  final String? sessionStatus;
+  final String? paymentScope;
+  final double? externalPaymentAmount;
+  final String? message;
+
+  const PaymentStatusResult({
+    required this.success,
+    this.isPaid = false,
+    this.isTerminal = false,
+    this.awaitingWebhook = false,
+    this.paymentStatus,
+    this.orderStatus,
+    this.sessionStatus,
+    this.paymentScope,
+    this.externalPaymentAmount,
+    this.message,
   });
 }
 
@@ -325,23 +359,37 @@ class OrderServiceWrapper {
         'provider': provider,
       });
 
-      if (!response.isSuccessful || response.body == null) {
-        return const ConfirmPaymentResult(success: false);
+      final body = _resolveResponseMap(response);
+      if (body == null) {
+        return const ConfirmPaymentResult(
+          success: false,
+          indeterminate: true,
+          message: 'Unable to confirm payment right now.',
+        );
       }
 
-      final body = response.body!;
       final isSuccess = body['success'] == true;
       final data = body['data'] as Map<String, dynamic>?;
+      final paymentStatus = data?['paymentStatus']?.toString();
+      final awaitingWebhook =
+          data?['webhookRequired'] == true || paymentStatus == 'processing';
 
       return ConfirmPaymentResult(
         success: isSuccess,
+        awaitingWebhook: isSuccess && awaitingWebhook,
         paymentScope: data?['paymentScope']?.toString(),
+        paymentStatus: paymentStatus,
+        message: body['message']?.toString(),
         externalPaymentAmount: _asDouble(data?['externalPaymentAmount']),
         codRemainingCashAmount: _asDouble(data?['codRemainingCashAmount']),
         sessionId: data?['session']?['id']?.toString(),
       );
     } catch (e) {
-      return const ConfirmPaymentResult(success: false);
+      return ConfirmPaymentResult(
+        success: false,
+        indeterminate: true,
+        message: 'Unable to confirm payment right now.',
+      );
     }
   }
 
@@ -512,23 +560,39 @@ class OrderServiceWrapper {
         {'reference': reference, 'provider': provider},
       );
 
-      if (!response.isSuccessful || response.body == null) {
-        return const ConfirmPaymentResult(success: false);
+      final body = _resolveResponseMap(response);
+      if (body == null) {
+        return const ConfirmPaymentResult(
+          success: false,
+          indeterminate: true,
+          message: 'Unable to confirm payment right now.',
+        );
       }
 
-      final body = response.body!;
       final isSuccess = body['success'] == true;
       final data = body['data'] as Map<String, dynamic>?;
       final session = data?['session'] as Map<String, dynamic>?;
+      final paymentStatus =
+          data?['paymentStatus']?.toString() ??
+          session?['paymentStatus']?.toString();
+      final awaitingWebhook =
+          data?['webhookRequired'] == true || paymentStatus == 'processing';
 
       return ConfirmPaymentResult(
         success: isSuccess,
+        awaitingWebhook: isSuccess && awaitingWebhook,
         paymentScope: data?['paymentScope']?.toString(),
+        paymentStatus: paymentStatus,
+        message: body['message']?.toString(),
         externalPaymentAmount: _asDouble(data?['externalPaymentAmount']),
         sessionId: session?['id']?.toString() ?? sessionId,
       );
     } catch (_) {
-      return const ConfirmPaymentResult(success: false);
+      return const ConfirmPaymentResult(
+        success: false,
+        indeterminate: true,
+        message: 'Unable to confirm payment right now.',
+      );
     }
   }
 
@@ -552,6 +616,76 @@ class OrderServiceWrapper {
   }
 
   // Get order details
+  Future<PaymentStatusResult> getOrderPaymentStatus({
+    required String orderId,
+  }) async {
+    try {
+      final response = await _orderService.getOrderPaymentStatus(orderId);
+      final body = _resolveResponseMap(response);
+      if (body == null) {
+        return const PaymentStatusResult(
+          success: false,
+          message: 'Unable to check payment status right now.',
+        );
+      }
+
+      final isSuccess = body['success'] == true;
+      final data = body['data'] as Map<String, dynamic>?;
+      return PaymentStatusResult(
+        success: isSuccess,
+        isPaid: data?['isPaid'] == true,
+        isTerminal: data?['isTerminal'] == true,
+        awaitingWebhook: data?['awaitingWebhook'] == true,
+        paymentStatus: data?['paymentStatus']?.toString(),
+        orderStatus: data?['orderStatus']?.toString(),
+        paymentScope: data?['paymentScope']?.toString(),
+        externalPaymentAmount: _asDouble(data?['externalPaymentAmount']),
+        message: body['message']?.toString(),
+      );
+    } catch (_) {
+      return const PaymentStatusResult(
+        success: false,
+        message: 'Unable to check payment status right now.',
+      );
+    }
+  }
+
+  Future<PaymentStatusResult> getCheckoutSessionPaymentStatus({
+    required String sessionId,
+  }) async {
+    try {
+      final response = await _orderService.getCheckoutSessionPaymentStatus(
+        sessionId,
+      );
+      final body = _resolveResponseMap(response);
+      if (body == null) {
+        return const PaymentStatusResult(
+          success: false,
+          message: 'Unable to check payment status right now.',
+        );
+      }
+
+      final isSuccess = body['success'] == true;
+      final data = body['data'] as Map<String, dynamic>?;
+      return PaymentStatusResult(
+        success: isSuccess,
+        isPaid: data?['isPaid'] == true,
+        isTerminal: data?['isTerminal'] == true,
+        awaitingWebhook: data?['awaitingWebhook'] == true,
+        paymentStatus: data?['paymentStatus']?.toString(),
+        sessionStatus: data?['sessionStatus']?.toString(),
+        paymentScope: data?['paymentScope']?.toString(),
+        externalPaymentAmount: _asDouble(data?['externalPaymentAmount']),
+        message: body['message']?.toString(),
+      );
+    } catch (_) {
+      return const PaymentStatusResult(
+        success: false,
+        message: 'Unable to check payment status right now.',
+      );
+    }
+  }
+
   Future<Map<String, dynamic>> getOrder(String orderId) async {
     try {
       final response = await _orderService.getOrder(orderId);
