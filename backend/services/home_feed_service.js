@@ -420,6 +420,24 @@ const getLocationContext = async ({ userLat, userLng, maxDistance = 15 }) => {
     .sort(sortFreeDeliveryVendors)
     .slice(0, HOME_SECTION_LIMIT);
 
+  console.info('home_feed_free_delivery_candidates', {
+    userLatitude,
+    userLongitude,
+    maxDistanceKm,
+    nearbyRestaurantCandidateCount: nearbyRestaurantCandidates.length,
+    filteredNearbyRestaurantCount: filteredRestaurants.length,
+    formattedNearbyVendorCount: formattedNearbyVendors.length,
+    freeDeliveryVendorCount: freeDeliveryNearbyVendors.length,
+    freeDeliveryVendorSamples: freeDeliveryNearbyVendors.slice(0, 5).map((vendor) => ({
+      id: vendor.id,
+      name: vendor.restaurantName || vendor.storeName || vendor.name,
+      distance: vendor.distance,
+      deliveryFee: vendor.deliveryFee ?? vendor.delivery_fee,
+      isOpen: vendor.isOpen,
+      isAcceptingOrders: vendor.isAcceptingOrders,
+    })),
+  });
+
   return {
     userLatitude,
     userLongitude,
