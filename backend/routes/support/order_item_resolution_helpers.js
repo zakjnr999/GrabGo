@@ -85,7 +85,7 @@ const createOrderItemResolutionHelpers = ({ prisma, resolveFoodCustomization }) 
           vendorId: pharmacyItem.storeId,
           price: pharmacyItem.price,
           name: pharmacyItem.name,
-          image: pharmacyItem.image,
+          image: pharmacyItem.thumbnailImage || pharmacyItem.image || null,
           prepTimeMinutes: pharmacyItem.prepTimeMinutes,
           idField: "pharmacyItemId",
           idValue: pharmacyItem.id,

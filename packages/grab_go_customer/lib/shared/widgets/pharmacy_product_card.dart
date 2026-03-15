@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
+import 'package:grab_go_customer/features/pharmacy/model/pharmacy_item.dart';
 import 'package:grab_go_customer/shared/widgets/service_product_card.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
-const double kGroceryProductGridAspectRatio = kServiceProductGridAspectRatio;
-
-class GroceryProductCard extends StatelessWidget {
-  final GroceryItem item;
+class PharmacyProductCard extends StatelessWidget {
+  final PharmacyItem item;
   final VoidCallback? onTap;
   final EdgeInsetsGeometry? margin;
   final double? width;
@@ -15,7 +13,7 @@ class GroceryProductCard extends StatelessWidget {
   final bool showTopRatedBadge;
   final bool compactLayout;
 
-  const GroceryProductCard({
+  const PharmacyProductCard({
     super.key,
     required this.item,
     this.onTap,
@@ -29,7 +27,7 @@ class GroceryProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ServiceProductCard<GroceryItem>(
+    return ServiceProductCard<PharmacyItem>(
       item: item,
       onTap: onTap,
       margin: margin,
@@ -38,7 +36,7 @@ class GroceryProductCard extends StatelessWidget {
       showDiscountBadge: showDiscountBadge,
       showTopRatedBadge: showTopRatedBadge,
       compactLayout: compactLayout,
-      accentColor: context.appColors.serviceGrocery,
+      accentColor: context.appColors.servicePharmacy,
       imageUrl: item.catalogImage,
       unitLabel: item.unit,
       storeName: item.storeName,

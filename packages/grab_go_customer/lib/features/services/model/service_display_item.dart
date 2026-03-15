@@ -60,7 +60,7 @@ class ServiceDisplayItem {
       id: item.id,
       name: item.name,
       description: item.description,
-      imageUrl: item.image,
+      imageUrl: item.catalogImage,
       price: item.price,
       discountPercentage: item.discountPercentage,
       rating: item.rating,

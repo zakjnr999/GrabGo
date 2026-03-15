@@ -1167,6 +1167,7 @@ model PharmacyItem {
   name                 String
   description          String?
   image                String
+  thumbnailImage       String?
   price                Float
   unit                 String?
   categoryId           String?

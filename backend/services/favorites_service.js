@@ -264,6 +264,7 @@ const FAVORITES_SELECT = {
           id: true,
           name: true,
           price: true,
+          thumbnailImage: true,
           image: true,
           description: true,
           isAvailable: true,

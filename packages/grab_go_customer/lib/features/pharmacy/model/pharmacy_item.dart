@@ -2,10 +2,14 @@ import 'package:grab_go_customer/features/cart/model/cart_item_interface.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 
 class PharmacyItem implements CartItem {
+  @override
   final String id;
+  @override
   final String name;
+  @override
   final String description;
-  final String image;
+  final String thumbnailImage;
+  @override
   final double price;
   final String unit;
   final String categoryId;
@@ -16,12 +20,14 @@ class PharmacyItem implements CartItem {
   final String? storeLogo;
   final String brand;
   final int stock;
+  @override
   final bool isAvailable;
   final bool requiresPrescription;
   final double discountPercentage;
   final DateTime? discountEndDate;
   final DateTime? expiryDate;
   final List<String> tags;
+  @override
   final double rating;
   final int reviewCount;
   final int orderCount;
@@ -44,7 +50,7 @@ class PharmacyItem implements CartItem {
     required this.id,
     required this.name,
     required this.description,
-    required this.image,
+    required this.thumbnailImage,
     required this.price,
     required this.unit,
     required this.categoryId,
@@ -72,12 +78,16 @@ class PharmacyItem implements CartItem {
         json['weightedRating'] ?? json['displayRating'] ?? json['rating'];
     final dynamic rawReviewCount =
         json['reviewCount'] ?? json['totalReviews'] ?? json['ratingCount'];
+    final thumbnailImage = json['thumbnailImage']?.toString().trim();
+    final resolvedImage = (thumbnailImage != null && thumbnailImage.isNotEmpty)
+        ? thumbnailImage
+        : json['image']?.toString() ?? '';
 
     return PharmacyItem(
       id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
       name: json['name'] ?? '',
       description: json['description'] ?? '',
-      image: json['image'] ?? '',
+      thumbnailImage: resolvedImage,
       price: (json['price'] ?? 0).toDouble(),
       unit: json['unit'] ?? 'piece',
       categoryId: json['category'] is Map
@@ -129,12 +139,15 @@ class PharmacyItem implements CartItem {
     );
   }
 
+  @override
   Map<String, dynamic> toJson() {
     return {
       '_id': id,
+      'id': id,
       'name': name,
       'description': description,
-      'image': image,
+      'image': thumbnailImage,
+      'thumbnailImage': thumbnailImage,
       'price': price,
       'unit': unit,
       'category': categoryId,
@@ -165,6 +178,11 @@ class PharmacyItem implements CartItem {
       discountPercentage > 0 &&
       (discountEndDate == null || discountEndDate!.isAfter(DateTime.now()));
 
+  @override
+  String get image => thumbnailImage;
+
+  String get catalogImage => thumbnailImage;
+
   FoodItem toFoodItem() {
     return FoodItem(
       id: id,
@@ -172,7 +190,7 @@ class PharmacyItem implements CartItem {
       description: description,
       price: price,
       discountPercentage: discountPercentage,
-      image: image,
+      image: catalogImage,
       rating: rating,
       reviewCount: reviewCount,
       deliveryTimeMinutes: 30, // Default for pharmacy

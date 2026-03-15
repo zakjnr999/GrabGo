@@ -26,6 +26,7 @@ import 'package:grab_go_customer/shared/widgets/area_unavailable_screen.dart';
 import 'package:grab_go_customer/shared/widgets/all_categories_sheet.dart';
 import 'package:grab_go_customer/shared/widgets/deals_section.dart';
 import 'package:grab_go_customer/shared/widgets/grocery_product_card.dart';
+import 'package:grab_go_customer/shared/widgets/pharmacy_product_card.dart';
 import 'package:grab_go_customer/shared/widgets/popular_section.dart';
 import 'package:grab_go_customer/shared/widgets/popular_item_card.dart';
 import 'package:grab_go_customer/shared/widgets/promotional_banner_carousel.dart';
@@ -216,11 +217,7 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
     try {
       Future<void> serviceDataFuture = Future.value();
       if (_shouldLoadServiceHubData()) {
-        serviceDataFuture = _loadServiceHubFeed().then((loaded) async {
-          if (!loaded) {
-            await _refreshCurrentServiceLegacy();
-          }
-        });
+        serviceDataFuture = _loadServiceHubFeed();
       }
 
       await Future.wait([serviceDataFuture, _fetchNearbyVendors()]);
@@ -234,11 +231,7 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
   }
 
   Future<void> _refreshCurrentService() async {
-    final loaded = await _loadServiceHubFeed(forceRefresh: true);
-    if (!loaded) {
-      await _refreshCurrentServiceLegacy(forceRefresh: true);
-    }
-
+    await _loadServiceHubFeed(forceRefresh: true);
     await _fetchNearbyVendors(forceRefresh: true);
   }
 
@@ -264,11 +257,11 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
     }
   }
 
-  Future<bool> _loadServiceHubFeed({bool forceRefresh = false}) async {
+  Future<void> _loadServiceHubFeed({bool forceRefresh = false}) async {
     if (widget.serviceId != 'groceries' &&
         widget.serviceId != 'pharmacy' &&
         widget.serviceId != 'convenience') {
-      return false;
+      return;
     }
 
     final locationProvider = context.read<NativeLocationProvider>();
@@ -295,38 +288,13 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
           );
           break;
         default:
-          return false;
+          return;
       }
-
-      return true;
     } catch (error) {
       debugPrint(
         '[ServiceHubPage] Service hub feed failed for ${widget.serviceId}'
         '${forceRefresh ? ' (refresh)' : ''}: $error',
       );
-      return false;
-    }
-  }
-
-  Future<void> _refreshCurrentServiceLegacy({bool forceRefresh = false}) async {
-    switch (widget.serviceId) {
-      case 'groceries':
-        await context.read<GroceryProvider>().refreshAll(
-          forceRefresh: forceRefresh,
-        );
-        break;
-      case 'pharmacy':
-        await context.read<PharmacyProvider>().refreshAll(
-          forceRefresh: forceRefresh,
-        );
-        break;
-      case 'convenience':
-        await context.read<GrabMartProvider>().refreshAll(
-          forceRefresh: forceRefresh,
-        );
-        break;
-      default:
-        break;
     }
   }
 
@@ -480,6 +448,10 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
     final groceryPopular = _resolveGroceryPopular(groceryProvider);
     final groceryTopRated = _resolveGroceryTopRated(groceryProvider);
     final groceryRecommended = _resolveGroceryRecommended(groceryProvider);
+    final pharmacyDeals = _resolvePharmacyDeals(pharmacyProvider);
+    final pharmacyPopular = _resolvePharmacyPopular(pharmacyProvider);
+    final pharmacyTopRated = _resolvePharmacyTopRated(pharmacyProvider);
+    final pharmacyRecommended = _resolvePharmacyRecommended(pharmacyProvider);
     final shouldShowServiceUnavailable = _shouldShowServiceUnavailable(
       locationProvider,
     );
@@ -508,6 +480,15 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
               _nearbyServiceVendors.isEmpty &&
               !isLoadingRecommended &&
               !_isLoadingNearbyVendors
+        : widget.serviceId == 'pharmacy'
+        ? pharmacyDeals.isEmpty &&
+              pharmacyPopular.isEmpty &&
+              pharmacyTopRated.isEmpty &&
+              pharmacyRecommended.isEmpty &&
+              categories == 0 &&
+              _nearbyServiceVendors.isEmpty &&
+              !isLoadingRecommended &&
+              !_isLoadingNearbyVendors
         : deals.isEmpty &&
               popular.isEmpty &&
               topRated.isEmpty &&
@@ -530,11 +511,15 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
           grabMartProvider: grabMartProvider,
         ),
         SizedBox(height: _sectionGap.h),
-        if (widget.serviceId == 'groceries' && banners.isNotEmpty) ...[
+        if ((widget.serviceId == 'groceries' ||
+                widget.serviceId == 'pharmacy') &&
+            banners.isNotEmpty) ...[
           PromotionalBannerCarousel(banners: banners),
           SizedBox(height: _sectionGap.h),
         ],
-        if (widget.serviceId != 'groceries' && banners.isNotEmpty) ...[
+        if (widget.serviceId != 'groceries' &&
+            widget.serviceId != 'pharmacy' &&
+            banners.isNotEmpty) ...[
           PromotionalBannerCarousel(banners: banners),
           SizedBox(height: 8.h),
         ],
@@ -547,13 +532,26 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
           ),
         if (widget.serviceId == 'groceries' && groceryDeals.isNotEmpty)
           SizedBox(height: _sectionGap.h),
-        if (widget.serviceId != 'groceries' && deals.isNotEmpty)
+        if (widget.serviceId == 'pharmacy' && pharmacyDeals.isNotEmpty)
+          _buildPharmacyHorizontalItemsSection(
+            title: 'Deals & Offers',
+            items: pharmacyDeals,
+            accentColor: accentColor,
+            showDiscountBadge: true,
+          ),
+        if (widget.serviceId == 'pharmacy' && pharmacyDeals.isNotEmpty)
+          SizedBox(height: _sectionGap.h),
+        if (widget.serviceId != 'groceries' &&
+            widget.serviceId != 'pharmacy' &&
+            deals.isNotEmpty)
           _buildHorizontalItemsSection(
             items: deals,
             sectionType: _SectionType.deals,
             accentColor: accentColor,
           ),
-        if (widget.serviceId != 'groceries' && deals.isNotEmpty)
+        if (widget.serviceId != 'groceries' &&
+            widget.serviceId != 'pharmacy' &&
+            deals.isNotEmpty)
           SizedBox(height: _sectionGap.h),
         if (widget.serviceId == 'groceries' && groceryPopular.isNotEmpty)
           _buildGroceryHorizontalItemsSection(
@@ -563,29 +561,55 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
           ),
         if (widget.serviceId == 'groceries' && groceryPopular.isNotEmpty)
           SizedBox(height: _sectionGap.h),
-        if (widget.serviceId != 'groceries' && popular.isNotEmpty)
+        if (widget.serviceId == 'pharmacy' && pharmacyPopular.isNotEmpty)
+          _buildPharmacyHorizontalItemsSection(
+            title: 'Popular Right Now',
+            items: pharmacyPopular,
+            accentColor: accentColor,
+          ),
+        if (widget.serviceId == 'pharmacy' && pharmacyPopular.isNotEmpty)
+          SizedBox(height: _sectionGap.h),
+        if (widget.serviceId != 'groceries' &&
+            widget.serviceId != 'pharmacy' &&
+            popular.isNotEmpty)
           _buildHorizontalItemsSection(
             items: popular,
             sectionType: _SectionType.popular,
             accentColor: accentColor,
           ),
-        if (widget.serviceId != 'groceries' && popular.isNotEmpty)
+        if (widget.serviceId != 'groceries' &&
+            widget.serviceId != 'pharmacy' &&
+            popular.isNotEmpty)
           SizedBox(height: _sectionGap.h),
         if (widget.serviceId == 'groceries' && groceryTopRated.isNotEmpty)
           _buildGroceryHorizontalItemsSection(
             title: 'Top Rated Picks',
             items: groceryTopRated,
             accentColor: accentColor,
+            showTopRatedBadge: true,
           ),
         if (widget.serviceId == 'groceries' && groceryTopRated.isNotEmpty)
           SizedBox(height: _sectionGap.h),
-        if (widget.serviceId != 'groceries' && topRated.isNotEmpty)
+        if (widget.serviceId == 'pharmacy' && pharmacyTopRated.isNotEmpty)
+          _buildPharmacyHorizontalItemsSection(
+            title: 'Top Rated Picks',
+            items: pharmacyTopRated,
+            accentColor: accentColor,
+            showTopRatedBadge: true,
+          ),
+        if (widget.serviceId == 'pharmacy' && pharmacyTopRated.isNotEmpty)
+          SizedBox(height: _sectionGap.h),
+        if (widget.serviceId != 'groceries' &&
+            widget.serviceId != 'pharmacy' &&
+            topRated.isNotEmpty)
           _buildHorizontalItemsSection(
             items: topRated,
             sectionType: _SectionType.topRated,
             accentColor: accentColor,
           ),
-        if (widget.serviceId != 'groceries' && topRated.isNotEmpty)
+        if (widget.serviceId != 'groceries' &&
+            widget.serviceId != 'pharmacy' &&
+            topRated.isNotEmpty)
           SizedBox(height: _sectionGap.h),
         _buildNearbyServiceStoresSection(
           accentColor: accentColor,
@@ -599,7 +623,16 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
             isLoadingMore: isLoadingRecommended,
             hasMore: hasMoreRecommended,
           ),
+        if (widget.serviceId == 'pharmacy' &&
+            (pharmacyRecommended.isNotEmpty || isLoadingRecommended))
+          _buildPharmacyRecommendedItemsSection(
+            items: pharmacyRecommended,
+            accentColor: accentColor,
+            isLoadingMore: isLoadingRecommended,
+            hasMore: hasMoreRecommended,
+          ),
         if (widget.serviceId != 'groceries' &&
+            widget.serviceId != 'pharmacy' &&
             (recommendedItems.isNotEmpty || isLoadingRecommended))
           _buildRecommendedItemsSection(
             items: recommendedItems,
@@ -982,6 +1015,7 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
     required List<GroceryItem> items,
     required Color accentColor,
     bool showDiscountBadge = false,
+    bool showTopRatedBadge = false,
   }) {
     final size = MediaQuery.sizeOf(context);
     final cardWidth = (size.width * 0.38).clamp(138.0, 170.0);
@@ -1031,6 +1065,73 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
                 compactLayout: true,
                 showStoreName: true,
                 showDiscountBadge: showDiscountBadge,
+                showTopRatedBadge: showTopRatedBadge,
+                margin: EdgeInsets.only(right: _groceryItemGap.w),
+                onTap: () => context.push('/foodDetails', extra: item),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPharmacyHorizontalItemsSection({
+    required String title,
+    required List<PharmacyItem> items,
+    required Color accentColor,
+    bool showDiscountBadge = false,
+    bool showTopRatedBadge = false,
+  }) {
+    final size = MediaQuery.sizeOf(context);
+    final cardWidth = (size.width * 0.38).clamp(138.0, 170.0);
+    final visibleItems = items.take(_maxSectionPreviewItems).toList();
+    final showTrailingSeeAllCard = visibleItems.isNotEmpty;
+    final sectionHeight = showDiscountBadge
+        ? (cardWidth + 88.h).clamp(228.0, 248.0)
+        : (cardWidth + 76.h).clamp(214.0, 236.0);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeader(
+          title: title,
+          sectionTotal: items.length,
+          accentColor: accentColor,
+          onSeeAll: () {},
+        ),
+        SizedBox(height: 12.h),
+        SizedBox(
+          height: sectionHeight,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.only(left: 20.w),
+            physics: const AlwaysScrollableScrollPhysics(),
+            itemCount: visibleItems.length + (showTrailingSeeAllCard ? 1 : 0),
+            itemBuilder: (context, index) {
+              if (showTrailingSeeAllCard && index == visibleItems.length) {
+                return Padding(
+                  padding: EdgeInsets.only(right: 20.w),
+                  child: TrailingSeeAllCard(
+                    width: 136.w,
+                    height: sectionHeight - 8.h,
+                    accentColor: accentColor,
+                    subtitle: showDiscountBadge
+                        ? 'View more offers'
+                        : 'View more items',
+                    onTap: () {},
+                  ),
+                );
+              }
+
+              final item = visibleItems[index];
+              return PharmacyProductCard(
+                item: item,
+                width: cardWidth,
+                compactLayout: true,
+                showStoreName: true,
+                showDiscountBadge: showDiscountBadge,
+                showTopRatedBadge: showTopRatedBadge,
                 margin: EdgeInsets.only(right: _groceryItemGap.w),
                 onTap: () => context.push('/foodDetails', extra: item),
               );
@@ -1069,6 +1170,7 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
         categories: pharmacyProvider.categories,
         getName: (cat) => cat.name,
         getEmoji: (cat) => cat.emoji,
+        getImage: (cat) => cat.image,
         getId: (cat) => cat.id,
         serviceType: config.categoryServiceType,
         accentColor: accentColor,
@@ -1293,6 +1395,72 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
               final item = visibleItems[index];
 
               return GroceryProductCard(
+                item: item,
+                showStoreName: true,
+                onTap: () => context.push('/foodDetails', extra: item),
+              );
+            },
+          ),
+        ),
+        SizedBox(height: KSpacing.lg.h),
+        if (hasMore && items.length <= _maxSectionPreviewItems)
+          Builder(
+            builder: (context) {
+              if (!isLoadingMore) {
+                Future.delayed(const Duration(milliseconds: 300), () {
+                  if (!mounted) return;
+                  _loadMoreRecommendedItems();
+                });
+              }
+              return Padding(
+                padding: EdgeInsets.only(bottom: KSpacing.lg.h),
+                child: LoadingMore(
+                  colors: context.appColors,
+                  spinnerColor: accentColor,
+                  borderColor: accentColor,
+                ),
+              );
+            },
+          ),
+      ],
+    );
+  }
+
+  Widget _buildPharmacyRecommendedItemsSection({
+    required List<PharmacyItem> items,
+    required Color accentColor,
+    required bool isLoadingMore,
+    required bool hasMore,
+  }) {
+    final visibleItems = items.take(_maxSectionPreviewItems).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeader(
+          title: 'More to Explore',
+          sectionTotal: items.length,
+          accentColor: accentColor,
+          onSeeAll: () {},
+        ),
+        SizedBox(height: KSpacing.lg.h),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20.w),
+          child: GridView.builder(
+            padding: EdgeInsets.zero,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: kGroceryProductGridAspectRatio,
+              crossAxisSpacing: _groceryGridGap.w,
+              mainAxisSpacing: _groceryGridGap.h,
+            ),
+            itemCount: visibleItems.length,
+            itemBuilder: (context, index) {
+              final item = visibleItems[index];
+
+              return PharmacyProductCard(
                 item: item,
                 showStoreName: true,
                 onTap: () => context.push('/foodDetails', extra: item),
@@ -1569,6 +1737,86 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
 
   List<GroceryItem> _uniqueGroceryItems(List<GroceryItem> items) {
     final uniqueItems = <String, GroceryItem>{};
+    for (final item in items) {
+      uniqueItems[item.id] = item;
+    }
+    return uniqueItems.values.toList();
+  }
+
+  List<PharmacyItem> _resolvePharmacyDeals(PharmacyProvider provider) {
+    final source = provider.onSaleItems.isNotEmpty
+        ? provider.onSaleItems
+        : provider.items.where((item) => item.hasDiscount).toList();
+    final items = _uniquePharmacyItems(source);
+    items.sort((a, b) => b.discountPercentage.compareTo(a.discountPercentage));
+    return items.take(10).toList();
+  }
+
+  List<PharmacyItem> _resolvePharmacyPopular(PharmacyProvider provider) {
+    final popularItems = _uniquePharmacyItems(
+      provider.popularItems.where((item) => !item.hasDiscount).toList(),
+    );
+    final items = popularItems.isNotEmpty
+        ? popularItems
+        : _uniquePharmacyItems(
+            provider.items.where((item) => !item.hasDiscount).toList(),
+          );
+    items.sort((a, b) {
+      final orderCompare = b.orderCount.compareTo(a.orderCount);
+      if (orderCompare != 0) return orderCompare;
+      return b.rating.compareTo(a.rating);
+    });
+    return items.take(10).toList();
+  }
+
+  List<PharmacyItem> _resolvePharmacyTopRated(PharmacyProvider provider) {
+    final topRatedItems = _uniquePharmacyItems(
+      provider.topRatedItems.where((item) => !item.hasDiscount).toList(),
+    );
+    final items = topRatedItems.isNotEmpty
+        ? topRatedItems
+        : _uniquePharmacyItems(
+            provider.items
+                .where((item) => !item.hasDiscount && item.rating >= 4.0)
+                .toList(),
+          );
+    items.sort((a, b) {
+      final ratingCompare = b.rating.compareTo(a.rating);
+      if (ratingCompare != 0) return ratingCompare;
+      return b.reviewCount.compareTo(a.reviewCount);
+    });
+    return items.take(10).toList();
+  }
+
+  List<PharmacyItem> _resolvePharmacyRecommended(PharmacyProvider provider) {
+    final selected = <String, PharmacyItem>{};
+
+    for (final item in provider.recommendedItems) {
+      if (item.hasDiscount) continue;
+      selected[item.id] = item;
+    }
+
+    if (selected.length < 6) {
+      final fallbackItems = _uniquePharmacyItems(
+        provider.items.where((item) => !item.hasDiscount).toList(),
+      );
+      fallbackItems.sort((a, b) {
+        final aScore = (a.orderCount * 3) + (a.rating * 20);
+        final bScore = (b.orderCount * 3) + (b.rating * 20);
+        return bScore.compareTo(aScore);
+      });
+
+      for (final item in fallbackItems) {
+        selected.putIfAbsent(item.id, () => item);
+        if (selected.length >= 20) break;
+      }
+    }
+
+    return selected.values.take(20).toList();
+  }
+
+  List<PharmacyItem> _uniquePharmacyItems(List<PharmacyItem> items) {
+    final uniqueItems = <String, PharmacyItem>{};
     for (final item in items) {
       uniqueItems[item.id] = item;
     }

@@ -9,6 +9,7 @@ import 'package:grab_go_customer/features/groceries/viewmodel/grocery_provider.d
 import 'package:grab_go_customer/features/home/model/filter_model.dart';
 import 'package:grab_go_customer/features/home/model/food_category.dart';
 import 'package:grab_go_customer/features/home/viewmodel/food_provider.dart';
+import 'package:grab_go_customer/features/pharmacy/model/pharmacy_item.dart';
 import 'package:grab_go_customer/features/pharmacy/viewmodel/pharmacy_provider.dart';
 import 'package:grab_go_customer/features/grabmart/viewmodel/grabmart_provider.dart';
 import 'package:grab_go_customer/shared/widgets/browse_grid_skeleton.dart';
@@ -16,6 +17,7 @@ import 'package:grab_go_customer/shared/widgets/deal_card.dart';
 import 'package:grab_go_customer/shared/widgets/home_search.dart';
 import 'package:grab_go_customer/shared/widgets/food_item_card.dart';
 import 'package:grab_go_customer/shared/widgets/grocery_product_card.dart';
+import 'package:grab_go_customer/shared/widgets/pharmacy_product_card.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';
 import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
@@ -453,24 +455,50 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
     return SliverToBoxAdapter(
       child: Consumer<PharmacyProvider>(
         builder: (context, provider, _) {
-          final items = provider.items
-              .where((item) => item.categoryId == widget.categoryId)
-              .toList();
+          final items = _getFilteredPharmacyItems(provider);
           final deals = items
               .where((item) => item.discountPercentage > 0)
               .take(10)
               .toList();
           if (deals.isEmpty) return const SizedBox.shrink();
 
-          final dealItems = deals.map((item) => item.toFoodItem()).toList();
-          return _buildDealsSection(
-            colors: colors,
-            title: '${widget.categoryName} Deals',
-            dealItems: dealItems,
-            onItemTap: (item) {
-              final originalItem = deals.firstWhere((d) => d.id == item.id);
-              context.push('/foodDetails', extra: originalItem);
-            },
+          final size = MediaQuery.sizeOf(context);
+          final cardWidth = (size.width * 0.38).clamp(138.0, 170.0);
+          final sectionHeight = (cardWidth + 88.h).clamp(228.0, 248.0);
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(height: 16.h),
+              SectionHeader(
+                title: '${widget.categoryName} Deals',
+                accentColor: colors.servicePharmacy,
+                sectionTotal: deals.length,
+                onSeeAll: () {},
+              ),
+              SizedBox(height: 12.h),
+              SizedBox(
+                height: sectionHeight,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: EdgeInsets.only(left: 20.w),
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  itemCount: deals.length,
+                  itemBuilder: (context, index) {
+                    final item = deals[index];
+                    return PharmacyProductCard(
+                      item: item,
+                      width: cardWidth,
+                      compactLayout: true,
+                      showStoreName: true,
+                      showDiscountBadge: true,
+                      margin: EdgeInsets.only(right: 12.w),
+                      onTap: () => context.push('/foodDetails', extra: item),
+                    );
+                  },
+                ),
+              ),
+              SizedBox(height: 20.h),
+            ],
           );
         },
       ),
@@ -598,16 +626,12 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
     return SliverToBoxAdapter(
       child: Consumer<PharmacyProvider>(
         builder: (context, provider, _) {
-          final items = provider.items
-              .where(
-                (item) =>
-                    item.categoryId == widget.categoryId &&
-                    item.discountPercentage <= 0,
-              )
-              .toList();
+          final items = _getFilteredPharmacyItems(
+            provider,
+          ).where((item) => item.discountPercentage <= 0).toList();
           return SectionHeader(
-            title: '${widget.categoryName} Pharmacy Items',
-            accentColor: colors.accentOrange,
+            title: '${widget.categoryName} Items',
+            accentColor: colors.servicePharmacy,
             sectionTotal: items.length,
             onSeeAll: () {},
           );
@@ -837,13 +861,9 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
           );
         }
 
-        final items = provider.items
-            .where(
-              (item) =>
-                  item.categoryId == widget.categoryId &&
-                  item.discountPercentage <= 0,
-            )
-            .toList();
+        final items = _getFilteredPharmacyItems(
+          provider,
+        ).where((item) => item.discountPercentage <= 0).toList();
 
         if (items.isEmpty) {
           return _buildEmptyState(colors);
@@ -856,16 +876,19 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
             top: 8.h,
             bottom: padding.bottom + 16.h,
           ),
-          sliver: SliverList(
+          sliver: SliverGrid(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: kGroceryProductGridAspectRatio,
+              crossAxisSpacing: KSpacing.sm.w,
+              mainAxisSpacing: KSpacing.sm.h,
+            ),
             delegate: SliverChildBuilderDelegate((context, index) {
               final item = items[index];
-              return Padding(
-                padding: EdgeInsets.only(bottom: 16.h),
-                child: FoodItemCard(
-                  item: item.toFoodItem(),
-                  margin: EdgeInsets.zero,
-                  onTap: () => context.push('/foodDetails', extra: item),
-                ),
+              return PharmacyProductCard(
+                item: item,
+                showStoreName: true,
+                onTap: () => context.push('/foodDetails', extra: item),
               );
             }, childCount: items.length),
           ),
@@ -926,6 +949,11 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
   }
 
   Widget _buildEmptyState(AppColorsExtension colors) {
+    final accentColor = widget.isGrocery
+        ? colors.serviceGrocery
+        : widget.isPharmacy
+        ? colors.servicePharmacy
+        : colors.accentOrange;
     return SliverFillRemaining(
       hasScrollBody: false,
       child: Center(
@@ -935,13 +963,13 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
             Container(
               padding: EdgeInsets.all(20.r),
               decoration: BoxDecoration(
-                color: colors.accentOrange.withValues(alpha: 0.1),
+                color: accentColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.shopping_basket_outlined,
                 size: 40.sp,
-                color: colors.accentOrange,
+                color: accentColor,
               ),
             ),
             SizedBox(height: 16.h),
@@ -1213,6 +1241,98 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
     return items;
   }
 
+  List<PharmacyItem> _getFilteredPharmacyItems(PharmacyProvider provider) {
+    List<PharmacyItem> items = provider.items
+        .where((item) => item.categoryId == widget.categoryId)
+        .toList();
+
+    if (_comprehensiveFilter.isActive) {
+      if (_comprehensiveFilter.minPrice != 0 ||
+          _comprehensiveFilter.maxPrice != 10000) {
+        items = items.where((item) {
+          return item.price >= _comprehensiveFilter.minPrice &&
+              item.price <= _comprehensiveFilter.maxPrice;
+        }).toList();
+      }
+
+      if (_comprehensiveFilter.minRating != null) {
+        items = items
+            .where((item) => item.rating >= _comprehensiveFilter.minRating!)
+            .toList();
+      }
+
+      if (_comprehensiveFilter.onSale) {
+        items = items.where((item) => item.discountPercentage > 0).toList();
+      }
+
+      if (_comprehensiveFilter.isNew) {
+        final sevenDaysAgo = DateTime.now().subtract(const Duration(days: 7));
+        items = items
+            .where((item) => item.createdAt.isAfter(sevenDaysAgo))
+            .toList();
+      }
+    }
+
+    for (final filterName in _selectedQuickFilters) {
+      switch (filterName) {
+        case 'On Sale':
+          items = items.where((item) => item.discountPercentage > 0).toList();
+          break;
+        case 'Top Rated':
+          items = items.where((item) => item.rating >= 4.5).toList();
+          break;
+        case 'New':
+          final sevenDaysAgo = DateTime.now().subtract(const Duration(days: 7));
+          items = items
+              .where((item) => item.createdAt.isAfter(sevenDaysAgo))
+              .toList();
+          break;
+        case 'Popular':
+          items = items.where((item) => item.orderCount >= 100).toList();
+          break;
+        case 'Price':
+          if (_selectedPriceRange != null) {
+            items = items.where((item) {
+              switch (_selectedPriceRange) {
+                case 'Under GH₵20':
+                  return item.price < 20;
+                case 'GH₵20 - GH₵50':
+                  return item.price >= 20 && item.price <= 50;
+                case 'GH₵50 - GH₵100':
+                  return item.price > 50 && item.price <= 100;
+                case 'Over GH₵100':
+                  return item.price > 100;
+                default:
+                  return true;
+              }
+            }).toList();
+          }
+          break;
+        case 'Rating':
+          if (_selectedRating != null) {
+            items = items.where((item) {
+              switch (_selectedRating) {
+                case '4.5+ Stars':
+                  return item.rating >= 4.5;
+                case '4.0+ Stars':
+                  return item.rating >= 4.0;
+                case '3.5+ Stars':
+                  return item.rating >= 3.5;
+                case 'Any Rating':
+                default:
+                  return true;
+              }
+            }).toList();
+          }
+          break;
+      }
+    }
+
+    _applySortToPharmacyItems(items);
+
+    return items;
+  }
+
   void _applySortToFoodItems(List<FoodItem> items) {
     switch (_sortBy) {
       case 'Price: Low to High':
@@ -1236,6 +1356,23 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
   }
 
   void _applySortToGroceryItems(List<GroceryItem> items) {
+    switch (_sortBy) {
+      case 'Price: Low to High':
+        items.sort((a, b) => a.price.compareTo(b.price));
+        break;
+      case 'Price: High to Low':
+        items.sort((a, b) => b.price.compareTo(a.price));
+        break;
+      case 'Rating: High to Low':
+        items.sort((a, b) => b.rating.compareTo(a.rating));
+        break;
+      case 'Popularity':
+        items.sort((a, b) => b.orderCount.compareTo(a.orderCount));
+        break;
+    }
+  }
+
+  void _applySortToPharmacyItems(List<PharmacyItem> items) {
     switch (_sortBy) {
       case 'Price: Low to High':
         items.sort((a, b) => a.price.compareTo(b.price));
@@ -1562,13 +1699,7 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
                       else if (widget.isPharmacy)
                         Consumer<PharmacyProvider>(
                           builder: (context, provider, _) {
-                            final items = provider.items
-                                .where(
-                                  (item) =>
-                                      item.categoryId == widget.categoryId &&
-                                      item.discountPercentage <= 0,
-                                )
-                                .toList();
+                            final items = _getFilteredPharmacyItems(provider);
                             return Text(
                               '${items.length} options available',
                               style: TextStyle(

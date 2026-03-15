@@ -38,7 +38,7 @@ const ITEM_TYPE_CONFIG = {
     prismaModel: "pharmacyItem",
     countField: "reviewCount",
     nameField: "name",
-    imageField: "image",
+    imageField: "thumbnailImage",
   },
   grabmart: {
     routeType: "grabmart",
@@ -106,6 +106,7 @@ const ITEM_REVIEW_ORDER_SELECT = {
         select: {
           id: true,
           name: true,
+          thumbnailImage: true,
           image: true,
           rating: true,
           ratingSum: true,
