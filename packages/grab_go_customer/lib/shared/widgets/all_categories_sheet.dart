@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -7,6 +8,7 @@ class AllCategoriesSheet<T> extends StatelessWidget {
   final List<T> categories;
   final String Function(T) getName;
   final String Function(T) getEmoji;
+  final String? Function(T)? getImage;
   final String Function(T) getId;
   final ValueChanged<T> onCategorySelected;
   final Color? accentColor;
@@ -19,6 +21,7 @@ class AllCategoriesSheet<T> extends StatelessWidget {
     required this.categories,
     required this.getName,
     required this.getEmoji,
+    this.getImage,
     required this.getId,
     required this.onCategorySelected,
     this.accentColor,
@@ -32,6 +35,7 @@ class AllCategoriesSheet<T> extends StatelessWidget {
     required List<T> categories,
     required String Function(T) getName,
     required String Function(T) getEmoji,
+    String? Function(T)? getImage,
     required String Function(T) getId,
     required ValueChanged<T> onCategorySelected,
     Color? accentColor,
@@ -51,6 +55,7 @@ class AllCategoriesSheet<T> extends StatelessWidget {
           categories: categories,
           getName: getName,
           getEmoji: getEmoji,
+          getImage: getImage,
           getId: getId,
           onCategorySelected: onCategorySelected,
           accentColor: accentColor,
@@ -68,7 +73,10 @@ class AllCategoriesSheet<T> extends StatelessWidget {
     final crossAxisCount = size.width >= 420 ? 4 : 3;
     final horizontalPadding = 20.w;
     final crossSpacing = 12.w;
-    final availableWidth = size.width - (horizontalPadding * 2) - ((crossAxisCount - 1) * crossSpacing);
+    final availableWidth =
+        size.width -
+        (horizontalPadding * 2) -
+        ((crossAxisCount - 1) * crossSpacing);
     final tileWidth = availableWidth / crossAxisCount;
     final avatarSize = (tileWidth * 0.76).clamp(66.0, 82.0);
     final emojiSize = (avatarSize * 0.45).clamp(28.0, 34.0);
@@ -95,19 +103,31 @@ class AllCategoriesSheet<T> extends StatelessWidget {
               child: Container(
                 width: 40.w,
                 height: 4.h,
-                decoration: BoxDecoration(color: colors.inputBorder, borderRadius: BorderRadius.circular(999.r)),
+                decoration: BoxDecoration(
+                  color: colors.inputBorder,
+                  borderRadius: BorderRadius.circular(999.r),
+                ),
               ),
             ),
             Padding(
               padding: EdgeInsets.fromLTRB(20.w, 14.h, 20.w, 8.h),
               child: Text(
                 title,
-                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                style: TextStyle(
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.w700,
+                  color: colors.textPrimary,
+                ),
               ),
             ),
             Expanded(
               child: GridView.builder(
-                padding: EdgeInsets.fromLTRB(horizontalPadding, 8.h, horizontalPadding, 20.h),
+                padding: EdgeInsets.fromLTRB(
+                  horizontalPadding,
+                  8.h,
+                  horizontalPadding,
+                  20.h,
+                ),
                 itemCount: categories.length,
                 physics: const AlwaysScrollableScrollPhysics(),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -118,7 +138,11 @@ class AllCategoriesSheet<T> extends StatelessWidget {
                 ),
                 itemBuilder: (context, index) {
                   final category = categories[index];
-                  final emoji = getEmoji(category).trim().isEmpty ? '🍽️' : getEmoji(category).trim();
+                  final emoji = getEmoji(category).trim().isEmpty
+                      ? '🍽️'
+                      : getEmoji(category).trim();
+                  final imageUrl = getImage?.call(category)?.trim();
+                  final hasImage = imageUrl != null && imageUrl.isNotEmpty;
 
                   return GestureDetector(
                     onTap: () {
@@ -136,16 +160,48 @@ class AllCategoriesSheet<T> extends StatelessWidget {
                           width: avatarSize,
                           height: avatarSize,
                           alignment: Alignment.center,
+                          padding: EdgeInsets.all(hasImage ? 12.r : 0),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: colors.inputBorder.withValues(alpha: 0.18),
-                            border: Border.all(color: colors.inputBorder.withValues(alpha: 0.55), width: 1),
+                            border: Border.all(
+                              color: colors.inputBorder.withValues(alpha: 0.55),
+                              width: 1,
+                            ),
                           ),
-                          child: Text(
-                            emoji,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: emojiSize.sp, height: 1),
-                          ),
+                          child: hasImage
+                              ? CachedNetworkImage(
+                                  imageUrl: ImageOptimizer.getPreviewUrl(
+                                    imageUrl,
+                                    width: 180,
+                                  ),
+                                  fit: BoxFit.contain,
+                                  memCacheWidth: 180,
+                                  maxHeightDiskCache: 360,
+                                  placeholder: (context, url) => Center(
+                                    child: Icon(
+                                      Icons.local_grocery_store_outlined,
+                                      size: (emojiSize * 0.8).sp,
+                                      color: colors.textSecondary,
+                                    ),
+                                  ),
+                                  errorWidget: (context, url, error) => Text(
+                                    emoji,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: emojiSize.sp,
+                                      height: 1,
+                                    ),
+                                  ),
+                                )
+                              : Text(
+                                  emoji,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: emojiSize.sp,
+                                    height: 1,
+                                  ),
+                                ),
                         ),
                         const SizedBox(height: labelSpacing),
                         SizedBox(

@@ -408,6 +408,7 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
 
           final size = MediaQuery.sizeOf(context);
           final cardWidth = (size.width * 0.38).clamp(138.0, 170.0);
+          final sectionHeight = (cardWidth + 88.h).clamp(228.0, 248.0);
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -420,7 +421,7 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
               ),
               SizedBox(height: 12.h),
               SizedBox(
-                height: 246.h,
+                height: sectionHeight,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   padding: EdgeInsets.only(left: 20.w),
@@ -431,6 +432,7 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
                     return GroceryProductCard(
                       item: item,
                       width: cardWidth,
+                      compactLayout: true,
                       showStoreName: true,
                       showDiscountBadge: true,
                       margin: EdgeInsets.only(right: 12.w),
@@ -803,9 +805,9 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
           sliver: SliverGrid(
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              childAspectRatio: 0.76,
-              crossAxisSpacing: 12.w,
-              mainAxisSpacing: 16.h,
+              childAspectRatio: kGroceryProductGridAspectRatio,
+              crossAxisSpacing: KSpacing.sm.w,
+              mainAxisSpacing: KSpacing.sm.h,
             ),
             delegate: SliverChildBuilderDelegate((context, index) {
               final item = items[index];

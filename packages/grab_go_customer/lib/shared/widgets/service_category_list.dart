@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
@@ -8,6 +9,8 @@ class ServiceCategoryList<T> extends StatefulWidget {
   final String Function(T) getName;
 
   final String Function(T) getEmoji;
+
+  final String? Function(T)? getImage;
 
   final String Function(T) getId;
 
@@ -24,6 +27,7 @@ class ServiceCategoryList<T> extends StatefulWidget {
     required this.categories,
     required this.getName,
     required this.getEmoji,
+    this.getImage,
     required this.getId,
     required this.onCategorySelected,
     this.initialSelectedCategory,
@@ -59,7 +63,9 @@ class _ServiceCategoryListState<T> extends State<ServiceCategoryList<T>> {
 
   void _notifyInitialSelection() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && widget.categories.isNotEmpty && selectedIndex < widget.categories.length) {
+      if (mounted &&
+          widget.categories.isNotEmpty &&
+          selectedIndex < widget.categories.length) {
         widget.onCategorySelected(widget.categories[selectedIndex]);
       }
     });
@@ -126,7 +132,9 @@ class _ServiceCategoryListState<T> extends State<ServiceCategoryList<T>> {
     if (initial == null) return;
 
     final index = _findCategoryIndex(initial);
-    if (index >= 0 && index != selectedIndex && index < widget.categories.length) {
+    if (index >= 0 &&
+        index != selectedIndex &&
+        index < widget.categories.length) {
       setState(() {
         selectedIndex = index;
       });
@@ -136,7 +144,9 @@ class _ServiceCategoryListState<T> extends State<ServiceCategoryList<T>> {
 
   int _findCategoryIndex(T category) {
     final categoryId = widget.getId(category);
-    return widget.categories.indexWhere((cat) => widget.getId(cat) == categoryId);
+    return widget.categories.indexWhere(
+      (cat) => widget.getId(cat) == categoryId,
+    );
   }
 
   void _notifySelectionChange(int index) {
@@ -183,7 +193,9 @@ class _ServiceCategoryListState<T> extends State<ServiceCategoryList<T>> {
           return GestureDetector(
             onTap: () => _onCategoryTap(index),
             child: Padding(
-              padding: EdgeInsets.only(right: index == widget.categories.length - 1 ? 0 : 16.w),
+              padding: EdgeInsets.only(
+                right: index == widget.categories.length - 1 ? 0 : 16.w,
+              ),
               child: _buildCategoryChip(category, isSelected, colors),
             ),
           );
@@ -192,22 +204,67 @@ class _ServiceCategoryListState<T> extends State<ServiceCategoryList<T>> {
     );
   }
 
-  Widget _buildCategoryChip(T category, bool isSelected, AppColorsExtension colors) {
+  Widget _buildCategoryChip(
+    T category,
+    bool isSelected,
+    AppColorsExtension colors,
+  ) {
     final chipColor = widget.accentColor ?? colors.accentOrange;
+    final imageUrl = _resolveImage(category);
+    final hasImage = imageUrl != null;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         AnimatedContainer(
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeInOut,
-          padding: EdgeInsets.all(20.r),
-          decoration: BoxDecoration(color: chipColor.withValues(alpha: 0.1), shape: BoxShape.circle),
-          child: _buildEmoji(category, isSelected, colors),
+          width: 72.w,
+          height: 72.w,
+          padding: EdgeInsets.all(hasImage ? 12.r : 20.r),
+          decoration: BoxDecoration(
+            color: chipColor.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: _buildVisual(category, imageUrl, isSelected, colors),
         ),
         SizedBox(height: 8.h),
         _buildName(category, isSelected, colors),
       ],
     );
+  }
+
+  String? _resolveImage(T category) {
+    final image = widget.getImage?.call(category)?.trim();
+    if (image == null || image.isEmpty) return null;
+    return image;
+  }
+
+  Widget _buildVisual(
+    T category,
+    String? imageUrl,
+    bool isSelected,
+    AppColorsExtension colors,
+  ) {
+    if (imageUrl != null) {
+      return CachedNetworkImage(
+        imageUrl: ImageOptimizer.getPreviewUrl(imageUrl, width: 160),
+        fit: BoxFit.contain,
+        memCacheWidth: 160,
+        maxHeightDiskCache: 320,
+        placeholder: (context, url) => Center(
+          child: Icon(
+            Icons.local_grocery_store_outlined,
+            size: 24.sp,
+            color: colors.textSecondary,
+          ),
+        ),
+        errorWidget: (context, url, error) =>
+            _buildEmoji(category, isSelected, colors),
+      );
+    }
+
+    return _buildEmoji(category, isSelected, colors);
   }
 
   Widget _buildEmoji(T category, bool isSelected, AppColorsExtension colors) {
@@ -223,11 +280,20 @@ class _ServiceCategoryListState<T> extends State<ServiceCategoryList<T>> {
     return AnimatedDefaultTextStyle(
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeInOut,
-      style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w500, fontSize: 12.sp),
+      style: TextStyle(
+        color: colors.textPrimary,
+        fontWeight: FontWeight.w500,
+        fontSize: 12.sp,
+      ),
       child: Text(
         widget.getName(category),
         textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500, fontFamily: "Lato", package: 'grab_go_shared'),
+        style: TextStyle(
+          fontSize: 13.sp,
+          fontWeight: FontWeight.w500,
+          fontFamily: "Lato",
+          package: 'grab_go_shared',
+        ),
       ),
     );
   }

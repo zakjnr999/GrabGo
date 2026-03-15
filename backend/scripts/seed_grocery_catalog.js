@@ -14,61 +14,65 @@ const dayFromNow = (days) => {
   return date;
 };
 
+const DUMMYJSON_IMAGE_BASE_URL = "https://cdn.dummyjson.com/product-images";
+const CURATED_BAKERY_PACKSHOT_URL =
+  "https://images.openfoodfacts.org/images/products/841/008/701/2018/front_fr.25.400.jpg";
+
 const CATEGORY_DEFINITIONS = [
   {
     name: "Fresh Produce",
     emoji: "🥬",
     description: "Fruit, vegetables, and everyday market fresh picks.",
-    image: "https://images.unsplash.com/photo-1568702846914-96b305d2aaeb?w=800",
+    image: `${DUMMYJSON_IMAGE_BASE_URL}/groceries/green-bell-pepper/thumbnail.webp`,
     sortOrder: 1,
   },
   {
     name: "Dairy & Eggs",
     emoji: "🥛",
     description: "Milk, yogurt, cheese, and chilled breakfast staples.",
-    image: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=800",
+    image: `${DUMMYJSON_IMAGE_BASE_URL}/groceries/milk/thumbnail.webp`,
     sortOrder: 2,
   },
   {
     name: "Bakery",
     emoji: "🥐",
     description: "Fresh bread, pastries, and breakfast baked goods.",
-    image: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=800",
+    image: CURATED_BAKERY_PACKSHOT_URL,
     sortOrder: 3,
   },
   {
     name: "Meat & Seafood",
     emoji: "🥩",
     description: "Proteins for quick meals and family cooking.",
-    image: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=800",
+    image: `${DUMMYJSON_IMAGE_BASE_URL}/groceries/fish-steak/thumbnail.webp`,
     sortOrder: 4,
   },
   {
     name: "Pantry Staples",
     emoji: "🥫",
     description: "Rice, pasta, oils, and shelf-ready cooking essentials.",
-    image: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=800",
+    image: `${DUMMYJSON_IMAGE_BASE_URL}/groceries/rice/thumbnail.webp`,
     sortOrder: 5,
   },
   {
     name: "Snacks & Treats",
     emoji: "🍪",
     description: "Sweet bites, crunchy snacks, and impulse favorites.",
-    image: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=800",
+    image: `${DUMMYJSON_IMAGE_BASE_URL}/groceries/honey-jar/thumbnail.webp`,
     sortOrder: 6,
   },
   {
     name: "Drinks & Coffee",
     emoji: "🥤",
     description: "Juices, water, sparkling drinks, and coffee essentials.",
-    image: "https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=800",
+    image: `${DUMMYJSON_IMAGE_BASE_URL}/groceries/juice/thumbnail.webp`,
     sortOrder: 7,
   },
   {
     name: "Home Care",
     emoji: "🧴",
     description: "Bathroom, hygiene, and personal care staples.",
-    image: "https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?w=800",
+    image: `${DUMMYJSON_IMAGE_BASE_URL}/skin-care/attitude-super-leaves-hand-soap/thumbnail.webp`,
     sortOrder: 8,
   },
 ];
@@ -649,8 +653,19 @@ async function fetchCurrentItemsByStore() {
 
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
-  const currentItemsByStore = await fetchCurrentItemsByStore();
+  const categoriesOnly = process.argv.includes("--categories-only");
+  const currentItemsByStore = categoriesOnly
+    ? new Map()
+    : await fetchCurrentItemsByStore();
   const categoryMap = await syncCategories(dryRun);
+  if (categoriesOnly) {
+    console.log("[grocery-catalog] Summary:");
+    console.log(`  - categories active: ${CATEGORY_DEFINITIONS.length}`);
+    console.log(
+      "  - category images updated: grocery categories now use packshot-style assets"
+    );
+    return;
+  }
   const canonicalCount = getCanonicalCatalogCount();
   const currentCount = Array.from(currentItemsByStore.values()).reduce(
     (sum, items) => sum + items.length,

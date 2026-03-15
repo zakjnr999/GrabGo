@@ -4,9 +4,12 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
+import 'package:grab_go_customer/shared/widgets/vertical_zigzag_tag.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:provider/provider.dart';
+
+const double kGroceryProductGridAspectRatio = 0.70;
 
 class GroceryProductCard extends StatelessWidget {
   final GroceryItem item;
@@ -15,6 +18,7 @@ class GroceryProductCard extends StatelessWidget {
   final double? width;
   final bool showStoreName;
   final bool showDiscountBadge;
+  final bool compactLayout;
 
   const GroceryProductCard({
     super.key,
@@ -24,6 +28,7 @@ class GroceryProductCard extends StatelessWidget {
     this.width,
     this.showStoreName = true,
     this.showDiscountBadge = false,
+    this.compactLayout = false,
   });
 
   @override
@@ -32,43 +37,56 @@ class GroceryProductCard extends StatelessWidget {
     final accentColor = colors.serviceGrocery;
     final displayPrice = item.discountedPrice;
     final hasDiscount = item.hasDiscount;
+    final showExpandedDiscountPricing = showDiscountBadge && hasDiscount;
     final storeName = (item.storeName ?? '').trim();
+    final outerPadding = compactLayout ? 8.r : 10.r;
+    final imagePadding = compactLayout ? 8.r : 10.r;
+    final imageCornerRadius = compactLayout ? 10.r : 12.r;
+    final titleGap = showExpandedDiscountPricing ? (compactLayout ? 6.h : 8.h) : (compactLayout ? 8.h : 10.h);
+    final nameFontSize = compactLayout ? 12.sp : 13.sp;
+    final storeFontSize = compactLayout ? 10.sp : 11.sp;
+    final priceFontSize = compactLayout ? 13.sp : 14.sp;
+    final unitFontSize = compactLayout ? 10.sp : 11.sp;
+    final beforePriceFontSize = compactLayout ? 9.sp : 10.sp;
+    final afterNameGap = compactLayout ? 3.h : 4.h;
+    final afterStoreGap = showExpandedDiscountPricing ? (compactLayout ? 2.h : 2.h) : (compactLayout ? 3.h : 4.h);
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: width,
         margin: margin,
-        padding: EdgeInsets.all(10.r),
+        padding: EdgeInsets.all(outerPadding),
         decoration: BoxDecoration(color: colors.backgroundPrimary, borderRadius: BorderRadius.circular(18.r)),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Stack(
               children: [
                 Container(
                   width: double.infinity,
-                  padding: EdgeInsets.all(10.r),
+                  padding: EdgeInsets.all(imagePadding),
                   decoration: BoxDecoration(
-                    color: colors.backgroundSecondary,
+                    color: colors.serviceGrocery.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                   ),
                   child: AspectRatio(
                     aspectRatio: 1,
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12.r),
+                      borderRadius: BorderRadius.circular(imageCornerRadius),
                       child: CachedNetworkImage(
                         imageUrl: ImageOptimizer.getPreviewUrl(item.catalogImage, width: 320),
                         fit: BoxFit.contain,
                         memCacheWidth: 320,
                         maxHeightDiskCache: 640,
                         placeholder: (context, url) => Container(
-                          color: colors.backgroundSecondary,
+                          color: colors.serviceGrocery.withValues(alpha: 0.1),
                           alignment: Alignment.center,
                           child: Icon(Icons.local_grocery_store_outlined, size: 28.sp, color: colors.textSecondary),
                         ),
                         errorWidget: (context, url, error) => Container(
-                          color: colors.backgroundSecondary,
+                          color: colors.serviceGrocery.withValues(alpha: 0.1),
                           alignment: Alignment.center,
                           child: Icon(Icons.broken_image_outlined, size: 28.sp, color: colors.textSecondary),
                         ),
@@ -78,69 +96,138 @@ class GroceryProductCard extends StatelessWidget {
                 ),
                 if (showDiscountBadge && hasDiscount)
                   Positioned(
+                    top: 0,
                     left: 8.w,
-                    top: 8.h,
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                      decoration: BoxDecoration(color: accentColor, borderRadius: BorderRadius.circular(999.r)),
-                      child: Text(
-                        '-${item.discountPercentage.toInt()}%',
-                        style: TextStyle(color: Colors.white, fontSize: 10.sp, fontWeight: FontWeight.w700),
-                      ),
+                    child: VerticalZigzagTag(
+                      primaryText: '${item.discountPercentage.toInt()}%',
+                      secondaryText: 'OFF',
+                      color: colors.serviceGrocery,
                     ),
                   ),
                 Positioned(
                   right: 8.w,
                   bottom: 8.h,
-                  child: _GroceryCardActionButton(item: item, color: accentColor),
+                  child: _GroceryCardActionButton(item: item, color: accentColor, compactLayout: compactLayout),
                 ),
               ],
             ),
-            SizedBox(height: 10.h),
+            SizedBox(height: titleGap),
             Text(
               item.name,
-              maxLines: 2,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: colors.textPrimary, height: 1.2),
+              style: TextStyle(
+                fontSize: nameFontSize,
+                fontWeight: FontWeight.w700,
+                color: colors.textPrimary,
+                height: compactLayout ? 1.15 : 1.2,
+              ),
             ),
-            SizedBox(height: 4.h),
+            SizedBox(height: afterNameGap),
             if (showStoreName && storeName.isNotEmpty) ...[
               Text(
                 storeName,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
+                style: TextStyle(
+                  fontSize: storeFontSize,
+                  fontWeight: FontWeight.w500,
+                  color: colors.textSecondary,
+                  height: 1.1,
+                ),
               ),
-              SizedBox(height: 4.h),
+              SizedBox(height: afterStoreGap),
             ],
-            RichText(
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              text: TextSpan(
-                children: [
-                  TextSpan(
-                    text: 'GHS ${displayPrice.toStringAsFixed(2)}',
-                    style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800, color: accentColor),
-                  ),
-                  TextSpan(
-                    text: ' / ${item.unit}',
-                    style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w500, color: colors.textSecondary),
-                  ),
-                ],
+            if (showExpandedDiscountPricing) ...[
+              RichText(
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: 'GHS ${displayPrice.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontFamily: 'Lato',
+                        package: 'grab_go_shared',
+                        fontSize: priceFontSize,
+                        fontWeight: FontWeight.w800,
+                        color: accentColor,
+                        height: 1.0,
+                      ),
+                    ),
+                    TextSpan(
+                      text: ' / ${item.unit}',
+                      style: TextStyle(
+                        fontFamily: 'Lato',
+                        package: 'grab_go_shared',
+                        fontSize: unitFontSize,
+                        fontWeight: FontWeight.w500,
+                        color: colors.textSecondary,
+                        height: 1.0,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            if (hasDiscount) ...[
-              SizedBox(height: 2.h),
+              SizedBox(height: 3.h),
               Text(
                 'GHS ${item.price.toStringAsFixed(2)}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 10.sp,
+                  fontFamily: 'Lato',
+                  package: 'grab_go_shared',
+                  fontSize: beforePriceFontSize,
                   fontWeight: FontWeight.w500,
                   color: colors.textSecondary,
                   decoration: TextDecoration.lineThrough,
+                  height: 1.0,
                 ),
               ),
-            ],
+            ] else
+              RichText(
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: 'GHS ${displayPrice.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontFamily: 'Lato',
+                        package: 'grab_go_shared',
+                        fontSize: priceFontSize,
+                        fontWeight: FontWeight.w800,
+                        color: accentColor,
+                        height: 1.0,
+                      ),
+                    ),
+                    TextSpan(
+                      text: ' / ${item.unit}',
+                      style: TextStyle(
+                        fontFamily: 'Lato',
+                        package: 'grab_go_shared',
+                        fontSize: unitFontSize,
+                        fontWeight: FontWeight.w500,
+                        color: colors.textSecondary,
+                        height: 1.0,
+                      ),
+                    ),
+                    if (hasDiscount)
+                      TextSpan(
+                        text: '  GHS ${item.price.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontFamily: 'Lato',
+                          package: 'grab_go_shared',
+                          fontSize: beforePriceFontSize,
+                          fontWeight: FontWeight.w500,
+                          color: colors.textSecondary,
+                          decoration: TextDecoration.lineThrough,
+                          height: 1.0,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
@@ -151,8 +238,9 @@ class GroceryProductCard extends StatelessWidget {
 class _GroceryCardActionButton extends StatelessWidget {
   final GroceryItem item;
   final Color color;
+  final bool compactLayout;
 
-  const _GroceryCardActionButton({required this.item, required this.color});
+  const _GroceryCardActionButton({required this.item, required this.color, required this.compactLayout});
 
   @override
   Widget build(BuildContext context) {
@@ -164,6 +252,8 @@ class _GroceryCardActionButton extends StatelessWidget {
         final isPending = cartProvider.isItemOperationPendingForDisplay(item);
         final actionItem = cartProvider.resolveItemForCartAction(item);
         const animationDuration = Duration(milliseconds: 250);
+        final buttonSize = compactLayout ? 30.w : 32.w;
+        final iconSize = compactLayout ? 16.w : 17.w;
 
         return Material(
           color: Colors.transparent,
@@ -180,8 +270,8 @@ class _GroceryCardActionButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
             child: AnimatedContainer(
               duration: animationDuration,
-              width: 32.w,
-              height: 32.w,
+              width: buttonSize,
+              height: buttonSize,
               decoration: BoxDecoration(
                 color: isInCart ? color : colors.backgroundPrimary.withValues(alpha: 0.95),
                 borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
@@ -200,8 +290,8 @@ class _GroceryCardActionButton extends StatelessWidget {
                   child: isPending
                       ? SizedBox(
                           key: const ValueKey('pending'),
-                          width: 17.w,
-                          height: 17.w,
+                          width: iconSize,
+                          height: iconSize,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             valueColor: AlwaysStoppedAnimation<Color>(isInCart ? Colors.white : color),
@@ -211,8 +301,8 @@ class _GroceryCardActionButton extends StatelessWidget {
                           key: ValueKey(isInCart ? 'in-cart' : 'add'),
                           isInCart ? Assets.icons.check : Assets.icons.plus,
                           package: 'grab_go_shared',
-                          height: 17.h,
-                          width: 17.w,
+                          height: iconSize,
+                          width: iconSize,
                           colorFilter: ColorFilter.mode(isInCart ? Colors.white : colors.textPrimary, BlendMode.srcIn),
                         ),
                 ),
