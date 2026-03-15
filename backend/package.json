@@ -29,6 +29,7 @@
     "seed:rating-metrics": "node scripts/seed_rating_metrics.js",
     "seed:grocery-catalog": "node scripts/seed_grocery_catalog.js",
     "seed:grocery-thumbnails": "node scripts/seed_grocery_thumbnails.js",
+    "seed:pharmacy-thumbnails": "node scripts/seed_pharmacy_thumbnails.js",
     "create:rider": "node scripts/create_rider_account.js",
     "test:food-customization": "node scripts/test_food_customization.js",
     "prisma:generate": "prisma generate",
