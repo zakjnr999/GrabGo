@@ -24,6 +24,7 @@ import 'package:grab_go_customer/shared/viewmodels/native_location_provider.dart
 import 'package:grab_go_customer/shared/widgets/area_unavailable_screen.dart';
 import 'package:grab_go_customer/shared/widgets/all_categories_sheet.dart';
 import 'package:grab_go_customer/shared/widgets/deals_section.dart';
+import 'package:grab_go_customer/shared/widgets/grocery_product_card.dart';
 import 'package:grab_go_customer/shared/widgets/popular_section.dart';
 import 'package:grab_go_customer/shared/widgets/popular_item_card.dart';
 import 'package:grab_go_customer/shared/widgets/promotional_banner_carousel.dart';
@@ -48,21 +49,17 @@ class ServiceHubPage extends StatefulWidget {
 class _ServiceHubPageState extends State<ServiceHubPage> {
   static const double _collapsedHeight = 72.0;
   static const double _scrollThreshold = 140.0;
-  static double _headerExtraHeightFor(Size size) =>
-      (size.shortestSide * 0.088).clamp(28.0, 42.0);
+  static double _headerExtraHeightFor(Size size) => (size.shortestSide * 0.088).clamp(28.0, 42.0);
 
   final ScrollController _scrollController = ScrollController();
-  final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(
-    0.0,
-  );
+  final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0.0);
   final List<VendorModel> _nearbyServiceVendors = [];
   bool _isLoadingNearbyVendors = false;
   bool _isInitialHubLoadInProgress = true;
   String? _loadedNearbyKey;
   String? _pendingNearbyKey;
 
-  ServiceHubConfig? get _config =>
-      ServiceHubConfig.fromServiceId(widget.serviceId);
+  ServiceHubConfig? get _config => ServiceHubConfig.fromServiceId(widget.serviceId);
 
   Color _serviceAccentColor(AppColorsExtension colors) {
     switch (widget.serviceId) {
@@ -119,8 +116,7 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
       return;
     }
 
-    final requestKey =
-        '${vendorType.id}_${lat.toStringAsFixed(4)}_${lng.toStringAsFixed(4)}';
+    final requestKey = '${vendorType.id}_${lat.toStringAsFixed(4)}_${lng.toStringAsFixed(4)}';
     if (!forceRefresh && _loadedNearbyKey == requestKey) return;
 
     if (mounted) {
@@ -138,11 +134,7 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
       setState(() {
         _nearbyServiceVendors
           ..clear()
-          ..addAll(
-            provider.selectedType == vendorType
-                ? provider.nearestVendors.take(10)
-                : <VendorModel>[],
-          );
+          ..addAll(provider.selectedType == vendorType ? provider.nearestVendors.take(10) : <VendorModel>[]);
         _isLoadingNearbyVendors = false;
         _loadedNearbyKey = requestKey;
         _pendingNearbyKey = null;
@@ -156,12 +148,8 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
     final lng = locationProvider.longitude;
     if (vendorType == null || lat == null || lng == null) return;
 
-    final requestKey =
-        '${vendorType.id}_${lat.toStringAsFixed(4)}_${lng.toStringAsFixed(4)}';
-    if (_loadedNearbyKey == requestKey ||
-        _pendingNearbyKey == requestKey ||
-        _isLoadingNearbyVendors)
-      return;
+    final requestKey = '${vendorType.id}_${lat.toStringAsFixed(4)}_${lng.toStringAsFixed(4)}';
+    if (_loadedNearbyKey == requestKey || _pendingNearbyKey == requestKey || _isLoadingNearbyVendors) return;
     _pendingNearbyKey = requestKey;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -207,25 +195,19 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
       switch (widget.serviceId) {
         case 'groceries':
           final provider = context.read<GroceryProvider>();
-          if (provider.items.isEmpty ||
-              provider.categories.isEmpty ||
-              provider.recommendedItems.isEmpty) {
+          if (provider.items.isEmpty || provider.categories.isEmpty || provider.recommendedItems.isEmpty) {
             serviceDataFuture = provider.refreshAll();
           }
           break;
         case 'pharmacy':
           final provider = context.read<PharmacyProvider>();
-          if (provider.items.isEmpty ||
-              provider.categories.isEmpty ||
-              provider.recommendedItems.isEmpty) {
+          if (provider.items.isEmpty || provider.categories.isEmpty || provider.recommendedItems.isEmpty) {
             serviceDataFuture = provider.refreshAll();
           }
           break;
         case 'convenience':
           final provider = context.read<GrabMartProvider>();
-          if (provider.items.isEmpty ||
-              provider.categories.isEmpty ||
-              provider.recommendedItems.isEmpty) {
+          if (provider.items.isEmpty || provider.categories.isEmpty || provider.recommendedItems.isEmpty) {
             serviceDataFuture = provider.refreshAll();
           }
           break;
@@ -275,9 +257,7 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
       statusBarIconBrightness: Brightness.light,
       systemNavigationBarColor: colors.backgroundPrimary,
       systemNavigationBarDividerColor: colors.backgroundPrimary,
-      systemNavigationBarIconBrightness: isDark
-          ? Brightness.light
-          : Brightness.dark,
+      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
     );
 
     if (config == null) {
@@ -291,11 +271,7 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
         body: Center(
           child: Text(
             'Unsupported service',
-            style: TextStyle(
-              color: colors.textPrimary,
-              fontSize: 16.sp,
-              fontWeight: FontWeight.w600,
-            ),
+            style: TextStyle(color: colors.textPrimary, fontSize: 16.sp, fontWeight: FontWeight.w600),
           ),
         ),
       );
@@ -312,13 +288,7 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
               AppRefreshIndicator(
                 bgColor: serviceAccentColor,
                 onRefresh: _refreshCurrentService,
-                child: _buildContent(
-                  config,
-                  size,
-                  colors,
-                  isDark,
-                  serviceAccentColor,
-                ),
+                child: _buildContent(config, size, colors, isDark, serviceAccentColor),
               ),
               Positioned(
                 top: 0,
@@ -339,60 +309,23 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
     );
   }
 
-  Widget _buildContent(
-    ServiceHubConfig config,
-    Size size,
-    AppColorsExtension colors,
-    bool isDark,
-    Color accentColor,
-  ) {
+  Widget _buildContent(ServiceHubConfig config, Size size, AppColorsExtension colors, bool isDark, Color accentColor) {
     final groceryProvider = context.watch<GroceryProvider>();
     final pharmacyProvider = context.watch<PharmacyProvider>();
     final grabMartProvider = context.watch<GrabMartProvider>();
     final locationProvider = context.watch<NativeLocationProvider>();
     _ensureNearbyVendorsLoaded(locationProvider);
 
-    final items = _resolveDisplayItems(
-      groceryProvider,
-      pharmacyProvider,
-      grabMartProvider,
-    );
-    final rawRecommendedItems = _resolveRecommendedDisplayItems(
-      groceryProvider,
-      pharmacyProvider,
-      grabMartProvider,
-    );
-    final recommendedItems = _withRecommendedFallback(
-      rawRecommendedItems,
-      items,
-    );
-    final categories = _resolveCategoriesCount(
-      groceryProvider,
-      pharmacyProvider,
-      grabMartProvider,
-    );
-    final isLoading = _isLoading(
-      groceryProvider,
-      pharmacyProvider,
-      grabMartProvider,
-    );
-    final isLoadingRecommended = _isLoadingRecommended(
-      groceryProvider,
-      pharmacyProvider,
-      grabMartProvider,
-    );
-    final hasMoreRecommended = _hasMoreRecommended(
-      groceryProvider,
-      pharmacyProvider,
-      grabMartProvider,
-    );
+    final items = _resolveDisplayItems(groceryProvider, pharmacyProvider, grabMartProvider);
+    final rawRecommendedItems = _resolveRecommendedDisplayItems(groceryProvider, pharmacyProvider, grabMartProvider);
+    final recommendedItems = _withRecommendedFallback(rawRecommendedItems, items);
+    final categories = _resolveCategoriesCount(groceryProvider, pharmacyProvider, grabMartProvider);
+    final isLoading = _isLoading(groceryProvider, pharmacyProvider, grabMartProvider);
+    final isLoadingRecommended = _isLoadingRecommended(groceryProvider, pharmacyProvider, grabMartProvider);
+    final hasMoreRecommended = _hasMoreRecommended(groceryProvider, pharmacyProvider, grabMartProvider);
     final hasData = items.isNotEmpty || categories > 0;
 
-    final contentTopPadding = UmbrellaHeaderMetrics.contentPaddingFor(
-      size,
-      extra: _headerExtraHeightFor(size),
-      gap: 8,
-    );
+    final contentTopPadding = UmbrellaHeaderMetrics.contentPaddingFor(size, extra: _headerExtraHeightFor(size), gap: 8);
 
     if (_isInitialHubLoadInProgress || (isLoading && !hasData)) {
       return ListView(
@@ -407,9 +340,11 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
     final popular = _sortedPopular(items);
     final topRated = _sortedTopRated(items);
     final banners = _bannersForService(widget.serviceId, accentColor);
-    final shouldShowServiceUnavailable = _shouldShowServiceUnavailable(
-      locationProvider,
-    );
+    final groceryDeals = _resolveGroceryDeals(groceryProvider);
+    final groceryPopular = _resolveGroceryPopular(groceryProvider);
+    final groceryTopRated = _resolveGroceryTopRated(groceryProvider);
+    final groceryRecommended = _resolveGroceryRecommended(groceryProvider);
+    final shouldShowServiceUnavailable = _shouldShowServiceUnavailable(locationProvider);
 
     if (shouldShowServiceUnavailable) {
       return ListView(
@@ -417,32 +352,34 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.only(top: contentTopPadding, bottom: 32.h),
         children: [
-          AreaUnavailableScreen(
-            serviceName: _config?.title,
-            isAreaUnavailable: false,
-            accentColor: accentColor,
-          ),
+          AreaUnavailableScreen(serviceName: _config?.title, isAreaUnavailable: false, accentColor: accentColor),
         ],
       );
     }
 
-    final showEmpty =
-        deals.isEmpty &&
-        popular.isEmpty &&
-        topRated.isEmpty &&
-        recommendedItems.isEmpty &&
-        categories == 0 &&
-        _nearbyServiceVendors.isEmpty &&
-        !isLoadingRecommended &&
-        !_isLoadingNearbyVendors;
+    final showEmpty = widget.serviceId == 'groceries'
+        ? groceryDeals.isEmpty &&
+              groceryPopular.isEmpty &&
+              groceryTopRated.isEmpty &&
+              groceryRecommended.isEmpty &&
+              categories == 0 &&
+              _nearbyServiceVendors.isEmpty &&
+              !isLoadingRecommended &&
+              !_isLoadingNearbyVendors
+        : deals.isEmpty &&
+              popular.isEmpty &&
+              topRated.isEmpty &&
+              recommendedItems.isEmpty &&
+              categories == 0 &&
+              _nearbyServiceVendors.isEmpty &&
+              !isLoadingRecommended &&
+              !_isLoadingNearbyVendors;
 
     return ListView(
       controller: _scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
       padding: EdgeInsets.only(top: contentTopPadding, bottom: 32.h),
       children: [
-        if (banners.isNotEmpty) PromotionalBannerCarousel(banners: banners),
-        if (banners.isNotEmpty) SizedBox(height: 8.h),
         _buildCategoriesSection(
           config: config,
           accentColor: accentColor,
@@ -451,32 +388,54 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
           grabMartProvider: grabMartProvider,
         ),
         SizedBox(height: KSpacing.lg.h),
-        if (deals.isNotEmpty)
-          _buildHorizontalItemsSection(
-            items: deals,
-            sectionType: _SectionType.deals,
+        if (widget.serviceId == 'groceries' && banners.isNotEmpty) ...[
+          PromotionalBannerCarousel(banners: banners),
+          SizedBox(height: KSpacing.lg.h),
+        ],
+        if (widget.serviceId != 'groceries' && banners.isNotEmpty) ...[
+          PromotionalBannerCarousel(banners: banners),
+          SizedBox(height: 8.h),
+        ],
+        if (widget.serviceId == 'groceries' && groceryDeals.isNotEmpty)
+          _buildGroceryHorizontalItemsSection(
+            title: 'Deals & Offers',
+            items: groceryDeals,
+            accentColor: accentColor,
+            showDiscountBadge: true,
+          ),
+        if (widget.serviceId == 'groceries' && groceryDeals.isNotEmpty) SizedBox(height: KSpacing.lg.h),
+        if (widget.serviceId != 'groceries' && deals.isNotEmpty)
+          _buildHorizontalItemsSection(items: deals, sectionType: _SectionType.deals, accentColor: accentColor),
+        if (widget.serviceId != 'groceries' && deals.isNotEmpty) SizedBox(height: KSpacing.lg.h),
+        if (widget.serviceId == 'groceries' && groceryPopular.isNotEmpty)
+          _buildGroceryHorizontalItemsSection(
+            title: 'Popular Right Now',
+            items: groceryPopular,
             accentColor: accentColor,
           ),
-        if (deals.isNotEmpty) SizedBox(height: KSpacing.lg.h),
-        if (popular.isNotEmpty)
-          _buildHorizontalItemsSection(
-            items: popular,
-            sectionType: _SectionType.popular,
+        if (widget.serviceId == 'groceries' && groceryPopular.isNotEmpty) SizedBox(height: KSpacing.lg.h),
+        if (widget.serviceId != 'groceries' && popular.isNotEmpty)
+          _buildHorizontalItemsSection(items: popular, sectionType: _SectionType.popular, accentColor: accentColor),
+        if (widget.serviceId != 'groceries' && popular.isNotEmpty) SizedBox(height: KSpacing.lg.h),
+        if (widget.serviceId == 'groceries' && groceryTopRated.isNotEmpty)
+          _buildGroceryHorizontalItemsSection(
+            title: 'Top Rated Picks',
+            items: groceryTopRated,
             accentColor: accentColor,
           ),
-        if (popular.isNotEmpty) SizedBox(height: KSpacing.lg.h),
-        if (topRated.isNotEmpty)
-          _buildHorizontalItemsSection(
-            items: topRated,
-            sectionType: _SectionType.topRated,
+        if (widget.serviceId == 'groceries' && groceryTopRated.isNotEmpty) SizedBox(height: KSpacing.lg.h),
+        if (widget.serviceId != 'groceries' && topRated.isNotEmpty)
+          _buildHorizontalItemsSection(items: topRated, sectionType: _SectionType.topRated, accentColor: accentColor),
+        if (widget.serviceId != 'groceries' && topRated.isNotEmpty) SizedBox(height: KSpacing.lg.h),
+        _buildNearbyServiceStoresSection(accentColor: accentColor, locationProvider: locationProvider),
+        if (widget.serviceId == 'groceries' && (groceryRecommended.isNotEmpty || isLoadingRecommended))
+          _buildGroceryRecommendedItemsSection(
+            items: groceryRecommended,
             accentColor: accentColor,
+            isLoadingMore: isLoadingRecommended,
+            hasMore: hasMoreRecommended,
           ),
-        if (topRated.isNotEmpty) SizedBox(height: KSpacing.lg.h),
-        _buildNearbyServiceStoresSection(
-          accentColor: accentColor,
-          locationProvider: locationProvider,
-        ),
-        if (recommendedItems.isNotEmpty || isLoadingRecommended)
+        if (widget.serviceId != 'groceries' && (recommendedItems.isNotEmpty || isLoadingRecommended))
           _buildRecommendedItemsSection(
             items: recommendedItems,
             accentColor: accentColor,
@@ -488,10 +447,7 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
     );
   }
 
-  List<PromotionalBanner> _bannersForService(
-    String serviceId,
-    Color accentColor,
-  ) {
+  List<PromotionalBanner> _bannersForService(String serviceId, Color accentColor) {
     switch (serviceId) {
       case 'groceries':
         return [
@@ -598,25 +554,11 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
     return ValueListenableBuilder<double>(
       valueListenable: _scrollOffsetNotifier,
       builder: (context, scrollOffset, _) {
-        final collapseProgress = (scrollOffset / _scrollThreshold).clamp(
-          0.0,
-          1.0,
-        );
-        final expandedHeight = UmbrellaHeaderMetrics.expandedHeightFor(
-          size,
-          extra: _headerExtraHeightFor(size),
-        );
-        final currentHeight =
-            expandedHeight -
-            ((expandedHeight - _collapsedHeight) * collapseProgress);
-        final headerOpacity = (1.0 - (collapseProgress * 0.45)).clamp(
-          0.35,
-          1.0,
-        );
-        final searchVisibility = (1.0 - (collapseProgress * 1.8)).clamp(
-          0.0,
-          1.0,
-        );
+        final collapseProgress = (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
+        final expandedHeight = UmbrellaHeaderMetrics.expandedHeightFor(size, extra: _headerExtraHeightFor(size));
+        final currentHeight = expandedHeight - ((expandedHeight - _collapsedHeight) * collapseProgress);
+        final headerOpacity = (1.0 - (collapseProgress * 0.45)).clamp(0.35, 1.0);
+        final searchVisibility = (1.0 - (collapseProgress * 1.8)).clamp(0.0, 1.0);
 
         return SizedBox(
           height: currentHeight,
@@ -655,10 +597,7 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
                                   child: SvgPicture.asset(
                                     Assets.icons.navArrowLeft,
                                     package: 'grab_go_shared',
-                                    colorFilter: const ColorFilter.mode(
-                                      Colors.white,
-                                      BlendMode.srcIn,
-                                    ),
+                                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                                   ),
                                 ),
                               ),
@@ -672,21 +611,14 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
                             children: [
                               Text(
                                 config.title,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 20.sp,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                                style: TextStyle(color: Colors.white, fontSize: 20.sp, fontWeight: FontWeight.w700),
                               ),
                               SizedBox(height: 2.h),
                               Text(
                                 config.subtitle,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.88),
-                                  fontSize: 13.sp,
-                                ),
+                                style: TextStyle(color: Colors.white.withValues(alpha: 0.88), fontSize: 13.sp),
                               ),
                             ],
                           ),
@@ -700,11 +632,7 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
                         alignment: Alignment.topCenter,
                         child: Opacity(
                           opacity: searchVisibility,
-                          child: _buildServiceHubSearchBar(
-                            colors: colors,
-                            accentColor: accentColor,
-                            size: size,
-                          ),
+                          child: _buildServiceHubSearchBar(colors: colors, accentColor: accentColor, size: size),
                         ),
                       ),
                     ),
@@ -740,29 +668,19 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
                 package: 'grab_go_shared',
                 height: KIconSize.md,
                 width: KIconSize.md,
-                colorFilter: ColorFilter.mode(
-                  colors.textPrimary,
-                  BlendMode.srcIn,
-                ),
+                colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
               ),
             ),
             SizedBox(width: 5.w),
             Text(
               "Search & Explore GrabGo... ",
-              style: TextStyle(
-                color: colors.textSecondary,
-                fontSize: 12.sp,
-                fontWeight: FontWeight.w400,
-              ),
+              style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w400),
             ),
             const Spacer(),
             Container(
               width: size.width * 0.24,
               padding: EdgeInsets.all(2.r),
-              decoration: BoxDecoration(
-                color: accentColor,
-                borderRadius: BorderRadius.circular(KBorderSize.border),
-              ),
+              decoration: BoxDecoration(color: accentColor, borderRadius: BorderRadius.circular(KBorderSize.border)),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -770,11 +688,7 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
                     padding: EdgeInsets.only(left: 10.w),
                     child: Text(
                       "Filter",
-                      style: TextStyle(
-                        color: colors.backgroundPrimary,
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: TextStyle(color: colors.backgroundPrimary, fontSize: 12.sp, fontWeight: FontWeight.w600),
                     ),
                   ),
                   GestureDetector(
@@ -790,10 +704,7 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
                         package: 'grab_go_shared',
                         height: KIconSize.sm,
                         width: KIconSize.sm,
-                        colorFilter: ColorFilter.mode(
-                          colors.textPrimary,
-                          BlendMode.srcIn,
-                        ),
+                        colorFilter: ColorFilter.mode(colors.textPrimary, BlendMode.srcIn),
                       ),
                     ),
                   ),
@@ -845,6 +756,44 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
     }
   }
 
+  Widget _buildGroceryHorizontalItemsSection({
+    required String title,
+    required List<GroceryItem> items,
+    required Color accentColor,
+    bool showDiscountBadge = false,
+  }) {
+    final size = MediaQuery.sizeOf(context);
+    final cardWidth = (size.width * 0.38).clamp(138.0, 170.0);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeader(title: title, sectionTotal: items.length, accentColor: accentColor, onSeeAll: () {}),
+        SizedBox(height: 12.h),
+        SizedBox(
+          height: 246.h,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.only(left: 20.w),
+            physics: const AlwaysScrollableScrollPhysics(),
+            itemCount: items.length,
+            itemBuilder: (context, index) {
+              final item = items[index];
+              return GroceryProductCard(
+                item: item,
+                width: cardWidth,
+                showStoreName: true,
+                showDiscountBadge: showDiscountBadge,
+                margin: EdgeInsets.only(right: 12.w),
+                onTap: () => context.push('/foodDetails', extra: item),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildCategoriesSection({
     required ServiceHubConfig config,
     required Color accentColor,
@@ -852,8 +801,7 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
     required PharmacyProvider pharmacyProvider,
     required GrabMartProvider grabMartProvider,
   }) {
-    if (widget.serviceId == 'groceries' &&
-        groceryProvider.categories.isNotEmpty) {
+    if (widget.serviceId == 'groceries' && groceryProvider.categories.isNotEmpty) {
       return _buildTypedCategoriesSection<GroceryCategory>(
         title: config.categoryTitle,
         categories: groceryProvider.categories,
@@ -865,8 +813,7 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
       );
     }
 
-    if (widget.serviceId == 'pharmacy' &&
-        pharmacyProvider.categories.isNotEmpty) {
+    if (widget.serviceId == 'pharmacy' && pharmacyProvider.categories.isNotEmpty) {
       return _buildTypedCategoriesSection<PharmacyCategory>(
         title: config.categoryTitle,
         categories: pharmacyProvider.categories,
@@ -878,8 +825,7 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
       );
     }
 
-    if (widget.serviceId == 'convenience' &&
-        grabMartProvider.categories.isNotEmpty) {
+    if (widget.serviceId == 'convenience' && grabMartProvider.categories.isNotEmpty) {
       return _buildTypedCategoriesSection<GrabMartCategory>(
         title: config.categoryTitle,
         categories: grabMartProvider.categories,
@@ -1026,8 +972,7 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
                 deliveryTime: displayItem.estimatedDeliveryTime,
                 useVerticalZigzagTag: true,
                 accentColor: accentColor,
-                onTap: () =>
-                    context.push('/foodDetails', extra: item.sourceItem),
+                onTap: () => context.push('/foodDetails', extra: item.sourceItem),
               );
             },
           ),
@@ -1044,11 +989,67 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
               }
               return Padding(
                 padding: EdgeInsets.only(bottom: KSpacing.lg.h),
-                child: LoadingMore(
-                  colors: context.appColors,
-                  spinnerColor: accentColor,
-                  borderColor: accentColor,
-                ),
+                child: LoadingMore(colors: context.appColors, spinnerColor: accentColor, borderColor: accentColor),
+              );
+            },
+          ),
+      ],
+    );
+  }
+
+  Widget _buildGroceryRecommendedItemsSection({
+    required List<GroceryItem> items,
+    required Color accentColor,
+    required bool isLoadingMore,
+    required bool hasMore,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeader(
+          title: 'Recommended for You',
+          sectionTotal: items.length,
+          accentColor: accentColor,
+          onSeeAll: () {},
+        ),
+        SizedBox(height: KSpacing.lg.h),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20.w),
+          child: GridView.builder(
+            padding: EdgeInsets.zero,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 0.76,
+              crossAxisSpacing: 12.w,
+              mainAxisSpacing: 16.h,
+            ),
+            itemCount: items.length,
+            itemBuilder: (context, index) {
+              final item = items[index];
+
+              return GroceryProductCard(
+                item: item,
+                showStoreName: true,
+                onTap: () => context.push('/foodDetails', extra: item),
+              );
+            },
+          ),
+        ),
+        SizedBox(height: KSpacing.lg.h),
+        if (hasMore)
+          Builder(
+            builder: (context) {
+              if (!isLoadingMore) {
+                Future.delayed(const Duration(milliseconds: 300), () {
+                  if (!mounted) return;
+                  _loadMoreRecommendedItems();
+                });
+              }
+              return Padding(
+                padding: EdgeInsets.only(bottom: KSpacing.lg.h),
+                child: LoadingMore(colors: context.appColors, spinnerColor: accentColor, borderColor: accentColor),
               );
             },
           ),
@@ -1060,34 +1061,19 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
     return Container(
       margin: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 20.h),
       padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 22.h),
-      decoration: BoxDecoration(
-        color: colors.backgroundSecondary,
-        borderRadius: BorderRadius.circular(14.r),
-      ),
+      decoration: BoxDecoration(color: colors.backgroundSecondary, borderRadius: BorderRadius.circular(14.r)),
       child: Column(
         children: [
-          Icon(
-            Icons.inventory_2_outlined,
-            color: colors.textSecondary,
-            size: 26.sp,
-          ),
+          Icon(Icons.inventory_2_outlined, color: colors.textSecondary, size: 26.sp),
           SizedBox(height: 10.h),
           Text(
             'Nothing to show yet',
-            style: TextStyle(
-              color: colors.textPrimary,
-              fontSize: 15.sp,
-              fontWeight: FontWeight.w600,
-            ),
+            style: TextStyle(color: colors.textPrimary, fontSize: 15.sp, fontWeight: FontWeight.w600),
           ),
           SizedBox(height: 4.h),
           Text(
             'Pull to refresh or try again shortly.',
-            style: TextStyle(
-              color: colors.textSecondary,
-              fontSize: 12.sp,
-              fontWeight: FontWeight.w500,
-            ),
+            style: TextStyle(color: colors.textSecondary, fontSize: 12.sp, fontWeight: FontWeight.w500),
           ),
         ],
       ),
@@ -1101,14 +1087,11 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
   ) {
     switch (widget.serviceId) {
       case 'groceries':
-        return groceryProvider.isLoadingItems ||
-            groceryProvider.isLoadingCategories;
+        return groceryProvider.isLoadingItems || groceryProvider.isLoadingCategories;
       case 'pharmacy':
-        return pharmacyProvider.isLoadingItems ||
-            pharmacyProvider.isLoadingCategories;
+        return pharmacyProvider.isLoadingItems || pharmacyProvider.isLoadingCategories;
       case 'convenience':
-        return grabMartProvider.isLoadingItems ||
-            grabMartProvider.isLoadingCategories;
+        return grabMartProvider.isLoadingItems || grabMartProvider.isLoadingCategories;
       default:
         return false;
     }
@@ -1138,17 +1121,11 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
   ) {
     switch (widget.serviceId) {
       case 'groceries':
-        return groceryProvider.items
-            .map(ServiceDisplayItem.fromGroceryItem)
-            .toList();
+        return groceryProvider.items.map(ServiceDisplayItem.fromGroceryItem).toList();
       case 'pharmacy':
-        return pharmacyProvider.items
-            .map(ServiceDisplayItem.fromPharmacyItem)
-            .toList();
+        return pharmacyProvider.items.map(ServiceDisplayItem.fromPharmacyItem).toList();
       case 'convenience':
-        return grabMartProvider.items
-            .map(ServiceDisplayItem.fromGrabMartItem)
-            .toList();
+        return grabMartProvider.items.map(ServiceDisplayItem.fromGrabMartItem).toList();
       default:
         return const [];
     }
@@ -1161,17 +1138,11 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
   ) {
     switch (widget.serviceId) {
       case 'groceries':
-        return groceryProvider.recommendedItems
-            .map(ServiceDisplayItem.fromGroceryItem)
-            .toList();
+        return groceryProvider.recommendedItems.map(ServiceDisplayItem.fromGroceryItem).toList();
       case 'pharmacy':
-        return pharmacyProvider.recommendedItems
-            .map(ServiceDisplayItem.fromPharmacyItem)
-            .toList();
+        return pharmacyProvider.recommendedItems.map(ServiceDisplayItem.fromPharmacyItem).toList();
       case 'convenience':
-        return grabMartProvider.recommendedItems
-            .map(ServiceDisplayItem.fromGrabMartItem)
-            .toList();
+        return grabMartProvider.recommendedItems.map(ServiceDisplayItem.fromGrabMartItem).toList();
       default:
         return const [];
     }
@@ -1227,13 +1198,74 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
     }
   }
 
-  List<ServiceDisplayItem> _sortedDeals(List<ServiceDisplayItem> items) {
-    final filtered = items
-        .where((item) => item.discountPercentage > 0)
-        .toList();
-    filtered.sort(
-      (a, b) => b.discountPercentage.compareTo(a.discountPercentage),
+  List<GroceryItem> _resolveGroceryDeals(GroceryProvider provider) {
+    final source = provider.deals.isNotEmpty
+        ? provider.deals
+        : provider.items.where((item) => item.hasDiscount).toList();
+    final items = _uniqueGroceryItems(source);
+    items.sort((a, b) => b.discountPercentage.compareTo(a.discountPercentage));
+    return items.take(10).toList();
+  }
+
+  List<GroceryItem> _resolveGroceryPopular(GroceryProvider provider) {
+    final items = _uniqueGroceryItems(provider.popularItems.isNotEmpty ? provider.popularItems : provider.items);
+    items.sort((a, b) {
+      final orderCompare = b.orderCount.compareTo(a.orderCount);
+      if (orderCompare != 0) return orderCompare;
+      return b.rating.compareTo(a.rating);
+    });
+    return items.take(10).toList();
+  }
+
+  List<GroceryItem> _resolveGroceryTopRated(GroceryProvider provider) {
+    final items = _uniqueGroceryItems(
+      provider.topRatedItems.isNotEmpty
+          ? provider.topRatedItems
+          : provider.items.where((item) => item.rating >= 4.0).toList(),
     );
+    items.sort((a, b) {
+      final ratingCompare = b.rating.compareTo(a.rating);
+      if (ratingCompare != 0) return ratingCompare;
+      return b.reviewCount.compareTo(a.reviewCount);
+    });
+    return items.take(10).toList();
+  }
+
+  List<GroceryItem> _resolveGroceryRecommended(GroceryProvider provider) {
+    final selected = <String, GroceryItem>{};
+
+    for (final item in provider.recommendedItems) {
+      selected[item.id] = item;
+    }
+
+    if (selected.length < 6) {
+      final fallbackItems = _uniqueGroceryItems(provider.items);
+      fallbackItems.sort((a, b) {
+        final aScore = (a.orderCount * 3) + (a.rating * 20) + (a.discountPercentage * 2);
+        final bScore = (b.orderCount * 3) + (b.rating * 20) + (b.discountPercentage * 2);
+        return bScore.compareTo(aScore);
+      });
+
+      for (final item in fallbackItems) {
+        selected.putIfAbsent(item.id, () => item);
+        if (selected.length >= 20) break;
+      }
+    }
+
+    return selected.values.take(20).toList();
+  }
+
+  List<GroceryItem> _uniqueGroceryItems(List<GroceryItem> items) {
+    final uniqueItems = <String, GroceryItem>{};
+    for (final item in items) {
+      uniqueItems[item.id] = item;
+    }
+    return uniqueItems.values.toList();
+  }
+
+  List<ServiceDisplayItem> _sortedDeals(List<ServiceDisplayItem> items) {
+    final filtered = items.where((item) => item.discountPercentage > 0).toList();
+    filtered.sort((a, b) => b.discountPercentage.compareTo(a.discountPercentage));
     return filtered.take(10).toList();
   }
 
@@ -1267,10 +1299,8 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
 
     final fallbackCandidates = [...allItems];
     fallbackCandidates.sort((a, b) {
-      final aScore =
-          (a.orderCount * 3) + (a.rating * 20) + (a.discountPercentage * 2);
-      final bScore =
-          (b.orderCount * 3) + (b.rating * 20) + (b.discountPercentage * 2);
+      final aScore = (a.orderCount * 3) + (a.rating * 20) + (a.discountPercentage * 2);
+      final bScore = (b.orderCount * 3) + (b.rating * 20) + (b.discountPercentage * 2);
       return bScore.compareTo(aScore);
     });
 
@@ -1305,10 +1335,7 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
     );
   }
 
-  void _openItemFromSection(
-    FoodItem tappedItem,
-    List<ServiceDisplayItem> sectionItems,
-  ) {
+  void _openItemFromSection(FoodItem tappedItem, List<ServiceDisplayItem> sectionItems) {
     for (final sectionItem in sectionItems) {
       if (sectionItem.id == tappedItem.id) {
         context.push('/foodDetails', extra: sectionItem.sourceItem);

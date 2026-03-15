@@ -34,10 +34,16 @@ class NutritionInfo {
 }
 
 class GroceryItem implements CartItem {
+  @override
   final String id;
+  @override
   final String name;
+  @override
   final String description;
+  @override
   final String image;
+  final String? thumbnailImage;
+  @override
   final double price;
   final String unit;
   final String categoryId;
@@ -48,11 +54,13 @@ class GroceryItem implements CartItem {
   final String? storeLogo;
   final String brand;
   final int stock;
+  @override
   final bool isAvailable;
   final double discountPercentage;
   final DateTime? discountEndDate;
   final NutritionInfo? nutritionInfo;
   final List<String> tags;
+  @override
   final double rating;
   final int reviewCount;
   final int orderCount; // Number of times ordered (for popularity)
@@ -76,6 +84,7 @@ class GroceryItem implements CartItem {
     required this.name,
     required this.description,
     required this.image,
+    this.thumbnailImage,
     required this.price,
     required this.unit,
     required this.categoryId,
@@ -123,6 +132,14 @@ class GroceryItem implements CartItem {
     return DateTime.now().difference(createdAt).inDays;
   }
 
+  String get catalogImage {
+    final thumbnail = thumbnailImage?.trim();
+    if (thumbnail != null && thumbnail.isNotEmpty) {
+      return thumbnail;
+    }
+    return image;
+  }
+
   factory GroceryItem.fromJson(Map<String, dynamic> json) {
     // Handle category (can be populated or just ID)
     String categoryId = '';
@@ -164,6 +181,7 @@ class GroceryItem implements CartItem {
       name: json['name'] ?? '',
       description: json['description'] ?? '',
       image: json['image'] ?? '',
+      thumbnailImage: json['thumbnailImage']?.toString(),
       price: (json['price'] ?? 0).toDouble(),
       unit: json['unit'] ?? 'piece',
       categoryId: categoryId,
@@ -198,12 +216,14 @@ class GroceryItem implements CartItem {
     );
   }
 
+  @override
   Map<String, dynamic> toJson() {
     return {
       '_id': id,
       'name': name,
       'description': description,
       'image': image,
+      'thumbnailImage': thumbnailImage,
       'price': price,
       'unit': unit,
       'category': categoryId,

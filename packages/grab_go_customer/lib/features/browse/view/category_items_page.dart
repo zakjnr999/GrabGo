@@ -15,6 +15,7 @@ import 'package:grab_go_customer/shared/widgets/browse_grid_skeleton.dart';
 import 'package:grab_go_customer/shared/widgets/deal_card.dart';
 import 'package:grab_go_customer/shared/widgets/home_search.dart';
 import 'package:grab_go_customer/shared/widgets/food_item_card.dart';
+import 'package:grab_go_customer/shared/widgets/grocery_product_card.dart';
 import 'package:grab_go_customer/shared/widgets/section_header.dart';
 import 'package:grab_go_customer/shared/widgets/umbrella_header.dart';
 import 'package:grab_go_shared/gen/assets.gen.dart';
@@ -56,26 +57,56 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
 
   late ScrollController _scrollController;
 
-  final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0.0);
+  final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(
+    0.0,
+  );
   static const double _collapsedHeight = 80.0;
   static const double _scrollThreshold = 100.0;
   static const double _headerExtraHeight = 24.0;
 
   final List<Map<String, dynamic>> _quickFilters = [
     {'icon': Assets.icons.dollar, 'label': 'Price', 'hasOptions': true},
-    {'icon': Assets.icons.badgePercent, 'label': 'On Sale', 'hasOptions': false},
+    {
+      'icon': Assets.icons.badgePercent,
+      'label': 'On Sale',
+      'hasOptions': false,
+    },
     {'icon': Assets.icons.star, 'label': 'Rating', 'hasOptions': true},
     {'icon': Assets.icons.flame, 'label': 'Popular', 'hasOptions': false},
     {'icon': Assets.icons.clock, 'label': 'Delivery', 'hasOptions': true},
-    {'icon': Assets.icons.utensilsCrossed, 'label': 'Dietary', 'hasOptions': true},
+    {
+      'icon': Assets.icons.utensilsCrossed,
+      'label': 'Dietary',
+      'hasOptions': true,
+    },
     {'icon': Assets.icons.sparkles, 'label': 'New', 'hasOptions': false},
     {'icon': Assets.icons.deliveryTruck, 'label': 'Fast', 'hasOptions': false},
   ];
 
-  final List<String> _priceRanges = ['Under GH₵20', 'GH₵20 - GH₵50', 'GH₵50 - GH₵100', 'Over GH₵100'];
-  final List<String> _ratingOptions = ['4.5+ Stars', '4.0+ Stars', '3.5+ Stars', 'Any Rating'];
-  final List<String> _deliveryTimeOptions = ['Under 20 min', '20-30 min', '30-45 min', 'Any Time'];
-  final List<String> _dietaryOptions = ['Vegetarian', 'Vegan', 'Halal', 'Gluten-Free'];
+  final List<String> _priceRanges = [
+    'Under GH₵20',
+    'GH₵20 - GH₵50',
+    'GH₵50 - GH₵100',
+    'Over GH₵100',
+  ];
+  final List<String> _ratingOptions = [
+    '4.5+ Stars',
+    '4.0+ Stars',
+    '3.5+ Stars',
+    'Any Rating',
+  ];
+  final List<String> _deliveryTimeOptions = [
+    'Under 20 min',
+    '20-30 min',
+    '30-45 min',
+    'Any Time',
+  ];
+  final List<String> _dietaryOptions = [
+    'Vegetarian',
+    'Vegan',
+    'Halal',
+    'Gluten-Free',
+  ];
 
   final List<String> _sortOptions = ['Popularity'];
 
@@ -136,9 +167,15 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
     final systemUiOverlayStyle = SystemUiOverlayStyle(
       statusBarColor: colors.accentOrange,
       statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: hasCart ? colors.accentOrange : colors.backgroundPrimary,
-      systemNavigationBarDividerColor: hasCart ? colors.accentOrange : colors.backgroundPrimary,
-      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      systemNavigationBarColor: hasCart
+          ? colors.accentOrange
+          : colors.backgroundPrimary,
+      systemNavigationBarDividerColor: hasCart
+          ? colors.accentOrange
+          : colors.backgroundPrimary,
+      systemNavigationBarIconBrightness: isDark
+          ? Brightness.light
+          : Brightness.dark,
     );
 
     SystemChrome.setSystemUIOverlayStyle(systemUiOverlayStyle);
@@ -157,7 +194,12 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   slivers: [
                     SliverToBoxAdapter(
-                      child: SizedBox(height: UmbrellaHeaderMetrics.expandedHeightFor(size, extra: _headerExtraHeight)),
+                      child: SizedBox(
+                        height: UmbrellaHeaderMetrics.expandedHeightFor(
+                          size,
+                          extra: _headerExtraHeight,
+                        ),
+                      ),
                     ),
                     if (widget.isFood)
                       _buildFoodDealsSliver(colors)
@@ -188,7 +230,12 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
                   ],
                 ),
 
-                Positioned(top: 0, left: 0, right: 0, child: _buildCollapsibleCategoryHeader(colors, size, isDark)),
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: _buildCollapsibleCategoryHeader(colors, size, isDark),
+                ),
               ],
             ),
           ),
@@ -216,7 +263,9 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
               child: SizedBox(
                 height: 64.h,
                 child: ClipRRect(
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(18.r)),
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(18.r),
+                  ),
                   child: IgnorePointer(
                     ignoring: isLocked,
                     child: GestureDetector(
@@ -226,10 +275,15 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
                         opacity: isLocked ? 0.82 : 1,
                         child: Container(
                           width: double.infinity,
-                          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16.w,
+                            vertical: 8.h,
+                          ),
                           decoration: BoxDecoration(
                             color: colors.accentOrange,
-                            borderRadius: BorderRadius.vertical(top: Radius.circular(18.r)),
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(18.r),
+                            ),
                           ),
                           child: Row(
                             children: [
@@ -244,7 +298,10 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
                                   height: 18.h,
                                   width: 18.w,
                                   package: 'grab_go_shared',
-                                  colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                  colorFilter: const ColorFilter.mode(
+                                    Colors.white,
+                                    BlendMode.srcIn,
+                                  ),
                                 ),
                               ),
                               SizedBox(width: 12.w),
@@ -254,7 +311,9 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      isLocked ? "Updating cart..." : "View cart",
+                                      isLocked
+                                          ? "Updating cart..."
+                                          : "View cart",
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontSize: 14.sp,
@@ -265,7 +324,9 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
                                     Text(
                                       "$itemCount ${itemCount == 1 ? "item" : "items"} in cart",
                                       style: TextStyle(
-                                        color: Colors.white.withValues(alpha: 0.9),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.9,
+                                        ),
                                         fontSize: 12.sp,
                                         fontWeight: FontWeight.w500,
                                       ),
@@ -281,13 +342,19 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
                                     height: 18.w,
                                     child: const CircularProgressIndicator(
                                       strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white,
+                                      ),
                                     ),
                                   ),
                                 ),
                               Text(
                                 "${AppStrings.currencySymbol} ${totalAmount.toStringAsFixed(2)}",
-                                style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w800),
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
                             ],
                           ),
@@ -298,7 +365,8 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
                 ),
               ),
             ),
-            if (bottomInset > 0) Container(height: bottomInset, color: colors.accentOrange),
+            if (bottomInset > 0)
+              Container(height: bottomInset, color: colors.accentOrange),
           ],
         );
       },
@@ -310,7 +378,10 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
       child: Consumer<FoodProvider>(
         builder: (context, provider, _) {
           final items = _getFilteredFoodItems(provider);
-          final dealItems = items.where((item) => item.discountPercentage > 0).take(10).toList();
+          final dealItems = items
+              .where((item) => item.discountPercentage > 0)
+              .take(10)
+              .toList();
           if (dealItems.isEmpty) return const SizedBox.shrink();
 
           return _buildDealsSection(
@@ -329,21 +400,47 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
       child: Consumer<GroceryProvider>(
         builder: (context, provider, _) {
           final items = _getFilteredGroceryItems(provider);
-          final deals = items.where((item) => item.discountPercentage > 0).take(10).toList();
+          final deals = items
+              .where((item) => item.discountPercentage > 0)
+              .take(10)
+              .toList();
           if (deals.isEmpty) return const SizedBox.shrink();
 
-          final dealItems = deals.map((item) => item.toFoodItem()).toList();
-          return _buildDealsSection(
-            colors: colors,
-            title: '${widget.categoryName} Deals',
-            dealItems: dealItems,
-            onItemTap: (item) {
-              GroceryItem? originalItem;
-              try {
-                originalItem = deals.firstWhere((d) => d.id == item.id);
-              } catch (_) {}
-              context.push('/foodDetails', extra: originalItem ?? item);
-            },
+          final size = MediaQuery.sizeOf(context);
+          final cardWidth = (size.width * 0.38).clamp(138.0, 170.0);
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(height: 16.h),
+              SectionHeader(
+                title: '${widget.categoryName} Deals',
+                accentColor: colors.serviceGrocery,
+                sectionTotal: deals.length,
+                onSeeAll: () {},
+              ),
+              SizedBox(height: 12.h),
+              SizedBox(
+                height: 246.h,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: EdgeInsets.only(left: 20.w),
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  itemCount: deals.length,
+                  itemBuilder: (context, index) {
+                    final item = deals[index];
+                    return GroceryProductCard(
+                      item: item,
+                      width: cardWidth,
+                      showStoreName: true,
+                      showDiscountBadge: true,
+                      margin: EdgeInsets.only(right: 12.w),
+                      onTap: () => context.push('/foodDetails', extra: item),
+                    );
+                  },
+                ),
+              ),
+              SizedBox(height: 20.h),
+            ],
           );
         },
       ),
@@ -354,8 +451,13 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
     return SliverToBoxAdapter(
       child: Consumer<PharmacyProvider>(
         builder: (context, provider, _) {
-          final items = provider.items.where((item) => item.categoryId == widget.categoryId).toList();
-          final deals = items.where((item) => item.discountPercentage > 0).take(10).toList();
+          final items = provider.items
+              .where((item) => item.categoryId == widget.categoryId)
+              .toList();
+          final deals = items
+              .where((item) => item.discountPercentage > 0)
+              .take(10)
+              .toList();
           if (deals.isEmpty) return const SizedBox.shrink();
 
           final dealItems = deals.map((item) => item.toFoodItem()).toList();
@@ -377,8 +479,13 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
     return SliverToBoxAdapter(
       child: Consumer<GrabMartProvider>(
         builder: (context, provider, _) {
-          final items = provider.items.where((item) => item.categoryId == widget.categoryId).toList();
-          final deals = items.where((item) => item.discountPercentage > 0).take(10).toList();
+          final items = provider.items
+              .where((item) => item.categoryId == widget.categoryId)
+              .toList();
+          final deals = items
+              .where((item) => item.discountPercentage > 0)
+              .take(10)
+              .toList();
           if (deals.isEmpty) return const SizedBox.shrink();
 
           final dealItems = deals.map((item) => item.toFoodItem()).toList();
@@ -414,7 +521,12 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(height: 16.h),
-        SectionHeader(title: title, accentColor: colors.accentOrange, sectionTotal: dealItems.length, onSeeAll: () {}),
+        SectionHeader(
+          title: title,
+          accentColor: colors.accentOrange,
+          sectionTotal: dealItems.length,
+          onSeeAll: () {},
+        ),
         SizedBox(height: 10.h),
         SizedBox(
           height: cardHeight,
@@ -446,7 +558,9 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
     return SliverToBoxAdapter(
       child: Consumer<FoodProvider>(
         builder: (context, provider, _) {
-          final items = _getFilteredFoodItems(provider).where((item) => item.discountPercentage <= 0).toList();
+          final items = _getFilteredFoodItems(
+            provider,
+          ).where((item) => item.discountPercentage <= 0).toList();
           return SectionHeader(
             title: '${widget.categoryName} Items',
             accentColor: colors.accentOrange,
@@ -462,10 +576,12 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
     return SliverToBoxAdapter(
       child: Consumer<GroceryProvider>(
         builder: (context, provider, _) {
-          final items = _getFilteredGroceryItems(provider).where((item) => item.discountPercentage <= 0).toList();
+          final items = _getFilteredGroceryItems(
+            provider,
+          ).where((item) => item.discountPercentage <= 0).toList();
           return SectionHeader(
-            title: '${widget.categoryName} Groceries Items',
-            accentColor: colors.accentOrange,
+            title: '${widget.categoryName} Items',
+            accentColor: colors.serviceGrocery,
             sectionTotal: items.length,
             onSeeAll: () {},
           );
@@ -474,12 +590,18 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
     );
   }
 
-  SliverToBoxAdapter _buildPharmacyItemsHeaderSliver(AppColorsExtension colors) {
+  SliverToBoxAdapter _buildPharmacyItemsHeaderSliver(
+    AppColorsExtension colors,
+  ) {
     return SliverToBoxAdapter(
       child: Consumer<PharmacyProvider>(
         builder: (context, provider, _) {
           final items = provider.items
-              .where((item) => item.categoryId == widget.categoryId && item.discountPercentage <= 0)
+              .where(
+                (item) =>
+                    item.categoryId == widget.categoryId &&
+                    item.discountPercentage <= 0,
+              )
               .toList();
           return SectionHeader(
             title: '${widget.categoryName} Pharmacy Items',
@@ -492,12 +614,18 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
     );
   }
 
-  SliverToBoxAdapter _buildGrabMartItemsHeaderSliver(AppColorsExtension colors) {
+  SliverToBoxAdapter _buildGrabMartItemsHeaderSliver(
+    AppColorsExtension colors,
+  ) {
     return SliverToBoxAdapter(
       child: Consumer<GrabMartProvider>(
         builder: (context, provider, _) {
           final items = provider.items
-              .where((item) => item.categoryId == widget.categoryId && item.discountPercentage <= 0)
+              .where(
+                (item) =>
+                    item.categoryId == widget.categoryId &&
+                    item.discountPercentage <= 0,
+              )
               .toList();
           return SectionHeader(
             title: '${widget.categoryName} GrabMart Items',
@@ -516,11 +644,17 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
       builder: (context, provider, _) {
         if (provider.isLoading) {
           return SliverToBoxAdapter(
-            child: BrowseGridSkeleton(colors: colors, isDark: isDark, isGridView: _isGridView),
+            child: BrowseGridSkeleton(
+              colors: colors,
+              isDark: isDark,
+              isGridView: _isGridView,
+            ),
           );
         }
 
-        final items = _getFilteredFoodItems(provider).where((item) => item.discountPercentage <= 0).toList();
+        final items = _getFilteredFoodItems(
+          provider,
+        ).where((item) => item.discountPercentage <= 0).toList();
 
         if (items.isEmpty) {
           return SliverFillRemaining(
@@ -531,12 +665,19 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
                 children: [
                   Text(
                     'No items found',
-                    style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w600,
+                      color: colors.textPrimary,
+                    ),
                   ),
                   SizedBox(height: 8.h),
                   Text(
                     'Try adjusting your filters',
-                    style: TextStyle(fontSize: 14.sp, color: colors.textSecondary),
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      color: colors.textSecondary,
+                    ),
                   ),
                 ],
               ),
@@ -545,18 +686,30 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
         }
 
         return SliverPadding(
-          padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 8.h, bottom: padding.bottom + 16.h),
+          padding: EdgeInsets.only(
+            left: 20.w,
+            right: 20.w,
+            top: 8.h,
+            bottom: padding.bottom + 16.h,
+          ),
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate((context, index) {
               final item = items[index];
               return Consumer<CartProvider>(
                 builder: (context, provider, _) {
-                  final bool isInCart = provider.hasItemInCart(item, includeFoodCustomizations: true);
-                  final bool isItemPending = provider.isItemOperationPendingForDisplay(
+                  final bool isInCart = provider.hasItemInCart(
                     item,
                     includeFoodCustomizations: true,
                   );
-                  final itemForAction = provider.resolveItemForCartAction(item, includeFoodCustomizations: true);
+                  final bool isItemPending = provider
+                      .isItemOperationPendingForDisplay(
+                        item,
+                        includeFoodCustomizations: true,
+                      );
+                  final itemForAction = provider.resolveItemForCartAction(
+                    item,
+                    includeFoodCustomizations: true,
+                  );
                   return Padding(
                     padding: EdgeInsets.only(bottom: 16.h),
                     child: FoodItemCard(
@@ -576,7 +729,9 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
                           padding: EdgeInsets.all(8.r),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: isInCart ? colors.accentOrange : colors.backgroundSecondary,
+                            color: isInCart
+                                ? colors.accentOrange
+                                : colors.backgroundSecondary,
                           ),
                           child: isItemPending
                               ? SizedBox(
@@ -585,7 +740,9 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
                                     valueColor: AlwaysStoppedAnimation<Color>(
-                                      isInCart ? Colors.white : colors.accentOrange,
+                                      isInCart
+                                          ? Colors.white
+                                          : colors.accentOrange,
                                     ),
                                   ),
                                 )
@@ -595,7 +752,9 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
                                   height: 16.h,
                                   width: 16.w,
                                   colorFilter: ColorFilter.mode(
-                                    isInCart ? Colors.white : colors.textPrimary,
+                                    isInCart
+                                        ? Colors.white
+                                        : colors.textPrimary,
                                     BlendMode.srcIn,
                                   ),
                                 ),
@@ -618,28 +777,42 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
       builder: (context, provider, _) {
         if (provider.isLoadingItems) {
           return SliverToBoxAdapter(
-            child: BrowseGridSkeleton(colors: colors, isDark: isDark, isGridView: _isGridView),
+            child: BrowseGridSkeleton(
+              colors: colors,
+              isDark: isDark,
+              isGridView: _isGridView,
+            ),
           );
         }
 
-        final items = _getFilteredGroceryItems(provider).where((item) => item.discountPercentage <= 0).toList();
+        final items = _getFilteredGroceryItems(
+          provider,
+        ).where((item) => item.discountPercentage <= 0).toList();
 
         if (items.isEmpty) {
           return _buildEmptyState(colors);
         }
 
         return SliverPadding(
-          padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 8.h, bottom: padding.bottom + 16.h),
-          sliver: SliverList(
+          padding: EdgeInsets.only(
+            left: 20.w,
+            right: 20.w,
+            top: 8.h,
+            bottom: padding.bottom + 16.h,
+          ),
+          sliver: SliverGrid(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 0.76,
+              crossAxisSpacing: 12.w,
+              mainAxisSpacing: 16.h,
+            ),
             delegate: SliverChildBuilderDelegate((context, index) {
               final item = items[index];
-              return Padding(
-                padding: EdgeInsets.only(bottom: 16.h),
-                child: FoodItemCard(
-                  item: item.toFoodItem(),
-                  margin: EdgeInsets.zero,
-                  onTap: () => context.push('/foodDetails', extra: item),
-                ),
+              return GroceryProductCard(
+                item: item,
+                showStoreName: true,
+                onTap: () => context.push('/foodDetails', extra: item),
               );
             }, childCount: items.length),
           ),
@@ -654,12 +827,20 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
       builder: (context, provider, _) {
         if (provider.isLoadingItems) {
           return SliverToBoxAdapter(
-            child: BrowseGridSkeleton(colors: colors, isDark: isDark, isGridView: _isGridView),
+            child: BrowseGridSkeleton(
+              colors: colors,
+              isDark: isDark,
+              isGridView: _isGridView,
+            ),
           );
         }
 
         final items = provider.items
-            .where((item) => item.categoryId == widget.categoryId && item.discountPercentage <= 0)
+            .where(
+              (item) =>
+                  item.categoryId == widget.categoryId &&
+                  item.discountPercentage <= 0,
+            )
             .toList();
 
         if (items.isEmpty) {
@@ -667,7 +848,12 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
         }
 
         return SliverPadding(
-          padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 8.h, bottom: padding.bottom + 16.h),
+          padding: EdgeInsets.only(
+            left: 20.w,
+            right: 20.w,
+            top: 8.h,
+            bottom: padding.bottom + 16.h,
+          ),
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate((context, index) {
               final item = items[index];
@@ -692,12 +878,20 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
       builder: (context, provider, _) {
         if (provider.isLoadingItems) {
           return SliverToBoxAdapter(
-            child: BrowseGridSkeleton(colors: colors, isDark: isDark, isGridView: _isGridView),
+            child: BrowseGridSkeleton(
+              colors: colors,
+              isDark: isDark,
+              isGridView: _isGridView,
+            ),
           );
         }
 
         final items = provider.items
-            .where((item) => item.categoryId == widget.categoryId && item.discountPercentage <= 0)
+            .where(
+              (item) =>
+                  item.categoryId == widget.categoryId &&
+                  item.discountPercentage <= 0,
+            )
             .toList();
 
         if (items.isEmpty) {
@@ -705,7 +899,12 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
         }
 
         return SliverPadding(
-          padding: EdgeInsets.only(left: 20.w, right: 20.w, top: 8.h, bottom: padding.bottom + 16.h),
+          padding: EdgeInsets.only(
+            left: 20.w,
+            right: 20.w,
+            top: 8.h,
+            bottom: padding.bottom + 16.h,
+          ),
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate((context, index) {
               final item = items[index];
@@ -733,13 +932,24 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
           children: [
             Container(
               padding: EdgeInsets.all(20.r),
-              decoration: BoxDecoration(color: colors.accentOrange.withValues(alpha: 0.1), shape: BoxShape.circle),
-              child: Icon(Icons.shopping_basket_outlined, size: 40.sp, color: colors.accentOrange),
+              decoration: BoxDecoration(
+                color: colors.accentOrange.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.shopping_basket_outlined,
+                size: 40.sp,
+                color: colors.accentOrange,
+              ),
             ),
             SizedBox(height: 16.h),
             Text(
               'No items found',
-              style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: colors.textPrimary),
+              style: TextStyle(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w600,
+                color: colors.textPrimary,
+              ),
             ),
             SizedBox(height: 8.h),
             Text(
@@ -757,7 +967,9 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
 
     // Get items from the selected category
     try {
-      final selectedCategory = provider.categories.firstWhere((cat) => cat.id == widget.categoryId);
+      final selectedCategory = provider.categories.firstWhere(
+        (cat) => cat.id == widget.categoryId,
+      );
       items = List.from(selectedCategory.items);
     } catch (e) {
       items = [];
@@ -766,15 +978,19 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
     // Apply comprehensive filter from HomeSearch
     if (_comprehensiveFilter.isActive) {
       // Apply price filter
-      if (_comprehensiveFilter.minPrice != 0 || _comprehensiveFilter.maxPrice != 10000) {
+      if (_comprehensiveFilter.minPrice != 0 ||
+          _comprehensiveFilter.maxPrice != 10000) {
         items = items.where((item) {
-          return item.price >= _comprehensiveFilter.minPrice && item.price <= _comprehensiveFilter.maxPrice;
+          return item.price >= _comprehensiveFilter.minPrice &&
+              item.price <= _comprehensiveFilter.maxPrice;
         }).toList();
       }
 
       // Apply rating filter
       if (_comprehensiveFilter.minRating != null) {
-        items = items.where((item) => item.rating >= _comprehensiveFilter.minRating!).toList();
+        items = items
+            .where((item) => item.rating >= _comprehensiveFilter.minRating!)
+            .toList();
       }
 
       // Apply on sale filter
@@ -793,8 +1009,13 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
       }
 
       // Apply dietary filter
-      if (_comprehensiveFilter.dietary != null && _comprehensiveFilter.dietary!.isNotEmpty) {
-        items = items.where((item) => item.dietaryTags.contains(_comprehensiveFilter.dietary)).toList();
+      if (_comprehensiveFilter.dietary != null &&
+          _comprehensiveFilter.dietary!.isNotEmpty) {
+        items = items
+            .where(
+              (item) => item.dietaryTags.contains(_comprehensiveFilter.dietary),
+            )
+            .toList();
       }
     }
 
@@ -811,7 +1032,9 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
           items = items.where((item) => item.orderCount < 10).toList();
           break;
         case 'Fast':
-          items = items.where((item) => item.deliveryTimeMinutes <= 30).toList();
+          items = items
+              .where((item) => item.deliveryTimeMinutes <= 30)
+              .toList();
           break;
         case 'Popular':
           items = items.where((item) => item.orderCount >= 50).toList();
@@ -858,9 +1081,11 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
                 case 'Under 20 min':
                   return item.deliveryTimeMinutes < 20;
                 case '20-30 min':
-                  return item.deliveryTimeMinutes >= 20 && item.deliveryTimeMinutes <= 30;
+                  return item.deliveryTimeMinutes >= 20 &&
+                      item.deliveryTimeMinutes <= 30;
                 case '30-45 min':
-                  return item.deliveryTimeMinutes > 30 && item.deliveryTimeMinutes <= 45;
+                  return item.deliveryTimeMinutes > 30 &&
+                      item.deliveryTimeMinutes <= 45;
                 case 'Any Time':
                 default:
                   return true;
@@ -889,20 +1114,26 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
   }
 
   List<GroceryItem> _getFilteredGroceryItems(GroceryProvider provider) {
-    List<GroceryItem> items = provider.items.where((item) => item.categoryId == widget.categoryId).toList();
+    List<GroceryItem> items = provider.items
+        .where((item) => item.categoryId == widget.categoryId)
+        .toList();
 
     // Apply comprehensive filter from HomeSearch
     if (_comprehensiveFilter.isActive) {
       // Apply price filter
-      if (_comprehensiveFilter.minPrice != 0 || _comprehensiveFilter.maxPrice != 10000) {
+      if (_comprehensiveFilter.minPrice != 0 ||
+          _comprehensiveFilter.maxPrice != 10000) {
         items = items.where((item) {
-          return item.price >= _comprehensiveFilter.minPrice && item.price <= _comprehensiveFilter.maxPrice;
+          return item.price >= _comprehensiveFilter.minPrice &&
+              item.price <= _comprehensiveFilter.maxPrice;
         }).toList();
       }
 
       // Apply rating filter
       if (_comprehensiveFilter.minRating != null) {
-        items = items.where((item) => item.rating >= _comprehensiveFilter.minRating!).toList();
+        items = items
+            .where((item) => item.rating >= _comprehensiveFilter.minRating!)
+            .toList();
       }
 
       // Apply on sale filter
@@ -913,7 +1144,9 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
       // Apply new items filter
       if (_comprehensiveFilter.isNew) {
         final sevenDaysAgo = DateTime.now().subtract(const Duration(days: 7));
-        items = items.where((item) => item.createdAt.isAfter(sevenDaysAgo)).toList();
+        items = items
+            .where((item) => item.createdAt.isAfter(sevenDaysAgo))
+            .toList();
       }
     }
 
@@ -927,7 +1160,9 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
           break;
         case 'New':
           final sevenDaysAgo = DateTime.now().subtract(const Duration(days: 7));
-          items = items.where((item) => item.createdAt.isAfter(sevenDaysAgo)).toList();
+          items = items
+              .where((item) => item.createdAt.isAfter(sevenDaysAgo))
+              .toList();
           break;
         case 'Popular':
           items = items.where((item) => item.orderCount >= 100).toList();
@@ -991,7 +1226,9 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
         items.sort((a, b) => b.orderCount.compareTo(a.orderCount));
         break;
       case 'Delivery Time':
-        items.sort((a, b) => a.deliveryTimeMinutes.compareTo(b.deliveryTimeMinutes));
+        items.sort(
+          (a, b) => a.deliveryTimeMinutes.compareTo(b.deliveryTimeMinutes),
+        );
         break;
     }
   }
@@ -1039,7 +1276,9 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
     showModalBottomSheet(
       context: context,
       backgroundColor: colors.backgroundPrimary,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20.r))),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+      ),
       builder: (context) {
         return Container(
           padding: EdgeInsets.all(20.r),
@@ -1052,13 +1291,20 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
                   margin: EdgeInsets.only(bottom: 8.h),
                   width: 40.w,
                   height: 4.h,
-                  decoration: BoxDecoration(color: colors.inputBorder, borderRadius: BorderRadius.circular(2.r)),
+                  decoration: BoxDecoration(
+                    color: colors.inputBorder,
+                    borderRadius: BorderRadius.circular(2.r),
+                  ),
                 ),
               ),
               SizedBox(height: KSpacing.md.h),
               Text(
                 'Select $filterType',
-                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                style: TextStyle(
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.w700,
+                  color: colors.textPrimary,
+                ),
               ),
               SizedBox(height: 16.h),
               ...options.map((option) {
@@ -1069,11 +1315,21 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
                     option,
                     style: TextStyle(
                       fontSize: 16.sp,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                      color: isSelected ? colors.accentOrange : colors.textPrimary,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.w400,
+                      color: isSelected
+                          ? colors.accentOrange
+                          : colors.textPrimary,
                     ),
                   ),
-                  trailing: isSelected ? Icon(Icons.check_circle, color: colors.accentOrange, size: 24.sp) : null,
+                  trailing: isSelected
+                      ? Icon(
+                          Icons.check_circle,
+                          color: colors.accentOrange,
+                          size: 24.sp,
+                        )
+                      : null,
                   onTap: () {
                     setState(() {
                       switch (filterType) {
@@ -1128,7 +1384,9 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
     showModalBottomSheet(
       context: context,
       backgroundColor: colors.backgroundPrimary,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20.r))),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+      ),
       builder: (context) {
         return Container(
           padding: EdgeInsets.all(20.r),
@@ -1138,7 +1396,11 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
             children: [
               Text(
                 'Sort by',
-                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                style: TextStyle(
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.w700,
+                  color: colors.textPrimary,
+                ),
               ),
               SizedBox(height: 16.h),
               ..._sortOptions.map((option) {
@@ -1149,11 +1411,21 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
                     option,
                     style: TextStyle(
                       fontSize: 14.sp,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                      color: isSelected ? colors.accentOrange : colors.textPrimary,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.w400,
+                      color: isSelected
+                          ? colors.accentOrange
+                          : colors.textPrimary,
                     ),
                   ),
-                  trailing: isSelected ? Icon(Icons.check, color: colors.accentOrange, size: 20.sp) : null,
+                  trailing: isSelected
+                      ? Icon(
+                          Icons.check,
+                          color: colors.accentOrange,
+                          size: 20.sp,
+                        )
+                      : null,
                   onTap: () {
                     setState(() => _sortBy = option);
                     Navigator.pop(context);
@@ -1167,13 +1439,25 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
     );
   }
 
-  Widget _buildCollapsibleCategoryHeader(AppColorsExtension colors, Size size, bool isDark) {
+  Widget _buildCollapsibleCategoryHeader(
+    AppColorsExtension colors,
+    Size size,
+    bool isDark,
+  ) {
     return ValueListenableBuilder<double>(
       valueListenable: _scrollOffsetNotifier,
       builder: (context, scrollOffset, _) {
-        final collapseProgress = (scrollOffset / _scrollThreshold).clamp(0.0, 1.0);
-        final expandedHeight = UmbrellaHeaderMetrics.expandedHeightFor(size, extra: _headerExtraHeight);
-        final currentHeight = expandedHeight - ((expandedHeight - _collapsedHeight) * collapseProgress);
+        final collapseProgress = (scrollOffset / _scrollThreshold).clamp(
+          0.0,
+          1.0,
+        );
+        final expandedHeight = UmbrellaHeaderMetrics.expandedHeightFor(
+          size,
+          extra: _headerExtraHeight,
+        );
+        final currentHeight =
+            expandedHeight -
+            ((expandedHeight - _collapsedHeight) * collapseProgress);
         final contentOpacity = (1.0 - collapseProgress).clamp(0.0, 1.0);
 
         return SizedBox(
@@ -1196,7 +1480,12 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
   Widget _buildCategoryHeader(AppColorsExtension colors, bool isDark) {
     return SizedBox.expand(
       child: Padding(
-        padding: EdgeInsets.fromLTRB(0.w, MediaQuery.of(context).padding.top + 6.h, 0.w, 20.h),
+        padding: EdgeInsets.fromLTRB(
+          0.w,
+          MediaQuery.of(context).padding.top + 6.h,
+          0.w,
+          20.h,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1215,7 +1504,10 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
                       child: SvgPicture.asset(
                         Assets.icons.navArrowLeft,
                         package: 'grab_go_shared',
-                        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                        colorFilter: const ColorFilter.mode(
+                          Colors.white,
+                          BlendMode.srcIn,
+                        ),
                       ),
                     ),
                   ),
@@ -1269,7 +1561,11 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
                         Consumer<PharmacyProvider>(
                           builder: (context, provider, _) {
                             final items = provider.items
-                                .where((item) => item.categoryId == widget.categoryId && item.discountPercentage <= 0)
+                                .where(
+                                  (item) =>
+                                      item.categoryId == widget.categoryId &&
+                                      item.discountPercentage <= 0,
+                                )
                                 .toList();
                             return Text(
                               '${items.length} options available',
@@ -1284,7 +1580,12 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
                       else if (widget.isGrabMart)
                         Consumer<GrabMartProvider>(
                           builder: (context, provider, _) {
-                            final items = provider.items.where((item) => item.categoryId == widget.categoryId).toList();
+                            final items = provider.items
+                                .where(
+                                  (item) =>
+                                      item.categoryId == widget.categoryId,
+                                )
+                                .toList();
                             return Text(
                               '${items.length} options available',
                               style: TextStyle(
@@ -1312,7 +1613,9 @@ class _CategoryItemsPageState extends State<CategoryItemsPage> {
     if (widget.isFood) {
       return Consumer<FoodProvider>(
         builder: (context, foodProvider, _) {
-          final categoryList = foodProvider.categories.where((cat) => cat.id == widget.categoryId).toList();
+          final categoryList = foodProvider.categories
+              .where((cat) => cat.id == widget.categoryId)
+              .toList();
           return HomeSearch(
             categories: categoryList,
             activeFilter: _comprehensiveFilter,

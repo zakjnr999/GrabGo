@@ -12,7 +12,13 @@ class GroceryItemCard extends StatelessWidget {
   final Widget? trailing;
   final EdgeInsetsGeometry? margin;
 
-  const GroceryItemCard({super.key, required this.item, this.onTap, this.trailing, this.margin});
+  const GroceryItemCard({
+    super.key,
+    required this.item,
+    this.onTap,
+    this.trailing,
+    this.margin,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -39,27 +45,38 @@ class GroceryItemCard extends StatelessWidget {
               ),
               child: Stack(
                 children: [
-                  CachedNetworkImage(
-                    imageUrl: ImageOptimizer.getPreviewUrl(item.image, width: 300),
+                  Container(
                     height: 110,
                     width: 110.w,
-                    fit: BoxFit.cover,
-                    memCacheWidth: 300,
-                    maxHeightDiskCache: 600,
-                    placeholder: (context, url) => Container(
-                      height: 110,
-                      width: 110.w,
-                      color: colors.inputBorder,
-                      child: Center(
-                        child: Icon(Icons.shopping_basket_outlined, color: colors.textSecondary, size: 30.sp),
+                    color: colors.backgroundSecondary,
+                    padding: EdgeInsets.all(10.r),
+                    child: CachedNetworkImage(
+                      imageUrl: ImageOptimizer.getPreviewUrl(
+                        item.catalogImage,
+                        width: 300,
                       ),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      height: 110,
-                      width: 110.w,
-                      color: colors.inputBorder,
-                      child: Center(
-                        child: Icon(Icons.broken_image_outlined, color: colors.textSecondary, size: 30.sp),
+                      fit: BoxFit.contain,
+                      memCacheWidth: 300,
+                      maxHeightDiskCache: 600,
+                      placeholder: (context, url) => Container(
+                        color: colors.backgroundSecondary,
+                        child: Center(
+                          child: Icon(
+                            Icons.shopping_basket_outlined,
+                            color: colors.textSecondary,
+                            size: 30.sp,
+                          ),
+                        ),
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        color: colors.backgroundSecondary,
+                        child: Center(
+                          child: Icon(
+                            Icons.broken_image_outlined,
+                            color: colors.textSecondary,
+                            size: 30.sp,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -68,11 +85,21 @@ class GroceryItemCard extends StatelessWidget {
                       top: 8,
                       left: 8.w,
                       child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2),
-                        decoration: BoxDecoration(color: colors.accentOrange, borderRadius: BorderRadius.circular(4.r)),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 6.w,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colors.accentOrange,
+                          borderRadius: BorderRadius.circular(4.r),
+                        ),
                         child: Text(
                           '-${item.discountPercentage.toInt()}%',
-                          style: TextStyle(color: Colors.white, fontSize: 10.sp, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -104,7 +131,11 @@ class GroceryItemCard extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           item.name,
-                          style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
+                          style: TextStyle(
+                            fontSize: 15.sp,
+                            fontWeight: FontWeight.w700,
+                            color: colors.textPrimary,
+                          ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -120,7 +151,10 @@ class GroceryItemCard extends StatelessWidget {
                                 package: 'grab_go_shared',
                                 height: 12,
                                 width: 12.w,
-                                colorFilter: ColorFilter.mode(colors.accentOrange, BlendMode.srcIn),
+                                colorFilter: ColorFilter.mode(
+                                  colors.accentOrange,
+                                  BlendMode.srcIn,
+                                ),
                               ),
                               SizedBox(width: 4.w),
                               Text(
@@ -135,13 +169,19 @@ class GroceryItemCard extends StatelessWidget {
                               Container(
                                 width: 3.w,
                                 height: 3,
-                                decoration: BoxDecoration(shape: BoxShape.circle, color: colors.textSecondary),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: colors.textSecondary,
+                                ),
                               ),
                               SizedBox(width: 8.w),
                             ],
                             // Unit display
                             Container(
-                              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 6.w,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
                                 color: colors.inputBackground,
                                 borderRadius: BorderRadius.circular(4.r),
@@ -196,7 +236,11 @@ class GroceryItemCard extends StatelessWidget {
                         else if (!item.isAvailable)
                           Text(
                             'Sold Out',
-                            style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold, color: colors.textSecondary),
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.bold,
+                              color: colors.textSecondary,
+                            ),
                           ),
                       ],
                     ),

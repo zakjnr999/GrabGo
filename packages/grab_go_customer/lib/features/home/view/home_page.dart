@@ -909,7 +909,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     const vendorType = VendorType.food;
     final accentColor = Color(vendorType.color);
-    final vendors = foodProvider.nearbyVendors.take(10).toList();
+    final vendors = foodProvider.homepageNearbyVendors.take(10).toList();
 
     if (foodProvider.isLoading && vendors.isEmpty) {
       return const SizedBox.shrink();

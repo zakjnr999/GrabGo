@@ -332,14 +332,11 @@ class _BrowsePageState extends State<BrowsePage> {
                     ],
                   ),
                 ),
-                GestureDetector(
-                  onTap: _clearRecentSearches,
-                  child: Padding(
-                    padding: EdgeInsets.only(top: 2.h, left: 12.w),
-                    child: Text(
-                      'Clear all',
-                      style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: colors.accentOrange),
-                    ),
+                TextButton(
+                  onPressed: () => _clearRecentSearches(),
+                  child: Text(
+                    'Clear all',
+                    style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: colors.accentOrange),
                   ),
                 ),
               ],
@@ -545,14 +542,12 @@ class _BrowsePageState extends State<BrowsePage> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: SvgPicture.asset(
-                Assets.icons.search,
-                package: 'grab_go_shared',
-                width: 22.w,
-                height: 22.h,
-                colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-              ),
+            SvgPicture.asset(
+              Assets.icons.search,
+              package: 'grab_go_shared',
+              width: 18.w,
+              height: 18.h,
+              colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
             ),
             SizedBox(width: 10.w),
             Expanded(
@@ -799,18 +794,16 @@ class _BrowsePageState extends State<BrowsePage> {
         return GestureDetector(
           onTap: () => _startSearchFromTerm(term),
           child: Container(
-            margin: EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
+            margin: EdgeInsets.symmetric(horizontal: 20.w),
             decoration: BoxDecoration(color: colors.backgroundPrimary),
             child: Row(
               children: [
-                Center(
-                  child: SvgPicture.asset(
-                    Assets.icons.history,
-                    package: 'grab_go_shared',
-                    width: 22.w,
-                    height: 22.h,
-                    colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
-                  ),
+                SvgPicture.asset(
+                  Assets.icons.history,
+                  package: 'grab_go_shared',
+                  width: 18.w,
+                  height: 18.h,
+                  colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                 ),
                 SizedBox(width: 10.w),
                 Expanded(
@@ -821,12 +814,14 @@ class _BrowsePageState extends State<BrowsePage> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                GestureDetector(
-                  onTap: () => _removeRecentSearch(term),
-                  behavior: HitTestBehavior.opaque,
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 4.h),
-                    child: Icon(Icons.close, size: 18.sp, color: colors.textSecondary),
+                IconButton(
+                  onPressed: () => _removeRecentSearch(term),
+                  icon: SvgPicture.asset(
+                    Assets.icons.xmark,
+                    package: 'grab_go_shared',
+                    height: 18.h,
+                    width: 18.w,
+                    colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
                   ),
                 ),
               ],

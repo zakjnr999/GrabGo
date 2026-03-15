@@ -58,6 +58,37 @@ class FoodProvider with ChangeNotifier {
   String? get error => _homeFeedError ?? _categoryProvider.error;
   bool get hasAttemptedFetch => _categoryProvider.hasAttemptedFetch;
   List<VendorModel> get nearbyVendors => _nearbyVendors;
+  List<VendorModel> get homepageNearbyVendors {
+    if (_nearbyVendors.isEmpty || freeDeliveryNearbyVendors.isEmpty) {
+      return _nearbyVendors;
+    }
+
+    final featuredFreeDeliveryIds = freeDeliveryNearbyVendors
+        .map((vendor) => vendor.id)
+        .where((id) => id.trim().isNotEmpty)
+        .toSet();
+    if (featuredFreeDeliveryIds.isEmpty) {
+      return _nearbyVendors;
+    }
+
+    final ordered = <VendorModel>[];
+    final deferred = <VendorModel>[];
+
+    for (final vendor in _nearbyVendors) {
+      if (!featuredFreeDeliveryIds.contains(vendor.id)) {
+        ordered.add(vendor);
+      } else {
+        deferred.add(vendor);
+      }
+    }
+
+    if (deferred.isEmpty) {
+      return _nearbyVendors;
+    }
+
+    return [...ordered, ...deferred];
+  }
+
   List<VendorModel> get exclusiveVendors => _exclusiveVendors;
   List<VendorModel> get freeDeliveryNearbyVendors {
     if (_freeDeliveryNearbyVendors.isNotEmpty) {
