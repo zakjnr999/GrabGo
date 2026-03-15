@@ -12,10 +12,14 @@ const dummyThumbnail = (category, slug) =>
   `${DUMMYJSON_IMAGE_BASE_URL}/${category}/${slug}/thumbnail.webp`;
 
 const PACKSHOT_LIBRARY = {
-  supplementBottle: dummyThumbnail("groceries", "honey-jar"),
+  supplementBottle: dummyThumbnail("groceries", "protein-powder"),
   milkBottle: dummyThumbnail("groceries", "milk"),
   waterBottle: dummyThumbnail("groceries", "water"),
   juiceBottle: dummyThumbnail("groceries", "juice"),
+  kitBox: dummyThumbnail("groceries", "tissue-paper-box"),
+  medicineCanister: dummyThumbnail("beauty", "powder-canister"),
+  wipesPack: dummyThumbnail("beauty", "eyeshadow-palette-with-mirror"),
+  medicineBottle: dummyThumbnail("fragrances", "calvin-klein-ck-one"),
   handSoap: dummyThumbnail(
     "skin-care",
     "attitude-super-leaves-hand-soap",
@@ -25,36 +29,28 @@ const PACKSHOT_LIBRARY = {
     "olay-ultra-moisture-shea-butter-body-wash",
   ),
   lotion: dummyThumbnail("skin-care", "vaseline-men-body-and-face-lotion"),
-  medicines:
-    "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800",
-  antiInflammatory:
-    "https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=800",
-  coughBottle:
-    "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=800",
-  firstAid:
-    "https://images.unsplash.com/photo-1603398938378-e54eab446dde?w=800",
-  babyCare:
-    "https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?w=800",
-  babyWipes:
-    "https://images.unsplash.com/photo-1522771930-78848d9293e8?w=800",
-  devices:
-    "https://images.unsplash.com/photo-1550572017-4a6e8c4f8f7f?w=800",
-  sunscreen:
-    "https://images.unsplash.com/photo-1571875257727-256c39da42af?w=800",
-  moisturizer:
-    "https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=800",
+  device:
+    "https://cdn.dummyjson.com/product-images/mobile-accessories/apple-watch-series-4-gold/thumbnail.webp",
+};
+
+const EXACT_CATEGORY_IMAGES = {
+  "baby care": PACKSHOT_LIBRARY.wipesPack,
+  medicines: PACKSHOT_LIBRARY.medicineCanister,
+  "personal care": PACKSHOT_LIBRARY.lotion,
+  wellness: PACKSHOT_LIBRARY.supplementBottle,
+  "first aid": PACKSHOT_LIBRARY.kitBox,
 };
 
 const CATEGORY_IMAGE_RULES = [
   {
     pattern: /\bmedicines?\b/i,
-    url: PACKSHOT_LIBRARY.medicines,
-    source: "real_category",
+    url: PACKSHOT_LIBRARY.medicineCanister,
+    source: "packshot_category",
   },
   {
     pattern: /\bwellness|supplements?|vitamins?\b/i,
-    url: PACKSHOT_LIBRARY.coughBottle,
-    source: "real_category",
+    url: PACKSHOT_LIBRARY.supplementBottle,
+    source: "packshot_category",
   },
   {
     pattern: /\bpersonal care|skin care|hygiene\b/i,
@@ -63,54 +59,48 @@ const CATEGORY_IMAGE_RULES = [
   },
   {
     pattern: /\bfirst aid\b/i,
-    url: PACKSHOT_LIBRARY.firstAid,
-    source: "real_category",
+    url: PACKSHOT_LIBRARY.kitBox,
+    source: "packshot_category",
   },
   {
     pattern: /\bbaby care|baby\b/i,
-    url: PACKSHOT_LIBRARY.babyCare,
-    source: "real_category",
+    url: PACKSHOT_LIBRARY.milkBottle,
+    source: "packshot_category",
   },
   {
     pattern: /\bhealth devices?|medical devices?\b/i,
-    url: PACKSHOT_LIBRARY.devices,
-    source: "real_category",
+    url: PACKSHOT_LIBRARY.device,
+    source: "packshot_category",
   },
 ];
 
 const EXACT_ITEM_THUMBNAILS = {
-  "paracetamol 500mg": PACKSHOT_LIBRARY.medicines,
-  "ibuprofen 400mg": PACKSHOT_LIBRARY.antiInflammatory,
-  "antibiotic amoxicillin": PACKSHOT_LIBRARY.devices,
-  "cough syrup": PACKSHOT_LIBRARY.coughBottle,
-  "vitamin c 1000mg": PACKSHOT_LIBRARY.medicines,
-  "multivitamin complex": PACKSHOT_LIBRARY.devices,
-  "omega-3 fish oil": PACKSHOT_LIBRARY.coughBottle,
+  "adhesive bandages": PACKSHOT_LIBRARY.kitBox,
+  "baby wipes": PACKSHOT_LIBRARY.wipesPack,
+  "ibuprofen 400mg": PACKSHOT_LIBRARY.medicineBottle,
+  "paracetamol 500mg": PACKSHOT_LIBRARY.medicineCanister,
+  "vitamin c 1000mg": PACKSHOT_LIBRARY.supplementBottle,
+  "multivitamin complex": dummyThumbnail("fragrances", "calvin-klein-ck-one"),
+  "omega-3 fish oil": dummyThumbnail("fragrances", "gucci-bloom-eau-de"),
   "hand sanitizer 500ml": PACKSHOT_LIBRARY.handSoap,
-  "moisturizing lotion": PACKSHOT_LIBRARY.moisturizer,
-  "sunscreen spf 50": PACKSHOT_LIBRARY.sunscreen,
-  "adhesive bandages": PACKSHOT_LIBRARY.firstAid,
-  "antiseptic solution": PACKSHOT_LIBRARY.handSoap,
-  "first aid kit": PACKSHOT_LIBRARY.firstAid,
-  "baby diapers size 3": PACKSHOT_LIBRARY.babyCare,
-  "baby wipes": PACKSHOT_LIBRARY.babyWipes,
+  "moisturizing lotion": PACKSHOT_LIBRARY.lotion,
+  "sunscreen spf 50": PACKSHOT_LIBRARY.bodyWash,
   "baby formula milk": PACKSHOT_LIBRARY.milkBottle,
-  "digital thermometer": PACKSHOT_LIBRARY.medicines,
-  "blood pressure monitor": PACKSHOT_LIBRARY.devices,
-  "pulse oximeter": PACKSHOT_LIBRARY.coughBottle,
 };
+
+const USE_EXISTING_IMAGE_NAMES = new Set([]);
 
 const ITEM_RULES = [
   {
     pattern:
       /\b(paracetamol|ibuprofen|amoxicillin|antibiotic|tablet|tablets|capsule|capsules|pill|pills|medicine|medication)\b/i,
-    url: PACKSHOT_LIBRARY.medicines,
-    source: "real_medicine",
+    url: PACKSHOT_LIBRARY.juiceBottle,
+    source: "packshot_medicine",
   },
   {
     pattern: /\b(cough|syrup|tonic|mouthwash)\b/i,
-    url: PACKSHOT_LIBRARY.coughBottle,
-    source: "real_liquid",
+    url: PACKSHOT_LIBRARY.juiceBottle,
+    source: "packshot_liquid",
   },
   {
     pattern: /\b(vitamin|multivitamin|supplement|omega|fish oil|zinc)\b/i,
@@ -139,18 +129,23 @@ const ITEM_RULES = [
   },
   {
     pattern: /\b(bandage|bandages|band aid|band-aid|gauze|plaster|first aid)\b/i,
-    url: PACKSHOT_LIBRARY.firstAid,
-    source: "real_firstaid",
+    url: PACKSHOT_LIBRARY.kitBox,
+    source: "packshot_firstaid",
   },
   {
-    pattern: /\b(diaper|diapers|wipes|formula|baby)\b/i,
-    url: PACKSHOT_LIBRARY.babyCare,
-    source: "real_baby",
+    pattern: /\bformula\b/i,
+    url: PACKSHOT_LIBRARY.milkBottle,
+    source: "packshot_baby_formula",
+  },
+  {
+    pattern: /\b(diaper|diapers|wipes|baby)\b/i,
+    url: PACKSHOT_LIBRARY.kitBox,
+    source: "packshot_baby",
   },
   {
     pattern: /\b(thermometer|oximeter|monitor|blood pressure|bp monitor|device)\b/i,
-    url: PACKSHOT_LIBRARY.devices,
-    source: "real_device",
+    url: PACKSHOT_LIBRARY.device,
+    source: "packshot_device",
   },
 ];
 
@@ -163,6 +158,14 @@ function normalizeName(value) {
 
 function resolveCategoryImage(category) {
   const normalizedName = normalizeName(category.name);
+  const exactImage = EXACT_CATEGORY_IMAGES[normalizedName];
+
+  if (exactImage) {
+    return {
+      image: exactImage,
+      source: "exact_category",
+    };
+  }
 
   for (const rule of CATEGORY_IMAGE_RULES) {
     if (rule.pattern.test(normalizedName)) {
@@ -181,6 +184,15 @@ function resolveCategoryImage(category) {
 
 function resolveItemThumbnail(item) {
   const normalizedName = normalizeName(item.name);
+  const existingImage = String(item.image || "").trim();
+
+  if (USE_EXISTING_IMAGE_NAMES.has(normalizedName) && existingImage.length > 0) {
+    return {
+      thumbnailImage: existingImage,
+      source: "existing_image",
+    };
+  }
+
   const exactMatch = EXACT_ITEM_THUMBNAILS[normalizedName];
 
   if (exactMatch) {
@@ -203,7 +215,6 @@ function resolveItemThumbnail(item) {
     }
   }
 
-  const existingImage = String(item.image || "").trim();
   if (existingImage.length > 0) {
     return {
       thumbnailImage: existingImage,
@@ -263,6 +274,7 @@ async function main() {
       const resolution = resolveItemThumbnail({
         name: item.name,
         brand: item.brand,
+        image: item.image,
         categoryName: item.category?.name,
       });
 

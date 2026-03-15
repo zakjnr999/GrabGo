@@ -1793,7 +1793,11 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
 
     for (final item in provider.recommendedItems) {
       if (item.hasDiscount) continue;
-      selected[item.id] = item;
+      final key = _pharmacyProductKey(item);
+      final existing = selected[key];
+      if (existing == null || _shouldPreferPharmacyItem(item, existing)) {
+        selected[key] = item;
+      }
     }
 
     if (selected.length < 6) {
@@ -1818,9 +1822,45 @@ class _ServiceHubPageState extends State<ServiceHubPage> {
   List<PharmacyItem> _uniquePharmacyItems(List<PharmacyItem> items) {
     final uniqueItems = <String, PharmacyItem>{};
     for (final item in items) {
-      uniqueItems[item.id] = item;
+      final key = _pharmacyProductKey(item);
+      final existing = uniqueItems[key];
+      if (existing == null || _shouldPreferPharmacyItem(item, existing)) {
+        uniqueItems[key] = item;
+      }
     }
     return uniqueItems.values.toList();
+  }
+
+  String _pharmacyProductKey(PharmacyItem item) {
+    String normalize(String? value) =>
+        (value ?? '').trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+
+    return [
+      normalize(item.name),
+      normalize(item.brand),
+      normalize(item.unit),
+      normalize(item.categoryId),
+    ].join('|');
+  }
+
+  bool _shouldPreferPharmacyItem(PharmacyItem candidate, PharmacyItem current) {
+    if (candidate.rating != current.rating) {
+      return candidate.rating > current.rating;
+    }
+
+    if (candidate.reviewCount != current.reviewCount) {
+      return candidate.reviewCount > current.reviewCount;
+    }
+
+    if (candidate.orderCount != current.orderCount) {
+      return candidate.orderCount > current.orderCount;
+    }
+
+    if (candidate.discountPercentage != current.discountPercentage) {
+      return candidate.discountPercentage > current.discountPercentage;
+    }
+
+    return candidate.price < current.price;
   }
 
   List<ServiceDisplayItem> _sortedDeals(List<ServiceDisplayItem> items) {

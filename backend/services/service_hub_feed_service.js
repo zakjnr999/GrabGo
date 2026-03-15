@@ -52,6 +52,7 @@ const ITEM_INCLUDE = {
 
 const SERVICE_CONFIGS = {
   groceries: {
+    serviceId: 'groceries',
     categoryDelegate: prisma.groceryCategory,
     itemDelegate: prisma.groceryItem,
     storeDelegate: prisma.groceryStore,
@@ -59,6 +60,7 @@ const SERVICE_CONFIGS = {
     baseOrderBy: [{ rating: 'desc' }, { orderCount: 'desc' }],
   },
   pharmacy: {
+    serviceId: 'pharmacy',
     categoryDelegate: prisma.pharmacyCategory,
     itemDelegate: prisma.pharmacyItem,
     storeDelegate: prisma.pharmacyStore,
@@ -66,6 +68,7 @@ const SERVICE_CONFIGS = {
     baseOrderBy: [{ orderCount: 'desc' }, { rating: 'desc' }],
   },
   convenience: {
+    serviceId: 'convenience',
     categoryDelegate: prisma.grabMartCategory,
     itemDelegate: prisma.grabMartItem,
     storeDelegate: prisma.grabMartStore,
@@ -77,6 +80,69 @@ const SERVICE_CONFIGS = {
 const normalizeServiceId = (serviceId) => {
   if (serviceId === 'grabmart') return 'convenience';
   return serviceId;
+};
+
+const normalizeProductToken = (value) =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+
+const buildServiceItemKey = (serviceId, item) => {
+  if (!item) return '';
+
+  if (serviceId === 'pharmacy') {
+    return [
+      item.name,
+      item.brand,
+      item.unit,
+      item.categoryId || item.category?.id || item.category?._id,
+    ]
+      .map(normalizeProductToken)
+      .join('|');
+  }
+
+  return String(item.id || '');
+};
+
+const compareCandidateItems = (a, b) => {
+  const aOpen = Number(Boolean(a?.store?.isOpen));
+  const bOpen = Number(Boolean(b?.store?.isOpen));
+  if (aOpen !== bOpen) return aOpen - bOpen;
+
+  const ratingDiff = (a?.rating || 0) - (b?.rating || 0);
+  if (ratingDiff !== 0) return ratingDiff;
+
+  const reviewDiff = (a?.reviewCount || 0) - (b?.reviewCount || 0);
+  if (reviewDiff !== 0) return reviewDiff;
+
+  const orderDiff = (a?.orderCount || 0) - (b?.orderCount || 0);
+  if (orderDiff !== 0) return orderDiff;
+
+  const discountDiff =
+    (a?.discountPercentage || 0) - (b?.discountPercentage || 0);
+  if (discountDiff !== 0) return discountDiff;
+
+  return (b?.price || 0) - (a?.price || 0);
+};
+
+const dedupeServiceItems = (serviceId, items) => {
+  if (serviceId !== 'pharmacy') {
+    return Array.from(new Map(items.map((item) => [item.id, item])).values());
+  }
+
+  const deduped = new Map();
+
+  for (const item of items) {
+    const key = buildServiceItemKey(serviceId, item);
+    const existing = deduped.get(key);
+
+    if (!existing || compareCandidateItems(item, existing) > 0) {
+      deduped.set(key, item);
+    }
+  }
+
+  return Array.from(deduped.values());
 };
 
 const withLegacyId = (value) => {
@@ -263,16 +329,20 @@ async function fetchRecommendedSection({
               }
             }
 
+            const uniqueDiversified = dedupeServiceItems(
+              config.serviceId,
+              diversified,
+            );
             const startIndex = (page - 1) * limit;
             const endIndex = startIndex + limit;
-            const paginatedItems = diversified.slice(startIndex, endIndex);
+            const paginatedItems = uniqueDiversified.slice(startIndex, endIndex);
 
             if (paginatedItems.length >= limit) {
               return {
                 items: paginatedItems.map(formatFeedItem),
                 page,
-                hasMore: endIndex < diversified.length,
-                total: diversified.length,
+                hasMore: endIndex < uniqueDiversified.length,
+                total: uniqueDiversified.length,
               };
             }
 
@@ -336,9 +406,7 @@ async function fetchRecommendedSection({
   ]);
 
   const combined = [...mlSeedItems, ...popular, ...topRated, ...deals, ...random];
-  const uniqueItems = Array.from(
-    new Map(combined.map((item) => [item.id, item])).values(),
-  );
+  const uniqueItems = dedupeServiceItems(config.serviceId, combined);
 
   uniqueItems.sort((a, b) => {
     const aScore =
@@ -432,7 +500,7 @@ async function fetchServiceHubFeed({
         },
         include: ITEM_INCLUDE,
         orderBy: [{ discountPercentage: 'desc' }, { orderCount: 'desc' }],
-        take: FEED_SECTION_LIMIT,
+        take: FEED_ITEM_LIMIT,
       }),
       config.itemDelegate.findMany({
         where: {
@@ -441,7 +509,7 @@ async function fetchServiceHubFeed({
         },
         include: ITEM_INCLUDE,
         orderBy: [{ orderCount: 'desc' }, { rating: 'desc' }],
-        take: FEED_SECTION_LIMIT,
+        take: FEED_ITEM_LIMIT,
       }),
       config.itemDelegate.findMany({
         where: {
@@ -451,7 +519,7 @@ async function fetchServiceHubFeed({
         },
         include: ITEM_INCLUDE,
         orderBy: [{ rating: 'desc' }, { reviewCount: 'desc' }],
-        take: FEED_SECTION_LIMIT,
+        take: FEED_ITEM_LIMIT,
       }),
       fetchRecommendedSection({
         config,
@@ -465,10 +533,18 @@ async function fetchServiceHubFeed({
   return {
     service: normalizedServiceId,
     categories: categories.map(formatFeedCategory),
-    items: items.map(formatFeedItem),
-    deals: deals.map(formatFeedItem),
-    popular: popular.map(formatFeedItem),
-    topRated: topRated.map(formatFeedItem),
+    items: dedupeServiceItems(normalizedServiceId, items)
+      .slice(0, FEED_ITEM_LIMIT)
+      .map(formatFeedItem),
+    deals: dedupeServiceItems(normalizedServiceId, deals)
+      .slice(0, FEED_SECTION_LIMIT)
+      .map(formatFeedItem),
+    popular: dedupeServiceItems(normalizedServiceId, popular)
+      .slice(0, FEED_SECTION_LIMIT)
+      .map(formatFeedItem),
+    topRated: dedupeServiceItems(normalizedServiceId, topRated)
+      .slice(0, FEED_SECTION_LIMIT)
+      .map(formatFeedItem),
     recommended,
     fetchedAt: new Date().toISOString(),
   };
