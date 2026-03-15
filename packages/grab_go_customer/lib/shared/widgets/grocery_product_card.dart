@@ -1,8 +1,10 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:grab_go_customer/features/cart/viewmodel/cart_provider.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
+import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:provider/provider.dart';
 
@@ -154,47 +156,66 @@ class _GroceryCardActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.appColors;
+
     return Consumer<CartProvider>(
       builder: (context, cartProvider, _) {
         final isInCart = cartProvider.hasItemInCart(item);
         final isPending = cartProvider.isItemOperationPendingForDisplay(item);
         final actionItem = cartProvider.resolveItemForCartAction(item);
+        const animationDuration = Duration(milliseconds: 250);
 
         return Material(
           color: Colors.transparent,
           child: InkWell(
             onTap: isPending
                 ? null
-                : () {
+                : () async {
                     if (isInCart && actionItem != null) {
-                      cartProvider.removeItemCompletely(actionItem);
+                      await cartProvider.removeItemCompletely(actionItem);
                     } else {
-                      cartProvider.addToCart(item, context: context);
+                      await cartProvider.addToCart(item, context: context);
                     }
                   },
-            borderRadius: BorderRadius.circular(999.r),
-            child: Ink(
-              width: 28.w,
-              height: 28.w,
+            borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+            child: AnimatedContainer(
+              duration: animationDuration,
+              width: 32.w,
+              height: 32.w,
               decoration: BoxDecoration(
-                color: isInCart ? color : Colors.white,
-                shape: BoxShape.circle,
-                border: Border.all(color: isInCart ? color : color.withValues(alpha: 0.22)),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, 3)),
-                ],
+                color: isInCart ? color : colors.backgroundPrimary.withValues(alpha: 0.95),
+                borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
               ),
               child: Center(
-                child: isPending
-                    ? SizedBox(
-                        width: 14.w,
-                        height: 14.w,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(isInCart ? Colors.white : color),
+                child: AnimatedSwitcher(
+                  duration: animationDuration,
+                  switchInCurve: Curves.easeOutBack,
+                  switchOutCurve: Curves.easeIn,
+                  transitionBuilder: (child, animation) {
+                    return ScaleTransition(
+                      scale: animation,
+                      child: FadeTransition(opacity: animation, child: child),
+                    );
+                  },
+                  child: isPending
+                      ? SizedBox(
+                          key: const ValueKey('pending'),
+                          width: 17.w,
+                          height: 17.w,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(isInCart ? Colors.white : color),
+                          ),
+                        )
+                      : SvgPicture.asset(
+                          key: ValueKey(isInCart ? 'in-cart' : 'add'),
+                          isInCart ? Assets.icons.check : Assets.icons.plus,
+                          package: 'grab_go_shared',
+                          height: 17.h,
+                          width: 17.w,
+                          colorFilter: ColorFilter.mode(isInCart ? Colors.white : colors.textPrimary, BlendMode.srcIn),
                         ),
-                      )
-                    : Icon(isInCart ? Icons.check : Icons.add, size: 16.sp, color: isInCart ? Colors.white : color),
+                ),
               ),
             ),
           ),
