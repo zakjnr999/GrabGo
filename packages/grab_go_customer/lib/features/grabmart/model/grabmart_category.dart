@@ -19,7 +19,7 @@ class GrabMartCategory {
 
   factory GrabMartCategory.fromJson(Map<String, dynamic> json) {
     return GrabMartCategory(
-      id: json['_id'] ?? '',
+      id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
       name: json['name'] ?? '',
       emoji: json['emoji'] ?? '',
       description: json['description'] ?? '',
@@ -32,6 +32,7 @@ class GrabMartCategory {
   Map<String, dynamic> toJson() {
     return {
       '_id': id,
+      'id': id,
       'name': name,
       'emoji': emoji,
       'description': description,

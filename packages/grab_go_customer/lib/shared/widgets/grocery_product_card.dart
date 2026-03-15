@@ -42,14 +42,18 @@ class GroceryProductCard extends StatelessWidget {
     final outerPadding = compactLayout ? 8.r : 10.r;
     final imagePadding = compactLayout ? 8.r : 10.r;
     final imageCornerRadius = compactLayout ? 10.r : 12.r;
-    final titleGap = showExpandedDiscountPricing ? (compactLayout ? 6.h : 8.h) : (compactLayout ? 8.h : 10.h);
+    final titleGap = showExpandedDiscountPricing
+        ? (compactLayout ? 6.h : 8.h)
+        : (compactLayout ? 8.h : 10.h);
     final nameFontSize = compactLayout ? 12.sp : 13.sp;
     final storeFontSize = compactLayout ? 10.sp : 11.sp;
     final priceFontSize = compactLayout ? 13.sp : 14.sp;
     final unitFontSize = compactLayout ? 10.sp : 11.sp;
     final beforePriceFontSize = compactLayout ? 9.sp : 10.sp;
     final afterNameGap = compactLayout ? 3.h : 4.h;
-    final afterStoreGap = showExpandedDiscountPricing ? (compactLayout ? 2.h : 2.h) : (compactLayout ? 3.h : 4.h);
+    final afterStoreGap = showExpandedDiscountPricing
+        ? (compactLayout ? 2.h : 2.h)
+        : (compactLayout ? 3.h : 4.h);
 
     return GestureDetector(
       onTap: onTap,
@@ -57,7 +61,10 @@ class GroceryProductCard extends StatelessWidget {
         width: width,
         margin: margin,
         padding: EdgeInsets.all(outerPadding),
-        decoration: BoxDecoration(color: colors.backgroundPrimary, borderRadius: BorderRadius.circular(18.r)),
+        decoration: BoxDecoration(
+          color: colors.backgroundPrimary,
+          borderRadius: BorderRadius.circular(18.r),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -69,26 +76,49 @@ class GroceryProductCard extends StatelessWidget {
                   padding: EdgeInsets.all(imagePadding),
                   decoration: BoxDecoration(
                     color: colors.serviceGrocery.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
+                    borderRadius: BorderRadius.circular(
+                      KBorderSize.borderMedium,
+                    ),
                   ),
                   child: AspectRatio(
                     aspectRatio: 1,
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(imageCornerRadius),
                       child: CachedNetworkImage(
-                        imageUrl: ImageOptimizer.getPreviewUrl(item.catalogImage, width: 320),
+                        imageUrl: ImageOptimizer.getPreviewUrl(
+                          item.catalogImage,
+                          width: 320,
+                        ),
                         fit: BoxFit.contain,
                         memCacheWidth: 320,
                         maxHeightDiskCache: 640,
                         placeholder: (context, url) => Container(
                           color: colors.serviceGrocery.withValues(alpha: 0.1),
                           alignment: Alignment.center,
-                          child: Icon(Icons.local_grocery_store_outlined, size: 28.sp, color: colors.textSecondary),
+                          child: SvgPicture.asset(
+                            Assets.icons.cart,
+                            package: 'grab_go_shared',
+                            width: 26.w,
+                            height: 26.w,
+                            colorFilter: ColorFilter.mode(
+                              accentColor,
+                              BlendMode.srcIn,
+                            ),
+                          ),
                         ),
                         errorWidget: (context, url, error) => Container(
                           color: colors.serviceGrocery.withValues(alpha: 0.1),
                           alignment: Alignment.center,
-                          child: Icon(Icons.broken_image_outlined, size: 28.sp, color: colors.textSecondary),
+                          child: SvgPicture.asset(
+                            Assets.icons.cart,
+                            package: 'grab_go_shared',
+                            width: 26.w,
+                            height: 26.w,
+                            colorFilter: ColorFilter.mode(
+                              accentColor,
+                              BlendMode.srcIn,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -107,7 +137,11 @@ class GroceryProductCard extends StatelessWidget {
                 Positioned(
                   right: 8.w,
                   bottom: 8.h,
-                  child: _GroceryCardActionButton(item: item, color: accentColor, compactLayout: compactLayout),
+                  child: _GroceryCardActionButton(
+                    item: item,
+                    color: accentColor,
+                    compactLayout: compactLayout,
+                  ),
                 ),
               ],
             ),
@@ -240,7 +274,11 @@ class _GroceryCardActionButton extends StatelessWidget {
   final Color color;
   final bool compactLayout;
 
-  const _GroceryCardActionButton({required this.item, required this.color, required this.compactLayout});
+  const _GroceryCardActionButton({
+    required this.item,
+    required this.color,
+    required this.compactLayout,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -273,7 +311,9 @@ class _GroceryCardActionButton extends StatelessWidget {
               width: buttonSize,
               height: buttonSize,
               decoration: BoxDecoration(
-                color: isInCart ? color : colors.backgroundPrimary.withValues(alpha: 0.95),
+                color: isInCart
+                    ? color
+                    : colors.backgroundPrimary.withValues(alpha: 0.95),
                 borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
               ),
               child: Center(
@@ -294,7 +334,9 @@ class _GroceryCardActionButton extends StatelessWidget {
                           height: iconSize,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(isInCart ? Colors.white : color),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              isInCart ? Colors.white : color,
+                            ),
                           ),
                         )
                       : SvgPicture.asset(
@@ -303,7 +345,10 @@ class _GroceryCardActionButton extends StatelessWidget {
                           package: 'grab_go_shared',
                           height: iconSize,
                           width: iconSize,
-                          colorFilter: ColorFilter.mode(isInCart ? Colors.white : colors.textPrimary, BlendMode.srcIn),
+                          colorFilter: ColorFilter.mode(
+                            isInCart ? Colors.white : colors.textPrimary,
+                            BlendMode.srcIn,
+                          ),
                         ),
                 ),
               ),

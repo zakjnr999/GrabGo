@@ -1,6 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
 class ServiceCategoryList<T> extends StatefulWidget {
@@ -247,24 +249,30 @@ class _ServiceCategoryListState<T> extends State<ServiceCategoryList<T>> {
     AppColorsExtension colors,
   ) {
     if (imageUrl != null) {
+      final chipColor = widget.accentColor ?? colors.accentOrange;
       return CachedNetworkImage(
         imageUrl: ImageOptimizer.getPreviewUrl(imageUrl, width: 160),
         fit: BoxFit.contain,
         memCacheWidth: 160,
         maxHeightDiskCache: 320,
-        placeholder: (context, url) => Center(
-          child: Icon(
-            Icons.local_grocery_store_outlined,
-            size: 24.sp,
-            color: colors.textSecondary,
-          ),
-        ),
-        errorWidget: (context, url, error) =>
-            _buildEmoji(category, isSelected, colors),
+        placeholder: (context, url) => _buildImageFallback(chipColor),
+        errorWidget: (context, url, error) => _buildImageFallback(chipColor),
       );
     }
 
     return _buildEmoji(category, isSelected, colors);
+  }
+
+  Widget _buildImageFallback(Color accentColor) {
+    return Center(
+      child: SvgPicture.asset(
+        Assets.icons.cart,
+        package: 'grab_go_shared',
+        width: 24.w,
+        height: 24.w,
+        colorFilter: ColorFilter.mode(accentColor, BlendMode.srcIn),
+      ),
+    );
   }
 
   Widget _buildEmoji(T category, bool isSelected, AppColorsExtension colors) {

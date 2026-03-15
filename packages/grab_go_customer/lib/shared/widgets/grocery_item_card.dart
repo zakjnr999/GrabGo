@@ -59,22 +59,32 @@ class GroceryItemCard extends StatelessWidget {
                       memCacheWidth: 300,
                       maxHeightDiskCache: 600,
                       placeholder: (context, url) => Container(
-                        color: colors.backgroundSecondary,
+                        color: colors.serviceGrocery.withValues(alpha: 0.1),
                         child: Center(
-                          child: Icon(
-                            Icons.shopping_basket_outlined,
-                            color: colors.textSecondary,
-                            size: 30.sp,
+                          child: SvgPicture.asset(
+                            Assets.icons.cart,
+                            package: 'grab_go_shared',
+                            width: 28.w,
+                            height: 28.w,
+                            colorFilter: ColorFilter.mode(
+                              colors.serviceGrocery,
+                              BlendMode.srcIn,
+                            ),
                           ),
                         ),
                       ),
                       errorWidget: (context, url, error) => Container(
-                        color: colors.backgroundSecondary,
+                        color: colors.serviceGrocery.withValues(alpha: 0.1),
                         child: Center(
-                          child: Icon(
-                            Icons.broken_image_outlined,
-                            color: colors.textSecondary,
-                            size: 30.sp,
+                          child: SvgPicture.asset(
+                            Assets.icons.cart,
+                            package: 'grab_go_shared',
+                            width: 28.w,
+                            height: 28.w,
+                            colorFilter: ColorFilter.mode(
+                              colors.serviceGrocery,
+                              BlendMode.srcIn,
+                            ),
                           ),
                         ),
                       ),

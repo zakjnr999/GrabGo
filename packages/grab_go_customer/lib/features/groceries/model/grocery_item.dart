@@ -40,9 +40,7 @@ class GroceryItem implements CartItem {
   final String name;
   @override
   final String description;
-  @override
-  final String image;
-  final String? thumbnailImage;
+  final String thumbnailImage;
   @override
   final double price;
   final String unit;
@@ -79,12 +77,14 @@ class GroceryItem implements CartItem {
   @override
   String get providerImage => storeLogo ?? '';
 
+  @override
+  String get image => thumbnailImage;
+
   GroceryItem({
     required this.id,
     required this.name,
     required this.description,
-    required this.image,
-    this.thumbnailImage,
+    required this.thumbnailImage,
     required this.price,
     required this.unit,
     required this.categoryId,
@@ -133,11 +133,7 @@ class GroceryItem implements CartItem {
   }
 
   String get catalogImage {
-    final thumbnail = thumbnailImage?.trim();
-    if (thumbnail != null && thumbnail.isNotEmpty) {
-      return thumbnail;
-    }
-    return image;
+    return thumbnailImage;
   }
 
   factory GroceryItem.fromJson(Map<String, dynamic> json) {
@@ -176,12 +172,16 @@ class GroceryItem implements CartItem {
     final dynamic rawReviewCount =
         json['reviewCount'] ?? json['totalReviews'] ?? json['ratingCount'];
 
+    final thumbnailImage = json['thumbnailImage']?.toString().trim();
+    final resolvedImage = (thumbnailImage != null && thumbnailImage.isNotEmpty)
+        ? thumbnailImage
+        : json['image']?.toString() ?? '';
+
     return GroceryItem(
       id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
       name: json['name'] ?? '',
       description: json['description'] ?? '',
-      image: json['image'] ?? '',
-      thumbnailImage: json['thumbnailImage']?.toString(),
+      thumbnailImage: resolvedImage,
       price: (json['price'] ?? 0).toDouble(),
       unit: json['unit'] ?? 'piece',
       categoryId: categoryId,
@@ -222,7 +222,6 @@ class GroceryItem implements CartItem {
       '_id': id,
       'name': name,
       'description': description,
-      'image': image,
       'thumbnailImage': thumbnailImage,
       'price': price,
       'unit': unit,
@@ -256,7 +255,7 @@ class GroceryItem implements CartItem {
     return FoodItem(
       id: id,
       name: name,
-      image: image,
+      image: catalogImage,
       description: description,
       sellerName: storeName ?? 'Grocery Store',
       sellerId: storeId.hashCode, // Use hash or parse strict int if available

@@ -9,7 +9,6 @@ import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_customer/shared/viewmodels/favorites_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:grab_go_shared/shared/utils/image_optimizer.dart';
 import 'package:provider/provider.dart';
 
 class GroceryDetailsAppBar extends StatelessWidget {
@@ -40,7 +39,10 @@ class GroceryDetailsAppBar extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             CachedNetworkImage(
-              imageUrl: ImageOptimizer.getFullUrl(groceryItem.image, width: 1200),
+              imageUrl: ImageOptimizer.getFullUrl(
+                groceryItem.catalogImage,
+                width: 1200,
+              ),
               fit: BoxFit.cover,
               memCacheWidth: 800,
               maxHeightDiskCache: 600,
@@ -55,7 +57,10 @@ class GroceryDetailsAppBar extends StatelessWidget {
                     package: 'grab_go_shared',
                     width: 50.w,
                     height: 50.h,
-                    colorFilter: ColorFilter.mode(colors.textSecondary, BlendMode.srcIn),
+                    colorFilter: ColorFilter.mode(
+                      colors.textSecondary,
+                      BlendMode.srcIn,
+                    ),
                   ),
                 ),
               ),
@@ -65,7 +70,11 @@ class GroceryDetailsAppBar extends StatelessWidget {
                 color: colors.inputBorder,
                 padding: EdgeInsets.all(45.r),
                 child: Center(
-                  child: Icon(Icons.broken_image_outlined, color: colors.textSecondary, size: 50.sp),
+                  child: Icon(
+                    Icons.broken_image_outlined,
+                    color: colors.textSecondary,
+                    size: 50.sp,
+                  ),
                 ),
               ),
             ),
@@ -87,7 +96,10 @@ class GroceryDetailsAppBar extends StatelessWidget {
             ),
           ],
         ),
-        stretchModes: const [StretchMode.blurBackground, StretchMode.zoomBackground],
+        stretchModes: const [
+          StretchMode.blurBackground,
+          StretchMode.zoomBackground,
+        ],
       ),
       bottom: PreferredSize(
         preferredSize: Size.fromHeight(24.h),
@@ -96,10 +108,15 @@ class GroceryDetailsAppBar extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: colors.backgroundSecondary,
-            borderRadius: BorderRadius.only(topLeft: Radius.circular(20.r), topRight: Radius.circular(20.r)),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20.r),
+              topRight: Radius.circular(20.r),
+            ),
             boxShadow: [
               BoxShadow(
-                color: isDark ? Colors.black.withAlpha(50) : Colors.black.withAlpha(10),
+                color: isDark
+                    ? Colors.black.withAlpha(50)
+                    : Colors.black.withAlpha(10),
                 blurRadius: 10,
                 spreadRadius: 0,
                 offset: const Offset(0, -2),
@@ -160,7 +177,10 @@ class GroceryDetailsAppBar extends StatelessWidget {
                 package: 'grab_go_shared',
                 height: 20.h,
                 width: 20.w,
-                colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                colorFilter: const ColorFilter.mode(
+                  Colors.white,
+                  BlendMode.srcIn,
+                ),
               ),
               isFavorite: false,
             );
@@ -187,10 +207,14 @@ class GroceryDetailsAppBar extends StatelessWidget {
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: Container(
               decoration: BoxDecoration(
-                color: isFavorite ? Colors.red.withValues(alpha: 0.3) : Colors.grey.withValues(alpha: 0.2),
+                color: isFavorite
+                    ? Colors.red.withValues(alpha: 0.3)
+                    : Colors.grey.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: isFavorite ? Colors.red.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.2),
+                  color: isFavorite
+                      ? Colors.red.withValues(alpha: 0.5)
+                      : Colors.white.withValues(alpha: 0.2),
                   width: 1.5,
                 ),
               ),

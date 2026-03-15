@@ -84,7 +84,7 @@ describe("order_item_resolution_helpers", () => {
       storeId: "store-1",
       price: 8,
       name: "Milk",
-      image: "milk.jpg",
+      thumbnailImage: "milk.jpg",
       prepTimeMinutes: 5,
       stock: 10,
     });
@@ -117,7 +117,7 @@ describe("order_item_resolution_helpers", () => {
       storeId: "store-1",
       price: 8,
       name: "Milk",
-      image: "milk.jpg",
+      thumbnailImage: "milk.jpg",
       prepTimeMinutes: 5,
       stock: 10,
     });

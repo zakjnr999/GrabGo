@@ -19,7 +19,7 @@ class PharmacyCategory {
 
   factory PharmacyCategory.fromJson(Map<String, dynamic> json) {
     return PharmacyCategory(
-      id: json['_id'] ?? '',
+      id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
       name: json['name'] ?? '',
       emoji: json['emoji'] ?? '',
       description: json['description'] ?? '',
@@ -32,6 +32,7 @@ class PharmacyCategory {
   Map<String, dynamic> toJson() {
     return {
       '_id': id,
+      'id': id,
       'name': name,
       'emoji': emoji,
       'description': description,

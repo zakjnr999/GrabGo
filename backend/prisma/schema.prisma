@@ -991,8 +991,7 @@ model GroceryItem {
   id                 String    @id @default(cuid())
   name               String
   description        String?
-  image              String
-  thumbnailImage     String?
+  thumbnailImage     String
   price              Float
   unit               UnitType
   categoryId         String?

@@ -17,6 +17,7 @@ class PopularSection extends StatelessWidget {
   final bool useVerticalZigzagTag;
   final Color? accentColor;
   final bool showEndSeeAllCard;
+  final String? seeAllSubtitle;
 
   const PopularSection({
     super.key,
@@ -30,6 +31,7 @@ class PopularSection extends StatelessWidget {
     this.useVerticalZigzagTag = false,
     this.accentColor,
     this.showEndSeeAllCard = false,
+    this.seeAllSubtitle,
   });
 
   @override
@@ -67,7 +69,7 @@ class PopularSection extends StatelessWidget {
                     width: 136.w,
                     height: cardHeight - 8.h,
                     accentColor: accentColor ?? AppColors.accentOrange,
-                    subtitle: 'View more dishes',
+                    subtitle: seeAllSubtitle ?? 'View more dishes',
                     onTap: onSeeAll,
                   ),
                 );

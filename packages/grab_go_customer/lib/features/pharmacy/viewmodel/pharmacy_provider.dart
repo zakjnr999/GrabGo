@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:grab_go_customer/features/pharmacy/model/pharmacy_category.dart';
 import 'package:grab_go_customer/features/pharmacy/model/pharmacy_item.dart';
 import 'package:grab_go_customer/features/pharmacy/repository/pharmacy_repository.dart';
+import 'package:grab_go_customer/features/services/model/service_hub_feed.dart';
 import 'package:grab_go_shared/shared/services/cache_service.dart';
 
 class PharmacyProvider extends ChangeNotifier {
@@ -28,7 +29,7 @@ class PharmacyProvider extends ChangeNotifier {
   bool _isLoadingRecommended = false;
   int _recommendedPage = 1;
   bool _hasMoreRecommended = true;
-  
+
   // Final fetch state
   bool _hasAttemptedFetch = false;
   bool get hasAttemptedFetch => _hasAttemptedFetch;
@@ -55,12 +56,73 @@ class PharmacyProvider extends ChangeNotifier {
   List<PharmacyItem> _topRatedItems = [];
   List<PharmacyItem> get topRatedItems => _topRatedItems;
 
+  Future<void> hydrateFromServiceHubFeed(ServiceHubFeed feed) async {
+    final categories = feed.categories
+        .map(PharmacyCategory.fromJson)
+        .toList(growable: false);
+    final items = feed.items.map(PharmacyItem.fromJson).toList(growable: false);
+    final deals = feed.deals.map(PharmacyItem.fromJson).toList(growable: false);
+    final popular = feed.popular
+        .map(PharmacyItem.fromJson)
+        .toList(growable: false);
+    final topRated = feed.topRated
+        .map(PharmacyItem.fromJson)
+        .toList(growable: false);
+    final recommended = feed.recommended.items
+        .map(PharmacyItem.fromJson)
+        .toList(growable: false);
+
+    final mergedItems = <String, PharmacyItem>{};
+    for (final list in [items, deals, popular, topRated, recommended]) {
+      for (final item in list) {
+        mergedItems[item.id] = item;
+      }
+    }
+
+    _categories = categories;
+    _items = mergedItems.values.toList(growable: false);
+    _onSaleItems = deals.isNotEmpty
+        ? deals
+        : (_items.where((item) => item.hasDiscount).toList()..sort(
+            (a, b) => b.discountPercentage.compareTo(a.discountPercentage),
+          ));
+    _popularItems = popular.isNotEmpty
+        ? popular
+        : (_items.where((item) => item.orderCount > 0).toList()
+            ..sort((a, b) => b.orderCount.compareTo(a.orderCount)));
+    _topRatedItems = topRated.isNotEmpty
+        ? topRated
+        : (_items.where((item) => item.rating >= 4.5).toList()
+            ..sort((a, b) => b.rating.compareTo(a.rating)));
+    _recommendedItems = recommended;
+    _recommendedPage = feed.recommended.page;
+    _hasMoreRecommended = feed.recommended.hasMore;
+    _hasAttemptedFetch = true;
+
+    _isLoadingCategories = false;
+    _isLoadingItems = false;
+    _isLoadingRecommended = false;
+
+    await Future.wait([
+      CacheService.savePharmacyCategories(
+        _categories.map((category) => category.toJson()).toList(),
+      ),
+      CacheService.savePharmacyItems(
+        _items.map((item) => item.toJson()).toList(),
+      ),
+    ]);
+
+    notifyListeners();
+  }
+
   /// Fetch all pharmacy categories
   Future<void> fetchCategories({bool forceRefresh = false}) async {
     if (_categories.isEmpty) {
       final cached = CacheService.getPharmacyCategories();
       if (cached.isNotEmpty) {
-        _categories = cached.map((json) => PharmacyCategory.fromJson(json)).toList();
+        _categories = cached
+            .map((json) => PharmacyCategory.fromJson(json))
+            .toList();
         notifyListeners();
       }
     }
@@ -83,7 +145,9 @@ class PharmacyProvider extends ChangeNotifier {
         userLng: userLng,
       );
       _categories = categories;
-      await CacheService.savePharmacyCategories(_categories.map((c) => c.toJson()).toList());
+      await CacheService.savePharmacyCategories(
+        _categories.map((c) => c.toJson()).toList(),
+      );
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error fetching pharmacy categories: $e');
@@ -103,7 +167,12 @@ class PharmacyProvider extends ChangeNotifier {
     String? tags,
     bool forceRefresh = false,
   }) async {
-    final isBaseFetch = category == null && store == null && minPrice == null && maxPrice == null && tags == null;
+    final isBaseFetch =
+        category == null &&
+        store == null &&
+        minPrice == null &&
+        maxPrice == null &&
+        tags == null;
 
     if (isBaseFetch && _items.isEmpty) {
       final cached = CacheService.getPharmacyItems();
@@ -155,7 +224,9 @@ class PharmacyProvider extends ChangeNotifier {
       }
 
       if (isBaseFetch) {
-        await CacheService.savePharmacyItems(_items.map((i) => i.toJson()).toList());
+        await CacheService.savePharmacyItems(
+          _items.map((i) => i.toJson()).toList(),
+        );
         _loadOnSaleItems();
         _loadPopularItems();
         _loadTopRatedItems();
@@ -187,7 +258,8 @@ class PharmacyProvider extends ChangeNotifier {
 
   /// Load top-rated items (4.5+ rating)
   void _loadTopRatedItems() {
-    _topRatedItems = _items.where((item) => item.rating >= 4.5).toList()..sort((a, b) => b.rating.compareTo(a.rating));
+    _topRatedItems = _items.where((item) => item.rating >= 4.5).toList()
+      ..sort((a, b) => b.rating.compareTo(a.rating));
     notifyListeners();
   }
 
@@ -254,7 +326,10 @@ class PharmacyProvider extends ChangeNotifier {
     await _fetchRecommendedPage(page: nextPage, append: true);
   }
 
-  Future<void> _fetchRecommendedPage({required int page, required bool append}) async {
+  Future<void> _fetchRecommendedPage({
+    required int page,
+    required bool append,
+  }) async {
     _isLoadingRecommended = true;
     notifyListeners();
 

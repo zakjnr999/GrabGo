@@ -80,7 +80,7 @@ async function seedGroceryOrderHistory() {
                 quantity: index === 0 ? 3 : (index === 1 ? 2 : 1),
                 price: item.price,
                 name: item.name,
-                image: item.image,
+                image: item.thumbnailImage,
                 unit: item.unit
             }));
 

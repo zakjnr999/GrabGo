@@ -408,6 +408,7 @@ const CACHE_KEYS = {
     FOOD_RECOMMENDED: 'grabgo:food:recommended',
     FOOD_BANNERS: 'grabgo:food:banners',
     FOOD_HOME_FEED: 'grabgo:food:homefeed',
+    SERVICE_HUB_FEED: 'grabgo:service:hubfeed',
     FOOD_ITEM: 'grabgo:food:item',
     PHARMACY: 'grabgo:pharmacy',
     GROCERY: 'grabgo:grocery',

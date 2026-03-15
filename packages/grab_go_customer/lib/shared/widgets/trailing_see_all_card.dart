@@ -32,10 +32,7 @@ class TrailingSeeAllCard extends StatelessWidget {
         child: Container(
           width: width,
           height: height,
-          decoration: BoxDecoration(
-            color: colors.backgroundPrimary,
-            borderRadius: BorderRadius.circular(20.r),
-          ),
+          decoration: BoxDecoration(color: colors.backgroundPrimary, borderRadius: BorderRadius.circular(20.r)),
           padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 18.h),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -43,10 +40,7 @@ class TrailingSeeAllCard extends StatelessWidget {
               Container(
                 width: 38.w,
                 height: 38.w,
-                decoration: BoxDecoration(
-                  color: colors.accentOrange.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
+                decoration: BoxDecoration(color: accentColor.withValues(alpha: 0.1), shape: BoxShape.circle),
                 child: Center(
                   child: SvgPicture.asset(
                     Assets.icons.navArrowRight,
@@ -61,11 +55,7 @@ class TrailingSeeAllCard extends StatelessWidget {
               Text(
                 'See all',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: colors.textPrimary,
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w800,
-                ),
+                style: TextStyle(color: colors.textPrimary, fontSize: 14.sp, fontWeight: FontWeight.w800),
               ),
               SizedBox(height: 4.h),
               Text(

@@ -97,7 +97,7 @@ async function createDummyGroceryOrders() {
                     name: randomItem.name,
                     quantity,
                     price: randomItem.price,
-                    image: randomItem.image,
+                    image: randomItem.thumbnailImage,
                     unit: randomItem.unit
                 });
 

@@ -1,6 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:grab_go_shared/gen/assets.gen.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 
 class AllCategoriesSheet<T> extends StatelessWidget {
@@ -70,18 +72,16 @@ class AllCategoriesSheet<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.appColors;
     final size = MediaQuery.sizeOf(context);
-    final crossAxisCount = size.width >= 420 ? 4 : 3;
+    final effectiveAccentColor = accentColor ?? colors.accentOrange;
+    const crossAxisCount = 3;
     final horizontalPadding = 20.w;
-    final crossSpacing = 12.w;
-    final availableWidth =
-        size.width -
-        (horizontalPadding * 2) -
-        ((crossAxisCount - 1) * crossSpacing);
+    final crossSpacing = 14.w;
+    final availableWidth = size.width - (horizontalPadding * 2) - ((crossAxisCount - 1) * crossSpacing);
     final tileWidth = availableWidth / crossAxisCount;
-    final avatarSize = (tileWidth * 0.76).clamp(66.0, 82.0);
-    final emojiSize = (avatarSize * 0.45).clamp(28.0, 34.0);
-    const labelHeight = 36.0;
-    const labelSpacing = 8.0;
+    final avatarSize = (tileWidth * 0.92).clamp(98.0, 132.0);
+    final emojiSize = (avatarSize * 0.34).clamp(28.0, 38.0);
+    const labelHeight = 42.0;
+    const labelSpacing = 10.0;
     final tileHeight = avatarSize + labelSpacing + labelHeight;
 
     return FractionallySizedBox(
@@ -103,44 +103,31 @@ class AllCategoriesSheet<T> extends StatelessWidget {
               child: Container(
                 width: 40.w,
                 height: 4.h,
-                decoration: BoxDecoration(
-                  color: colors.inputBorder,
-                  borderRadius: BorderRadius.circular(999.r),
-                ),
+                decoration: BoxDecoration(color: colors.inputBorder, borderRadius: BorderRadius.circular(999.r)),
               ),
             ),
             Padding(
               padding: EdgeInsets.fromLTRB(20.w, 14.h, 20.w, 8.h),
               child: Text(
                 title,
-                style: TextStyle(
-                  fontSize: 18.sp,
-                  fontWeight: FontWeight.w700,
-                  color: colors.textPrimary,
-                ),
+                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w700, color: colors.textPrimary),
               ),
             ),
             Expanded(
               child: GridView.builder(
-                padding: EdgeInsets.fromLTRB(
-                  horizontalPadding,
-                  8.h,
-                  horizontalPadding,
-                  20.h,
-                ),
+                padding: EdgeInsets.fromLTRB(horizontalPadding, 8.h, horizontalPadding, 20.h),
                 itemCount: categories.length,
                 physics: const AlwaysScrollableScrollPhysics(),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: crossAxisCount,
                   crossAxisSpacing: crossSpacing,
-                  mainAxisSpacing: 4.h,
+                  mainAxisSpacing: 14.h,
                   mainAxisExtent: tileHeight,
                 ),
                 itemBuilder: (context, index) {
                   final category = categories[index];
-                  final emoji = getEmoji(category).trim().isEmpty
-                      ? '🍽️'
-                      : getEmoji(category).trim();
+                  final categoryId = getId(category);
+                  final isSelected = selectedCategoryId == categoryId;
                   final imageUrl = getImage?.call(category)?.trim();
                   final hasImage = imageUrl != null && imageUrl.isNotEmpty;
 
@@ -157,51 +144,29 @@ class AllCategoriesSheet<T> extends StatelessWidget {
                         AnimatedContainer(
                           duration: const Duration(milliseconds: 220),
                           curve: Curves.easeOut,
-                          width: avatarSize,
+                          width: tileWidth,
                           height: avatarSize,
                           alignment: Alignment.center,
-                          padding: EdgeInsets.all(hasImage ? 12.r : 0),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: hasImage ? 16.w : 10.w,
+                            vertical: hasImage ? 16.h : 10.h,
+                          ),
                           decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: colors.inputBorder.withValues(alpha: 0.18),
-                            border: Border.all(
-                              color: colors.inputBorder.withValues(alpha: 0.55),
-                              width: 1,
-                            ),
+                            color: effectiveAccentColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(KBorderSize.borderMedium),
                           ),
                           child: hasImage
                               ? CachedNetworkImage(
-                                  imageUrl: ImageOptimizer.getPreviewUrl(
-                                    imageUrl,
-                                    width: 180,
-                                  ),
+                                  imageUrl: ImageOptimizer.getPreviewUrl(imageUrl, width: 180),
                                   fit: BoxFit.contain,
                                   memCacheWidth: 180,
                                   maxHeightDiskCache: 360,
-                                  placeholder: (context, url) => Center(
-                                    child: Icon(
-                                      Icons.local_grocery_store_outlined,
-                                      size: (emojiSize * 0.8).sp,
-                                      color: colors.textSecondary,
-                                    ),
-                                  ),
-                                  errorWidget: (context, url, error) => Text(
-                                    emoji,
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontSize: emojiSize.sp,
-                                      height: 1,
-                                    ),
-                                  ),
+                                  placeholder: (context, url) =>
+                                      _buildCategoryImageFallback(effectiveAccentColor, (emojiSize * 0.82).sp),
+                                  errorWidget: (context, url, error) =>
+                                      _buildCategoryImageFallback(effectiveAccentColor, (emojiSize * 0.82).sp),
                                 )
-                              : Text(
-                                  emoji,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: emojiSize.sp,
-                                    height: 1,
-                                  ),
-                                ),
+                              : _buildCategoryImageFallback(effectiveAccentColor, (emojiSize * 0.82).sp),
                         ),
                         const SizedBox(height: labelSpacing),
                         SizedBox(
@@ -212,10 +177,10 @@ class AllCategoriesSheet<T> extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              fontSize: 12.sp,
+                              fontSize: 13.sp,
                               height: 1.2,
-                              fontWeight: FontWeight.w500,
-                              color: colors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                              color: isSelected ? effectiveAccentColor : colors.textPrimary,
                             ),
                           ),
                         ),
@@ -227,6 +192,18 @@ class AllCategoriesSheet<T> extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryImageFallback(Color accentColor, double iconSize) {
+    return Center(
+      child: SvgPicture.asset(
+        Assets.icons.cart,
+        package: 'grab_go_shared',
+        width: iconSize,
+        height: iconSize,
+        colorFilter: ColorFilter.mode(accentColor, BlendMode.srcIn),
       ),
     );
   }

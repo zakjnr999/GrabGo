@@ -236,7 +236,7 @@ const FAVORITES_SELECT = {
           id: true,
           name: true,
           price: true,
-          image: true,
+          thumbnailImage: true,
           description: true,
           isAvailable: true,
           rating: true,
@@ -410,6 +410,7 @@ const formatFavoriteItem = (item, sourceType) => {
   const vendor = item.restaurant || item.store || null;
   const base = {
     ...item,
+    image: item.thumbnailImage ?? item.image ?? null,
     rating: ratingMeta.rating,
     rawRating: ratingMeta.rawRating,
     weightedRating: ratingMeta.weightedRating,

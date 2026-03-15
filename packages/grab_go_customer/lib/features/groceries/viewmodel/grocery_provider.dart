@@ -4,6 +4,7 @@ import 'package:grab_go_customer/features/groceries/model/grocery_item.dart';
 import 'package:grab_go_customer/features/groceries/model/grocery_store.dart';
 import 'package:grab_go_customer/features/groceries/model/store_special.dart';
 import 'package:grab_go_customer/features/groceries/repository/grocery_repository.dart';
+import 'package:grab_go_customer/features/services/model/service_hub_feed.dart';
 import 'package:grab_go_shared/grub_go_shared.dart';
 import 'package:grab_go_shared/shared/services/cache_service.dart';
 
@@ -88,6 +89,72 @@ class GroceryProvider extends ChangeNotifier {
   bool _isLoadingTopRated = false;
   bool get isLoadingTopRated => _isLoadingTopRated;
 
+  Future<void> hydrateFromServiceHubFeed(ServiceHubFeed feed) async {
+    final categories = feed.categories
+        .map(GroceryCategory.fromJson)
+        .toList(growable: false);
+    final items = feed.items.map(GroceryItem.fromJson).toList(growable: false);
+    final deals = feed.deals.map(GroceryItem.fromJson).toList(growable: false);
+    final popular = feed.popular
+        .map(GroceryItem.fromJson)
+        .toList(growable: false);
+    final topRated = feed.topRated
+        .map(GroceryItem.fromJson)
+        .toList(growable: false);
+    final recommended = feed.recommended.items
+        .map(GroceryItem.fromJson)
+        .toList(growable: false);
+
+    final mergedItems = <String, GroceryItem>{};
+    for (final list in [items, deals, popular, topRated, recommended]) {
+      for (final item in list) {
+        mergedItems[item.id] = item;
+      }
+    }
+
+    _categories = categories;
+    _items = mergedItems.values.toList(growable: false);
+    _deals = deals;
+    _popularItems = popular;
+    _topRatedItems = topRated;
+    _recommendedItems = recommended;
+    _recommendedPage = feed.recommended.page;
+    _hasMoreRecommended = feed.recommended.hasMore;
+    _freshArrivals = _items.where((item) => item.isNew).take(10).toList();
+    _hasAttemptedFetch = true;
+
+    _isLoadingStores = false;
+    _isLoadingCategories = false;
+    _isLoadingItems = false;
+    _isLoadingDeals = false;
+    _isLoadingFreshArrivals = false;
+    _isLoadingBuyAgain = false;
+    _isLoadingStoreSpecials = false;
+    _isLoadingPopular = false;
+    _isLoadingTopRated = false;
+    _isLoadingRecommended = false;
+
+    await Future.wait([
+      CacheService.saveGroceryCategories(
+        _categories.map((category) => category.toJson()).toList(),
+      ),
+      CacheService.saveGroceryItems(
+        _items.map((item) => item.toJson()).toList(),
+      ),
+      CacheService.saveGroceryDeals(
+        _deals.map((item) => item.toJson()).toList(),
+      ),
+      CacheService.saveGroceryPopularItems(
+        _popularItems.map((item) => item.toJson()).toList(),
+      ),
+      CacheService.saveGroceryTopRatedItems(
+        _topRatedItems.map((item) => item.toJson()).toList(),
+      ),
+    ]);
+
+    notifyListeners();
+  }
+
   /// Fetch all grocery stores
   Future<void> fetchStores({bool forceRefresh = false}) async {
     // Load from cache first if empty for immediate UI
@@ -112,7 +179,9 @@ class GroceryProvider extends ChangeNotifier {
       final freshStores = await _repository.fetchStores();
       _stores = freshStores;
       // Save to cache
-      await CacheService.saveGroceryStores(freshStores.map((s) => s.toJson()).toList());
+      await CacheService.saveGroceryStores(
+        freshStores.map((s) => s.toJson()).toList(),
+      );
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error in fetchStores: $e');
@@ -129,7 +198,9 @@ class GroceryProvider extends ChangeNotifier {
     if (_categories.isEmpty) {
       final cached = CacheService.getGroceryCategories();
       if (cached.isNotEmpty) {
-        _categories = cached.map((json) => GroceryCategory.fromJson(json)).toList();
+        _categories = cached
+            .map((json) => GroceryCategory.fromJson(json))
+            .toList();
         notifyListeners();
       }
     }
@@ -152,7 +223,9 @@ class GroceryProvider extends ChangeNotifier {
         userLng: userLng,
       );
       _categories = freshCategories;
-      await CacheService.saveGroceryCategories(freshCategories.map((c) => c.toJson()).toList());
+      await CacheService.saveGroceryCategories(
+        freshCategories.map((c) => c.toJson()).toList(),
+      );
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error in fetchCategories: $e');
@@ -172,7 +245,12 @@ class GroceryProvider extends ChangeNotifier {
     String? tags,
     bool forceRefresh = false,
   }) async {
-    final isBaseFetch = category == null && store == null && minPrice == null && maxPrice == null && tags == null;
+    final isBaseFetch =
+        category == null &&
+        store == null &&
+        minPrice == null &&
+        maxPrice == null &&
+        tags == null;
 
     if (isBaseFetch && _items.isEmpty) {
       final cached = CacheService.getGroceryItems();
@@ -226,7 +304,9 @@ class GroceryProvider extends ChangeNotifier {
       }
 
       if (isBaseFetch) {
-        await CacheService.saveGroceryItems(freshItems.map((i) => i.toJson()).toList());
+        await CacheService.saveGroceryItems(
+          freshItems.map((i) => i.toJson()).toList(),
+        );
       }
     } catch (e) {
       if (kDebugMode) {
@@ -282,7 +362,9 @@ class GroceryProvider extends ChangeNotifier {
       final userLng = locationData?['longitude']?.toDouble();
 
       if (kDebugMode) {
-        print('🌍 [GROCERY DEALS] Fetching with location: ($userLat, $userLng)');
+        print(
+          '🌍 [GROCERY DEALS] Fetching with location: ($userLat, $userLng)',
+        );
       }
 
       final freshDeals = await _repository.fetchDeals(
@@ -290,11 +372,13 @@ class GroceryProvider extends ChangeNotifier {
         userLng: userLng,
       );
       _deals = freshDeals;
-      
+
       if (kDebugMode) {
         print('✅ [GROCERY DEALS] Received ${freshDeals.length} deals');
       }
-      await CacheService.saveGroceryDeals(freshDeals.map((d) => d.toJson()).toList());
+      await CacheService.saveGroceryDeals(
+        freshDeals.map((d) => d.toJson()).toList(),
+      );
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error in fetchDeals: $e');
@@ -329,7 +413,9 @@ class GroceryProvider extends ChangeNotifier {
     if (!forceRefresh && _buyAgainItems.isEmpty) {
       final cached = CacheService.getGroceryBuyAgainItems();
       if (cached.isNotEmpty) {
-        _buyAgainItems = cached.map((json) => GroceryItem.fromJson(json)).toList();
+        _buyAgainItems = cached
+            .map((json) => GroceryItem.fromJson(json))
+            .toList();
         notifyListeners();
       }
     }
@@ -340,7 +426,9 @@ class GroceryProvider extends ChangeNotifier {
     try {
       final items = await _repository.fetchOrderHistory();
       _buyAgainItems = items;
-      await CacheService.saveGroceryBuyAgainItems(items.map((i) => i.toJson()).toList());
+      await CacheService.saveGroceryBuyAgainItems(
+        items.map((i) => i.toJson()).toList(),
+      );
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error in fetchBuyAgainItems: $e');
@@ -419,7 +507,9 @@ class GroceryProvider extends ChangeNotifier {
     if (!forceRefresh && _storeSpecials.isEmpty) {
       final cached = CacheService.getGroceryStoreSpecials();
       if (cached.isNotEmpty) {
-        _storeSpecials = cached.map((json) => StoreSpecial.fromJson(json)).toList();
+        _storeSpecials = cached
+            .map((json) => StoreSpecial.fromJson(json))
+            .toList();
         notifyListeners();
       }
     }
@@ -430,7 +520,9 @@ class GroceryProvider extends ChangeNotifier {
     try {
       final specials = await _repository.fetchStoreSpecials();
       _storeSpecials = specials;
-      await CacheService.saveGroceryStoreSpecials(specials.map((s) => s.toJson()).toList());
+      await CacheService.saveGroceryStoreSpecials(
+        specials.map((s) => s.toJson()).toList(),
+      );
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error fetching store specials: $e');
@@ -446,7 +538,9 @@ class GroceryProvider extends ChangeNotifier {
     if (!forceRefresh && _popularItems.isEmpty) {
       final cached = CacheService.getGroceryPopularItems();
       if (cached.isNotEmpty) {
-        _popularItems = cached.map((json) => GroceryItem.fromJson(json)).toList();
+        _popularItems = cached
+            .map((json) => GroceryItem.fromJson(json))
+            .toList();
         notifyListeners();
       }
     }
@@ -461,7 +555,9 @@ class GroceryProvider extends ChangeNotifier {
       final userLng = locationData?['longitude']?.toDouble();
 
       if (kDebugMode) {
-        print('🌍 [GROCERY POPULAR] Fetching with location: ($userLat, $userLng)');
+        print(
+          '🌍 [GROCERY POPULAR] Fetching with location: ($userLat, $userLng)',
+        );
       }
 
       final items = await _repository.fetchPopularItems(
@@ -470,11 +566,13 @@ class GroceryProvider extends ChangeNotifier {
         userLng: userLng,
       );
       _popularItems = items;
-      
+
       if (kDebugMode) {
         print('✅ [GROCERY POPULAR] Received ${items.length} popular items');
       }
-      await CacheService.saveGroceryPopularItems(items.map((i) => i.toJson()).toList());
+      await CacheService.saveGroceryPopularItems(
+        items.map((i) => i.toJson()).toList(),
+      );
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error fetching popular items: $e');
@@ -490,7 +588,9 @@ class GroceryProvider extends ChangeNotifier {
     if (!forceRefresh && _topRatedItems.isEmpty) {
       final cached = CacheService.getGroceryTopRatedItems();
       if (cached.isNotEmpty) {
-        _topRatedItems = cached.map((json) => GroceryItem.fromJson(json)).toList();
+        _topRatedItems = cached
+            .map((json) => GroceryItem.fromJson(json))
+            .toList();
         notifyListeners();
       }
     }
@@ -499,9 +599,14 @@ class GroceryProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final items = await _repository.fetchTopRatedItems(limit: 10, minRating: 4.5);
+      final items = await _repository.fetchTopRatedItems(
+        limit: 10,
+        minRating: 4.5,
+      );
       _topRatedItems = items;
-      await CacheService.saveGroceryTopRatedItems(items.map((i) => i.toJson()).toList());
+      await CacheService.saveGroceryTopRatedItems(
+        items.map((i) => i.toJson()).toList(),
+      );
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error fetching top rated items: $e');
@@ -530,7 +635,10 @@ class GroceryProvider extends ChangeNotifier {
     await _fetchRecommendedPage(page: nextPage, append: true);
   }
 
-  Future<void> _fetchRecommendedPage({required int page, required bool append}) async {
+  Future<void> _fetchRecommendedPage({
+    required int page,
+    required bool append,
+  }) async {
     _isLoadingRecommended = true;
     notifyListeners();
 

@@ -719,7 +719,6 @@ async function main() {
         data: {
           name: definition.name,
           description: definition.description,
-          image: definition.image,
           thumbnailImage: definition.thumbnailImage,
           price: definition.price,
           unit: definition.unit,
@@ -738,9 +737,7 @@ async function main() {
   console.log("[grocery-catalog] Summary:");
   console.log(`  - categories active: ${CATEGORY_DEFINITIONS.length}`);
   console.log(`  - items refreshed: ${updated}`);
-  console.log(
-    "  - images updated: both image and thumbnailImage now point to real product photos"
-  );
+  console.log("  - thumbnails updated: grocery items now use thumbnailImage only");
 }
 
 main()

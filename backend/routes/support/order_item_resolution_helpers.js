@@ -63,7 +63,7 @@ const createOrderItemResolutionHelpers = ({ prisma, resolveFoodCustomization }) 
           vendorId: groceryItem.storeId,
           price: groceryItem.price,
           name: groceryItem.name,
-          image: groceryItem.image,
+          image: groceryItem.thumbnailImage || null,
           prepTimeMinutes: groceryItem.prepTimeMinutes,
           idField: "groceryItemId",
           idValue: groceryItem.id,

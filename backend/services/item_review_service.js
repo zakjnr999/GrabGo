@@ -28,7 +28,7 @@ const ITEM_TYPE_CONFIG = {
     prismaModel: "groceryItem",
     countField: "reviewCount",
     nameField: "name",
-    imageField: "image",
+    imageField: "thumbnailImage",
   },
   pharmacy: {
     routeType: "pharmacy",
@@ -96,7 +96,7 @@ const ITEM_REVIEW_ORDER_SELECT = {
         select: {
           id: true,
           name: true,
-          image: true,
+          thumbnailImage: true,
           rating: true,
           ratingSum: true,
           reviewCount: true,

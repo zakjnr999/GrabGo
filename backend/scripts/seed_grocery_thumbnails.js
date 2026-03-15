@@ -189,7 +189,7 @@ async function searchOpenFoodFacts(searchTerm) {
   return resolved;
 }
 
-function resolveEmojiThumbnail(item, fallbackToExistingImage) {
+function resolveEmojiThumbnail(item) {
   const normalizedName = normalizeName(item.name);
   const curatedThumbnail = CURATED_EMOJI_THUMBNAILS[normalizedName];
 
@@ -213,14 +213,6 @@ function resolveEmojiThumbnail(item, fallbackToExistingImage) {
     }
   }
 
-  if (fallbackToExistingImage && item.image) {
-    return {
-      thumbnailImage: item.image,
-      matchedRule: "existing-image",
-      source: "existing_image_fallback",
-    };
-  }
-
   return {
     thumbnailImage: null,
     matchedRule: null,
@@ -228,7 +220,7 @@ function resolveEmojiThumbnail(item, fallbackToExistingImage) {
   };
 }
 
-async function resolveRealPackshotThumbnail(item, fallbackToExistingImage) {
+async function resolveRealPackshotThumbnail(item) {
   const normalizedName = normalizeName(item.name);
   const curatedPackshot = CURATED_PACKSHOT_THUMBNAILS[normalizedName];
 
@@ -266,14 +258,6 @@ async function resolveRealPackshotThumbnail(item, fallbackToExistingImage) {
     }
   }
 
-  if (fallbackToExistingImage && item.image) {
-    return {
-      thumbnailImage: item.image,
-      matchedRule: "existing-image",
-      source: "existing_image_fallback",
-    };
-  }
-
   return {
     thumbnailImage: null,
     matchedRule: null,
@@ -281,18 +265,17 @@ async function resolveRealPackshotThumbnail(item, fallbackToExistingImage) {
   };
 }
 
-async function resolveThumbnailImage(item, fallbackToExistingImage) {
+async function resolveThumbnailImage(item) {
   if (useEmojiCatalog) {
-    return resolveEmojiThumbnail(item, fallbackToExistingImage);
+    return resolveEmojiThumbnail(item);
   }
 
-  return resolveRealPackshotThumbnail(item, fallbackToExistingImage);
+  return resolveRealPackshotThumbnail(item);
 }
 
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
   const overwrite = process.argv.includes("--overwrite");
-  const fallbackToExistingImage = process.argv.includes("--fallback-to-image");
   const sourceLabel = useEmojiCatalog
     ? useLegacyTwemoji
       ? "twemoji"
@@ -304,7 +287,7 @@ async function main() {
   console.log(
     `[grocery-thumbnails] Starting ${
       dryRun ? "dry-run" : "write"
-    } update (overwrite=${overwrite}, fallbackToImage=${fallbackToExistingImage}, source=${sourceLabel})`
+    } update (overwrite=${overwrite}, source=${sourceLabel})`
   );
 
   const items = await prisma.groceryItem.findMany({
@@ -312,7 +295,6 @@ async function main() {
       id: true,
       name: true,
       brand: true,
-      image: true,
       thumbnailImage: true,
     },
     orderBy: { name: "asc" },
@@ -323,7 +305,6 @@ async function main() {
   let dummyjsonFallbacks = 0;
   let curatedPackshots = 0;
   let emojiMatches = 0;
-  let existingImageFallbacks = 0;
   let alreadyPopulated = 0;
   let unmatched = 0;
   const unmatchedItems = [];
@@ -336,7 +317,7 @@ async function main() {
       continue;
     }
 
-    const resolution = await resolveThumbnailImage(item, fallbackToExistingImage);
+    const resolution = await resolveThumbnailImage(item);
 
     if (!resolution.thumbnailImage) {
       unmatched += 1;
@@ -355,8 +336,6 @@ async function main() {
       dummyjsonFallbacks += 1;
     } else if (resolution.source === "emoji_curated" || resolution.source === "emoji_rule") {
       emojiMatches += 1;
-    } else if (resolution.source === "existing_image_fallback") {
-      existingImageFallbacks += 1;
     }
 
     updated += 1;
@@ -382,7 +361,6 @@ async function main() {
   console.log(`  - Open Food Facts packshots: ${openFoodFactsMatches}`);
   console.log(`  - DummyJSON fallbacks: ${dummyjsonFallbacks}`);
   console.log(`  - emoji matches: ${emojiMatches}`);
-  console.log(`  - fallback to existing image: ${existingImageFallbacks}`);
   console.log(`  - already populated: ${alreadyPopulated}`);
   console.log(`  - unmatched: ${unmatched}`);
 
@@ -392,12 +370,6 @@ async function main() {
       const brandLabel = unmatchedItem.brand ? ` (${unmatchedItem.brand})` : "";
       console.log(`    * ${unmatchedItem.name}${brandLabel}`);
     }
-  }
-
-  if (!fallbackToExistingImage) {
-    console.log(
-      "  - note: use --fallback-to-image if you want every unmatched item to copy its current image into thumbnailImage"
-    );
   }
 
   if (!useEmojiCatalog) {

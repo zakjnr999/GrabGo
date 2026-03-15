@@ -19,7 +19,7 @@ extension GroceryItemToFood on GroceryItem {
     return FoodItem(
       id: id,
       name: name,
-      image: image,
+      image: catalogImage,
       description: description,
       sellerName: storeName ?? brand,
       sellerId: storeId.hashCode,

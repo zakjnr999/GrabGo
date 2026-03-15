@@ -725,7 +725,7 @@ async function migrateGroceryItems() {
           categoryId: categoryId || null,
           name: item.name,
           description: item.description || null,
-          image: item.image || '',
+          thumbnailImage: item.thumbnailImage || item.image || '',
           price: item.price || 0,
           unit: unit,
           brand: item.brand || null,

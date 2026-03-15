@@ -17,6 +17,7 @@ class DealsSection extends StatelessWidget {
   final bool useVerticalZigzagTag;
   final Color? accentColor;
   final bool showEndSeeAllCard;
+  final String? seeAllSubtitle;
 
   const DealsSection({
     super.key,
@@ -30,6 +31,7 @@ class DealsSection extends StatelessWidget {
     this.useVerticalZigzagTag = false,
     this.accentColor,
     this.showEndSeeAllCard = false,
+    this.seeAllSubtitle,
   });
 
   @override
@@ -69,7 +71,7 @@ class DealsSection extends StatelessWidget {
                     width: 136.w,
                     height: cardHeight - 8.h,
                     accentColor: accentColor ?? colors.accentOrange,
-                    subtitle: 'View more offers',
+                    subtitle: seeAllSubtitle ?? 'View more offers',
                     onTap: onSeeAll,
                   ),
                 );
